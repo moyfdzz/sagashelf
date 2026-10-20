@@ -5,6 +5,13 @@
   "engines": {
     "node": ">=22.22.0"
   },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{json,jsonc,md,css,yml,yaml}": "prettier --write"
+  },
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
@@ -13,8 +20,10 @@
     "format:check": "prettier --check .",
     "typecheck": "wrangler types && react-router typegen && tsc -b",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run build",
+    "prepare": "husky",
     "deploy": "npm run build && wrangler deploy",
     "preview": "npm run build && vite preview",
     "cf-typegen": "wrangler types",
@@ -29,18 +38,27 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@cloudflare/vite-plugin": "^1.64.0",
-    "@eslint/js": "^10.0.1",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.64.1",
     "@react-router/dev": "^8.4.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.20.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "eslint": "^10.13.0",
+    "@vitest/coverage-v8": "^5.0.5",
+    "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "msw": "^3.0.3",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
