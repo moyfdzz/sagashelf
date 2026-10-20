@@ -1,0 +1,40 @@
+@import "tailwindcss" source(".");
+
+/* Design tokens. Components use the semantic names (bg-surface, text-fg, ...),
+   so the palette changes in one place and dark mode follows the system setting. */
+:root {
+  color-scheme: light dark;
+  --surface: oklch(0.99 0 0);
+  --surface-raised: oklch(0.96 0.005 260);
+  --fg: oklch(0.22 0.02 260);
+  --fg-muted: oklch(0.45 0.02 260);
+  --border: oklch(0.88 0.01 260);
+  --accent: oklch(0.52 0.19 260);
+  --accent-fg: oklch(0.99 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: oklch(0.17 0.02 260);
+    --surface-raised: oklch(0.22 0.02 260);
+    --fg: oklch(0.95 0.005 260);
+    --fg-muted: oklch(0.72 0.02 260);
+    --border: oklch(0.32 0.02 260);
+    --accent: oklch(0.72 0.14 260);
+    --accent-fg: oklch(0.17 0.02 260);
+  }
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+}
+
+body {
+  @apply bg-surface text-fg font-sans antialiased;
+}

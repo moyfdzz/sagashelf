@@ -4,8 +4,6 @@
 
 SagaShelf is a personal, non-commercial portfolio project: a web app to search, track and share anime, movies, series, books and manga. Its signature feature is **sagas**: one page per story across every format (for example, Dune as books and films, or Attack on Titan as manga, anime and films) with your progress in each.
 
-> The code currently in this repository is an early prototype that is being replaced by a new TypeScript app. The prototype does not start: `backend/routes/userMedia.routes.js` imports a controller that does not exist. It is kept only as a reference until the new app lands.
-
 ## Planned features
 
 - Search and library for anime, movies, series, books and manga
@@ -17,25 +15,26 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 
 ## Tech stack (target)
 
-- TypeScript (strict), React Router v7 (framework mode, SSR), Tailwind CSS, Zod
+- TypeScript (strict), React Router v8 (framework mode, SSR), Tailwind CSS, Zod
 - Cloudflare Workers
-- Postgres on Neon with Drizzle
-- Clerk for accounts (passwords are never stored by this app)
+- Postgres on Neon with Drizzle (planned)
+- Clerk for accounts (planned; passwords are never stored by this app)
 - Vitest, Playwright, GitHub Actions
 
-## Running the prototype (reference only)
+## Getting started
+
+Requires Node 22.22 or newer.
 
 ```bash
-cd backend && npm install
-cp ../.env.example .env   # then fill in the values locally; never commit .env
-cd ../frontend && npm install
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-The new app will replace this setup, and these instructions will be updated then.
+Other scripts: `npm run lint`, `npm run format`, `npm run typecheck`, `npm run test`, `npm run test:e2e` (run `npx playwright install chromium` once), `npm run build`, and `npm run check` to run everything before a commit.
 
 ## Security
 
-Secrets never go in the repository. Copy `.env.example` to `.env` and fill it in locally; `.env*` files (except `.env.example`) are gitignored.
+Secrets never go in the repository. Copy `.env.example` to `.dev.vars` and fill it in locally; `.env*` files (except `.env.example`) and `.dev.vars*` are gitignored. Production values are Workers secrets.
 
 ## License
 

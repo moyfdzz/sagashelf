@@ -1,0 +1,10 @@
+build
+.react-router
+.wrangler
+coverage
+playwright-report
+test-results
+package-lock.json
+worker-configuration.d.ts
+public
+.env.example
