@@ -34,6 +34,7 @@ dist
 dist-ssr
 build
 coverage
+.lighthouseci
 playwright-report
 test-results
 

@@ -38,6 +38,8 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 - One ticket (Linear team SagaShelf, `SAG-N`) per branch, cut from an up-to-date `main`, e.g. `chore/SAG-3-app-scaffold`.
 - Conventional Commits with the ticket as scope: `feat(SAG-12): add saga page`. commitlint enforces the `SAG-N` scope.
 - Git hooks (Husky): lint-staged runs ESLint and Prettier on staged files, and commitlint checks the message. Never bypass them with `--no-verify`.
+- CI (GitHub Actions) runs Quality (`npm run check`), E2E on the production build, Lighthouse (informational for now), the PR title through commitlint, and Security (gitleaks, CodeQL, dependency review, `npm audit`). The PR title becomes the squash commit message, so it must follow Conventional Commits with the `SAG-N` scope.
+- GitHub Actions are pinned to a full commit hash with the version in a comment. Dependabot proposes updates weekly; never switch a pin to a floating tag.
 - ESLint stays on v9 because `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not support v10 yet.
 - Before each commit: `npm run check`, then review `git diff --staged`. Stage named files, never `git add .`.
 - PR with squash merge. The PR description says what changed, why, and how it was checked.
