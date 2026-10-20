@@ -30,7 +30,9 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Other scripts: `npm run lint`, `npm run format`, `npm run typecheck`, `npm run test`, `npm run test:e2e` (run `npx playwright install chromium` once), `npm run build`, and `npm run check` to run everything before a commit.
+Other scripts: `npm run lint`, `npm run format`, `npm run typecheck`, `npm run test`, `npm run test:coverage`, `npm run test:e2e` (run `npx playwright install chromium` once), `npm run build`, and `npm run check` to run everything before a commit.
+
+Commits follow Conventional Commits with the ticket as scope, for example `feat(SAG-12): add saga page`. Git hooks check staged files and the commit message.
 
 ## Security
 
