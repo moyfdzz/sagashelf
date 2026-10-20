@@ -1,2 +1,45 @@
+# Dependencies
 node_modules
+
+# Secrets and local environment (names only go in .env.example)
 .env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+id_rsa*
+credentials*.json
+service-account*.json
+*.tfvars
+.npmrc
+.pypirc
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Local agent configuration
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Build output and test reports
+dist
+dist-ssr
+build
+coverage
+playwright-report
+test-results
+
+# Logs
+logs
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.sw?
