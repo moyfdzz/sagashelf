@@ -11,23 +11,29 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 
 ## Commands
 
-| Command                 | What it does                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`           | Local dev server at http://localhost:5173                                                                                 |
-| `npm run lint`          | ESLint                                                                                                                    |
-| `npm run format`        | Prettier (write); `format:check` only checks                                                                              |
-| `npm run typecheck`     | `wrangler types`, route typegen and `tsc -b`                                                                              |
-| `npm run test`          | Vitest unit tests                                                                                                         |
-| `npm run test:coverage` | Vitest with coverage; `server/` must stay at 80% or more                                                                  |
-| `npm run test:e2e`      | Playwright on desktop and Pixel 7, with axe and a no-sideways-scroll check (needs `npx playwright install chromium` once) |
-| `npm run build`         | Builds the Worker                                                                                                         |
-| `npm run check`         | lint, format check, typecheck, test with coverage and build in order (pre-commit)                                         |
+| Command                              | What it does                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                        | Local dev server at http://localhost:5173                                                                                 |
+| `npm run lint`                       | ESLint                                                                                                                    |
+| `npm run format`                     | Prettier (write); `format:check` only checks                                                                              |
+| `npm run typecheck`                  | `wrangler types`, route typegen and `tsc -b`                                                                              |
+| `npm run test`                       | Vitest unit tests                                                                                                         |
+| `npm run test:coverage`              | Vitest with coverage; `server/` must stay at 80% or more                                                                  |
+| `npm run test:e2e`                   | Playwright on desktop and Pixel 7, with axe and a no-sideways-scroll check (needs `npx playwright install chromium` once) |
+| `npm run build`                      | Builds the Worker                                                                                                         |
+| `npm run db:up`                      | Starts the local Postgres 18 (Docker); `db:down` stops it                                                                 |
+| `npm run db:generate` / `db:migrate` | Creates a migration from the schema / applies migrations (local unless `DATABASE_URL` is set in your terminal)            |
+| `npm run db:seed`                    | Loads synthetic data into the local database only                                                                         |
+| `npm run test:integration`           | Constraint tests on a real Postgres (needs `db:up`); the tests refuse any database not local and named `*_test`           |
+| `npm run check:full`                 | `check` plus the integration tests                                                                                        |
+| `npm run check`                      | lint, format check, typecheck, test with coverage and build in order (pre-commit)                                         |
 
 ## Folder map
 
 - `app/routes`: UI routes and resource routes (`api.*`, `webhooks.*`), declared in `app/routes.ts`
 - `app/components`, `app/lib`: client-safe code. Lint forbids importing `server/` here
 - `server/`: database, providers, services, jobs, env. Import it only from route loaders/actions
+- `server/db/`: the Drizzle schema (`schema/`, one file per area) and the Neon client. `drizzle/`: migration files. Never edit an applied migration; extensions and indexes Drizzle cannot express go in a custom migration (`drizzle-kit generate --custom`). `db/`: Node-only tooling (integration tests, seed), never bundled into the Worker
 - `server/env.ts`: the only place environment variables are validated (Zod). Errors name the variable, never its value
 - `workers/app.ts`: Worker entry (`fetch` and `scheduled` handlers)
 - `app/locales`: UI text. `es.json` is the source of truth and `en.json` must have exactly the same keys. `app/middleware/i18next.ts` picks the language per request
@@ -45,6 +51,7 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 - CI (GitHub Actions) runs Quality (`npm run check`), E2E on the production build, Lighthouse (informational for now), the PR title through commitlint, and Security (gitleaks, CodeQL, dependency review, `npm audit`). The PR title becomes the squash commit message, so it must follow Conventional Commits with the `SAG-N` scope.
 - GitHub Actions are pinned to a full commit hash with the version in a comment. Dependabot proposes updates weekly; never switch a pin to a floating tag.
 - ESLint stays on v9 because `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not support v10 yet.
+- Schema changes: edit `server/db/schema`, run `npm run db:generate`, read the SQL it produced, and add a test for any new constraint to `db/`. Never paste a connection string into a file or a chat; set `DATABASE_URL` in your own terminal.
 - Before each commit: `npm run check`, then review `git diff --staged`. Stage named files, never `git add .`.
 - PR with squash merge. The PR description says what changed, why, and how it was checked.
 - Secrets never go in the repo: names only in `.env.example`; real values in `.dev.vars` (local) or Workers secrets.

@@ -39,6 +39,12 @@ Commits follow Conventional Commits with the ticket as scope, for example `feat(
 - [Architecture overview](docs/architecture.md) with diagrams of the system, a request, search, webhooks, the data model and delivery
 - [Decision records](docs/adr/README.md): why each major choice was made, what else was considered, and what it costs
 
+## Database (local)
+
+The database needs Docker. `npm run db:up` starts Postgres 18 on this computer, `npm run db:migrate` builds the schema, and `npm run db:seed` loads synthetic data (no real people). `npm run test:integration` runs the tests that need Postgres, and `npm run check:full` runs every check.
+
+For the app to use it, copy `.env.example` to `.dev.vars` and set `DATABASE_URL=postgres://sagashelf@127.0.0.1:5432/sagashelf`. Production and previews use Neon; their connection strings are Workers secrets and never go in a file.
+
 ## Security
 
 Secrets never go in the repository. Copy `.env.example` to `.dev.vars` and fill it in locally; `.env*` files (except `.env.example`) and `.dev.vars*` are gitignored. Production values are Workers secrets.
