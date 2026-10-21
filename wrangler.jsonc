@@ -14,7 +14,13 @@
     "binding": "ASSETS",
   },
   "vars": {
-    "APP_ENV": "development",
+    "APP_ENV": "production",
+  },
+  // Preview deployments (one per PR) get their own values and never reuse production ones.
+  "previews": {
+    "vars": {
+      "APP_ENV": "preview",
+    },
   },
   "observability": {
     "enabled": true,
