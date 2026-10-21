@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "SagaShelf",
+    "pageTitle": "{{title}} | SagaShelf"
+  },
+  "nav": {
+    "label": "Main",
+    "home": "Home"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "home": {
+    "description": "Search and track anime, movies, series, books and manga. Sagas group every format of a story in one place."
+  },
+  "search": {
+    "submit": "Search",
+    "inputLabel": "Search {{category}}",
+    "placeholder": "Type to search {{category}}",
+    "categories": {
+      "anime": "Anime",
+      "series": "Series",
+      "movies": "Movies",
+      "books": "Books"
+    }
+  },
+  "errors": {
+    "backHome": "Back to home",
+    "notFound": {
+      "title": "Page not found",
+      "message": "We could not find the page you were looking for."
+    },
+    "unexpected": {
+      "title": "Something went wrong",
+      "message": "An unexpected error occurred. Please try again."
+    }
+  }
+}

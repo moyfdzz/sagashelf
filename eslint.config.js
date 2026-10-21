@@ -6,6 +6,10 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+// Attributes whose text people read or hear (screen readers included).
+const textAttributes =
+  "/^(placeholder|alt|title|label|aria-label|aria-description|aria-placeholder)$/";
+
 export default tseslint.config(
   {
     ignores: [
@@ -53,6 +57,27 @@ export default tseslint.config(
                 "server/ code must not be imported from components or client libraries.",
             },
           ],
+        },
+      ],
+    },
+  },
+  {
+    // No hard-coded UI text: every visible string comes from app/locales through t().
+    files: ["app/**/*.tsx"],
+    rules: {
+      "react/jsx-no-literals": [
+        "error",
+        { noStrings: true, ignoreProps: true },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: [
+            `JSXAttribute[name.name=${textAttributes}] > Literal`,
+            `JSXAttribute[name.name=${textAttributes}] > JSXExpressionContainer > Literal`,
+          ].join(", "),
+          message:
+            "Accessible and visible attribute text must come from t(), not a string literal.",
         },
       ],
     },

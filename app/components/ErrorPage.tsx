@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 type ErrorPageProps = {
@@ -7,9 +8,11 @@ type ErrorPageProps = {
 };
 
 export function ErrorPage({ status, title, message }: ErrorPageProps) {
+  const { t } = useTranslation();
+
   return (
     <main className="container mx-auto px-4 py-24 text-center">
-      <title>{`${title} | SagaShelf`}</title>
+      <title>{t("app.pageTitle", { title })}</title>
       <p className="text-accent text-6xl font-bold">{status}</p>
       <h1 className="mt-4 text-2xl font-semibold">{title}</h1>
       <p className="text-fg-muted mt-2">{message}</p>
@@ -17,7 +20,7 @@ export function ErrorPage({ status, title, message }: ErrorPageProps) {
         to="/"
         className="bg-accent text-accent-fg mt-8 inline-block rounded-md px-4 py-2 font-medium"
       >
-        Back to home
+        {t("errors.backHome")}
       </Link>
     </main>
   );

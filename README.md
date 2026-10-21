@@ -11,7 +11,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 - Social layer: follow, friends (mutual follows), block, public/friends/private profiles
 - Custom entries for titles missing from the catalog
 - Trending pages, an admin dashboard, and incoming/outgoing webhooks
-- English and Spanish, responsive on phone, tablet and desktop
+- Spanish (default) and English, responsive on phone, tablet and desktop
 
 ## Tech stack (target)
 
