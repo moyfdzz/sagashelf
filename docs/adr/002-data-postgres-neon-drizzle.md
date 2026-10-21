@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Partial. SAG-9 part 1 (tooling, the core tables, tests, seed) is done; the remaining tables follow in part 2.
+- **Implementation:** Done (SAG-9). The schema has 20 tables; the analytics tables arrive with SAG-24.
 - **Tickets:** SAG-9, SAG-15, SAG-11
 
 ## Context
@@ -26,7 +26,8 @@ Search also needs fuzzy matching on titles with accents. The first prototype use
 - **Migration files:** `0000` creates the extensions and `immutable_unaccent` (Postgres' `unaccent()` is not allowed in generated columns or indexes), `0001` holds the tables Drizzle generates, and `0002` holds the fuzzy-title indexes that Drizzle cannot express. An applied migration is never edited.
 - **Keys and timestamps:** UUIDv7 ids, `created_at` and `updated_at` on every table, soft delete (`deleted_at`) where a row must disappear from the product but be kept for integrity, for example users.
 - **Search support:** `tsvector` with a GIN index, `pg_trgm` for fuzzy titles, `unaccent`, and `citext` for case-insensitive unique values such as usernames. Partial indexes support privacy filters.
-- **Planned tables** (SAG-9): `users`, `media_items`, `media_external_ids`, `media_parts`, `sagas`, `saga_members`, `library_entries`, `lists`, `list_items`, `custom_entries`, `follows`, `blocks`, `activity`, `likes`, `reports`, `audit_log`, `outbox`, `webhook_endpoints`, `webhook_deliveries`, `processed_webhooks`, and analytics tables (SAG-24).
+- **Tables** (20, in `server/db/schema/`, one file per area): users (`users`); catalog (`media_items`, `media_external_ids`, `media_parts`); sagas (`sagas`, `saga_members`); library (`library_entries`); lists and custom titles (`lists`, `list_items`, `custom_entries`); social (`follows`, `blocks`, `activity`, `likes`); moderation (`reports`, `audit_log`); operations (`outbox`, `webhook_endpoints`, `webhook_deliveries`, `processed_webhooks`). Analytics tables are added by SAG-24.
+- **Design rules that the constraints enforce:** a pair that must be unique is a primary key or a unique constraint (a follow, a block, a like, a list item, an external id, an incoming webhook event, an outbox idempotency key); nobody can follow or block themselves; a report is about a polymorphic target with no foreign key, so it outlives the content; children are deleted with their parent (cascade), except reports and audit entries, which keep their row when the person is deleted; new content is private by default; and a webhook endpoint must use HTTPS.
 - **Tests:** constraint tests (duplicate external id, duplicate follow, duplicate webhook event) run against a real throwaway Postgres in CI, not against a mock.
 
 ## Alternatives considered

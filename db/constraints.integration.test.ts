@@ -11,6 +11,7 @@ import {
   users,
 } from "../server/db/schema";
 import { createTestDb } from "./test-database";
+import { factories, failsWith } from "./test-helpers";
 
 const { db, pool } = createTestDb();
 
@@ -24,62 +25,34 @@ beforeEach(async () => {
   );
 });
 
-/** Postgres error codes: 23505 unique, 23503 foreign key, 23514 check. */
-async function failsWith(statement: PromiseLike<unknown>) {
-  try {
-    await statement;
-  } catch (error) {
-    // Drizzle wraps the driver error in a DrizzleQueryError and keeps it in `cause`.
-    const cause = (error as { cause?: unknown }).cause ?? error;
-    const { code, constraint } = cause as {
-      code?: string;
-      constraint?: string;
-    };
-    if (code) return { code, constraint };
-    throw error;
-  }
-  throw new Error("Expected the statement to fail, but it succeeded");
-}
-
-let counter = 0;
-function user(overrides: Partial<typeof users.$inferInsert> = {}) {
-  counter += 1;
-  return {
-    clerkId: `clerk_${counter}`,
-    username: `person${counter}`,
-    emailCanonical: `person${counter}@example.test`,
-    ...overrides,
-  };
-}
-
-async function newUser(overrides: Partial<typeof users.$inferInsert> = {}) {
-  const [row] = await db.insert(users).values(user(overrides)).returning();
-  return row;
-}
-
-async function newMedia(
-  overrides: Partial<typeof mediaItems.$inferInsert> = {},
-) {
-  const [row] = await db
-    .insert(mediaItems)
-    .values({ type: "movie", title: "Untitled", ...overrides })
-    .returning();
-  return row;
-}
+const { newUser, newMedia } = factories(db);
 
 describe("migrations", () => {
-  it("build every table and the three extensions from zero", async () => {
+  it("build all 20 tables and the three extensions from zero", async () => {
     const tables = await db.execute<{ table_name: string }>(
       sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`,
     );
     expect(tables.rows.map((row) => row.table_name)).toEqual([
+      "activity",
+      "audit_log",
+      "blocks",
+      "custom_entries",
+      "follows",
       "library_entries",
+      "likes",
+      "list_items",
+      "lists",
       "media_external_ids",
       "media_items",
       "media_parts",
+      "outbox",
+      "processed_webhooks",
+      "reports",
       "saga_members",
       "sagas",
       "users",
+      "webhook_deliveries",
+      "webhook_endpoints",
     ]);
 
     const extensions = await db.execute<{ extname: string }>(
