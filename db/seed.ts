@@ -17,18 +17,26 @@ if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(host)) {
 const pool = new pg.Pool({ connectionString: url });
 const db = drizzle(pool, { schema });
 const {
-  users,
-  mediaItems,
-  mediaExternalIds,
-  mediaParts,
-  sagas,
-  sagaMembers,
+  activity,
+  customEntries,
+  follows,
   libraryEntries,
+  likes,
+  listItems,
+  lists,
+  mediaExternalIds,
+  mediaItems,
+  mediaParts,
+  outbox,
+  reports,
+  sagaMembers,
+  sagas,
+  users,
 } = schema;
 
 async function main() {
   await db.execute(
-    sql`TRUNCATE users, media_items, sagas RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE users, media_items, sagas, outbox, processed_webhooks RESTART IDENTITY CASCADE`,
   );
 
   const [ana, bruno, carla] = await db
@@ -241,8 +249,67 @@ async function main() {
     },
   ]);
 
+  // Part 2: custom entries, lists, social, moderation and the outbox.
+  const [fanzine] = await db
+    .insert(mediaItems)
+    .values({ type: "custom", title: "Mi fanzine (demo)", year: 2025 })
+    .returning();
+  if (!fanzine) throw new Error("The demo custom title was not created");
+  const [custom] = await db
+    .insert(customEntries)
+    .values({ mediaId: fanzine.id, ownerId: ana.id })
+    .returning();
+  if (!custom) throw new Error("The demo custom entry was not created");
+
+  const [scifi] = await db
+    .insert(lists)
+    .values({ ownerId: ana.id, title: "Ciencia ficción", visibility: "public" })
+    .returning();
+  if (!scifi) throw new Error("The demo list was not created");
+  await db.insert(listItems).values([
+    { listId: scifi.id, mediaId: dune.id, position: 0 },
+    {
+      listId: scifi.id,
+      mediaId: dune2021.id,
+      position: 1,
+      note: "Mejor en pantalla grande.",
+    },
+  ]);
+
+  await db.insert(follows).values([
+    { followerId: ana.id, followeeId: bruno.id },
+    { followerId: bruno.id, followeeId: ana.id },
+    { followerId: carla.id, followeeId: ana.id },
+  ]);
+
+  const [event] = await db
+    .insert(activity)
+    .values({
+      actorId: ana.id,
+      type: "completed",
+      mediaId: dune.id,
+      payload: { score: 9 },
+      visibility: "public",
+    })
+    .returning();
+  if (!event) throw new Error("The demo activity was not created");
+  await db.insert(likes).values({ userId: bruno.id, activityId: event.id });
+
+  await db.insert(reports).values({
+    reporterId: bruno.id,
+    targetType: "custom_entry",
+    targetId: custom.id,
+    reason: "other",
+    details: "Demo report for the moderation queue.",
+  });
+  await db.insert(outbox).values({
+    type: "library.completed",
+    payload: { user: "ana_demo", title: "Dune" },
+    idempotencyKey: "seed-library-completed-1",
+  });
+
   console.log(
-    `Seeded 3 users, ${media.length} titles, 2 sagas and 5 library entries.`,
+    `Seeded 3 users, ${media.length + 1} titles, 2 sagas, 5 library entries, a list, 3 follows, an activity with a like, a report and an outbox event.`,
   );
 }
 
