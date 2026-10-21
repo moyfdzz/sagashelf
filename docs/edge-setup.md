@@ -16,8 +16,8 @@ The domain is declared in `wrangler.jsonc` (`routes` with `custom_domain: true` 
 ## 2. SSL/TLS and DNSSEC
 
 - [ ] SSL/TLS, Overview: set the encryption mode to **Full (strict)**.
-- [ ] SSL/TLS, Edge Certificates: turn **Always Use HTTPS** on. Without it a plain `http://` request is answered with the page instead of being redirected to HTTPS (checked on 2026-10-21). Browsers already upgrade `.app` addresses by themselves, but other clients do not.
-- [ ] DNS, Settings: turn **DNSSEC** on. The domain is registered at Cloudflare, so the signing record is added automatically. Confirm that the status becomes active.
+- [x] SSL/TLS, Edge Certificates: turn **Always Use HTTPS** on. Done and checked on 2026-10-21: `http://sagashelf.app` now answers 301 to HTTPS. Without it a plain `http://` request is answered with the page. Browsers already upgrade `.app` addresses by themselves, but other clients do not.
+- [x] DNS, Settings: turn **DNSSEC** on. Checked on 2026-10-21: the DS record is published at `.app` and the chain validates. The domain is registered at Cloudflare, so the signing record is added automatically. Confirm that the status becomes active.
 
 ## 3. Bot Fight Mode and AI bots
 
@@ -41,7 +41,7 @@ The widget is wired into forms in SAG-10, but the keys can be created now.
 ## 6. Check the result
 
 - [x] Mozilla Observatory: **A+** on 2026-10-21 (score 145, 12 of 12 tests passed).
-- [ ] <https://securityheaders.com>: open `https://securityheaders.com/?q=sagashelf.app&followRedirects=on` in a browser (it blocks automated requests) and write the grade in SAG-7.
+- [x] securityheaders.com: **A+** on 2026-10-21. Its only suggestion was `Cross-Origin-Embedder-Policy`, which is deliberately not set because it breaks embedding third-party widgets such as Turnstile and Clerk.
 - [ ] Send a burst of requests to a write endpoint and confirm that `429` answers appear (see the burst test in `e2e/security.spec.ts`).
 
 ## 7. Email (optional)
