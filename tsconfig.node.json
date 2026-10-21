@@ -3,8 +3,12 @@
   "include": [
     "vite.config.ts",
     "vitest.config.ts",
+    "vitest.integration.config.ts",
     "playwright.config.ts",
-    "e2e/**/*"
+    "drizzle.config.ts",
+    "e2e/**/*",
+    "db/**/*",
+    "server/db/schema/**/*"
   ],
   "compilerOptions": {
     "composite": true,

@@ -1,0 +1,113 @@
+import { sql } from "drizzle-orm";
+import {
+  type AnyPgColumn,
+  check,
+  date,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  real,
+  smallint,
+  text,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+import {
+  externalProvider,
+  type LocalizedText,
+  mediaStatus,
+  mediaType,
+  partKind,
+  primaryId,
+  timestamps,
+  tsvector,
+} from "./shared";
+
+/** One title in the catalog, whatever its source or format. */
+export const mediaItems = pgTable(
+  "media_items",
+  {
+    id: primaryId(),
+    type: mediaType("type").notNull(),
+    title: text("title").notNull(),
+    originalTitle: text("original_title"),
+    year: smallint("year"),
+    synopsis: jsonb("synopsis")
+      .$type<LocalizedText>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    imageUrl: text("image_url"),
+    status: mediaStatus("status").notNull().default("unknown"),
+    popularity: real("popularity").notNull().default(0),
+    // Titles without accents, in the 'simple' configuration so every language is treated
+    // alike. `immutable_unaccent` is created in the first migration: the extension's own
+    // function is not allowed inside a generated column.
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', immutable_unaccent(coalesce(title, '') || ' ' || coalesce(original_title, '')))`,
+    ),
+    ...timestamps,
+  },
+  (t) => [
+    check(
+      "media_items_year_check",
+      sql`${t.year} is null or ${t.year} between 1000 and 2200`,
+    ),
+    index("media_items_type_popularity_idx").on(t.type, t.popularity.desc()),
+    index("media_items_search_vector_idx").using("gin", t.searchVector),
+    // The fuzzy title indexes (pg_trgm) are in the `search_indexes` migration.
+  ],
+);
+
+/**
+ * The ids a title has in each source. This is what lets two sources describe the same
+ * title without it being stored twice: one (provider, external_id) pair belongs to one title.
+ */
+export const mediaExternalIds = pgTable(
+  "media_external_ids",
+  {
+    id: primaryId(),
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    provider: externalProvider("provider").notNull(),
+    externalId: text("external_id").notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    unique("media_external_ids_provider_external_id_unique").on(
+      t.provider,
+      t.externalId,
+    ),
+    index("media_external_ids_media_idx").on(t.mediaId),
+  ],
+);
+
+/** Seasons and episodes of a series, volumes and chapters of a book or manga. */
+export const mediaParts = pgTable(
+  "media_parts",
+  {
+    id: primaryId(),
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    kind: partKind("kind").notNull(),
+    // An episode points to its season. Seasons, volumes and chapters have no parent.
+    parentId: uuid("parent_id").references((): AnyPgColumn => mediaParts.id, {
+      onDelete: "cascade",
+    }),
+    number: integer("number").notNull(),
+    title: text("title"),
+    airDate: date("air_date"),
+    ...timestamps,
+  },
+  (t) => [
+    // NULLS NOT DISTINCT: two seasons with number 1 and no parent are the same row.
+    unique("media_parts_media_kind_parent_number_unique")
+      .on(t.mediaId, t.kind, t.parentId, t.number)
+      .nullsNotDistinct(),
+    check("media_parts_number_check", sql`${t.number} >= 0`),
+    index("media_parts_parent_idx").on(t.parentId),
+  ],
+);

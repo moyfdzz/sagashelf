@@ -4,6 +4,12 @@ const envSchema = z.object({
   APP_ENV: z.enum(["development", "preview", "production"]),
   // A Workers secret. Optional until the first form that needs it exists (SAG-10).
   TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+  // The Neon connection string, a Workers secret (pooled, for the HTTP driver). Optional so
+  // previews and tests start without it; `getDb()` fails with a clear message if it is needed.
+  DATABASE_URL: z
+    .string()
+    .regex(/^postgres(ql)?:\/\//)
+    .optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

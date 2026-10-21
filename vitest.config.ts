@@ -16,6 +16,8 @@ export default defineConfig({
         "server/testing/**",
         // Reads the Worker runtime bindings; covered by e2e, not unit tests.
         "server/runtime-env.ts",
+        // The schema and the client are exercised by the integration tests (db/), which need Postgres.
+        "server/db/**",
       ],
       thresholds: {
         lines: 80,
