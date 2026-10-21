@@ -15,3 +15,18 @@ export function getWriteLimiter() {
 export function getEnv(): AppEnv {
   return parseEnv(env as unknown as Record<string, unknown>);
 }
+
+/**
+ * The database for this request. Fails by name, never by value, when the secret is not set.
+ * The client loads on first use, so pages that do not read data do not pay for it at startup.
+ */
+export async function getDb() {
+  const { DATABASE_URL } = getEnv();
+  if (!DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL is not set: add it as a Workers secret (or in .dev.vars for local development)",
+    );
+  }
+  const { createDb } = await import("./db/client");
+  return createDb(DATABASE_URL);
+}

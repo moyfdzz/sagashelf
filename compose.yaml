@@ -1,0 +1,25 @@
+# Local Postgres for development and integration tests, on the same major version as Neon (18).
+# It listens on this computer only and has no password, so there is nothing secret to commit.
+# Start it with `npm run db:up`. The data lives in a Docker volume and survives restarts.
+services:
+  db:
+    image: postgres:18
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: sagashelf
+      POSTGRES_DB: sagashelf
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      # Postgres 18 images keep the data under /var/lib/postgresql (not .../data).
+      - pgdata:/var/lib/postgresql
+      # Runs once, when the volume is created: makes the empty database the tests use.
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sagashelf -d sagashelf"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

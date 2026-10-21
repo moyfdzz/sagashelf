@@ -118,7 +118,7 @@ sequenceDiagram
 
 See [ADR-007](adr/007-background-work-cron-and-outbox.md).
 
-## 5. Data model (planned)
+## 5. Data model
 
 ```mermaid
 erDiagram
@@ -155,7 +155,7 @@ erDiagram
   }
 ```
 
-Only the main tables and relations are drawn. The full list, indexes and constraints are in [ADR-002](adr/002-data-postgres-neon-drizzle.md) and ticket SAG-9.
+The tables for users, media, external ids, parts, sagas and library entries exist (SAG-9 part 1); lists, social, moderation and webhook tables are planned (SAG-9 part 2). Only the main tables and relations are drawn. The full list, indexes and constraints are in [ADR-002](adr/002-data-postgres-neon-drizzle.md) and ticket SAG-9.
 
 ## 6. From a change to production
 

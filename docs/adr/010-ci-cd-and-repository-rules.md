@@ -23,7 +23,7 @@ One person builds the product and deploys continuously. Nobody else reviews the 
 
 - **Least privilege:** workflow permissions are `contents: read`; only CodeQL adds `security-events: write`. Checkout does not persist credentials.
 - **Actions are pinned to a full commit hash** with the version in a comment, and Dependabot proposes updates weekly, grouped.
-- **Jobs:** Quality (`npm run check`), E2E (Playwright and axe on desktop and Pixel 7 against the production build, in Spanish and English), Lighthouse, PR title (commitlint), gitleaks, CodeQL (JavaScript and TypeScript), dependency review (fails on high severity) and `npm audit --omit=dev` (reported, not blocking).
+- **Jobs:** Quality (`npm run check`), Integration (constraint tests on a throwaway Postgres 18 service container, SAG-9), E2E (Playwright and axe on desktop and Pixel 7 against the production build, in Spanish and English), Lighthouse, PR title (commitlint), gitleaks, CodeQL (JavaScript and TypeScript), dependency review (fails on high severity) and `npm audit --omit=dev` (reported, not blocking).
 - **Lighthouse is informational for now.** Its budgets (performance 0.9, accessibility, best practices and SEO 0.95, LCP 2.5 s, CLS 0.1) warn but do not fail, because the first measurements on an almost empty page were slow and noisy. Reports are kept as artifacts and are not uploaded to a public service. It becomes blocking when the site has more pages.
 - The **PR title is linted** because the squash merge uses it as the commit message.
 

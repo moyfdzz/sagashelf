@@ -35,7 +35,8 @@ The owner wants to know how the site is used (traffic, where visitors come from,
 **Costs and risks**
 
 - Counting without cookies is approximate: a visitor on two days counts as two, and bot filtering is never perfect.
-- Raw events grow the database. Retention and rollups must keep Neon's free storage in check (limits to be read in SAG-9).
+- Raw events grow the database, and Neon's Free plan has 1 GB per project (read 2026-10-21). Retention and rollups must keep the raw events well under that.
+- **Writing one row per page view keeps the Neon compute awake.** It shuts down after 5 minutes without queries, and the Free plan has 100 compute hours a month, which a compute that never pauses would use up in about 18 days at 0.25 CU. The collector should batch its writes (for example buffer events and flush them from the Cron handler) instead of writing on every request.
 - The rollup job competes for the 10 ms CPU budget of a Cron invocation on the Free plan (ADR-007) and may need to run in small steps.
 - The only cookie the site sets is `locale`, a language preference (ADR-008). It is not used for analytics, and the privacy policy lists it.
 
