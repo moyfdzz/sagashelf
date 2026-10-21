@@ -10,6 +10,16 @@
   "compatibility_date": "2026-10-19",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./workers/app.ts",
+  // Production lives on the apex domain and on www (a custom domain matches one exact host).
+  // Cloudflare creates the DNS records and certificates when this is deployed. The Worker
+  // answers www with a 301 to the apex (server/host.ts). Previews are not affected.
+  "routes": [
+    { "pattern": "sagashelf.app", "custom_domain": true },
+    { "pattern": "www.sagashelf.app", "custom_domain": true },
+  ],
+  // Adding routes switches workers.dev off unless this says otherwise. It stays on until
+  // the custom domain is confirmed; turning it off is a later, separate change.
+  "workers_dev": true,
   "assets": {
     "binding": "ASSETS",
   },
