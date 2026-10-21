@@ -8,14 +8,15 @@ Never paste a key or a secret into the repository, an issue or a chat. Secrets g
 
 The domain is declared in `wrangler.jsonc` (`routes` with `custom_domain: true` for `sagashelf.app` and `www.sagashelf.app`). After the change is merged and deployed, Cloudflare creates the DNS records and certificates by itself.
 
-- [ ] **Before merging the domain change:** in the zone `sagashelf.app`, DNS, Records, check that there is no existing record for `sagashelf.app` or `www` (for example a parking page). Cloudflare cannot create a custom domain on a hostname that already has a CNAME record. Remove only records you do not use.
-- [ ] In the dashboard, open the zone `sagashelf.app` and confirm that the records for `sagashelf.app` and `www` exist and are proxied.
-- [ ] Open <https://sagashelf.app> and <https://www.sagashelf.app>. The second must redirect to the first.
-- [ ] Open <https://sagashelf.app/api/health>. It must answer `{"status":"ok"}`.
+- [x] **Before merging the domain change:** in the zone `sagashelf.app`, DNS, Records, check that there is no existing record for `sagashelf.app` or `www` (for example a parking page). Cloudflare cannot create a custom domain on a hostname that already has a CNAME record. Remove only records you do not use.
+- [x] In the dashboard, open the zone `sagashelf.app` and confirm that the records for `sagashelf.app` and `www` exist and are proxied.
+- [x] Open <https://sagashelf.app> and <https://www.sagashelf.app>. The second must redirect to the first.
+- [x] Open <https://sagashelf.app/api/health>. It must answer `{"status":"ok"}`.
 
 ## 2. SSL/TLS and DNSSEC
 
 - [ ] SSL/TLS, Overview: set the encryption mode to **Full (strict)**.
+- [ ] SSL/TLS, Edge Certificates: turn **Always Use HTTPS** on. Without it a plain `http://` request is answered with the page instead of being redirected to HTTPS (checked on 2026-10-21). Browsers already upgrade `.app` addresses by themselves, but other clients do not.
 - [ ] DNS, Settings: turn **DNSSEC** on. The domain is registered at Cloudflare, so the signing record is added automatically. Confirm that the status becomes active.
 
 ## 3. Bot Fight Mode and AI bots
@@ -39,5 +40,12 @@ The widget is wired into forms in SAG-10, but the keys can be created now.
 
 ## 6. Check the result
 
-- [ ] Run the scan on <https://securityheaders.com> and on <https://developer.mozilla.org/en-US/observatory> for `https://sagashelf.app`, and write the grades in SAG-7.
+- [x] Mozilla Observatory: **A+** on 2026-10-21 (score 145, 12 of 12 tests passed).
+- [ ] <https://securityheaders.com>: open `https://securityheaders.com/?q=sagashelf.app&followRedirects=on` in a browser (it blocks automated requests) and write the grade in SAG-7.
 - [ ] Send a burst of requests to a write endpoint and confirm that `429` answers appear (see the burst test in `e2e/security.spec.ts`).
+
+## 7. Email (optional)
+
+The contact address uses Cloudflare Email Routing (the zone has its MX, SPF and DKIM records). The dashboard recommends adding a **DMARC** record so mail providers can reject messages that fake an `@sagashelf.app` sender.
+
+- [ ] DNS, add the DMARC record the dashboard suggests. Start in monitoring mode (`p=none`) and only move to a stricter policy after reading the reports.
