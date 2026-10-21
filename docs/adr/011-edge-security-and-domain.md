@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Partial. The code is done (SAG-7). The domain switch and the Cloudflare dashboard settings are steps for the owner, listed in [`../edge-setup.md`](../edge-setup.md).
+- **Implementation:** Partial. The code and the custom domain are live (SAG-7, 2026-10-21). The Cloudflare dashboard settings are steps for the owner, listed in [`../edge-setup.md`](../edge-setup.md).
 - **Tickets:** SAG-7, SAG-10, SAG-15
 
 ## Context
@@ -83,7 +83,8 @@ A server helper (`server/turnstile.ts`) verifies a token with Cloudflare's `site
 - **Resolved: the Free plan accepts and enforces the Workers Rate Limiting binding.** Checked on the pull request preview: 200 parallel requests from one caller produced 35 `429` answers, and a following sequence mixed `303` and `429`. The count is approximate (Cloudflare calls it permissive and eventually consistent): 45 requests sent one after another were not throttled at all. Treat 30 per minute as a soft target, not an exact quota.
 - **Resolved: `public/_headers` is applied to static files** by the Vite plugin deployment. Checked on the preview: `favicon.ico` carries the base headers (in lower case, as Cloudflare's asset server writes them).
 - Whether the AI "Search" category also includes the search engines that matter for visibility. Check in the dashboard before deciding to block it.
-- The grade on securityheaders.com and Mozilla Observatory is recorded after the custom domain is live.
+- **Result on 2026-10-21:** Mozilla Observatory gives **A+** (score 145, 12 of 12 tests) and securityheaders.com gives **A+**. The only extra suggestion from securityheaders.com is `Cross-Origin-Embedder-Policy`, which is deliberately not set: it blocks cross-origin widgets (Turnstile, Clerk) unless every resource opts in.
+- **Always Use HTTPS is on** (checked 2026-10-21: `http://` answers 301 to HTTPS). **DNSSEC is active** and its chain validates.
 
 ## References (read 2026-10-20)
 
