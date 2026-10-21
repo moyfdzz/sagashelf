@@ -7,7 +7,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | ADR                                           | Decision                                                                    | Status   | Implementation                        |
 | --------------------------------------------- | --------------------------------------------------------------------------- | -------- | ------------------------------------- |
 | [001](001-runtime-react-router-on-workers.md) | React Router v8 (framework mode, SSR) on Cloudflare Workers                 | Accepted | Done (SAG-3)                          |
-| [002](002-data-postgres-neon-drizzle.md)      | Postgres on Neon with Drizzle                                               | Accepted | Planned (SAG-9)                       |
+| [002](002-data-postgres-neon-drizzle.md)      | Postgres on Neon with Drizzle                                               | Accepted | Done (SAG-9)                          |
 | [003](003-auth-clerk.md)                      | Clerk for accounts, local `users` mirror                                    | Accepted | Planned (SAG-10, 11)                  |
 | [004](004-search-strategy.md)                 | Search: local first, parallel typed fan-out, fallback chains, caching       | Accepted | Planned (SAG-15)                      |
 | [005](005-providers-and-licensing.md)         | Data providers, their terms, and the ones we do not use                     | Accepted | Planned (SAG-13, 14, 16)              |

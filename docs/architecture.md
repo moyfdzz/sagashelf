@@ -134,6 +134,14 @@ erDiagram
   USERS ||--o{ WEBHOOK_ENDPOINTS : configures
   WEBHOOK_ENDPOINTS ||--o{ WEBHOOK_DELIVERIES : "has deliveries"
   OUTBOX ||--o{ WEBHOOK_DELIVERIES : produces
+  MEDIA_ITEMS ||--o| CUSTOM_ENTRIES : "can be a"
+  USERS ||--o{ CUSTOM_ENTRIES : creates
+  USERS ||--o{ BLOCKS : blocks
+  USERS ||--o{ ACTIVITY : does
+  ACTIVITY ||--o{ LIKES : gets
+  USERS ||--o{ LIKES : gives
+  USERS ||--o{ REPORTS : files
+  USERS ||--o{ AUDIT_LOG : "acts in"
 
   USERS {
     uuid id
@@ -155,7 +163,7 @@ erDiagram
   }
 ```
 
-The tables for users, media, external ids, parts, sagas and library entries exist (SAG-9 part 1); lists, social, moderation and webhook tables are planned (SAG-9 part 2). Only the main tables and relations are drawn. The full list, indexes and constraints are in [ADR-002](adr/002-data-postgres-neon-drizzle.md) and ticket SAG-9.
+All 20 tables of SAG-9 exist: users, the catalog, sagas, the library, lists and custom titles, social, moderation, and the outbox and webhook tables. Analytics tables arrive with SAG-24. Only the main tables and relations are drawn; the full list and the rules their constraints enforce are in [ADR-002](adr/002-data-postgres-neon-drizzle.md).
 
 ## 6. From a change to production
 
