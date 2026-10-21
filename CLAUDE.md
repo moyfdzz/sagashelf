@@ -30,6 +30,7 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 - `server/`: database, providers, services, jobs, env. Import it only from route loaders/actions
 - `server/env.ts`: the only place environment variables are validated (Zod). Errors name the variable, never its value
 - `workers/app.ts`: Worker entry (`fetch` and `scheduled` handlers)
+- `app/locales`: UI text. `es.json` is the source of truth and `en.json` must have exactly the same keys. `app/middleware/i18next.ts` picks the language per request
 - `server/testing/`: MSW mock server shared by all tests. Unhandled requests fail the test, so tests never reach the network; each provider adds its fixtures here
 - `e2e/`: Playwright tests. Unit tests sit next to the code as `*.test.ts`
 
@@ -38,6 +39,7 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 - One ticket (Linear team SagaShelf, `SAG-N`) per branch, cut from an up-to-date `main`, e.g. `chore/SAG-3-app-scaffold`.
 - Conventional Commits with the ticket as scope: `feat(SAG-12): add saga page`. commitlint enforces the `SAG-N` scope.
 - Git hooks (Husky): lint-staged runs ESLint and Prettier on staged files, and commitlint checks the message. Never bypass them with `--no-verify`.
+- i18n: Spanish is the default (neutral Latin American Spanish, natural in Mexico) and English is selectable. The language is the cookie `locale`, then `Accept-Language`, then Spanish. Never write visible text in a component: add the key to both `es.json` and `en.json` and use `t("...")` (typed keys, a parity test, and an ESLint rule enforce this). Dates, numbers and relative times go through `app/lib/format.ts`, not raw `toLocaleString`.
 - CI (GitHub Actions) runs Quality (`npm run check`), E2E on the production build, Lighthouse (informational for now), the PR title through commitlint, and Security (gitleaks, CodeQL, dependency review, `npm audit`). The PR title becomes the squash commit message, so it must follow Conventional Commits with the `SAG-N` scope.
 - GitHub Actions are pinned to a full commit hash with the version in a comment. Dependabot proposes updates weekly; never switch a pin to a floating tag.
 - ESLint stays on v9 because `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not support v10 yet.
