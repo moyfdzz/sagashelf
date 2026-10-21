@@ -15,37 +15,38 @@ The domain is declared in `wrangler.jsonc` (`routes` with `custom_domain: true` 
 
 ## 2. SSL/TLS and DNSSEC
 
-- [ ] SSL/TLS, Overview: set the encryption mode to **Full (strict)**.
+- [x] SSL/TLS, Overview: set the encryption mode to **Full (strict)**. Done by the owner on 2026-10-21.
 - [x] SSL/TLS, Edge Certificates: turn **Always Use HTTPS** on. Done and checked on 2026-10-21: `http://sagashelf.app` now answers 301 to HTTPS. Without it a plain `http://` request is answered with the page. Browsers already upgrade `.app` addresses by themselves, but other clients do not.
 - [x] DNS, Settings: turn **DNSSEC** on. Checked on 2026-10-21: the DS record is published at `.app` and the chain validates. The domain is registered at Cloudflare, so the signing record is added automatically. Confirm that the status becomes active.
 
 ## 3. Bot Fight Mode and AI bots
 
-- [ ] Security Settings, filter by "Bot traffic": turn **Bot fight mode** on.
-- [ ] Security Settings, **Configure AI bot policies**: set **Training** to Block, **Agent** to Block, and **Search** to Allow. Check the description of the Search option and make sure it does not block the search engines you want to appear in.
+- [x] Security Settings, filter by "Bot traffic": turn **Bot fight mode** on. Done by the owner on 2026-10-21.
+- [x] Security Settings, **Configure AI bot policies**: **Training** is Block, **Agent** is Block, and **Search** is Allow, so the search engines you want to appear in are not blocked. Done by the owner on 2026-10-21 (not visible from outside, because Cloudflare decides verified bots by IP, not by user agent).
 
 ## 4. WAF rules (Free plan)
 
 The Free plan allows 5 custom rules and **1 rate-limiting rule** with a 10 second window, the IP as the counting key, and only the path and the verified-bot flag as fields.
 
-- [ ] Security, WAF, Rate limiting rules: create one rule for requests whose path starts with `/api/`, for example 20 requests per 10 seconds per IP, action Block for 10 seconds. Do not apply it to verified bots, which can hurt search visibility.
+- [x] Security, Security rules, Rate limiting rules: the rule `API Burst` matches `(http.request.uri.path wildcard "/api/*") and not cf.client.bot`, 30 requests per 10 seconds per IP, action Block for 10 seconds. Checked on 2026-10-21: of 120 parallel requests to `/api/health`, 31 got `200` and 89 got `429`; the block lifted after 12 seconds; 120 requests to `/` all got `200`. Verified bots are excluded because rate limiting them can hurt search visibility.
 - [ ] Custom rules: add rules only if abuse appears. Do not block countries or networks without evidence.
 
 ## 5. Turnstile
 
 The widget is wired into forms in SAG-10, but the keys can be created now.
 
-- [ ] Turnstile, add a widget for the hostnames `sagashelf.app` and `www.sagashelf.app` (the Free plan allows 10 hostnames per widget, so preview hostnames can be added later).
-- [ ] Keep the **site key** (public) for the page. Store the **secret key** only as the Worker secret `TURNSTILE_SECRET_KEY`.
+- [x] Turnstile, widget `SagaShelf` in Managed mode for the hostname `sagashelf.app`. `www` is not needed: the Worker redirects it to the apex domain, so the widget only ever loads there. More hostnames can be added later in the widget settings (the Free plan allows 10 per widget).
+- [x] The secret key is stored only as the Worker secret `TURNSTILE_SECRET_KEY`, in the **Production** variables (checked on 2026-10-21: the secret is listed as an encrypted value). The **site key** is public and goes into the page in SAG-10.
+- [ ] Previews have their own set of variables (the **Previews Base** tab). They do not receive the production secret. SAG-10 decides how to test Turnstile on previews, for example with a separate widget and its own secret.
 
 ## 6. Check the result
 
 - [x] Mozilla Observatory: **A+** on 2026-10-21 (score 145, 12 of 12 tests passed).
 - [x] securityheaders.com: **A+** on 2026-10-21. Its only suggestion was `Cross-Origin-Embedder-Policy`, which is deliberately not set because it breaks embedding third-party widgets such as Turnstile and Clerk.
-- [ ] Send a burst of requests to a write endpoint and confirm that `429` answers appear (see the burst test in `e2e/security.spec.ts`).
+- [x] A burst of requests gets `429`: from the Worker on `/api/locale` and from the WAF rule on `/api/*` (see above and the burst test in `e2e/security.spec.ts`).
 
 ## 7. Email (optional)
 
 The contact address uses Cloudflare Email Routing (the zone has its MX, SPF and DKIM records). The dashboard recommends adding a **DMARC** record so mail providers can reject messages that fake an `@sagashelf.app` sender.
 
-- [ ] DNS, add the DMARC record the dashboard suggests. Start in monitoring mode (`p=none`) and only move to a stricter policy after reading the reports.
+- [x] DMARC Management is enabled. Checked on 2026-10-21: `_dmarc` is `v=DMARC1; p=none; rua=mailto:...@dmarc-reports.cloudflare.net` (monitoring mode, reports go to Cloudflare), next to the existing SPF and DKIM records. Move to a stricter policy only after the reports show that all legitimate mail passes.
