@@ -8,6 +8,7 @@ Never paste a key or a secret into the repository, an issue or a chat. Secrets g
 
 The domain is declared in `wrangler.jsonc` (`routes` with `custom_domain: true` for `sagashelf.app` and `www.sagashelf.app`). After the change is merged and deployed, Cloudflare creates the DNS records and certificates by itself.
 
+- [ ] **Before merging the domain change:** in the zone `sagashelf.app`, DNS, Records, check that there is no existing record for `sagashelf.app` or `www` (for example a parking page). Cloudflare cannot create a custom domain on a hostname that already has a CNAME record. Remove only records you do not use.
 - [ ] In the dashboard, open the zone `sagashelf.app` and confirm that the records for `sagashelf.app` and `www` exist and are proxied.
 - [ ] Open <https://sagashelf.app> and <https://www.sagashelf.app>. The second must redirect to the first.
 - [ ] Open <https://sagashelf.app/api/health>. It must answer `{"status":"ok"}`.
