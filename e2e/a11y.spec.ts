@@ -6,28 +6,36 @@ const pages = [
   { name: "404", path: "/does-not-exist" },
 ];
 
-for (const { name, path } of pages) {
-  test.describe(`${name} page`, () => {
-    test("has no accessibility violations", async ({ page }) => {
-      await page.goto(path);
+const locales = ["es-MX", "en-US"];
 
-      const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
-        .analyze();
+for (const locale of locales) {
+  test.describe(`${locale}`, () => {
+    test.use({ locale });
 
-      expect(results.violations).toEqual([]);
-    });
+    for (const { name, path } of pages) {
+      test.describe(`${name} page`, () => {
+        test("has no accessibility violations", async ({ page }) => {
+          await page.goto(path);
 
-    test("does not scroll sideways", async ({ page }) => {
-      await page.goto(path);
+          const results = await new AxeBuilder({ page })
+            .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+            .analyze();
 
-      const overflow = await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth -
-          document.documentElement.clientWidth,
-      );
+          expect(results.violations).toEqual([]);
+        });
 
-      expect(overflow).toBeLessThanOrEqual(0);
-    });
+        test("does not scroll sideways", async ({ page }) => {
+          await page.goto(path);
+
+          const overflow = await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth,
+          );
+
+          expect(overflow).toBeLessThanOrEqual(0);
+        });
+      });
+    }
   });
 }

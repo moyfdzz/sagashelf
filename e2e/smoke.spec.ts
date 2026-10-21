@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+// English is requested explicitly: without it the page language depends on the browser.
+test.use({ locale: "en-US" });
+
 test("health endpoint answers 200", async ({ request }) => {
   const response = await request.get("/api/health");
 

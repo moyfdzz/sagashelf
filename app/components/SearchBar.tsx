@@ -1,7 +1,8 @@
 import { Search } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
-export const searchCategories = ["Anime", "Series", "Movies", "Books"] as const;
+export const searchCategories = ["anime", "series", "movies", "books"] as const;
 export type SearchCategory = (typeof searchCategories)[number];
 
 type SearchBarProps = {
@@ -9,8 +10,10 @@ type SearchBarProps = {
 };
 
 export function SearchBar({ onSearch }: SearchBarProps) {
-  const [category, setCategory] = useState<SearchCategory>("Anime");
+  const { t } = useTranslation();
+  const [category, setCategory] = useState<SearchCategory>("anime");
   const [title, setTitle] = useState("");
+  const categoryName = t(`search.categories.${category}`);
 
   return (
     <form
@@ -34,7 +37,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
                 : "text-fg-muted hover:text-accent border-transparent"
             }`}
           >
-            {item}
+            {t(`search.categories.${item}`)}
           </button>
         ))}
       </div>
@@ -43,13 +46,13 @@ export function SearchBar({ onSearch }: SearchBarProps) {
           type="search"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          aria-label={`Search ${category}`}
-          placeholder={`Type to find ${category}`}
+          aria-label={t("search.inputLabel", { category: categoryName })}
+          placeholder={t("search.placeholder", { category: categoryName })}
           className="bg-surface-raised border-border placeholder:text-fg-muted focus:ring-accent w-full max-w-xl rounded-md border px-4 py-2 focus:ring-2 focus:outline-none"
         />
         <button
           type="submit"
-          aria-label="Search"
+          aria-label={t("search.submit")}
           className="text-fg-muted hover:text-accent rounded-md p-2 transition-colors"
         >
           <Search />

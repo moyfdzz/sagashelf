@@ -1,4 +1,7 @@
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  data,
   isRouteErrorResponse,
   Links,
   Meta,
@@ -11,10 +14,19 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { ErrorPage } from "~/components/ErrorPage";
 import { Navbar } from "~/components/Navbar";
+import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
+
+export const middleware = [i18nextMiddleware];
+
+export function loader({ context }: Route.LoaderArgs) {
+  return data({ locale: getLocale(context) });
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { i18n } = useTranslation();
+
   return (
-    <html lang="en">
+    <html lang={i18n.language} dir={i18n.dir(i18n.language)}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -31,17 +43,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+export default function App({ loaderData: { locale } }: Route.ComponentProps) {
+  const { i18n } = useTranslation();
+
+  // Keeps the browser in sync if a navigation changes the language.
+  useEffect(() => {
+    if (i18n.language !== locale) void i18n.changeLanguage(locale);
+  }, [locale, i18n]);
+
   return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const { t } = useTranslation();
+
   if (isRouteErrorResponse(error) && error.status === 404) {
     return (
       <ErrorPage
         status={404}
-        title="Page not found"
-        message="We could not find the page you were looking for."
+        title={t("errors.notFound.title")}
+        message={t("errors.notFound.message")}
       />
     );
   }
@@ -49,11 +70,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   return (
     <ErrorPage
       status={isRouteErrorResponse(error) ? error.status : 500}
-      title="Something went wrong"
+      title={t("errors.unexpected.title")}
       message={
         import.meta.env.DEV && error instanceof Error
           ? error.message
-          : "An unexpected error occurred. Please try again."
+          : t("errors.unexpected.message")
       }
     />
   );
