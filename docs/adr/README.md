@@ -17,6 +17,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [009](009-analytics-cookieless.md)            | Cookieless first-party analytics with daily rollups                         | Accepted | Planned (SAG-24)                      |
 | [010](010-ci-cd-and-repository-rules.md)      | CI, security scans, previews and the `main` ruleset                         | Accepted | Done (SAG-5)                          |
 | [011](011-edge-security-and-domain.md)        | Domain, security headers, CSP with nonces, rate limiting and crawler policy | Accepted | Partial (SAG-7, plus dashboard steps) |
+| [012](012-neon-over-supabase.md)              | Neon for the database, compared with Supabase on the Free plan              | Accepted | Done (SAG-9)                          |
 
 "Accepted" means the decision is made. "Planned" means it is not built yet, so the ADR describes the intended design and may be refined by its ticket without a new ADR as long as the decision itself does not change.
 
