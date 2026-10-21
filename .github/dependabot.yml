@@ -10,6 +10,16 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # ESLint stays on 9 until eslint-plugin-react and eslint-plugin-jsx-a11y
+      # support 10; @eslint/js must follow the same major. Revisit then.
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      # Type definitions follow the minimum supported Node (`engines`), not the latest.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
