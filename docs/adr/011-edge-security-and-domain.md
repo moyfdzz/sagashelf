@@ -39,7 +39,7 @@ HSTS is sent with `includeSubDomains` but without the `preload` directive. Submi
 
 ### Rate limiting, in layers
 
-1. **A Workers Rate Limiting binding** (`WRITE_LIMITER`, 30 requests per minute per caller and per Cloudflare location) protects write endpoints. It is applied to `/api/locale` today, and later to search, follows and reports. A caller over the limit gets `429` with `Retry-After`. Until accounts exist the caller is the IP address given by Cloudflare, and then it should be the user id.
+1. **A Workers Rate Limiting binding** (`WRITE_LIMITER`, 30 requests per minute per caller and per Cloudflare location) protects write endpoints. It is applied to `/api/locale` today, and later to search, follows and reports. A caller over the limit gets `429` with `Retry-After`. Worker Previews do not inherit bindings from the top level, so `wrangler.jsonc` declares the binding again inside `previews`, with a separate counter. Until accounts exist the caller is the IP address given by Cloudflare, and then it should be the user id.
 2. **One WAF rate-limiting rule** at the zone level. The Free plan allows a single rule, with a 10 second window, the IP as the counting key, and only the path and the verified-bot flag as fields, so it covers `/api/*` as a whole.
 3. **Bot Fight Mode**, which cannot be customized or bypassed on the Free plan.
 
@@ -80,8 +80,8 @@ A server helper (`server/turnstile.ts`) verifies a token with Cloudflare's `site
 
 ## Open questions
 
-- **Is the Workers Rate Limiting binding available on the Free plan?** Cloudflare's page does not say. The binding is declared in this change, so the preview deployment of the pull request shows whether Cloudflare accepts it. If it is refused, the limit falls back to the WAF rule and the database.
-- **Is `public/_headers` applied to assets by the Vite plugin deployment?** The documentation does not mention the Vite plugin. A header check on the deployed preview settles it.
+- **Resolved: the Free plan accepts and enforces the Workers Rate Limiting binding.** Checked on the pull request preview: 200 parallel requests from one caller produced 35 `429` answers, and a following sequence mixed `303` and `429`. The count is approximate (Cloudflare calls it permissive and eventually consistent): 45 requests sent one after another were not throttled at all. Treat 30 per minute as a soft target, not an exact quota.
+- **Resolved: `public/_headers` is applied to static files** by the Vite plugin deployment. Checked on the preview: `favicon.ico` carries the base headers (in lower case, as Cloudflare's asset server writes them).
 - Whether the AI "Search" category also includes the search engines that matter for visibility. Check in the dashboard before deciding to block it.
 - The grade on securityheaders.com and Mozilla Observatory is recorded after the custom domain is live.
 

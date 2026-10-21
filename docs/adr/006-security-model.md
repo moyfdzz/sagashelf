@@ -63,7 +63,7 @@ Before launch (SAG-29) there must be a written procedure to rotate each key, dis
 
 ## Open questions
 
-- Whether the Workers Rate Limiting binding is available on the Free plan: it is declared in SAG-7, so the preview deployment of that pull request shows whether Cloudflare accepts it ([ADR-011](011-edge-security-and-domain.md)).
+- The Workers Rate Limiting binding works on the Free plan but is approximate ([ADR-011](011-edge-security-and-domain.md)); the WAF rate rule is the second layer.
 - Whether preview deployments should sit behind Cloudflare Access.
 
 ## References
