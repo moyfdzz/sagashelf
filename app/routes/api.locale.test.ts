@@ -1,8 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/api.locale";
 import { action, loader } from "./api.locale";
 import { localeCookie } from "~/middleware/i18next";
+
+// The real binding only exists inside the Worker runtime.
+const limiter = vi.hoisted(() => ({
+  limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(
+    async () => ({ success: true }),
+  ),
+}));
+vi.mock("~server/runtime-env", () => ({ getWriteLimiter: () => limiter }));
+
+beforeEach(() => {
+  limiter.limit.mockClear();
+  limiter.limit.mockResolvedValue({ success: true });
+});
 
 function post(fields: Record<string, string>, origin = "http://localhost") {
   const request = new Request("http://localhost/api/locale", {
@@ -23,6 +36,21 @@ describe("POST /api/locale", () => {
     expect(await localeCookie.parse(cookie)).toBe("en");
   });
 
+  it("rejects a body that is too large before reading it", async () => {
+    const request = new Request("http://localhost/api/locale", {
+      method: "POST",
+      headers: { Origin: "http://localhost", "Content-Length": "100000" },
+      body: new URLSearchParams({ locale: "en" }),
+    });
+
+    const response = (await action({
+      request,
+    } as Route.ActionArgs)) as Response;
+
+    expect(response.status).toBe(413);
+    expect(limiter.limit).not.toHaveBeenCalled();
+  });
+
   it("rejects a language that is not supported", async () => {
     const response = await post({ locale: "fr", redirectTo: "/" });
 
@@ -37,6 +65,17 @@ describe("POST /api/locale", () => {
     );
 
     expect(response.status).toBe(403);
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(limiter.limit).not.toHaveBeenCalled();
+  });
+
+  it("answers 429 and saves nothing when the caller is over the limit", async () => {
+    limiter.limit.mockResolvedValue({ success: false });
+
+    const response = await post({ locale: "en", redirectTo: "/" });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("60");
     expect(response.headers.get("Set-Cookie")).toBeNull();
   });
 

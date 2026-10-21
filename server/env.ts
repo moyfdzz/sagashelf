@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const envSchema = z.object({
   APP_ENV: z.enum(["development", "preview", "production"]),
+  // A Workers secret. Optional until the first form that needs it exists (SAG-10).
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

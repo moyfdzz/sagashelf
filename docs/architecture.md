@@ -13,7 +13,7 @@ flowchart LR
   user["Visitor's browser"]
 
   subgraph cf["Cloudflare"]
-    edge["Edge: CDN, WAF, rate limits<br/>planned, SAG-7"]
+    edge["Edge: DNS, TLS, WAF, bot rules<br/>dashboard setup, SAG-7"]
     subgraph worker["Worker: sagashelf"]
       ssr["Server-rendered pages and resource routes<br/>app/routes"]
       srv["server/: env, database, providers, services"]
@@ -43,7 +43,7 @@ flowchart LR
   class edge,neon,clerk,providers,discord planned
 ```
 
-Today the Worker serves the home page, the 404 and error pages, `/api/health` and `/api/locale`. `server/` holds the validated environment module. The `scheduled` handler exists and does nothing yet.
+Today the Worker serves the home page, the 404 and error pages, `/api/health` and `/api/locale`, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module. The `scheduled` handler exists and does nothing yet.
 
 ## 2. Life of a request
 

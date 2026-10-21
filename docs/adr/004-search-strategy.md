@@ -57,7 +57,7 @@ These were read on 2026-10-20 (details and sources in ADR-005) and shape step 6 
 ## Open questions
 
 - **Does the Cache API work on `*.workers.dev`?** Cloudflare's documentation says it works on custom domains and does not mention `workers.dev`. Test it on a deployed Worker, or wait for the custom domain (SAG-7), before relying on the edge cache. Without it, the database acts as the cache.
-- **Is the Workers Rate Limiting binding available on the Free plan?** The documentation does not say. Verify before choosing it (SAG-15); otherwise the limiter is built on the database or Cloudflare's WAF rules (SAG-7).
+- **Resolved: the Workers Rate Limiting binding works on the Free plan** (SAG-7, checked on a preview), but it is approximate and per Cloudflare location, so it slows abuse down and is not an exact quota ([ADR-011](011-edge-security-and-domain.md)).
 - The exact persistence rule per provider, once the TMDB terms page has been read in full (see ADR-005).
 
 ## References

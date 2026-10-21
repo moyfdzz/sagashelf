@@ -16,11 +16,27 @@
   "vars": {
     "APP_ENV": "production",
   },
+  // App-level limit for write endpoints, counted per caller and per Cloudflare location.
+  "ratelimits": [
+    {
+      "name": "WRITE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 },
+    },
+  ],
   // Preview deployments (one per PR) get their own values and never reuse production ones.
+  // Bindings are not inherited: each one is declared again here, with its own counter.
   "previews": {
     "vars": {
       "APP_ENV": "preview",
     },
+    "ratelimits": [
+      {
+        "name": "WRITE_LIMITER",
+        "namespace_id": "2001",
+        "simple": { "limit": 30, "period": 60 },
+      },
+    ],
   },
   "observability": {
     "enabled": true,

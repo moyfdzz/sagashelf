@@ -9,6 +9,15 @@ describe("parseEnv", () => {
     });
   });
 
+  it("accepts the optional Turnstile secret and rejects an empty one", () => {
+    expect(
+      parseEnv({ APP_ENV: "preview", TURNSTILE_SECRET_KEY: "set" }),
+    ).toEqual({ APP_ENV: "preview", TURNSTILE_SECRET_KEY: "set" });
+    expect(() =>
+      parseEnv({ APP_ENV: "preview", TURNSTILE_SECRET_KEY: "" }),
+    ).toThrow(/TURNSTILE_SECRET_KEY/);
+  });
+
   it("names a missing variable", () => {
     expect(() => parseEnv({})).toThrow(/APP_ENV/);
   });
