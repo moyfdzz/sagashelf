@@ -47,6 +47,7 @@ test.describe("security headers", () => {
     test.skip(!productionBuild, "needs the production build");
 
     test("have a CSP with a nonce that changes on every request", async ({
+      page,
       request,
     }) => {
       const first = await request.get("/");
@@ -66,12 +67,21 @@ test.describe("security headers", () => {
       expect(csp).not.toContain("unsafe-inline");
       expect(csp).not.toContain("unsafe-eval");
       // Every script in the HTML carries this response's nonce.
+      // The HTML is read with a real parser (not a regular expression), in an inert
+      // document, where the browser does not hide the nonce attribute.
       const html = await first.text();
-      const scripts = html.match(/<script\b[^>]*>/g) ?? [];
-      expect(scripts.length).toBeGreaterThan(0);
-      for (const script of scripts) {
-        expect(script, script).toContain(`nonce="${firstNonce}"`);
-      }
+      await page.goto("about:blank");
+      const nonces = await page.evaluate(
+        (source) =>
+          Array.from(
+            new DOMParser()
+              .parseFromString(source, "text/html")
+              .querySelectorAll("script"),
+          ).map((script) => script.getAttribute("nonce")),
+        html,
+      );
+      expect(nonces.length).toBeGreaterThan(0);
+      expect(nonces.every((nonce) => nonce === firstNonce)).toBe(true);
     });
 
     test("load, hydrate and switch language without a single CSP violation", async ({
