@@ -34,6 +34,11 @@ Other scripts: `npm run lint`, `npm run format`, `npm run typecheck`, `npm run t
 
 Commits follow Conventional Commits with the ticket as scope, for example `feat(SAG-12): add saga page`. Git hooks check staged files and the commit message.
 
+## Documentation
+
+- [Architecture overview](docs/architecture.md) with diagrams of the system, a request, search, webhooks, the data model and delivery
+- [Decision records](docs/adr/README.md): why each major choice was made, what else was considered, and what it costs
+
 ## Security
 
 Secrets never go in the repository. Copy `.env.example` to `.dev.vars` and fill it in locally; `.env*` files (except `.env.example`) and `.dev.vars*` are gitignored. Production values are Workers secrets.

@@ -1,0 +1,207 @@
+# Architecture
+
+SagaShelf is one full-stack app: server-rendered pages, API routes and webhooks in a single Cloudflare Worker, backed by Postgres and a few third-party services. This page is the overview. The reasons behind each choice are in the [decision records](adr/README.md).
+
+## Legend
+
+Green boxes exist today. Gray dashed boxes are designed and ticketed but not built yet.
+
+## 1. System overview
+
+```mermaid
+flowchart LR
+  user["Visitor's browser"]
+
+  subgraph cf["Cloudflare"]
+    edge["Edge: CDN, WAF, rate limits<br/>planned, SAG-7"]
+    subgraph worker["Worker: sagashelf"]
+      ssr["Server-rendered pages and resource routes<br/>app/routes"]
+      srv["server/: env, database, providers, services"]
+      cron["scheduled handler<br/>Cron, every minute"]
+    end
+  end
+
+  neon[("Neon Postgres<br/>planned, SAG-9")]
+  clerk["Clerk accounts<br/>planned, SAG-10"]
+  providers["Data providers<br/>TMDB, TVmaze, Wikidata,<br/>Open Library, Google Books, MangaDex<br/>planned, SAG-13 to SAG-16"]
+  discord["Discord webhooks<br/>planned, SAG-27"]
+  gh["GitHub<br/>repository, Actions, ruleset"]
+
+  user --> edge --> ssr
+  ssr --> srv
+  srv --> neon
+  srv --> providers
+  user -. sign-in .-> clerk
+  clerk -. webhooks .-> ssr
+  cron --> srv
+  srv --> discord
+  gh -. "push to main, pull requests" .-> cf
+
+  classDef built fill:#d1fae5,stroke:#047857,color:#064e3b
+  classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:4 3,color:#374151
+  class user,ssr,srv,cron,gh built
+  class edge,neon,clerk,providers,discord planned
+```
+
+Today the Worker serves the home page, the 404 and error pages, `/api/health` and `/api/locale`. `server/` holds the validated environment module. The `scheduled` handler exists and does nothing yet.
+
+## 2. Life of a request
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant W as Worker
+  participant M as i18next middleware
+  participant R as Route loader
+
+  B->>W: GET / with Cookie and Accept-Language
+  W->>M: root middleware runs first
+  M->>M: language is the cookie, else Accept-Language, else Spanish
+  M->>R: continue with the language and an i18next instance in context
+  R-->>W: loader data with translated title and description
+  W-->>B: HTML with lang set and Vary on Cookie and Accept-Language
+  Note over B,W: Planned: Clerk session check and role guards on protected routes
+
+  B->>W: POST /api/locale with language and redirectTo
+  W->>W: check Origin, validate with Zod, allow only paths on this site
+  W-->>B: 303 back to the same page with Set-Cookie locale
+```
+
+See [ADR-008](adr/008-i18n-spanish-default.md) for the language rules and [ADR-006](adr/006-security-model.md) for the checks applied to every state-changing route.
+
+## 3. Search pipeline (planned)
+
+```mermaid
+flowchart TD
+  q["Query and selected type"] --> n["Normalize: trim, NFKC, lowercase, no accents"]
+  n --> l["Search Postgres: tsvector and pg_trgm"]
+  l --> enough{"Enough good hits?"}
+  enough -- yes --> ans["Answer, target p95 under 150 ms"]
+  enough -- no --> cache{"In the edge cache?"}
+  cache -- hit --> ans
+  cache -- miss --> fan["Parallel fan-out to the providers of that type<br/>timeout about 2.5 s each, circuit breaker"]
+  fan --> merge["Merge, de-duplicate, rank"]
+  merge --> part["Return what arrived by about 3 s<br/>and mark sources that did not answer"]
+  merge --> keep["Persist only items a user opens or adds,<br/>within each provider's terms"]
+  keep -.-> l
+
+  classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:4 3,color:#374151
+  class q,n,l,enough,ans,cache,fan,merge,part,keep planned
+```
+
+Providers by type: movies, series and anime use TMDB. Books use Open Library with Google Books as a fallback. Manga uses MangaDex plus the book providers. Details and the constraints that come from each provider's terms are in [ADR-004](adr/004-search-strategy.md) and [ADR-005](adr/005-providers-and-licensing.md).
+
+## 4. Outbox and outgoing webhooks (planned)
+
+```mermaid
+sequenceDiagram
+  participant U as User action
+  participant DB as Postgres
+  participant C as Cron handler, every minute
+  participant D as Discord webhook
+
+  U->>DB: change plus outbox event in one transaction
+  C->>DB: read pending events
+  C->>D: POST the event, signed, with an idempotency key
+  alt delivered
+    D-->>C: 2xx
+    C->>DB: mark delivered and log the delivery
+  else rate limited or server error
+    D-->>C: 429 or 5xx
+    C->>DB: schedule a retry with backoff and jitter
+  else permanent failure
+    D-->>C: other 4xx
+    C->>DB: log it and disable the endpoint after N failures
+  end
+```
+
+See [ADR-007](adr/007-background-work-cron-and-outbox.md).
+
+## 5. Data model (planned)
+
+```mermaid
+erDiagram
+  USERS ||--o{ LIBRARY_ENTRIES : tracks
+  MEDIA_ITEMS ||--o{ LIBRARY_ENTRIES : "is tracked in"
+  MEDIA_ITEMS ||--o{ MEDIA_EXTERNAL_IDS : "is known by"
+  MEDIA_ITEMS ||--o{ MEDIA_PARTS : "has episodes or volumes"
+  SAGAS ||--o{ SAGA_MEMBERS : groups
+  MEDIA_ITEMS ||--o{ SAGA_MEMBERS : "belongs to"
+  USERS ||--o{ FOLLOWS : "follows or is followed"
+  USERS ||--o{ LISTS : owns
+  LISTS ||--o{ LIST_ITEMS : contains
+  USERS ||--o{ WEBHOOK_ENDPOINTS : configures
+  WEBHOOK_ENDPOINTS ||--o{ WEBHOOK_DELIVERIES : "has deliveries"
+  OUTBOX ||--o{ WEBHOOK_DELIVERIES : produces
+
+  USERS {
+    uuid id
+    string clerk_id "unique"
+    string email_canonical "unique"
+    string locale
+    string privacy "public, friends or private"
+  }
+  MEDIA_EXTERNAL_IDS {
+    uuid media_id
+    string provider
+    string external_id "unique with provider"
+  }
+  LIBRARY_ENTRIES {
+    uuid user_id
+    uuid media_id "unique with user_id"
+    string status
+    int progress
+  }
+```
+
+Only the main tables and relations are drawn. The full list, indexes and constraints are in [ADR-002](adr/002-data-postgres-neon-drizzle.md) and ticket SAG-9.
+
+## 6. From a change to production
+
+```mermaid
+flowchart LR
+  hooks["Local hooks<br/>lint-staged and commitlint"] --> dev["Branch and pull request"]
+  dev --> ci["GitHub Actions<br/>Quality, E2E, Lighthouse, PR title,<br/>gitleaks, CodeQL, dependency review, npm audit"]
+  dev --> prev["Cloudflare Workers Builds<br/>preview URL for the branch"]
+  ci --> rule{"Ruleset: all required checks pass?"}
+  prev --> rule
+  rule -- yes --> merge["Squash merge to main"]
+  merge --> prod["Cloudflare Workers Builds<br/>production deploy"]
+
+  classDef built fill:#d1fae5,stroke:#047857,color:#064e3b
+  class hooks,dev,ci,prev,rule,merge,prod built
+```
+
+See [ADR-010](adr/010-ci-cd-and-repository-rules.md).
+
+## Environments
+
+| Environment | Where                                  | `APP_ENV`     | Notes                                                      |
+| ----------- | -------------------------------------- | ------------- | ---------------------------------------------------------- |
+| Local       | `npm run dev`, <http://localhost:5173> | `production`* | Create `.dev.vars` with `APP_ENV=development` to change it |
+| Preview     | One URL per branch from Workers Builds | `preview`     | Publicly reachable for now                                 |
+| Production  | `sagashelf.moyfdzz.workers.dev`        | `production`  | A custom domain is planned (SAG-7)                         |
+
+\* The default value comes from `wrangler.jsonc`. Nothing reads `APP_ENV` yet.
+
+## Limits that shape the design
+
+These are Cloudflare Workers Free plan limits read on 2026-10-20 (see [ADR-001](adr/001-runtime-react-router-on-workers.md)):
+
+- 10 ms of CPU time per HTTP request and per Cron Trigger invocation
+- 50 subrequests per invocation, and Cache API calls count toward it
+- 5 Cron Triggers per account, and `waitUntil()` work can run for up to 30 seconds after the response
+
+## Folder map
+
+| Path                            | What lives there                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| `app/routes`                    | Pages and resource routes (`api.*`, `webhooks.*`), declared in `app/routes.ts`            |
+| `app/components`, `app/lib`     | Code that is safe for the browser. Lint forbids importing `server/` here                  |
+| `app/locales`, `app/middleware` | UI text in Spanish and English, and the per-request language selection                    |
+| `server/`                       | Environment, database, providers, services and jobs. Never imported by the browser bundle |
+| `server/testing`                | The shared MSW mock server used by all tests                                              |
+| `workers/app.ts`                | The Worker entry with the `fetch` and `scheduled` handlers                                |
+| `e2e`                           | Playwright tests                                                                          |
+| `docs`                          | This page and the decision records                                                        |
