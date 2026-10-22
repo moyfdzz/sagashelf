@@ -10,7 +10,13 @@ export function generateNonce(): string {
  * origin (Clerk, Turnstile, the image proxy), add exactly that origin to the
  * one directive that needs it, in the ticket that introduces the feature.
  */
-export function buildContentSecurityPolicy(nonce: string): string {
+export function buildContentSecurityPolicy(
+  nonce: string,
+  clerkFrontendApi?: string,
+): string {
+  if (clerkFrontendApi)
+    return buildAuthContentSecurityPolicy(nonce, clerkFrontendApi);
+
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
@@ -25,6 +31,55 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "frame-ancestors 'none'",
     "upgrade-insecure-requests",
   ].join("; ");
+}
+
+/**
+ * The CSP of the sign-in and sign-up pages only (SAG-10). Clerk's embedded components load
+ * their code from the instance's Frontend API host, run a Cloudflare Turnstile and Clerk
+ * Protect check, and style themselves at runtime, so these pages need the origins and the
+ * `style-src 'unsafe-inline'` below. Every other page keeps the strict policy above.
+ * Source: https://clerk.com/docs/guides/secure/best-practices/csp-headers (read 2026-10-21).
+ */
+function buildAuthContentSecurityPolicy(
+  nonce: string,
+  frontendApi: string,
+): string {
+  const fapi = `https://${frontendApi}`;
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' ${fapi} https://challenges.cloudflare.com https://*.protect.clerk.com`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https://img.clerk.com",
+    "font-src 'self'",
+    `connect-src 'self' ${fapi} https://*.protect.clerk.com:*`,
+    "frame-src https://challenges.cloudflare.com https://*.protect.clerk.com",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+/** The only pages that embed Clerk's components, and so the only ones with the wider CSP. */
+export function isAuthPage(pathname: string): boolean {
+  return /^\/(sign-in|sign-up)(\/|$)/.test(pathname);
+}
+
+/**
+ * The Frontend API host of a Clerk instance, which its publishable key encodes
+ * (`pk_test_` + base64 of "host$"). Null when the key is not in that shape.
+ */
+export function clerkFrontendApiHost(publishableKey: string): string | null {
+  const encoded = /^pk_(?:test|live)_(.+)$/.exec(publishableKey)?.[1];
+  if (!encoded) return null;
+  try {
+    const host = atob(encoded);
+    return /^[a-z0-9.-]+\$$/i.test(host) ? host.slice(0, -1) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Used for responses that are not pages (JSON, redirects): nothing may load or embed them. */

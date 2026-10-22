@@ -84,6 +84,17 @@ test.describe("security headers", () => {
       expect(nonces.every((nonce) => nonce === firstNonce)).toBe(true);
     });
 
+    test("the home page keeps the strict CSP and ships no Clerk origin", async ({
+      request,
+    }) => {
+      const csp =
+        (await request.get("/")).headers()["content-security-policy"] ?? "";
+
+      expect(csp).toContain("style-src 'self';");
+      expect(csp).not.toContain("clerk");
+      expect(csp).not.toContain("cloudflare.com");
+    });
+
     test("load, hydrate and switch language without a single CSP violation", async ({
       page,
     }) => {

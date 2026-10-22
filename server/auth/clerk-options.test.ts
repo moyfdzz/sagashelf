@@ -15,19 +15,26 @@ describe("normalizeJwtKey", () => {
 });
 
 describe("clerkKeysFromEnv", () => {
-  const base = { APP_ENV: "development" as const };
-
   it("returns null when Clerk is not configured", () => {
-    expect(clerkKeysFromEnv(base)).toBeNull();
+    expect(clerkKeysFromEnv({})).toBeNull();
+    expect(clerkKeysFromEnv({ CLERK_PUBLISHABLE_KEY: "pk_test_x" })).toBeNull();
+  });
+
+  it("treats empty values as not set, and ignores unrelated variables", () => {
     expect(
-      clerkKeysFromEnv({ ...base, CLERK_PUBLISHABLE_KEY: "pk_test_x" }),
+      clerkKeysFromEnv({
+        CLERK_PUBLISHABLE_KEY: "",
+        CLERK_SECRET_KEY: "",
+        CLERK_JWT_KEY: "",
+        APP_ENV: "",
+        DATABASE_URL: "",
+      }),
     ).toBeNull();
   });
 
   it("returns the keys, with the JWT key normalized", () => {
     expect(
       clerkKeysFromEnv({
-        ...base,
         CLERK_PUBLISHABLE_KEY: "pk_test_x",
         CLERK_SECRET_KEY: "sk_test_x",
         CLERK_JWT_KEY: "a\nb",
@@ -37,5 +44,20 @@ describe("clerkKeysFromEnv", () => {
       secretKey: "sk_test_x",
       jwtKey: "a\nb",
     });
+  });
+
+  it("names a malformed key without echoing it", () => {
+    const bad = "sk_wrong_value";
+    let message = "";
+    try {
+      clerkKeysFromEnv({
+        CLERK_PUBLISHABLE_KEY: "pk_test_x",
+        CLERK_SECRET_KEY: bad,
+      });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("CLERK_SECRET_KEY");
+    expect(message).not.toContain(bad);
   });
 });

@@ -4,8 +4,7 @@ import { eq } from "drizzle-orm";
 import { data, redirect, type LoaderFunctionArgs } from "react-router";
 
 import { authorize, type Role, type SessionUser } from "./authorize";
-import { clerkKeysFromEnv } from "./clerk-options";
-import { getDb, getEnv } from "../runtime-env";
+import { getClerkKeys, getDb } from "../runtime-env";
 import { users } from "../db/schema";
 
 async function findUser(clerkId: string): Promise<SessionUser | null> {
@@ -19,7 +18,7 @@ async function findUser(clerkId: string): Promise<SessionUser | null> {
 }
 
 async function hasVerifiedGoogle(clerkId: string): Promise<boolean> {
-  const keys = clerkKeysFromEnv(getEnv());
+  const keys = getClerkKeys();
   if (!keys) return false;
   const user = await createClerkClient({
     secretKey: keys.secretKey,
@@ -33,7 +32,7 @@ async function hasVerifiedGoogle(clerkId: string): Promise<boolean> {
 }
 
 async function guard(args: LoaderFunctionArgs, role?: Role) {
-  if (!clerkKeysFromEnv(getEnv())) {
+  if (!getClerkKeys()) {
     // A deployment without Clerk keys must never let anyone in.
     throw data({ error: "auth_not_configured" }, { status: 503 });
   }
