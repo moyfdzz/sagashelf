@@ -29,6 +29,13 @@
       "when": 1792606675143,
       "tag": "0003_lists_social_moderation_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792642603201,
+      "tag": "0004_users_clerk_updated_at",
+      "breakpoints": true
     }
   ]
 }

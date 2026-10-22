@@ -23,6 +23,11 @@ const envSchema = z.object({
     .optional(),
   // The instance's PEM public key: lets the Worker verify sessions without a network call.
   CLERK_JWT_KEY: z.string().min(1).optional(),
+  // The Svix signing secret of the Clerk webhook endpoint (SAG-11), a Workers secret.
+  CLERK_WEBHOOK_SIGNING_SECRET: z
+    .string()
+    .regex(/^whsec_/)
+    .optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

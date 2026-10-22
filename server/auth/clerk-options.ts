@@ -22,6 +22,24 @@ const clerkEnvSchema = z.object({
 });
 
 /**
+ * The signing secret of the Clerk webhook, or null when this deployment has none. An empty
+ * value counts as not set. A value in the wrong shape throws an error that names the
+ * variable and never its value.
+ */
+export function webhookSecretFromEnv(
+  raw: Record<string, unknown>,
+): string | null {
+  const value = raw["CLERK_WEBHOOK_SIGNING_SECRET"];
+  if (value === undefined || value === "") return null;
+  if (typeof value !== "string" || !value.startsWith("whsec_")) {
+    throw new Error(
+      "Invalid Clerk environment variables: CLERK_WEBHOOK_SIGNING_SECRET",
+    );
+  }
+  return value;
+}
+
+/**
  * The PEM public key sits on one line in `.dev.vars` and in dashboards, with `\n` for line
  * breaks. Turns those into real line breaks, and leaves a key that already has them alone.
  */

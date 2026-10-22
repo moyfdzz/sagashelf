@@ -30,6 +30,12 @@ export const users = pgTable(
     // Trimmed, lowercased, with provider-specific dots and +tags removed (SAG-10). Stops one
     // inbox from creating many accounts. The address used for sending is kept by Clerk.
     emailCanonical: text("email_canonical").notNull().unique(),
+    // The time Clerk gave to the last event applied to this row (SAG-11). The webhook compares
+    // it with each event, so an older event that arrives late never overwrites newer data.
+    // Not `updated_at`, which is when this row changed here.
+    clerkUpdatedAt: timestamp("clerk_updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },
