@@ -1,0 +1,13 @@
+# Used by the Security workflow (gitleaks). The default rules stay on; this file only adds
+# the exceptions below, and each one names the exact value it allows.
+title = "SagaShelf gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Clerk publishable key of the development instance. It is public by design (it is served in the page HTML to the browser) and is declared in wrangler.jsonc. The secret key is a Workers secret and never goes in the repository. Add the production publishable key here the same way, by its exact value, when that instance exists."
+regexTarget = "match"
+regexes = [
+  '''pk_test_bGl0ZXJhdGUtaGFtc3Rlci04MjQ0LmNsZXJrLmFjY291bnRzLmRldiQ''',
+]
