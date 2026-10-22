@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20 (refined 2026-10-21 in SAG-10, see "Changes made in SAG-10")
-- **Implementation:** Partial (sessions, guards and the sign-in and sign-up pages are built in SAG-10; the webhook is SAG-11, account settings SAG-12)
+- **Implementation:** Partial (sessions, guards and the sign-in and sign-up pages are built in SAG-10, the webhook in SAG-11; account settings and the full erasure are SAG-12)
 - **Tickets:** SAG-10, SAG-11, SAG-12, SAG-29
 
 ## Context
@@ -16,9 +16,9 @@ Accounts with emails and passwords are the largest security risk in the product:
 - **Roles live in our `users.role` column, not in Clerk.** The first version of this ADR said Clerk `publicMetadata`. A role in our own table is changed with SQL, is read in the same query that loads the user, and needs no call to Clerk. The first administrator is set by hand in the database. Authorization is checked on the server with `requireUser` and `requireRole('admin')` (`server/auth/`). A user id sent by the browser is never trusted: the id comes from the verified session.
 - **Sessions are verified in the Worker without a network call.** `clerkMiddleware` runs in the root route with the instance's JWT public key (`CLERK_JWT_KEY`), so a valid session token costs no request to Clerk. When the token has expired, Clerk's handshake refreshes it. Without Clerk keys (tests, previews) public pages still work and protected routes answer 503, never "allowed".
 - **Clerk's code runs only on the sign-in and sign-up pages.** Those two routes embed Clerk's components and get a wider content security policy; every other page reads the session on the server, ships no Clerk code, and keeps the strict policy (ADR-011). See "Content security policy per route".
-- **A local `users` mirror** in Postgres is kept in sync by a Clerk webhook (SAG-11): Svix signature verification, an idempotency table (`processed_webhooks`, unique provider and event id), ordering by `updated_at`, and handling of out-of-order events. A session without a mirror row is refused with 403 until the webhook has created it.
+- **A local `users` mirror** in Postgres is kept in sync by a Clerk webhook, `POST /webhooks/clerk` (SAG-11). A session without a mirror row is refused with 403 until the webhook has created it. See "The webhook" below for how it works.
 - **Email normalization is ours.** `email_canonical` (trim, Unicode NFKC, lowercase, IDN to punycode, and for providers that ignore dots and `+tags` also strip those) is stored as UNIQUE so one inbox cannot register many accounts. Clerk's own subaddress block is a second layer. The original address is kept for sending.
-- **Reserved usernames are checked on our side.** Clerk's free plan cannot block names such as `admin`, `api` or `settings`, so the webhook validates them when it creates the mirror row (SAG-11).
+- **Reserved usernames are checked on our side.** Clerk's free plan cannot block names such as `admin`, `api` or `settings`, so the webhook refuses to mirror an account that has one (`reservedUsernames` in `server/auth/clerk-user.ts`, compared in lower case like the `citext` column).
 - **Privacy in logs.** No password, token or full email address is written to logs. Error messages are generic so they do not reveal whether an account exists.
 - **Localized.** The auth pages are available in Spanish and English (ADR-008) through `@clerk/localizations`. The Spanish pack (`es-MX`) leaves some texts empty, so `app/lib/clerk-localization.ts` fills the ones a visitor can reach.
 - **Two Clerk instances.** A development instance (`pk_test_`, `sk_test_`) is used locally and on previews. A production instance is created when the site goes live, with its DNS records in Cloudflare (DNS only, not proxied) and our own Google OAuth credentials (see [`edge-setup.md`](../edge-setup.md)).
@@ -34,6 +34,21 @@ Clerk's embedded components need origins and a style allowance that the strict p
 - `style-src 'unsafe-inline'`, because Clerk styles itself at runtime. Scripts never get `'unsafe-inline'` or `'unsafe-eval'`.
 
 Unit tests pin the exact lists, and an e2e test checks that the home page keeps the strict policy and mentions no Clerk origin. In the production build, the sign-in page was loaded in a real browser with no policy violations.
+
+## The webhook
+
+`POST /webhooks/clerk` (`app/routes/webhooks.clerk.ts`) is the first incoming webhook. In order:
+
+1. **Limits first.** A body over 64 kB gets 413 and a caller over the write limit gets 429, before anything is read or checked. A missing signing secret answers 503, never "allowed".
+2. **Signature before parsing.** `verifyWebhook` from `@clerk/backend/webhooks` checks the `svix-id`, `svix-timestamp` and `svix-signature` headers against the endpoint's signing secret (`CLERK_WEBHOOK_SIGNING_SECRET`, a Workers secret) over the raw body. It rejects a timestamp more than 5 minutes old or in the future (read in `standardwebhooks` 1.1.1 on 2026-10-22). Any failure answers 401 with the same short body, and the database is never opened.
+3. **One statement per event** (`server/db/clerk-sync.ts`). The Neon HTTP driver cannot read in the middle of a transaction, so a single SQL statement does everything: it inserts the verified `svix-id` into `processed_webhooks` (primary key on provider and event id) and applies the change only if that insert was new. A statement is atomic, so the mark and the change land together or not at all. A repeated event writes nothing and answers 200.
+4. **Ordering.** `users.clerk_updated_at` holds the time Clerk gave to the last applied event (the user's own `updated_at`, or the event time for a deletion). A change is applied only when it is newer, so an older event that arrives late is recorded and changes nothing. A deletion wins a tie with an update of the same millisecond.
+5. **What is mirrored.** `user.created` and `user.updated` do the same upsert by `clerk_id`: username, display name, an https avatar and the canonical email of the **verified primary** email. The language comes from Clerk only when the row is created. The role, privacy, bio and `deleted_at` are never in the update, so this endpoint cannot make anyone an administrator.
+6. **Deletion.** `user.deleted` sets `deleted_at` and clears the display name, avatar and bio. The row stays so the username, the Clerk id and the canonical email stay reserved. A deleted account is not brought back by a later update. The rest of the erasure and the export are SAG-12.
+7. **Refused accounts.** An account with a reserved or malformed username, no verified primary email, or a username or canonical email that another account already holds, gets no mirror row. The event is recorded and a `clerk.user_rejected` row goes to the outbox with only the Clerk id and the reason, never an email or a username, so a later job can decide what to do. Nothing is deleted in Clerk here.
+8. **Failure.** A database error answers 500 so Svix retries, and logs only the event id, its type and the error name.
+
+Tests: unit tests for the planning rules and the route (valid, forged, missing, tampered, replayed, oversized, rate limited, no secret, database failure), and integration tests on a real Postgres for replay, ordering, deletion and refusals. Breaking the ordering guard or the idempotency mark on purpose makes them fail.
 
 ## Verified facts
 
@@ -65,7 +80,7 @@ Read on 2026-10-21 from Clerk's pricing and documentation:
 - Two sources of truth for a user (Clerk and the mirror) must stay consistent, which is why webhook ordering and idempotency are part of the design.
 - No multi-factor authentication or passkeys for regular users on the free plan.
 - The sign-in and sign-up pages carry a wider policy than the rest of the site.
-- Until SAG-11 exists nobody has a mirror row, so the guards refuse everyone.
+- Until the webhook endpoint is created in Clerk and receives the first `user.created`, nobody has a mirror row, so the guards refuse everyone.
 
 ## Reasons to reconsider
 
@@ -77,6 +92,10 @@ Revisit this decision if Clerk removes or changes the free plan, if the project 
 - The production instance (DNS records, Google OAuth credentials and the production keys) is not created yet.
 - Whether Clerk offers a way to disable the email-code sign-in for one account only. It stays enabled for everyone, and the admin guard requires a verified Google login instead.
 - The admin guard asks Clerk for the user's Google login with one API call, and that call was not tested against a real account yet.
+- Whether **Bot Fight Mode** on the Free plan challenges Svix's requests to `/webhooks/clerk`. It cannot be skipped by a WAF rule on that plan. Check the delivery log in Clerk after the endpoint is created, and decide then (see `docs/edge-setup.md`).
+- A `user.created` that arrives after the `user.deleted` of the same account would create the row again, because there is nothing to compare with when no row exists. Clerk does not send a created event after a deletion in practice, and a tombstone row is not worth its cost here; revisit it if it ever happens.
+- A refused account stays in Clerk, signed in but with no mirror row (so every guard answers 403), until the job that reads `clerk.user_rejected` exists (SAG-27).
+- The 30 requests per minute per caller of the write limit could slow down a bulk import of users; Svix retries, so nothing is lost. A separate limit is possible if it matters.
 
 ## References
 
@@ -90,3 +109,9 @@ Revisit this decision if Clerk removes or changes the free plan, if the project 
 - "Multi-factor authentication required for admins" became "Google with 2-step verification, plus a verified-Google check in the guard", because the free plan has no multi-factor authentication.
 - Added the per-route policy, session verification with the JWT public key, the two Clerk instances and the reserved-name check.
 - Recorded the Clerk free plan limits as verified instead of open.
+
+## Changes made in SAG-11
+
+- Added "The webhook" section, replacing the one-line plan. Ordering uses a new column, `users.clerk_updated_at`, not `updated_at` (which is when the row changed here).
+- Idempotency is one SQL statement per event instead of "in the same transaction", because the Neon HTTP driver cannot read between statements.
+- Refused accounts are recorded and queued instead of failing the webhook, so Svix does not retry them forever.

@@ -22,7 +22,7 @@ flowchart LR
   end
 
   neon[("Neon Postgres<br/>planned, SAG-9")]
-  clerk["Clerk accounts<br/>sessions built (SAG-10), webhook planned (SAG-11)"]
+  clerk["Clerk accounts<br/>sessions (SAG-10) and user webhook (SAG-11) built"]
   providers["Data providers<br/>TMDB, TVmaze, Wikidata,<br/>Open Library, Google Books, MangaDex<br/>planned, SAG-13 to SAG-16"]
   discord["Discord webhooks<br/>planned, SAG-27"]
   gh["GitHub<br/>repository, Actions, ruleset"]
