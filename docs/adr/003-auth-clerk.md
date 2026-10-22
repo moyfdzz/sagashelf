@@ -38,7 +38,7 @@ Unit tests pin the exact lists, and an e2e test checks that the home page keeps 
 
 The settings pages (`isSessionPage`) get a narrower policy, built by `buildSessionContentSecurityPolicy`: the strict one plus the Frontend API host in `script-src` and `connect-src`, and `worker-src 'self' blob:`. There is nothing to draw, so no Turnstile, Clerk Protect, Clerk images, inline styles or frames are added. Unit tests pin it and check that none of those appear.
 
-**Not verified in a browser:** a settings page needs a real session, which was not available to the automated checks, so it is not known whether this narrow list is enough for Clerk's script to renew the session without a policy violation. Check the browser console on a preview and add only the origin it names, with a test.
+**Verified in a browser on 2026-10-22, on a preview with a real session:** Clerk's script loaded under this narrow policy, the Network tab showed repeated `tokens` and `touch` requests to the instance's Frontend API answering `200`, the console had no policy violation (only Clerk's notice about development keys), and a form left open for more than a minute was saved without sending the person to sign in. If a later Clerk version needs another origin, the console names it: add only that one, with a test.
 
 ## The webhook
 
