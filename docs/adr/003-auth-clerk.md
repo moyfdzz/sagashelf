@@ -93,7 +93,19 @@ Revisit this decision if Clerk removes or changes the free plan, if the project 
 
 ## Open questions
 
-- CPU time in a real Cloudflare Worker (the Free plan allows 10 ms per request) was **not measured**: only local numbers exist. Measure it on a preview and record the result in SAG-10.
+- CPU time in a real Cloudflare Worker (the Free plan allows 10 ms per request, and going over answers error 1102 per the [limits page](https://developers.cloudflare.com/workers/platform/limits/), read 2026-10-22) is **still not measured on Cloudflare**. Local numbers exist (next section), and the real ones are read from Workers Observability (`$workers.cpuTimeMs`, with the median and P99 in the Query Builder, grouped by route and by version). Until then the figure in the Cloudflare dashboard, a median of about 19 ms for the active production version on 2026-10-22 with a 0% error rate, is unexplained: it could be mostly cold starts, and the plan of the account (Free or Paid) was not checked.
+
+## CPU cost, measured locally on 2026-10-22
+
+The production build (2.86 MiB raw, 620 KiB gzip as `wrangler check startup` counts it, against the 3 MiB gzip limit of the Free plan) was run in workerd with `vite preview`. This is a local machine, so read the figures as a ranking and not as milliseconds on Cloudflare.
+
+- **A warm request is cheap.** 1 to 3 ms (median) for `/`, `/sign-in`, the 404 page and `/api/health`, with a maximum of 5 ms over 60 requests each. Whole milliseconds of wall time from the local spans, which with no network is close to CPU time.
+- **The first request after a cold start is not.** About 95 to 100 ms (three runs: 98, 100 and 101 ms), because `workers/app.ts` loads the whole server build with a lazy `import()`, so its 2.4 MiB are evaluated during that first request and not in the startup phase. `wrangler check startup` only sees the startup phase: 19.8 ms of active time (the limit for startup is 1 second).
+- **What the first request spends** (a CPU profile taken through workerd's inspector, about 63 ms of JavaScript): about 18 ms evaluating the server build, about 13 ms rendering React for the first time, and about **10 ms in `getClientLocales`** of `remix-i18next`, which calls `new Intl.Locale` and `Intl.DateTimeFormat.supportedLocalesOf` and so loads ICU's locale data once per isolate. Evaluating the 20 Drizzle table definitions costs about 3 ms.
+- **Minifying the server bundle did not help.** It cut the bundle from 2400 to 1122 KiB, but the first request stayed at 93 to 97 ms. The cost is running the code, not reading it. The change was not kept.
+- **A measurement that is not evidence:** timing `import()` of each package in a fresh Node process ranked Drizzle and Clerk high, but Node loads hundreds of loose files and the bundle is one file, so it was discarded.
+- **What it means:** if Cloudflare counts the first request after a cold start in the 10 ms limit, a site with little traffic, where most requests start a new isolate, could be near it. The docs say that isolates tolerate occasional overruns, so one cold request is not by itself a failure, but this is not verified.
+- **Options if real data says there is a problem:** parse `Accept-Language` for the two languages ourselves, without `Intl` (about 10 ms of the cold request, once per isolate, and only for a first visit with no language cookie); import the database schema only where it is used (about 3 ms); or the Paid plan, which has no 10 ms limit. A change that keeps the Clerk script, React or Zod out of the first request is not possible with the server build as it is, because React Router loads every route module together.
 - The production instance (DNS records, Google OAuth credentials and the production keys) is not created yet.
 - Whether Clerk offers a way to disable the email-code sign-in for one account only. It stays enabled for everyone, and the admin guard requires a verified Google login instead.
 - The admin guard asks Clerk for the user's Google login with one API call, and that call was not tested against a real account yet.
