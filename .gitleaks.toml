@@ -1,0 +1,15 @@
+# Used by the Security workflow (gitleaks, pinned to 8.24.3 by the action). The default rules
+# stay on; this file only adds the exception below, which names the exact value it allows.
+# The singular [allowlist] table is the one 8.24.3 reads: `[[allowlists]]` appeared in 8.25
+# and is silently ignored by older versions.
+title = "SagaShelf gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Clerk publishable key of the development instance. It is public by design (it is served in the page HTML to the browser) and is declared in wrangler.jsonc. The secret key is a Workers secret and never goes in the repository. Add the production publishable key here the same way, by its exact value, when that instance exists."
+regexTarget = "match"
+regexes = [
+  '''pk_test_bGl0ZXJhdGUtaGFtc3Rlci04MjQ0LmNsZXJrLmFjY291bnRzLmRldiQ''',
+]

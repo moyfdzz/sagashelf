@@ -26,7 +26,9 @@ const clerkEnvSchema = z.object({
  * breaks. Turns those into real line breaks, and leaves a key that already has them alone.
  */
 export function normalizeJwtKey(raw: string): string {
-  return raw.replace(/\n/g, "\n").trim();
+  // A value pasted into a dashboard can keep the quotes around it.
+  const unquoted = raw.trim().replace(/^(["'])([\s\S]*)\1$/, "$2");
+  return unquoted.replace(/\\n/g, "\n").trim();
 }
 
 /**

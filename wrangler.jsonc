@@ -37,8 +37,12 @@
   // Preview deployments (one per PR) get their own values and never reuse production ones.
   // Bindings are not inherited: each one is declared again here, with its own counter.
   "previews": {
+    // The Clerk development instance. Both values are public (the secret key is a Workers
+    // secret). Production gets its own when the production Clerk instance exists.
     "vars": {
       "APP_ENV": "preview",
+      "CLERK_PUBLISHABLE_KEY": "pk_test_bGl0ZXJhdGUtaGFtc3Rlci04MjQ0LmNsZXJrLmFjY291bnRzLmRldiQ",
+      "CLERK_JWT_KEY": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2er+f8L/gIqGpXhKmnjg\nl4V/OfOfwRXg0BOlCMFftbEWIhAu/ViXLRrwugrLsYY2ZlBLFGQ0hBNVdFP4xT8C\nTF9eTWF6STs96SqF6pleJQ1VSl7Z1p3FGn224Q1KbF9x189gT6aq1yr5rRg9uqy0\nfPetqLuQ2W1zEmE+Db7/yvqHGEhlGZ9xtErBtoe+pcNPF2z+a6NoppdjDFNf8KOh\nG0zq2gF8YmqHJyQb3t3bGWcqdSPYAFhiclEtmfe9B37eks74Xg3s8fWRftLHD6AT\n+nE0gORgqO4S7EfHjsr+Oo016L1mUI/QuM31x4feJztSH2w1gSoJ/SjSOBoYO7Wl\nZQIDAQAB\n-----END PUBLIC KEY-----",
     },
     "ratelimits": [
       {
