@@ -2,7 +2,10 @@ import { useTranslation } from "react-i18next";
 import { data, Form, useNavigation } from "react-router";
 import type { ZodError } from "zod";
 
+import { rootAuthLoader } from "@clerk/react-router/server";
+
 import type { Route } from "./+types/settings.profile";
+import { ClerkSession } from "~/components/ClerkSession";
 import { localeNames, supportedLanguages } from "~/locales";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
@@ -13,7 +16,7 @@ import {
 import { requireUser } from "~server/auth/require";
 import { getProfile, updateProfile } from "~server/db/profile";
 import { rateLimit } from "~server/rate-limit";
-import { getDb, getWriteLimiter } from "~server/runtime-env";
+import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 
 // The form has four short fields. Anything bigger is not from this page.
 const maxFormBytes = 16 * 1024;
@@ -77,11 +80,28 @@ export async function loader(args: Route.LoaderArgs) {
   const profile = await getProfile(await getDb(), user.id);
   if (!profile) throw data({ error: "forbidden" }, { status: 403 });
 
+  const keys = getClerkKeys();
+  if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
+
   const { t } = getInstance(args.context);
-  return data(
-    { profile, title: t("settings.profile.title") },
-    { headers: privateHeaders },
-  );
+  // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
+  return rootAuthLoader(args, () => ({
+    profile,
+    title: t("settings.profile.title"),
+    publishableKey: keys.publishableKey,
+  }));
+}
+
+// Pages and answers that carry a person's data are never kept by a shared cache. Set here, for
+// the page and for its data requests alike, and the cookie of an answer is kept.
+export function headers({ actionHeaders, loaderHeaders }: Route.HeadersArgs) {
+  const merged = new Headers(loaderHeaders);
+  actionHeaders.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") merged.append(key, value);
+    else merged.set(key, value);
+  });
+  merged.set("Cache-Control", "private, no-store");
+  return merged;
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -164,157 +184,164 @@ export default function ProfileSettings({
   const errorText = (code: ErrorCode) => t(`settings.profile.errors.${code}`);
 
   return (
-    <main className="container mx-auto max-w-2xl px-4 py-12">
-      <h1 className="text-3xl font-bold">{t("settings.profile.title")}</h1>
-      <p className="text-fg-muted mt-2">{t("settings.profile.description")}</p>
-
-      {saved ? (
-        <p
-          role="status"
-          className="border-border bg-surface-raised mt-6 rounded-md border px-4 py-3"
-        >
-          {t("settings.profile.saved")}
+    <ClerkSession
+      clerkState={loaderData}
+      publishableKey={loaderData.publishableKey}
+    >
+      <main className="container mx-auto max-w-2xl px-4 py-12">
+        <h1 className="text-3xl font-bold">{t("settings.profile.title")}</h1>
+        <p className="text-fg-muted mt-2">
+          {t("settings.profile.description")}
         </p>
-      ) : null}
-      {hasErrors ? (
-        <p
-          role="alert"
-          className="border-border bg-surface-raised mt-6 rounded-md border px-4 py-3"
-        >
-          {errors.form
-            ? errorText(errors.form)
-            : t("settings.profile.errors.summary")}
-        </p>
-      ) : null}
 
-      {/* A key from the saved values makes the fields show what was stored after a save. */}
-      <Form
-        method="post"
-        className="mt-8 space-y-6"
-        key={JSON.stringify(profile)}
-      >
-        <div>
-          <label htmlFor="username" className="font-semibold">
-            {t("settings.profile.username")}
-          </label>
-          <input
-            id="username"
-            value={profile.username}
-            readOnly
-            aria-describedby="username-hint"
-            className={`${inputClass} bg-surface-raised`}
-          />
-          <p id="username-hint" className="text-fg-muted mt-1 text-sm">
-            {t("settings.profile.usernameHint")}
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="displayName" className="font-semibold">
-            {t("settings.profile.displayName")}
-          </label>
-          <input
-            id="displayName"
-            name="displayName"
-            defaultValue={profile.displayName ?? ""}
-            autoComplete="name"
-            aria-invalid={errors.displayName ? true : undefined}
-            aria-describedby={`displayName-hint${errors.displayName ? " displayName-error" : ""}`}
-            className={inputClass}
-          />
-          <p id="displayName-hint" className="text-fg-muted mt-1 text-sm">
-            {t("settings.profile.displayNameHint", {
-              max: displayNameMaxLength,
-            })}
-          </p>
-          {errors.displayName ? (
-            <p id="displayName-error" className="mt-1 text-sm font-semibold">
-              {errorText(errors.displayName)}
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <label htmlFor="bio" className="font-semibold">
-            {t("settings.profile.bio")}
-          </label>
-          <textarea
-            id="bio"
-            name="bio"
-            rows={5}
-            defaultValue={profile.bio ?? ""}
-            aria-invalid={errors.bio ? true : undefined}
-            aria-describedby={`bio-hint${errors.bio ? " bio-error" : ""}`}
-            className={inputClass}
-          />
-          <p id="bio-hint" className="text-fg-muted mt-1 text-sm">
-            {t("settings.profile.bioHint", { max: bioMaxLength })}
-          </p>
-          {errors.bio ? (
-            <p id="bio-error" className="mt-1 text-sm font-semibold">
-              {errorText(errors.bio)}
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <label htmlFor="locale" className="font-semibold">
-            {t("settings.profile.language")}
-          </label>
-          <select
-            id="locale"
-            name="locale"
-            defaultValue={profile.locale}
-            aria-invalid={errors.locale ? true : undefined}
-            aria-describedby={errors.locale ? "locale-error" : undefined}
-            className={inputClass}
+        {saved ? (
+          <p
+            role="status"
+            className="border-border bg-surface-raised mt-6 rounded-md border px-4 py-3"
           >
-            {supportedLanguages.map((locale) => (
-              <option key={locale} value={locale} lang={locale}>
-                {localeNames[locale]}
-              </option>
-            ))}
-          </select>
-          {errors.locale ? (
-            <p id="locale-error" className="mt-1 text-sm font-semibold">
-              {errorText(errors.locale)}
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <label htmlFor="privacy" className="font-semibold">
-            {t("settings.profile.privacy")}
-          </label>
-          <select
-            id="privacy"
-            name="privacy"
-            defaultValue={profile.privacy}
-            aria-invalid={errors.privacy ? true : undefined}
-            aria-describedby={errors.privacy ? "privacy-error" : undefined}
-            className={inputClass}
+            {t("settings.profile.saved")}
+          </p>
+        ) : null}
+        {hasErrors ? (
+          <p
+            role="alert"
+            className="border-border bg-surface-raised mt-6 rounded-md border px-4 py-3"
           >
-            {privacyLevels.map((level) => (
-              <option key={level} value={level}>
-                {t(`settings.profile.privacyOptions.${level}`)}
-              </option>
-            ))}
-          </select>
-          {errors.privacy ? (
-            <p id="privacy-error" className="mt-1 text-sm font-semibold">
-              {errorText(errors.privacy)}
-            </p>
-          ) : null}
-        </div>
+            {errors.form
+              ? errorText(errors.form)
+              : t("settings.profile.errors.summary")}
+          </p>
+        ) : null}
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
+        {/* A key from the saved values makes the fields show what was stored after a save. */}
+        <Form
+          method="post"
+          className="mt-8 space-y-6"
+          key={JSON.stringify(profile)}
         >
-          {saving ? t("settings.profile.saving") : t("settings.profile.save")}
-        </button>
-      </Form>
-    </main>
+          <div>
+            <label htmlFor="username" className="font-semibold">
+              {t("settings.profile.username")}
+            </label>
+            <input
+              id="username"
+              value={profile.username}
+              readOnly
+              aria-describedby="username-hint"
+              className={`${inputClass} bg-surface-raised`}
+            />
+            <p id="username-hint" className="text-fg-muted mt-1 text-sm">
+              {t("settings.profile.usernameHint")}
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="displayName" className="font-semibold">
+              {t("settings.profile.displayName")}
+            </label>
+            <input
+              id="displayName"
+              name="displayName"
+              defaultValue={profile.displayName ?? ""}
+              autoComplete="name"
+              aria-invalid={errors.displayName ? true : undefined}
+              aria-describedby={`displayName-hint${errors.displayName ? " displayName-error" : ""}`}
+              className={inputClass}
+            />
+            <p id="displayName-hint" className="text-fg-muted mt-1 text-sm">
+              {t("settings.profile.displayNameHint", {
+                max: displayNameMaxLength,
+              })}
+            </p>
+            {errors.displayName ? (
+              <p id="displayName-error" className="mt-1 text-sm font-semibold">
+                {errorText(errors.displayName)}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label htmlFor="bio" className="font-semibold">
+              {t("settings.profile.bio")}
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows={5}
+              defaultValue={profile.bio ?? ""}
+              aria-invalid={errors.bio ? true : undefined}
+              aria-describedby={`bio-hint${errors.bio ? " bio-error" : ""}`}
+              className={inputClass}
+            />
+            <p id="bio-hint" className="text-fg-muted mt-1 text-sm">
+              {t("settings.profile.bioHint", { max: bioMaxLength })}
+            </p>
+            {errors.bio ? (
+              <p id="bio-error" className="mt-1 text-sm font-semibold">
+                {errorText(errors.bio)}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label htmlFor="locale" className="font-semibold">
+              {t("settings.profile.language")}
+            </label>
+            <select
+              id="locale"
+              name="locale"
+              defaultValue={profile.locale}
+              aria-invalid={errors.locale ? true : undefined}
+              aria-describedby={errors.locale ? "locale-error" : undefined}
+              className={inputClass}
+            >
+              {supportedLanguages.map((locale) => (
+                <option key={locale} value={locale} lang={locale}>
+                  {localeNames[locale]}
+                </option>
+              ))}
+            </select>
+            {errors.locale ? (
+              <p id="locale-error" className="mt-1 text-sm font-semibold">
+                {errorText(errors.locale)}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label htmlFor="privacy" className="font-semibold">
+              {t("settings.profile.privacy")}
+            </label>
+            <select
+              id="privacy"
+              name="privacy"
+              defaultValue={profile.privacy}
+              aria-invalid={errors.privacy ? true : undefined}
+              aria-describedby={errors.privacy ? "privacy-error" : undefined}
+              className={inputClass}
+            >
+              {privacyLevels.map((level) => (
+                <option key={level} value={level}>
+                  {t(`settings.profile.privacyOptions.${level}`)}
+                </option>
+              ))}
+            </select>
+            {errors.privacy ? (
+              <p id="privacy-error" className="mt-1 text-sm font-semibold">
+                {errorText(errors.privacy)}
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
+          >
+            {saving ? t("settings.profile.saving") : t("settings.profile.save")}
+          </button>
+        </Form>
+      </main>
+    </ClerkSession>
   );
 }

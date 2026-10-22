@@ -11,6 +11,7 @@ import {
   clerkFrontendApiHost,
   generateNonce,
   isAuthPage,
+  isSessionPage,
 } from "~server/security-headers";
 
 export const streamTimeout = 5_000;
@@ -30,14 +31,23 @@ export default async function handleRequest(
   // server skips the policy because hot reload needs scripts it cannot sign.
   const nonce = generateNonce();
   if (import.meta.env.PROD) {
-    // Only the sign-in and sign-up pages get the wider policy Clerk's components need.
-    const keys = isAuthPage(new URL(request.url).pathname)
-      ? getClerkKeys()
-      : null;
+    // Only the sign-in and sign-up pages get the wider policy Clerk's components need, and
+    // only the settings pages the narrow one that lets Clerk's script renew the session.
+    const { pathname } = new URL(request.url);
+    const clerkUse = isAuthPage(pathname)
+      ? "auth"
+      : isSessionPage(pathname)
+        ? "session"
+        : null;
+    const keys = clerkUse ? getClerkKeys() : null;
     const frontendApi = keys && clerkFrontendApiHost(keys.publishableKey);
     responseHeaders.set(
       "Content-Security-Policy",
-      buildContentSecurityPolicy(nonce, frontendApi || undefined),
+      buildContentSecurityPolicy(
+        nonce,
+        frontendApi || undefined,
+        clerkUse ?? undefined,
+      ),
     );
   }
 

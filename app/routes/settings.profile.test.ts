@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/settings.profile";
-import { action, loader } from "./settings.profile";
+import { action, headers, loader } from "./settings.profile";
 import { localeCookie } from "~/middleware/i18next";
 import { bioMaxLength } from "~server/account/profile-schema";
 
@@ -16,7 +16,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock("~server/auth/require", () => ({ requireUser: mocks.requireUser }));
 vi.mock("~server/runtime-env", () => ({
   getDb: mocks.getDb,
+  getClerkKeys: () => ({ publishableKey: "pk_test_for_the_tests" }),
   getWriteLimiter: () => ({ limit: mocks.limit }),
+}));
+// Clerk adds its own state to what the loader returns; here it only passes the data through.
+vi.mock("@clerk/react-router/server", () => ({
+  rootAuthLoader: async (
+    args: unknown,
+    handler: (args: unknown) => unknown,
+  ) => ({ ...(handler(args) as object), __clerk_ssr_state: "state" }),
 }));
 vi.mock("~server/db/profile", () => ({
   getProfile: mocks.getProfile,
@@ -84,18 +92,30 @@ describe("GET /settings/profile", () => {
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
-  it("shows the profile of the person in the session and is never cached", async () => {
+  it("shows the profile of the person in the session, with what Clerk's script needs", async () => {
     const result = await loader({
       request: new Request("http://localhost/settings/profile"),
       context: {},
     } as unknown as Route.LoaderArgs);
 
     expect(mocks.getProfile).toHaveBeenCalledWith(db, "user-from-session");
-    expect(answer(result).data).toMatchObject({
+    expect(result).toMatchObject({
       profile: stored,
       title: "settings.profile.title",
+      publishableKey: "pk_test_for_the_tests",
+      __clerk_ssr_state: "state",
     });
-    expect(headersOf(result).get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("does not hand Clerk's state to a visitor who is not allowed in", async () => {
+    mocks.getProfile.mockResolvedValue(null);
+
+    await expect(
+      loader({
+        request: new Request("http://localhost/settings/profile"),
+        context: {},
+      } as unknown as Route.LoaderArgs),
+    ).rejects.toMatchObject({ init: { status: 403 } });
   });
 
   it("refuses an account that has no profile row", async () => {
@@ -252,5 +272,30 @@ describe("POST /settings/profile: the request itself", () => {
       key: "profile:user-from-session:1.2.3.4",
     });
     expect(mocks.updateProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("headers of the settings page", () => {
+  const pageHeaders = (loader: HeadersInit = {}, action: HeadersInit = {}) =>
+    headers({
+      loaderHeaders: new Headers(loader),
+      actionHeaders: new Headers(action),
+      parentHeaders: new Headers(),
+      errorHeaders: undefined,
+    } as unknown as Route.HeadersArgs) as Headers;
+
+  it("is never kept by a shared cache, for the page and for what it answers", () => {
+    expect(pageHeaders().get("Cache-Control")).toBe("private, no-store");
+    expect(
+      pageHeaders({ "Cache-Control": "public, max-age=3600" }).get(
+        "Cache-Control",
+      ),
+    ).toBe("private, no-store");
+  });
+
+  it("keeps the language cookie that a saved change sets", () => {
+    const merged = pageHeaders({}, { "Set-Cookie": "locale=en; Path=/" });
+
+    expect(merged.get("Set-Cookie")).toContain("locale=en");
   });
 });
