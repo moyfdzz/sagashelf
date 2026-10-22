@@ -14,9 +14,10 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { ErrorPage } from "~/components/ErrorPage";
 import { Navbar } from "~/components/Navbar";
+import { authMiddleware } from "~/middleware/clerk";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
 
-export const middleware = [i18nextMiddleware];
+export const middleware = [i18nextMiddleware, authMiddleware];
 
 export function loader({ context }: Route.LoaderArgs) {
   return data({ locale: getLocale(context) });
