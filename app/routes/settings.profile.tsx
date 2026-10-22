@@ -6,6 +6,7 @@ import { rootAuthLoader } from "@clerk/react-router/server";
 
 import type { Route } from "./+types/settings.profile";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatusToast } from "~/components/StatusToast";
 import { localeNames, supportedLanguages } from "~/locales";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
@@ -162,11 +163,11 @@ export async function action(args: Route.ActionArgs) {
       await localeCookie.serialize(parsed.data.locale),
     );
   }
-  return data({ ok: true as const, profile }, { headers });
+  return data({ ok: true as const, profile, savedAt: Date.now() }, { headers });
 }
 
 const inputClass =
-  "border-border bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
+  "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export default function ProfileSettings({
   loaderData,
@@ -176,7 +177,6 @@ export default function ProfileSettings({
   const navigation = useNavigation();
   const saving = navigation.state === "submitting";
 
-  const saved = actionData?.ok === true;
   const profile =
     actionData?.ok === true ? actionData.profile : loaderData.profile;
   const errors: FieldErrors = actionData?.ok === false ? actionData.errors : {};
@@ -194,18 +194,21 @@ export default function ProfileSettings({
           {t("settings.profile.description")}
         </p>
 
-        {saved ? (
-          <p
-            role="status"
-            className="border-border bg-surface-raised mt-6 rounded-md border px-4 py-3"
-          >
-            {t("settings.profile.saved")}
-          </p>
-        ) : null}
+        {/* Always in the page, so a screen reader announces each message that appears in it. */}
+        <div
+          role="status"
+          className="pointer-events-none fixed inset-x-4 top-20 z-50 sm:right-6 sm:left-auto sm:w-96"
+        >
+          {actionData?.ok === true ? (
+            <StatusToast key={actionData.savedAt}>
+              {t("settings.profile.saved")}
+            </StatusToast>
+          ) : null}
+        </div>
         {hasErrors ? (
           <p
             role="alert"
-            className="border-border bg-surface-raised mt-6 rounded-md border px-4 py-3"
+            className="border-danger-edge bg-danger-bg text-danger-fg mt-6 rounded-md border px-4 py-3 font-semibold"
           >
             {errors.form
               ? errorText(errors.form)
@@ -243,7 +246,7 @@ export default function ProfileSettings({
               id="displayName"
               name="displayName"
               defaultValue={profile.displayName ?? ""}
-              autoComplete="name"
+              autoComplete="nickname"
               aria-invalid={errors.displayName ? true : undefined}
               aria-describedby={`displayName-hint${errors.displayName ? " displayName-error" : ""}`}
               className={inputClass}
@@ -254,7 +257,10 @@ export default function ProfileSettings({
               })}
             </p>
             {errors.displayName ? (
-              <p id="displayName-error" className="mt-1 text-sm font-semibold">
+              <p
+                id="displayName-error"
+                className="text-danger-text mt-1 text-sm font-semibold"
+              >
                 {errorText(errors.displayName)}
               </p>
             ) : null}
@@ -277,7 +283,10 @@ export default function ProfileSettings({
               {t("settings.profile.bioHint", { max: bioMaxLength })}
             </p>
             {errors.bio ? (
-              <p id="bio-error" className="mt-1 text-sm font-semibold">
+              <p
+                id="bio-error"
+                className="text-danger-text mt-1 text-sm font-semibold"
+              >
                 {errorText(errors.bio)}
               </p>
             ) : null}
@@ -302,7 +311,10 @@ export default function ProfileSettings({
               ))}
             </select>
             {errors.locale ? (
-              <p id="locale-error" className="mt-1 text-sm font-semibold">
+              <p
+                id="locale-error"
+                className="text-danger-text mt-1 text-sm font-semibold"
+              >
                 {errorText(errors.locale)}
               </p>
             ) : null}
@@ -327,7 +339,10 @@ export default function ProfileSettings({
               ))}
             </select>
             {errors.privacy ? (
-              <p id="privacy-error" className="mt-1 text-sm font-semibold">
+              <p
+                id="privacy-error"
+                className="text-danger-text mt-1 text-sm font-semibold"
+              >
                 {errorText(errors.privacy)}
               </p>
             ) : null}
@@ -336,7 +351,7 @@ export default function ProfileSettings({
           <button
             type="submit"
             disabled={saving}
-            className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
+            className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 active:brightness-90 disabled:opacity-60"
           >
             {saving ? t("settings.profile.saving") : t("settings.profile.save")}
           </button>

@@ -1,16 +1,27 @@
 @import "tailwindcss" source(".");
 
 /* Design tokens. Components use the semantic names (bg-surface, text-fg, ...),
-   so the palette changes in one place and dark mode follows the system setting. */
+   so the palette changes in one place and dark mode follows the system setting.
+   app/palette.test.ts checks the contrast of the pairs that are used together. */
 :root {
   color-scheme: light dark;
   --surface: oklch(0.99 0 0);
   --surface-raised: oklch(0.96 0.005 260);
   --fg: oklch(0.22 0.02 260);
   --fg-muted: oklch(0.45 0.02 260);
+  /* A line that only divides (the navbar, a card). Too faint to find a field by. */
   --border: oklch(0.88 0.01 260);
+  /* The edge of a field you type in: it must be seen, so it has at least 3:1 (WCAG 1.4.11). */
+  --input-edge: oklch(0.62 0.02 260);
   --accent: oklch(0.52 0.19 260);
   --accent-fg: oklch(0.99 0 0);
+  --success-bg: oklch(0.95 0.05 155);
+  --success-fg: oklch(0.3 0.08 155);
+  --success-edge: oklch(0.55 0.13 155);
+  --danger-bg: oklch(0.95 0.04 25);
+  --danger-fg: oklch(0.38 0.14 25);
+  --danger-text: oklch(0.5 0.19 25);
+  --danger-edge: oklch(0.58 0.18 25);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,8 +31,16 @@
     --fg: oklch(0.95 0.005 260);
     --fg-muted: oklch(0.72 0.02 260);
     --border: oklch(0.32 0.02 260);
+    --input-edge: oklch(0.52 0.02 260);
     --accent: oklch(0.72 0.14 260);
     --accent-fg: oklch(0.17 0.02 260);
+    --success-bg: oklch(0.26 0.06 155);
+    --success-fg: oklch(0.93 0.05 155);
+    --success-edge: oklch(0.62 0.13 155);
+    --danger-bg: oklch(0.27 0.07 25);
+    --danger-fg: oklch(0.93 0.04 25);
+    --danger-text: oklch(0.76 0.14 25);
+    --danger-edge: oklch(0.65 0.16 25);
   }
 }
 
@@ -31,8 +50,42 @@
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-border: var(--border);
+  --color-input-edge: var(--input-edge);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-success-edge: var(--success-edge);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-text: var(--danger-text);
+  --color-danger-edge: var(--danger-edge);
+
+  --animate-toast-in: toast-in 180ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tailwind 4 no longer shows the hand over buttons. Anything that acts when clicked says so. */
+@layer base {
+  button:not(:disabled),
+  select:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 body {

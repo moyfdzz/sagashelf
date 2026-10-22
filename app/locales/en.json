@@ -62,7 +62,7 @@
       },
       "save": "Save changes",
       "saving": "Saving…",
-      "saved": "Changes saved.",
+      "saved": "Done! Your changes were saved.",
       "errors": {
         "summary": "Check the fields marked below.",
         "display_name_too_long": "The name is too long.",
@@ -72,5 +72,8 @@
         "generic": "We could not save the changes. Please try again."
       }
     }
+  },
+  "common": {
+    "close": "Close"
   }
 }

@@ -145,6 +145,8 @@ describe("POST /settings/profile: who is changed", () => {
       privacy: "friends",
     });
     expect(answer(result).data).toMatchObject({ ok: true, profile: stored });
+    // The page uses this to show the "saved" message again after every save, even of the same text.
+    expect(typeof answer(result).data.savedAt).toBe("number");
     expect(headersOf(result).get("Cache-Control")).toBe("private, no-store");
   });
 

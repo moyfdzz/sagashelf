@@ -62,7 +62,7 @@
       },
       "save": "Guardar cambios",
       "saving": "Guardando…",
-      "saved": "Cambios guardados.",
+      "saved": "¡Listo! Tus cambios se guardaron.",
       "errors": {
         "summary": "Revisa los campos marcados.",
         "display_name_too_long": "El nombre es demasiado largo.",
@@ -72,5 +72,8 @@
         "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
       }
     }
+  },
+  "common": {
+    "close": "Cerrar"
   }
 }
