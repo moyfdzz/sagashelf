@@ -18,6 +18,27 @@ describe("parseEnv", () => {
     ).toThrow(/TURNSTILE_SECRET_KEY/);
   });
 
+  it("validates the Clerk keys by prefix without echoing them", () => {
+    expect(
+      parseEnv({
+        APP_ENV: "development",
+        CLERK_PUBLISHABLE_KEY: "pk_test_abc",
+        CLERK_SECRET_KEY: "sk_test_abc",
+        CLERK_JWT_KEY: "pem",
+      }),
+    ).toMatchObject({ CLERK_PUBLISHABLE_KEY: "pk_test_abc" });
+
+    const bad = "sk_wrong_value";
+    let message = "";
+    try {
+      parseEnv({ APP_ENV: "development", CLERK_SECRET_KEY: bad });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("CLERK_SECRET_KEY");
+    expect(message).not.toContain(bad);
+  });
+
   it("names a missing variable", () => {
     expect(() => parseEnv({})).toThrow(/APP_ENV/);
   });

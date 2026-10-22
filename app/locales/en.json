@@ -34,5 +34,13 @@
       "title": "Something went wrong",
       "message": "An unexpected error occurred. Please try again."
     }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in"
+    },
+    "signUp": {
+      "title": "Create account"
+    }
   }
 }

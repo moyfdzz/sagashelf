@@ -5,9 +5,12 @@ import type { EntryContext, RouterContextProvider } from "react-router";
 import { ServerRouter } from "react-router";
 
 import { getInstance } from "~/middleware/i18next";
+import { getClerkKeys } from "~server/runtime-env";
 import {
   buildContentSecurityPolicy,
+  clerkFrontendApiHost,
   generateNonce,
+  isAuthPage,
 } from "~server/security-headers";
 
 export const streamTimeout = 5_000;
@@ -27,9 +30,14 @@ export default async function handleRequest(
   // server skips the policy because hot reload needs scripts it cannot sign.
   const nonce = generateNonce();
   if (import.meta.env.PROD) {
+    // Only the sign-in and sign-up pages get the wider policy Clerk's components need.
+    const keys = isAuthPage(new URL(request.url).pathname)
+      ? getClerkKeys()
+      : null;
+    const frontendApi = keys && clerkFrontendApiHost(keys.publishableKey);
     responseHeaders.set(
       "Content-Security-Policy",
-      buildContentSecurityPolicy(nonce),
+      buildContentSecurityPolicy(nonce, frontendApi || undefined),
     );
   }
 

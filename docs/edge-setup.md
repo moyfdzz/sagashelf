@@ -50,3 +50,37 @@ The widget is wired into forms in SAG-10, but the keys can be created now.
 The contact address uses Cloudflare Email Routing (the zone has its MX, SPF and DKIM records). The dashboard recommends adding a **DMARC** record so mail providers can reject messages that fake an `@sagashelf.app` sender.
 
 - [x] DMARC Management is enabled. Checked on 2026-10-21: `_dmarc` is `v=DMARC1; p=none; rua=mailto:...@dmarc-reports.cloudflare.net` (monitoring mode, reports go to Cloudflare), next to the existing SPF and DKIM records. Move to a stricter policy only after the reports show that all legitimate mail passes.
+
+## 8. Clerk accounts (SAG-10)
+
+The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **Development** (used locally and on previews) and **Production** (created when the site goes live). Never paste a key into the repository, an issue or a chat.
+
+### Development instance (done for local work)
+
+- [x] Application `SagaShelf` in the Clerk organization on the Hobby plan.
+- [x] Email is required at sign-up with a verification code. Username is required (3 to 30 characters, no extended characters, no numeric-only names). Password is on, with **Reject compromised passwords**. Google is on in SSO connections.
+- [x] Protections: **Block email subaddresses**, **Block sign-ups that use disposable email addresses** and **Challenge suspicious sign-ups** are enabled. The bot challenge is under Configure, Protect, Protections.
+- [x] **Enable API keys** (the dialog that lets users generate keys for your own API) is **not** needed and stays off.
+- [x] Keys: the publishable key and the secret key come from the **API keys** page. The secret key is shown in full only when it is created, so copy it at that moment. The dashboard of this instance showed **JWKS Public Key** (a JSON file at `/.well-known/jwks.json`) and no PEM button, so the PEM was derived from the JWK (an RSA public key, `jwk` to `spki` in Node's `crypto`).
+- [x] Local values go in `.dev.vars` (names in `.env.example`): `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` and `CLERK_JWT_KEY`. The PEM goes on one line with `\n` between its lines, and the code turns those back into line breaks.
+
+### Worker variables and secrets
+
+| Name                    | Kind                  | Where                                                             |
+| ----------------------- | --------------------- | ----------------------------------------------------------------- |
+| `CLERK_SECRET_KEY`      | Secret                | Previews Base now; Production when the production instance exists |
+| `CLERK_PUBLISHABLE_KEY` | Public variable       | Same tabs                                                         |
+| `CLERK_JWT_KEY`         | Public variable (PEM) | Same tabs                                                         |
+
+- [ ] Add the three values to **Previews Base** with the development instance keys, so previews can sign in. Previews do not inherit the production values.
+- [ ] Without these values a deployment still serves the public pages, and protected routes and the sign-in pages answer 503.
+
+### Production instance (when the site goes live)
+
+- [ ] In Clerk, create the Production instance from the Development one and choose the domain `sagashelf.app`.
+- [ ] In Cloudflare, DNS, add the CNAME records Clerk lists (the Frontend API, the account portal, and the email records). Set every one of them to **DNS only** (grey cloud, not proxied), as Clerk requires, so Cloudflare does not sit in front of its verification. Wait until Clerk shows the domain as verified and has issued its certificates.
+- [ ] Create our own Google OAuth credentials in Google Cloud (a consent screen and an OAuth client of type web), put the redirect URI that Clerk shows in them, and paste the client id and secret into Clerk's Google connection. The shared development credentials Clerk uses in the Development instance do not work in production.
+- [ ] Put the production publishable key, secret key and JWT public key in the **Production** variables. The JWT public key is read from the production instance, which has its own.
+- [ ] The Clerk instance, its webhook endpoint (SAG-11) and Svix signing secret are separate for each instance.
+- [ ] Check in a browser: sign up with a new address, receive the code, sign in with Google, sign out, and confirm that the home page still has the strict policy (<https://securityheaders.com> and the Observatory should keep their grades, because only `/sign-in` and `/sign-up` use the wider policy).
+- [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification.

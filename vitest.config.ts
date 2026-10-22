@@ -16,6 +16,8 @@ export default defineConfig({
         "server/testing/**",
         // Reads the Worker runtime bindings; covered by e2e, not unit tests.
         "server/runtime-env.ts",
+        // Wires Clerk and the database to the Worker runtime; the decisions are in authorize.ts.
+        "server/auth/require.ts",
         // The schema and the client are exercised by the integration tests (db/), which need Postgres.
         "server/db/**",
       ],

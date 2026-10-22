@@ -1,8 +1,8 @@
 # ADR-003: Clerk for accounts, with a local `users` mirror
 
 - **Status:** Accepted
-- **Date:** 2026-10-20
-- **Implementation:** Planned (SAG-10, SAG-11, SAG-12)
+- **Date:** 2026-10-20 (refined 2026-10-21 in SAG-10, see "Changes made in SAG-10")
+- **Implementation:** Partial (sessions, guards and the sign-in and sign-up pages are built in SAG-10; the webhook is SAG-11, account settings SAG-12)
 - **Tickets:** SAG-10, SAG-11, SAG-12, SAG-29
 
 ## Context
@@ -11,36 +11,82 @@ Accounts with emails and passwords are the largest security risk in the product:
 
 ## Decision
 
-- **Clerk stores and verifies credentials.** SagaShelf never stores a password. Sign-in is email and password plus Google. Email verification is required, usernames are required (3 to 30 characters, restricted characters, reserved words blocked), the breached-password check and brute-force lockout are on, multi-factor authentication is optional and **required for admins**, and sign-up has bot protection and a block on disposable email domains.
-- **Roles live in Clerk `publicMetadata`.** Authorization is checked on the server with `requireUser` and `requireRole('admin')`. A user id sent by the browser is never trusted.
-- **A local `users` mirror** in Postgres is kept in sync by a Clerk webhook (SAG-11): Svix signature verification, an idempotency table (`processed_webhooks`, unique provider and event id), and handling of out-of-order events.
-- **Email normalization is ours.** `email_canonical` (trim, Unicode NFKC, lowercase, IDN to punycode, and for providers that ignore dots and `+tags` also strip those) is stored as UNIQUE so one inbox cannot register many accounts. The original address is kept for sending.
+- **Clerk stores and verifies credentials.** SagaShelf never stores a password. Sign-in is email or username with a password, a one-time email code, and Google. Email verification is required at sign-up, usernames are required (3 to 30 characters, no extended characters, no all-numeric names), and the breached-password check is on. Sign-up has Clerk's bot challenge ("Challenge suspicious sign-ups") and blocks both disposable email domains and email subaddresses.
+- **The administrator signs in with Google and its 2-step verification.** The free Clerk plan has no multi-factor authentication and no passkeys (see "Verified facts"), so the administrator's account has no password and relies on the 2-step verification of the Google account. `requireRole('admin')` also checks that the Clerk account has a **verified Google login**, so an email code alone is never enough for the admin area.
+- **Roles live in our `users.role` column, not in Clerk.** The first version of this ADR said Clerk `publicMetadata`. A role in our own table is changed with SQL, is read in the same query that loads the user, and needs no call to Clerk. The first administrator is set by hand in the database. Authorization is checked on the server with `requireUser` and `requireRole('admin')` (`server/auth/`). A user id sent by the browser is never trusted: the id comes from the verified session.
+- **Sessions are verified in the Worker without a network call.** `clerkMiddleware` runs in the root route with the instance's JWT public key (`CLERK_JWT_KEY`), so a valid session token costs no request to Clerk. When the token has expired, Clerk's handshake refreshes it. Without Clerk keys (tests, previews) public pages still work and protected routes answer 503, never "allowed".
+- **Clerk's code runs only on the sign-in and sign-up pages.** Those two routes embed Clerk's components and get a wider content security policy; every other page reads the session on the server, ships no Clerk code, and keeps the strict policy (ADR-011). See "Content security policy per route".
+- **A local `users` mirror** in Postgres is kept in sync by a Clerk webhook (SAG-11): Svix signature verification, an idempotency table (`processed_webhooks`, unique provider and event id), ordering by `updated_at`, and handling of out-of-order events. A session without a mirror row is refused with 403 until the webhook has created it.
+- **Email normalization is ours.** `email_canonical` (trim, Unicode NFKC, lowercase, IDN to punycode, and for providers that ignore dots and `+tags` also strip those) is stored as UNIQUE so one inbox cannot register many accounts. Clerk's own subaddress block is a second layer. The original address is kept for sending.
+- **Reserved usernames are checked on our side.** Clerk's free plan cannot block names such as `admin`, `api` or `settings`, so the webhook validates them when it creates the mirror row (SAG-11).
 - **Privacy in logs.** No password, token or full email address is written to logs. Error messages are generic so they do not reveal whether an account exists.
-- **Localized and constrained.** Auth pages are available in Spanish and English (ADR-008), and the content security policy allows Clerk origins only (SAG-7).
+- **Localized.** The auth pages are available in Spanish and English (ADR-008) through `@clerk/localizations`. The Spanish pack (`es-MX`) leaves some texts empty, so `app/lib/clerk-localization.ts` fills the ones a visitor can reach.
+- **Two Clerk instances.** A development instance (`pk_test_`, `sk_test_`) is used locally and on previews. A production instance is created when the site goes live, with its DNS records in Cloudflare (DNS only, not proxied) and our own Google OAuth credentials (see [`edge-setup.md`](../edge-setup.md)).
+
+## Content security policy per route
+
+Clerk's embedded components need origins and a style allowance that the strict policy forbids. Instead of loosening the whole site, `/sign-in` and `/sign-up` get a separate policy built in `server/security-headers.ts` and chosen in `app/entry.server.tsx`. Per the [Clerk CSP guide](https://clerk.com/docs/guides/secure/best-practices/csp-headers) (read 2026-10-21) it adds only:
+
+- `script-src`: the instance's Frontend API host (decoded from the publishable key), `challenges.cloudflare.com` and `*.protect.clerk.com`, next to `'self'` and the page's nonce.
+- `connect-src`: the Frontend API host and `*.protect.clerk.com` on any port.
+- `frame-src`: `challenges.cloudflare.com` and `*.protect.clerk.com`.
+- `img-src`: `img.clerk.com`. `worker-src`: `'self'` and `blob:`.
+- `style-src 'unsafe-inline'`, because Clerk styles itself at runtime. Scripts never get `'unsafe-inline'` or `'unsafe-eval'`.
+
+Unit tests pin the exact lists, and an e2e test checks that the home page keeps the strict policy and mentions no Clerk origin. In the production build, the sign-in page was loaded in a real browser with no policy violations.
+
+## Verified facts
+
+Read on 2026-10-21 from Clerk's pricing and documentation:
+
+- **Free (Hobby) plan:** 50,000 retained users and a fixed 7-day session. It includes breached-password rejection, disposable-email blocking, subaddress blocking and bot protection at sign-up.
+- **Not in the free plan:** multi-factor authentication, passkeys, and allow and block lists.
+- **Webhooks** are delivered by Svix, at least once and in no guaranteed order, so SAG-11 must be idempotent and order-safe.
+- **Measured locally in SAG-10:** the SDK runs in `workerd` and verifies valid, missing, expired and forged tokens without a network call, with about 1 ms of overhead. The Worker grew from about 216 to about 291 kB gzip for the SDK alone, and the server bundle reached about 481 kB gzip once the sign-in components were included, still far below the Free plan limit.
 
 ## Alternatives considered
 
-- **Own authentication with stored password hashes.** Maximum control, but this project would own credential storage, reset flows, email delivery and abuse protection. Rejected as the biggest avoidable risk.
+- **Own authentication with stored password hashes.** Maximum control, no per-user limit, a lighter Worker, and no exception to the strict policy. But the project would own credential storage, reset and email flows, sessions, OAuth, abuse protection and the legal duties around them: weeks of work plus permanent maintenance on something that is not the product, where a flaw does the most damage. Rejected, and revisited in "Reasons to reconsider".
 - **Authentication libraries that run inside the app.** They still leave credential storage and abuse handling to the project. Rejected for the same reason.
 - **Identity-aware access products aimed at staff (for example Cloudflare Access).** Suited to protecting internal tools, not to public sign-up. They may still protect preview URLs (see ADR-010).
+- **Only `@clerk/backend` without the React Router SDK.** Measured in SAG-10: it saves almost no weight, because the same verification code is needed, and it loses the handshake and the components.
 
 ## Consequences
 
 **Good**
 
-- No credentials in our database, and a mature implementation of verification, MFA and lockout.
-- The mirror lets queries join users without calling Clerk on every request.
+- No credentials in our database, and a mature implementation of verification, lockout, breached-password checks and bot protection.
+- The mirror lets queries join users without calling Clerk on every request, and a valid session needs no call to Clerk.
+- The Clerk-specific code is small and isolated (`server/auth/`, `app/middleware/clerk.ts`, two routes), and the profile and role live in our table, so leaving Clerk later is a bounded migration.
 
 **Costs and risks**
 
 - A third-party dependency for sign-in: an outage or a policy change affects the product, and moving away later means a migration.
 - Two sources of truth for a user (Clerk and the mirror) must stay consistent, which is why webhook ordering and idempotency are part of the design.
-- The free plan limits of Clerk were **not verified** here. Check them when the Clerk application is created.
+- No multi-factor authentication or passkeys for regular users on the free plan.
+- The sign-in and sign-up pages carry a wider policy than the rest of the site.
+- Until SAG-11 exists nobody has a mirror row, so the guards refuse everyone.
+
+## Reasons to reconsider
+
+Revisit this decision if Clerk removes or changes the free plan, if the project passes the 50,000-user limit with a real cost, or if multi-factor authentication for all users becomes a requirement that the free plan does not meet. Moving to the paid plan is the first option, before writing our own.
 
 ## Open questions
 
-- Exact Clerk plan limits and which of the listed protections (for example the breached-password check) are included in the free plan. Confirm in SAG-10.
+- CPU time in a real Cloudflare Worker (the Free plan allows 10 ms per request) was **not measured**: only local numbers exist. Measure it on a preview and record the result in SAG-10.
+- The production instance (DNS records, Google OAuth credentials and the production keys) is not created yet.
+- Whether Clerk offers a way to disable the email-code sign-in for one account only. It stays enabled for everyone, and the admin guard requires a verified Google login instead.
+- The admin guard asks Clerk for the user's Google login with one API call, and that call was not tested against a real account yet.
 
 ## References
 
 - Tickets SAG-10, SAG-11 and SAG-12 (Linear)
+- [Clerk CSP headers guide](https://clerk.com/docs/guides/secure/best-practices/csp-headers) and [bot protection](https://clerk.com/docs/security/bot-protection), read 2026-10-21
+- ADR-008 (i18n) and ADR-011 (edge security and the strict policy)
+
+## Changes made in SAG-10
+
+- Roles moved from Clerk `publicMetadata` to `users.role`.
+- "Multi-factor authentication required for admins" became "Google with 2-step verification, plus a verified-Google check in the guard", because the free plan has no multi-factor authentication.
+- Added the per-route policy, session verification with the JWT public key, the two Clerk instances and the reserved-name check.
+- Recorded the Clerk free plan limits as verified instead of open.

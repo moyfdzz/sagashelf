@@ -6,7 +6,9 @@ import {
   applySecurityHeaders,
   baseSecurityHeaders,
   buildContentSecurityPolicy,
+  clerkFrontendApiHost,
   generateNonce,
+  isAuthPage,
 } from "./security-headers";
 
 describe("generateNonce", () => {
@@ -48,6 +50,82 @@ describe("buildContentSecurityPolicy", () => {
   it("does not allow any other origin", () => {
     expect(policy).not.toMatch(/https?:\/\//);
   });
+});
+
+describe("buildContentSecurityPolicy for the sign-in pages", () => {
+  const policy = buildContentSecurityPolicy(
+    "abc123",
+    "clerk.example.accounts.dev",
+  );
+  const directives = Object.fromEntries(
+    policy.split("; ").map((part) => {
+      const [name, ...sources] = part.split(" ");
+      return [name, sources];
+    }),
+  );
+
+  it("adds exactly the origins Clerk's components need", () => {
+    expect(directives["script-src"]).toEqual([
+      "'self'",
+      "'nonce-abc123'",
+      "https://clerk.example.accounts.dev",
+      "https://challenges.cloudflare.com",
+      "https://*.protect.clerk.com",
+    ]);
+    expect(directives["connect-src"]).toContain(
+      "https://clerk.example.accounts.dev",
+    );
+    expect(directives["img-src"]).toContain("https://img.clerk.com");
+    expect(directives["frame-src"]).toContain(
+      "https://challenges.cloudflare.com",
+    );
+    expect(directives["worker-src"]).toEqual(["'self'", "blob:"]);
+  });
+
+  it("allows inline styles only, never inline scripts or eval", () => {
+    expect(directives["style-src"]).toContain("'unsafe-inline'");
+    expect(directives["script-src"]).not.toContain("'unsafe-inline'");
+    expect(policy).not.toContain("unsafe-eval");
+  });
+
+  it("still blocks framing and other forms of embedding", () => {
+    expect(directives["frame-ancestors"]).toEqual(["'none'"]);
+    expect(directives["object-src"]).toEqual(["'none'"]);
+    expect(directives["base-uri"]).toEqual(["'none'"]);
+    expect(directives["form-action"]).toEqual(["'self'"]);
+  });
+
+  it("is not used when there is no Frontend API host", () => {
+    expect(buildContentSecurityPolicy("abc123")).not.toContain("clerk");
+  });
+});
+
+describe("isAuthPage", () => {
+  it.each(["/sign-in", "/sign-in/", "/sign-in/factor-one", "/sign-up"])(
+    "is true for %s",
+    (path) => expect(isAuthPage(path)).toBe(true),
+  );
+
+  it.each(["/", "/sign-inx", "/api/sign-in", "/settings/sign-in"])(
+    "is false for %s",
+    (path) => expect(isAuthPage(path)).toBe(false),
+  );
+});
+
+describe("clerkFrontendApiHost", () => {
+  it("reads the host a publishable key encodes", () => {
+    const key = `pk_test_${btoa("clerk.example.accounts.dev$")}`;
+    expect(clerkFrontendApiHost(key)).toBe("clerk.example.accounts.dev");
+  });
+
+  it.each([
+    "",
+    "pk_test_",
+    "sk_test_abc",
+    "pk_test_!!!",
+    `pk_test_${btoa("a b$")}`,
+    `pk_test_${btoa("nodollar")}`,
+  ])("is null for %j", (key) => expect(clerkFrontendApiHost(key)).toBeNull());
 });
 
 describe("applySecurityHeaders", () => {

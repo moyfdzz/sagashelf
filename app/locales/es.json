@@ -34,5 +34,13 @@
       "title": "Algo salió mal",
       "message": "Ocurrió un error inesperado. Inténtalo de nuevo."
     }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Iniciar sesión"
+    },
+    "signUp": {
+      "title": "Crear cuenta"
+    }
   }
 }

@@ -10,6 +10,19 @@ const envSchema = z.object({
     .string()
     .regex(/^postgres(ql)?:\/\//)
     .optional(),
+  // Clerk (SAG-10). Optional so previews and tests start without them; the auth guards
+  // fail with a clear message if they are needed. The publishable and JWT public keys are
+  // public values; the secret key is a Workers secret.
+  CLERK_PUBLISHABLE_KEY: z
+    .string()
+    .regex(/^pk_(test|live)_/)
+    .optional(),
+  CLERK_SECRET_KEY: z
+    .string()
+    .regex(/^sk_(test|live)_/)
+    .optional(),
+  // The instance's PEM public key: lets the Worker verify sessions without a network call.
+  CLERK_JWT_KEY: z.string().min(1).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
