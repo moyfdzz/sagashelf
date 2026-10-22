@@ -3,9 +3,6 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-// Vitest hands a CSS import back empty, so the file is read as text.
-const css = readFileSync(new URL("./app.css", import.meta.url), "utf8");
-
 // WCAG contrast of the colors in app/app.css, for the pairs that are used together. If a color
 // is changed to something that is hard to read, this fails before anyone has to notice it.
 
@@ -37,7 +34,15 @@ function contrast(first: Oklch, second: Oklch): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-const darkStart = css.indexOf("@media (prefers-color-scheme: dark)");
+// Vitest hands a CSS import back empty, so the file is read as text.
+const css = readFileSync(new URL("./app.css", import.meta.url), "utf8");
+
+// The three places where colors are written: light (the default), dark for the system setting,
+// and dark for the switch.
+const darkMedia = css.indexOf("@media (prefers-color-scheme: dark)");
+const forcedLight = css.indexOf(':root[data-theme="light"]');
+const forcedDark = css.indexOf(':root[data-theme="dark"]');
+const themeBlock = css.indexOf("@theme inline");
 
 function tokens(block: string): Record<string, Oklch> {
   const found: Record<string, Oklch> = {};
@@ -53,18 +58,24 @@ function tokens(block: string): Record<string, Oklch> {
   return found;
 }
 
+const lightTokens = tokens(css.slice(0, darkMedia));
+const darkMediaTokens = tokens(css.slice(darkMedia, forcedLight));
+const forcedDarkTokens = tokens(css.slice(forcedDark, themeBlock));
+
 const themes = {
-  light: tokens(css.slice(0, darkStart)),
-  dark: { ...tokens(css.slice(0, darkStart)), ...tokens(css.slice(darkStart)) },
+  light: lightTokens,
+  dark: { ...lightTokens, ...forcedDarkTokens },
 };
+
+const contentTypes = ["anime", "series", "movie", "book", "manga", "custom"];
 
 // [foreground, background, the least that WCAG asks for, what the pair is]
 const pairs: [string, string, number, string][] = [
   ["fg", "surface", 7, "text on the page"],
   ["fg-muted", "surface", 4.5, "hints on the page"],
-  ["fg-muted", "surface-raised", 4.5, "hints on the navbar and boxes"],
-  ["accent", "surface", 4.5, "links and the logo"],
-  ["accent", "surface-raised", 4.5, "the logo on the navbar"],
+  ["fg-muted", "surface-raised", 4.5, "hints on boxes"],
+  ["accent", "surface", 4.5, "links and actions on the page"],
+  ["accent", "surface-raised", 4.5, "links on boxes"],
   ["accent-fg", "accent", 4.5, "the text of a button"],
   ["input-edge", "surface", 3, "the edge of a field (non-text contrast)"],
   ["success-fg", "success-bg", 7, "the text of the success message"],
@@ -72,10 +83,26 @@ const pairs: [string, string, number, string][] = [
   ["danger-fg", "danger-bg", 7, "the text of the error message"],
   ["danger-text", "surface", 4.5, "the error under a field"],
   ["danger-edge", "surface", 3, "the edge of the error message"],
+  ["header-fg", "header-bg", 7, "text in the header"],
+  ["header-muted", "header-bg", 4.5, "links in the header"],
+  [
+    "header-accent",
+    "header-bg",
+    4.5,
+    "the logo and the active link in the header",
+  ],
+  ["header-accent-fg", "header-accent", 4.5, "the text on the active language"],
+  ["header-edge", "header-bg", 3, "the edge of the switch in the header"],
+  ...contentTypes.map((type): [string, string, number, string] => [
+    `type-${type}-fg`,
+    `type-${type}-bg`,
+    7,
+    `the label of the ${type} type`,
+  ]),
 ];
 
 describe("palette", () => {
-  it("defines every color the pairs use, in both themes", () => {
+  it("defines every color the pairs use, in both modes", () => {
     for (const theme of Object.values(themes)) {
       for (const [foreground, background] of pairs) {
         expect(theme[foreground], foreground).toBeDefined();
@@ -96,6 +123,18 @@ describe("palette", () => {
     }
   }
 
+  it("writes the dark colors the same for the system setting and for the switch", () => {
+    // They are written twice, because a media query and an attribute cannot share a block.
+    expect(Object.keys(darkMediaTokens).length).toBeGreaterThan(20);
+    expect(darkMediaTokens).toEqual(forcedDarkTokens);
+  });
+
+  it("has a dark value for every color that is not the same in both modes", () => {
+    expect(Object.keys(forcedDarkTokens).sort()).toEqual(
+      Object.keys(lightTokens).sort(),
+    );
+  });
+
   it("keeps the dividing line apart from the edge of a field", () => {
     // `--border` only divides and is allowed to be faint; a field must use the stronger one.
     for (const theme of Object.values(themes)) {
@@ -109,7 +148,20 @@ describe("palette", () => {
   });
 
   it("would catch a field edge that is too faint", () => {
-    // The old value of the field border, used as a control for this very check.
-    expect(contrast([0.88, 0.01, 260], [0.99, 0, 0])).toBeLessThan(3);
+    // A faint divider used as the edge of a field, as a control for this very check.
+    expect(contrast([0.89, 0.01, 250], [0.985, 0.004, 250])).toBeLessThan(3);
+  });
+
+  it("keeps the content types apart from each other", () => {
+    const hues = contentTypes
+      .filter((type) => type !== "custom")
+      .map((type) => lightTokens[`type-${type}-bg`]?.[2] ?? NaN);
+
+    for (let i = 0; i < hues.length; i += 1) {
+      for (let j = i + 1; j < hues.length; j += 1) {
+        const gap = Math.abs((hues[i] ?? 0) - (hues[j] ?? 0)) % 360;
+        expect(Math.min(gap, 360 - gap)).toBeGreaterThanOrEqual(30);
+      }
+    }
   });
 });

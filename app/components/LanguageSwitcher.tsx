@@ -31,7 +31,7 @@ export function LanguageSwitcher() {
           className={`rounded-md px-2 py-1 text-sm font-semibold transition-colors ${
             i18n.language === locale
               ? "bg-accent text-accent-fg"
-              : "text-fg-muted hover:bg-surface-raised hover:text-accent"
+              : "text-fg-muted hover:bg-fg/10 hover:text-accent"
           }`}
         >
           {localeNames[locale]}
