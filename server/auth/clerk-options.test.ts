@@ -4,9 +4,16 @@ import { clerkKeysFromEnv, normalizeJwtKey } from "./clerk-options";
 
 describe("normalizeJwtKey", () => {
   it("turns escaped line breaks into real ones", () => {
-    expect(normalizeJwtKey("-----BEGIN-----\nabc\n-----END-----")).toBe(
+    expect(normalizeJwtKey("-----BEGIN-----\\nabc\\n-----END-----")).toBe(
       "-----BEGIN-----\nabc\n-----END-----",
     );
+  });
+
+  it("drops quotes that a dashboard value kept around the key", () => {
+    expect(normalizeJwtKey('"-----BEGIN-----\\nabc\\n-----END-----"')).toBe(
+      "-----BEGIN-----\nabc\n-----END-----",
+    );
+    expect(normalizeJwtKey("'a\\nb'")).toBe("a\nb");
   });
 
   it("leaves a key that already has line breaks alone", () => {
@@ -37,7 +44,7 @@ describe("clerkKeysFromEnv", () => {
       clerkKeysFromEnv({
         CLERK_PUBLISHABLE_KEY: "pk_test_x",
         CLERK_SECRET_KEY: "sk_test_x",
-        CLERK_JWT_KEY: "a\nb",
+        CLERK_JWT_KEY: "a\\nb",
       }),
     ).toEqual({
       publishableKey: "pk_test_x",

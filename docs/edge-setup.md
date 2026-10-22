@@ -69,10 +69,11 @@ The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **
 | Name                    | Kind                  | Where                                                             |
 | ----------------------- | --------------------- | ----------------------------------------------------------------- |
 | `CLERK_SECRET_KEY`      | Secret                | Previews Base now; Production when the production instance exists |
-| `CLERK_PUBLISHABLE_KEY` | Public variable       | Same tabs                                                         |
-| `CLERK_JWT_KEY`         | Public variable (PEM) | Same tabs                                                         |
+| `CLERK_PUBLISHABLE_KEY` | Public variable       | `wrangler.jsonc` (`previews.vars` now; `vars` for production)     |
+| `CLERK_JWT_KEY`         | Public variable (PEM) | `wrangler.jsonc` (`previews.vars` now; `vars` for production)     |
 
-- [ ] Add the three values to **Previews Base** with the development instance keys, so previews can sign in. Previews do not inherit the production values.
+- [x] The secret key is in **Previews Base** (set by the owner on 2026-10-21). The two public values live in `wrangler.jsonc`, not in the dashboard: a variable added by hand in the dashboard makes Cloudflare report that the dashboard and the file are out of sync, and a deployment can overwrite it. The JWT public key is written there as a normal JSON string with `\n` line breaks. A copy pasted into the dashboard keeps its quotes, and the code removes them anyway.
+- [ ] Delete the dashboard copies of `CLERK_PUBLISHABLE_KEY` and `CLERK_JWT_KEY` in Previews Base once the file is deployed, so there is one source of truth. Leave the secret key.
 - [ ] Without these values a deployment still serves the public pages, and protected routes and the sign-in pages answer 503.
 
 ### Production instance (when the site goes live)
