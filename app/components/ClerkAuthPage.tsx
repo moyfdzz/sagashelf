@@ -1,7 +1,8 @@
 import { ClerkProvider } from "@clerk/react-router";
-import { enUS, esMX } from "@clerk/localizations";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+
+import { english, spanish } from "~/lib/clerk-localization";
 
 type Props = {
   clerkState: unknown;
@@ -20,7 +21,7 @@ export function ClerkAuthPage({ clerkState, publishableKey, children }: Props) {
     <ClerkProvider
       loaderData={clerkState}
       publishableKey={publishableKey}
-      localization={i18n.language === "en" ? enUS : esMX}
+      localization={i18n.language === "en" ? english : spanish}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >
