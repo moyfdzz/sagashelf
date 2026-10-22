@@ -91,9 +91,16 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+// Clerk's own example event gives the event time in seconds and the user's times in
+// milliseconds. Below this a number can only be seconds (it is January 1973 in milliseconds,
+// and the year 5138 in seconds), so both are read correctly instead of one becoming 1970.
+const secondsBelow = 100_000_000_000;
+
 function asDate(value: unknown): Date | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  const date = new Date(value);
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  const date = new Date(value < secondsBelow ? value * 1000 : value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 

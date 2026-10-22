@@ -201,6 +201,45 @@ describe("planClerkEvent: deletions and everything else", () => {
     ).toEqual({ kind: "delete", clerkId: "user_abc", at: new Date(updatedAt) });
   });
 
+  it("reads an event time given in seconds, as Clerk's own example does", () => {
+    const seconds = 1_716_883_200;
+    expect(
+      planClerkEvent({
+        type: "user.deleted",
+        timestamp: seconds,
+        data: { id: "user_abc" },
+      }),
+    ).toEqual({
+      kind: "delete",
+      clerkId: "user_abc",
+      at: new Date(seconds * 1000),
+    });
+  });
+
+  it("reads the same moment the same way in seconds and in milliseconds", () => {
+    const at = (timestamp: number) => {
+      const plan = planClerkEvent({
+        type: "user.deleted",
+        timestamp,
+        data: { id: "user_abc" },
+      });
+      return plan.kind === "delete" ? plan.at.getTime() : null;
+    };
+    expect(at(1_716_883_200)).toBe(at(1_716_883_200_000));
+  });
+
+  it("ignores a time that is zero, negative or not a number", () => {
+    for (const timestamp of [0, -5, Number.NaN, "1716883200", null]) {
+      expect(
+        planClerkEvent({
+          type: "user.deleted",
+          timestamp,
+          data: { id: "user_abc" },
+        }),
+      ).toEqual({ kind: "ignore" });
+    }
+  });
+
   it("ignores a deletion with no id or no time", () => {
     expect(
       planClerkEvent({ type: "user.deleted", timestamp: 1, data: {} }),
