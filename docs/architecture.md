@@ -22,7 +22,7 @@ flowchart LR
   end
 
   neon[("Neon Postgres<br/>planned, SAG-9")]
-  clerk["Clerk accounts<br/>planned, SAG-10"]
+  clerk["Clerk accounts<br/>sessions built (SAG-10), webhook planned (SAG-11)"]
   providers["Data providers<br/>TMDB, TVmaze, Wikidata,<br/>Open Library, Google Books, MangaDex<br/>planned, SAG-13 to SAG-16"]
   discord["Discord webhooks<br/>planned, SAG-27"]
   gh["GitHub<br/>repository, Actions, ruleset"]
@@ -61,7 +61,7 @@ sequenceDiagram
   M->>R: continue with the language and an i18next instance in context
   R-->>W: loader data with translated title and description
   W-->>B: HTML with lang set and Vary on Cookie and Accept-Language
-  Note over B,W: Planned: Clerk session check and role guards on protected routes
+  Note over B,W: Clerk session check runs after i18next. Protected routes use requireUser and requireRole (SAG-10)
 
   B->>W: POST /api/locale with language and redirectTo
   W->>W: check Origin, validate with Zod, allow only paths on this site
