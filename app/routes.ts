@@ -4,6 +4,7 @@ export default [
   index("routes/home.tsx"),
   route("sign-in/*", "routes/sign-in.tsx"),
   route("sign-up/*", "routes/sign-up.tsx"),
+  route("settings/profile", "routes/settings.profile.tsx"),
   route("api/health", "routes/api.health.ts"),
   route("api/locale", "routes/api.locale.ts"),
   route("webhooks/clerk", "routes/webhooks.clerk.ts"),

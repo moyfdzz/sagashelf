@@ -10,6 +10,8 @@
     "db/**/*",
     "server/db/schema/**/*",
     "server/db/clerk-sync.ts",
+    "server/db/profile.ts",
+    "server/account/profile-schema.ts",
     "server/auth/clerk-user.ts",
     "server/auth/canonical-email.ts"
   ],

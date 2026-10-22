@@ -1,6 +1,7 @@
 # Search engines may index the public pages. The admin area and the API are not for crawlers.
 User-agent: *
 Disallow: /admin
+Disallow: /settings
 Disallow: /api/
 
 # Crawlers that collect content to train AI models, and AI agents. This file is a request,

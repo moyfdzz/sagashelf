@@ -42,5 +42,35 @@
     "signUp": {
       "title": "Create account"
     }
+  },
+  "settings": {
+    "profile": {
+      "title": "Profile",
+      "description": "Change how other people see you on SagaShelf.",
+      "username": "Username",
+      "usernameHint": "It cannot be changed from here yet.",
+      "displayName": "Display name",
+      "displayNameHint": "Up to {{max}} characters. If you leave it empty, your username is shown.",
+      "bio": "About you",
+      "bioHint": "Up to {{max}} characters. It is shown as plain text.",
+      "language": "Language",
+      "privacy": "Profile privacy",
+      "privacyOptions": {
+        "public": "Public",
+        "friends": "Friends only (mutual follows)",
+        "private": "Private"
+      },
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "errors": {
+        "summary": "Check the fields marked below.",
+        "display_name_too_long": "The name is too long.",
+        "bio_too_long": "The text is too long.",
+        "invalid_locale": "Choose a language from the list.",
+        "invalid_privacy": "Choose an option from the list.",
+        "generic": "We could not save the changes. Please try again."
+      }
+    }
   }
 }
