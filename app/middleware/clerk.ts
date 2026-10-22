@@ -9,6 +9,10 @@ import { getClerkKeys } from "~server/runtime-env";
  * pages keep working; the guards then refuse protected routes.
  */
 export const authMiddleware: MiddlewareFunction<Response> = (args, next) => {
+  // Webhooks are server to server and carry a signature, not a session.
+  if (new URL(args.request.url).pathname.startsWith("/webhooks/"))
+    return next();
+
   const keys = getClerkKeys();
   if (!keys) return next();
   return clerkMiddleware(keys)(args, next);

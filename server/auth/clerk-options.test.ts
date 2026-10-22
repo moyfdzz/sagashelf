@@ -1,6 +1,37 @@
 import { describe, expect, it } from "vitest";
 
-import { clerkKeysFromEnv, normalizeJwtKey } from "./clerk-options";
+import {
+  clerkKeysFromEnv,
+  normalizeJwtKey,
+  webhookSecretFromEnv,
+} from "./clerk-options";
+
+describe("webhookSecretFromEnv", () => {
+  it("is null when the secret is missing or empty", () => {
+    expect(webhookSecretFromEnv({})).toBeNull();
+    expect(
+      webhookSecretFromEnv({ CLERK_WEBHOOK_SIGNING_SECRET: "" }),
+    ).toBeNull();
+  });
+
+  it("returns a secret in the whsec_ shape", () => {
+    expect(
+      webhookSecretFromEnv({ CLERK_WEBHOOK_SIGNING_SECRET: "whsec_abc" }),
+    ).toBe("whsec_abc");
+  });
+
+  it("names a malformed secret without echoing it", () => {
+    const bad = "not-a-secret-value";
+    let message = "";
+    try {
+      webhookSecretFromEnv({ CLERK_WEBHOOK_SIGNING_SECRET: bad });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("CLERK_WEBHOOK_SIGNING_SECRET");
+    expect(message).not.toContain(bad);
+  });
+});
 
 describe("normalizeJwtKey", () => {
   it("turns escaped line breaks into real ones", () => {

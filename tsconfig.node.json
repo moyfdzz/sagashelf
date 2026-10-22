@@ -8,7 +8,10 @@
     "drizzle.config.ts",
     "e2e/**/*",
     "db/**/*",
-    "server/db/schema/**/*"
+    "server/db/schema/**/*",
+    "server/db/clerk-sync.ts",
+    "server/auth/clerk-user.ts",
+    "server/auth/canonical-email.ts"
   ],
   "compilerOptions": {
     "composite": true,

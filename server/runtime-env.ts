@@ -1,6 +1,10 @@
 import { env } from "cloudflare:workers";
 
-import { clerkKeysFromEnv, type ClerkKeys } from "./auth/clerk-options";
+import {
+  clerkKeysFromEnv,
+  webhookSecretFromEnv,
+  type ClerkKeys,
+} from "./auth/clerk-options";
 import { parseEnv, type AppEnv } from "./env";
 
 /** The Workers Rate Limiting binding for write endpoints (see `ratelimits` in wrangler.jsonc). */
@@ -35,4 +39,9 @@ export async function getDb() {
 /** The Clerk keys, or null when this deployment has none. Reads only the Clerk variables. */
 export function getClerkKeys(): ClerkKeys | null {
   return clerkKeysFromEnv(env as unknown as Record<string, unknown>);
+}
+
+/** The Clerk webhook signing secret, or null when this deployment has none. */
+export function getClerkWebhookSecret(): string | null {
+  return webhookSecretFromEnv(env as unknown as Record<string, unknown>);
 }

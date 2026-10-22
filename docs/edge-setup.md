@@ -83,6 +83,29 @@ The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **
 - [ ] In Cloudflare, DNS, add the CNAME records Clerk lists (the Frontend API, the account portal, and the email records). Set every one of them to **DNS only** (grey cloud, not proxied), as Clerk requires, so Cloudflare does not sit in front of its verification. Wait until Clerk shows the domain as verified and has issued its certificates.
 - [ ] Create our own Google OAuth credentials in Google Cloud (a consent screen and an OAuth client of type web), put the redirect URI that Clerk shows in them, and paste the client id and secret into Clerk's Google connection. The shared development credentials Clerk uses in the Development instance do not work in production.
 - [ ] Put the production publishable key, secret key and JWT public key in the **Production** variables. The JWT public key is read from the production instance, which has its own.
-- [ ] The Clerk instance, its webhook endpoint (SAG-11) and Svix signing secret are separate for each instance.
+- [ ] The Clerk instance, its webhook endpoint (section 9) and its Svix signing secret are separate for each instance.
 - [ ] Check in a browser: sign up with a new address, receive the code, sign in with Google, sign out, and confirm that the home page still has the strict policy (<https://securityheaders.com> and the Observatory should keep their grades, because only `/sign-in` and `/sign-up` use the wider policy).
 - [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification.
+
+## 9. Clerk webhook (SAG-11)
+
+The endpoint is `POST /webhooks/clerk`. How it works is in [ADR-003](adr/003-auth-clerk.md#the-webhook). Each Clerk instance has its own endpoint and its own signing secret.
+
+### Before the first deploy that uses it
+
+- [ ] Apply migration `0004_users_clerk_updated_at` to the Neon databases. It adds one column with a default, so it is safe with the old code running. Run it from your own terminal with `DATABASE_URL` in a session variable (read with `Read-Host -AsSecureString`), never in a file: `npm.cmd run db:migrate`. Do the preview database and the production database separately.
+
+### Create the endpoint (development instance first)
+
+- [ ] In Clerk, Configure, Webhooks, Add endpoint. The URL must be public. For a pull request preview use its URL, `https://<preview>.workers.dev/webhooks/clerk`; for production, `https://sagashelf.app/webhooks/clerk`. A local server is not reachable by Clerk.
+- [ ] Subscribe to **only** `user.created`, `user.updated` and `user.deleted`. Other events are answered 200 and ignored, but there is no reason to send them.
+- [ ] Copy the **Signing Secret** (starts with `whsec_`) from the endpoint page. Store it only as the Worker secret `CLERK_WEBHOOK_SIGNING_SECRET`: in **Previews Base** for the development instance, and in **Production** for the production instance. Never in the repository, an issue or a chat. In `.dev.vars` only for your own tests.
+- [ ] Without the secret the endpoint answers 503, so a deployment that has not been set up never accepts an event.
+- [ ] With the endpoint created, use Clerk's **Testing** tab to send an example event, and check the **delivery log**: the answer must be 200 with a body like `{"status":"applied"}` (or `"ignored"` for an event we do not use).
+- [ ] **Bot Fight Mode** (section 3) may challenge Svix's requests, because on the Free plan it cannot be skipped with a WAF rule. If the delivery log shows 403 or a Cloudflare challenge page, tell the owner before changing anything: the options are a narrow WAF rule, or turning that setting off for this path where the plan allows it. Not checked yet.
+
+### Test it locally, without real data
+
+- **Automatic tests:** `npm run test` covers the route and the planning rules with fake events and a signing secret made for the tests. `npm run test:integration` (needs `npm run db:up`) runs the replay, ordering, deletion and refusal cases on a real Postgres.
+- **A signed request against `npm run dev`:** put `CLERK_WEBHOOK_SIGNING_SECRET=whsec_` followed by any base64 text in `.dev.vars`, restart the dev server, and send an event signed with that same secret (the Standard Webhooks scheme: HMAC-SHA256, in base64, over `svix-id.svix-timestamp.body`, in the `svix-signature` header as `v1,<signature>`). Use the fake users of the tests, never a real person's data. An event of a type we do not use answers 200 `ignored` without a database; a user event needs `DATABASE_URL` to a database that the Neon HTTP driver can reach, so use a Neon preview branch, not the local Docker one.
+- **Verified in the Worker runtime on 2026-10-22:** with a signing secret made for the check, a valid event answered 200, and a missing signature, a wrong secret, a changed body and a 10 minute old timestamp all answered 401.
