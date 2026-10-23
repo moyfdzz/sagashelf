@@ -81,11 +81,11 @@ The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **
 
 - [ ] In Clerk, create the Production instance from the Development one and choose the domain `sagashelf.app`.
 - [ ] In Cloudflare, DNS, add the CNAME records Clerk lists (the Frontend API, the account portal, and the email records). Set every one of them to **DNS only** (grey cloud, not proxied), as Clerk requires, so Cloudflare does not sit in front of its verification. Wait until Clerk shows the domain as verified and has issued its certificates.
-- [ ] **Skipped for the launch ([ADR-014](adr/014-no-google-sign-in-at-launch.md)):** Google stays off in the Production instance. Create our own Google OAuth credentials in Google Cloud (a consent screen and an OAuth client of type web), put the redirect URI that Clerk shows in them, and paste the client id and secret into Clerk's Google connection. The shared development credentials Clerk uses in the Development instance do not work in production.
+- [ ] Create our own Google OAuth credentials in Google Cloud (a consent screen and an OAuth client of type web), put the redirect URI that Clerk shows in them, and paste the client id and secret into Clerk's Google connection. The shared development credentials Clerk uses in the Development instance do not work in production.
 - [ ] Put the production publishable key, secret key and JWT public key in the **Production** variables. The JWT public key is read from the production instance, which has its own.
 - [ ] The Clerk instance, its webhook endpoint (section 9) and its Svix signing secret are separate for each instance.
-- [ ] Check in a browser: sign up with a new address, receive the code, sign in with the password, sign out, and confirm that the home page still has the strict policy (<https://securityheaders.com> and the Observatory should keep their grades, because only `/sign-in` and `/sign-up` use the wider policy).
-- [ ] **Skipped ([ADR-014](adr/014-no-google-sign-in-at-launch.md)): there is no administrator in production until a second factor exists.** Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification.
+- [ ] Check in a browser: sign up with a new address, receive the code, sign in with Google, sign out, and confirm that the home page still has the strict policy (<https://securityheaders.com> and the Observatory should keep their grades, because only `/sign-in` and `/sign-up` use the wider policy).
+- [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification.
 
 ## 9. Clerk webhook (SAG-11)
 

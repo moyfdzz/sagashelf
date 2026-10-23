@@ -19,7 +19,6 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [011](011-edge-security-and-domain.md)        | Domain, security headers, CSP with nonces, rate limiting and crawler policy            | Accepted | Partial (SAG-7, plus dashboard steps) |
 | [012](012-neon-over-supabase.md)              | Neon for the database, compared with Supabase on the Free plan                         | Accepted | Done (SAG-9)                          |
 | [013](013-color-palette-and-theme.md)         | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback | Accepted | Done (SAG-12)                         |
-| [014](014-no-google-sign-in-at-launch.md)     | No Google sign-in at launch, and no administrator until there is a second factor       | Accepted | Partial (SAG-12)                      |
 
 "Accepted" means the decision is made. "Planned" means it is not built yet, so the ADR describes the intended design and may be refined by its ticket without a new ADR as long as the decision itself does not change.
 
