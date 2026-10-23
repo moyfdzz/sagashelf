@@ -63,6 +63,13 @@ What the palette has to meet:
 - **The color-vision simulation** used the Machado (2009) matrices written from memory, and the smallest distance between two types in the worst case is 0.04 in OKLab, which is modest. It was not tried with people who have a color-vision deficiency. The rule "always a label" is what makes it safe.
 - The color of the header's amber against the color of the book type (18°) should be looked at again when the library draws both on one screen.
 
+## Addendum: the logo (SAG-35, 2026-10-23)
+
+- **The mark** is a book with an amber bookmark, with no text. The source is `public/favicon.svg` (navy tile, blue book, amber bookmark), which uses only the four colors of this palette (`app/brand.test.ts` checks it). It was drawn by hand as an SVG, after trying drafts from an image generator that did not follow the shapes asked for.
+- **In the header** the same drawing is the component `app/components/LogoMark.tsx`. The book takes the header text color, not the blue, because blue on the navy header is only about 2:1; the bookmark takes the amber. It uses the header's color names, so the pairs of `app/palette.test.ts` already cover it (header text on header 7:1, amber on header 4.5:1). It is decoration (`aria-hidden`), because the name of the site is written next to it.
+- **The files in `public/`:** `favicon.svg`, `favicon.ico` (16, 32 and 48 px), `apple-touch-icon.png` (180 px) and `icon-512.png`. The raster files are built from the SVG with `node scripts/build-icons.mjs` (Playwright). There is no web app manifest, because an installable app is not planned.
+- **Google:** the logo is not uploaded to the OAuth consent screen, because Google asks for verification once a logo is there.
+
 ## References
 
 - WCAG 2.2: contrast minimum (1.4.3), non-text contrast (1.4.11), use of color (1.4.1). Contrast ratios computed from the WCAG luminance formula in `app/palette.test.ts`.

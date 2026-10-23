@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>SagaShelf</title>
+  <rect width="1024" height="1024" rx="224" fill="#132643"/>
+  <rect x="230" y="310" width="564" height="480" rx="64" fill="#025C93"/>
+  <rect x="318" y="310" width="28" height="480" fill="#132643"/>
+  <path d="M580 220 H706 V600 L643 548 L580 600 Z" fill="#F1BA4B" stroke="#F1BA4B" stroke-width="20" stroke-linejoin="round"/>
+</svg>
