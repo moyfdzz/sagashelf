@@ -28,13 +28,22 @@ test.describe("security headers", () => {
     );
   });
 
-  test("static files carry the base headers too", async ({ request }) => {
-    const headers = (await request.get("/favicon.ico")).headers();
+  for (const path of [
+    "/favicon.ico",
+    "/favicon.svg",
+    "/apple-touch-icon.png",
+    "/icon-512.png",
+  ]) {
+    test(`static file ${path} carries the base headers too`, async ({
+      request,
+    }) => {
+      const headers = (await request.get(path)).headers();
 
-    for (const [name, value] of Object.entries(baseHeaders)) {
-      expect(headers[name], name).toBe(value);
-    }
-  });
+      for (const [name, value] of Object.entries(baseHeaders)) {
+        expect(headers[name], name).toBe(value);
+      }
+    });
+  }
 
   test("a 404 page carries them as well", async ({ request }) => {
     const response = await request.get("/does-not-exist");

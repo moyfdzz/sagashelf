@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router";
 
 import { LanguageSwitcher } from "~/components/LanguageSwitcher";
+import { LogoMark } from "~/components/LogoMark";
 import { ThemeSwitch } from "~/components/ThemeSwitch";
 import type { Theme } from "~/lib/theme";
 
@@ -12,7 +13,11 @@ export function Navbar({ savedTheme }: { savedTheme: Theme | null }) {
   return (
     <header data-chrome className="bg-surface-raised border-border border-b">
       <div className="container mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
-        <Link to="/" className="text-accent text-2xl font-bold">
+        <Link
+          to="/"
+          className="text-accent flex items-center gap-2 text-2xl font-bold"
+        >
+          <LogoMark className="h-8 w-8 shrink-0" />
           {t("app.name")}
         </Link>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

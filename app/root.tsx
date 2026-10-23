@@ -22,6 +22,14 @@ import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
 
+// The logo, from public/ (built by scripts/build-icons.mjs). The SVG is for current browsers,
+// the .ico for the rest, and the apple-touch-icon for a page saved to an iPhone's home screen.
+export const links: Route.LinksFunction = () => [
+  { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml", sizes: "any" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+];
+
 export function loader({ context, request }: Route.LoaderArgs) {
   return data({
     locale: getLocale(context),
