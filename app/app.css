@@ -1,28 +1,161 @@
 @import "tailwindcss" source(".");
 
-/* Design tokens. Components use the semantic names (bg-surface, text-fg, ...),
-   so the palette changes in one place and dark mode follows the system setting. */
+/* Design tokens. Components use the semantic names (bg-surface, text-fg, ...), so the palette
+   changes in one place. The page starts in the mode the person chose with the switch in the
+   header (data-theme on <html>, from a cookie). With no choice, the system setting decides, and
+   with none of that it is light. The dark colors are written twice, once for the system setting
+   and once for the switch, and app/palette.test.ts checks that both are the same, together with
+   the contrast of every pair that is used together. */
 :root {
   color-scheme: light dark;
-  --surface: oklch(0.99 0 0);
-  --surface-raised: oklch(0.96 0.005 260);
-  --fg: oklch(0.22 0.02 260);
-  --fg-muted: oklch(0.45 0.02 260);
-  --border: oklch(0.88 0.01 260);
-  --accent: oklch(0.52 0.19 260);
+  --surface: oklch(0.985 0.004 250);
+  --surface-raised: oklch(0.955 0.01 250);
+  --fg: oklch(0.2 0.035 258);
+  --fg-muted: oklch(0.43 0.035 255);
+  /* A line that only divides (the header, a card). Too faint to find a field by. */
+  --border: oklch(0.89 0.01 250);
+  /* The edge of a field you type in: it must be seen, so it has at least 3:1 (WCAG 1.4.11). */
+  --input-edge: oklch(0.62 0.03 250);
+  /* Actions and links on the page. */
+  --accent: oklch(0.46 0.115 245);
   --accent-fg: oklch(0.99 0 0);
+
+  --success-bg: oklch(0.95 0.05 155);
+  --success-fg: oklch(0.3 0.08 155);
+  --success-edge: oklch(0.55 0.13 155);
+  --danger-bg: oklch(0.95 0.04 25);
+  --danger-fg: oklch(0.38 0.14 25);
+  --danger-text: oklch(0.5 0.19 25);
+  --danger-edge: oklch(0.58 0.18 25);
+
+  /* The header is dark in both modes. Inside it (header[data-chrome]) the usual class names take these. */
+  --header-bg: oklch(0.27 0.06 258);
+  --header-fg: oklch(0.97 0.008 245);
+  --header-muted: oklch(0.82 0.03 250);
+  /* Amber is the brand color and lives only in the header. */
+  --header-accent: oklch(0.82 0.14 82);
+  --header-accent-fg: oklch(0.22 0.05 258);
+  --header-border: oklch(0.33 0.055 258);
+  --header-edge: oklch(0.68 0.04 250);
+
+  /* One color per content type: a tinted background, the text on it, and a dot. Never the only cue: a label always goes with it. */
+  --type-anime-bg: oklch(0.94 0.04 205);
+  --type-anime-fg: oklch(0.4 0.1 205);
+  --type-anime-dot: oklch(0.6 0.16 205);
+  --type-series-bg: oklch(0.94 0.04 270);
+  --type-series-fg: oklch(0.4 0.1 270);
+  --type-series-dot: oklch(0.6 0.16 270);
+  --type-movie-bg: oklch(0.94 0.04 350);
+  --type-movie-fg: oklch(0.4 0.1 350);
+  --type-movie-dot: oklch(0.6 0.16 350);
+  --type-book-bg: oklch(0.94 0.04 100);
+  --type-book-fg: oklch(0.4 0.1 100);
+  --type-book-dot: oklch(0.6 0.16 100);
+  --type-manga-bg: oklch(0.94 0.04 310);
+  --type-manga-fg: oklch(0.4 0.1 310);
+  --type-manga-dot: oklch(0.6 0.16 310);
+  --type-custom-bg: oklch(0.94 0.005 260);
+  --type-custom-fg: oklch(0.35 0.01 260);
+  --type-custom-dot: oklch(0.6 0.01 260);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --surface: oklch(0.17 0.02 260);
-    --surface-raised: oklch(0.22 0.02 260);
-    --fg: oklch(0.95 0.005 260);
-    --fg-muted: oklch(0.72 0.02 260);
-    --border: oklch(0.32 0.02 260);
-    --accent: oklch(0.72 0.14 260);
-    --accent-fg: oklch(0.17 0.02 260);
+  :root:not([data-theme="light"]) {
+    --surface: oklch(0.13 0.035 258);
+    --surface-raised: oklch(0.18 0.04 258);
+    --fg: oklch(0.95 0.01 250);
+    --fg-muted: oklch(0.74 0.03 255);
+    --border: oklch(0.27 0.04 258);
+    --input-edge: oklch(0.5 0.04 255);
+    --accent: oklch(0.72 0.12 240);
+    --accent-fg: oklch(0.13 0.035 258);
+
+    --success-bg: oklch(0.26 0.06 155);
+    --success-fg: oklch(0.93 0.05 155);
+    --success-edge: oklch(0.62 0.13 155);
+    --danger-bg: oklch(0.27 0.07 25);
+    --danger-fg: oklch(0.93 0.04 25);
+    --danger-text: oklch(0.76 0.14 25);
+    --danger-edge: oklch(0.65 0.16 25);
+
+    --header-bg: oklch(0.11 0.03 258);
+    --header-fg: oklch(0.95 0.01 250);
+    --header-muted: oklch(0.76 0.03 255);
+    --header-accent: oklch(0.8 0.14 82);
+    --header-accent-fg: oklch(0.15 0.03 258);
+    --header-border: oklch(0.22 0.04 258);
+    --header-edge: oklch(0.55 0.04 255);
+
+    --type-anime-bg: oklch(0.28 0.06 205);
+    --type-anime-fg: oklch(0.8 0.09 205);
+    --type-anime-dot: oklch(0.75 0.15 205);
+    --type-series-bg: oklch(0.28 0.06 270);
+    --type-series-fg: oklch(0.8 0.09 270);
+    --type-series-dot: oklch(0.75 0.15 270);
+    --type-movie-bg: oklch(0.28 0.06 350);
+    --type-movie-fg: oklch(0.8 0.09 350);
+    --type-movie-dot: oklch(0.75 0.15 350);
+    --type-book-bg: oklch(0.28 0.06 100);
+    --type-book-fg: oklch(0.8 0.09 100);
+    --type-book-dot: oklch(0.75 0.15 100);
+    --type-manga-bg: oklch(0.28 0.06 310);
+    --type-manga-fg: oklch(0.8 0.09 310);
+    --type-manga-dot: oklch(0.75 0.15 310);
+    --type-custom-bg: oklch(0.28 0.01 260);
+    --type-custom-fg: oklch(0.85 0.01 260);
+    --type-custom-dot: oklch(0.7 0.01 260);
   }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: oklch(0.13 0.035 258);
+  --surface-raised: oklch(0.18 0.04 258);
+  --fg: oklch(0.95 0.01 250);
+  --fg-muted: oklch(0.74 0.03 255);
+  --border: oklch(0.27 0.04 258);
+  --input-edge: oklch(0.5 0.04 255);
+  --accent: oklch(0.72 0.12 240);
+  --accent-fg: oklch(0.13 0.035 258);
+
+  --success-bg: oklch(0.26 0.06 155);
+  --success-fg: oklch(0.93 0.05 155);
+  --success-edge: oklch(0.62 0.13 155);
+  --danger-bg: oklch(0.27 0.07 25);
+  --danger-fg: oklch(0.93 0.04 25);
+  --danger-text: oklch(0.76 0.14 25);
+  --danger-edge: oklch(0.65 0.16 25);
+
+  --header-bg: oklch(0.11 0.03 258);
+  --header-fg: oklch(0.95 0.01 250);
+  --header-muted: oklch(0.76 0.03 255);
+  --header-accent: oklch(0.8 0.14 82);
+  --header-accent-fg: oklch(0.15 0.03 258);
+  --header-border: oklch(0.22 0.04 258);
+  --header-edge: oklch(0.55 0.04 255);
+
+  --type-anime-bg: oklch(0.28 0.06 205);
+  --type-anime-fg: oklch(0.8 0.09 205);
+  --type-anime-dot: oklch(0.75 0.15 205);
+  --type-series-bg: oklch(0.28 0.06 270);
+  --type-series-fg: oklch(0.8 0.09 270);
+  --type-series-dot: oklch(0.75 0.15 270);
+  --type-movie-bg: oklch(0.28 0.06 350);
+  --type-movie-fg: oklch(0.8 0.09 350);
+  --type-movie-dot: oklch(0.75 0.15 350);
+  --type-book-bg: oklch(0.28 0.06 100);
+  --type-book-fg: oklch(0.8 0.09 100);
+  --type-book-dot: oklch(0.75 0.15 100);
+  --type-manga-bg: oklch(0.28 0.06 310);
+  --type-manga-fg: oklch(0.8 0.09 310);
+  --type-manga-dot: oklch(0.75 0.15 310);
+  --type-custom-bg: oklch(0.28 0.01 260);
+  --type-custom-fg: oklch(0.85 0.01 260);
+  --type-custom-dot: oklch(0.7 0.01 260);
 }
 
 @theme inline {
@@ -31,8 +164,72 @@
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-border: var(--border);
+  --color-input-edge: var(--input-edge);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-success-edge: var(--success-edge);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-text: var(--danger-text);
+  --color-danger-edge: var(--danger-edge);
+  --color-type-anime-bg: var(--type-anime-bg);
+  --color-type-anime-fg: var(--type-anime-fg);
+  --color-type-anime-dot: var(--type-anime-dot);
+  --color-type-series-bg: var(--type-series-bg);
+  --color-type-series-fg: var(--type-series-fg);
+  --color-type-series-dot: var(--type-series-dot);
+  --color-type-movie-bg: var(--type-movie-bg);
+  --color-type-movie-fg: var(--type-movie-fg);
+  --color-type-movie-dot: var(--type-movie-dot);
+  --color-type-book-bg: var(--type-book-bg);
+  --color-type-book-fg: var(--type-book-fg);
+  --color-type-book-dot: var(--type-book-dot);
+  --color-type-manga-bg: var(--type-manga-bg);
+  --color-type-manga-fg: var(--type-manga-fg);
+  --color-type-manga-dot: var(--type-manga-dot);
+  --color-type-custom-bg: var(--type-custom-bg);
+  --color-type-custom-fg: var(--type-custom-fg);
+  --color-type-custom-dot: var(--type-custom-dot);
+
+  --animate-toast-in: toast-in 180ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Inside the header the same class names take the header colors, so a dark header needs no
+   change in the components that live in it. */
+header[data-chrome] {
+  --surface-raised: var(--header-bg);
+  --fg: var(--header-fg);
+  --fg-muted: var(--header-muted);
+  --accent: var(--header-accent);
+  --accent-fg: var(--header-accent-fg);
+  --border: var(--header-border);
+  --input-edge: var(--header-edge);
+}
+
+/* Tailwind 4 no longer shows the hand over buttons. Anything that acts when clicked says so. */
+@layer base {
+  button:not(:disabled),
+  select:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 body {

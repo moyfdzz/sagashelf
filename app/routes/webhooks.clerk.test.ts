@@ -234,9 +234,18 @@ describe("POST /webhooks/clerk: requests that must never reach the database", ()
   });
 
   it("answers 503 when there is no signing secret, and never lets an event in", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     mocks.getSecret.mockReturnValue(null);
 
     await expectRejected(await post(userCreated), 503);
+
+    // The 503 leaves a trace in the logs, naming the variable and nothing else.
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]?.[0])).toContain(
+      "CLERK_WEBHOOK_SIGNING_SECRET",
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("example.test");
+    warn.mockRestore();
   });
 
   it("answers 429 when the caller is over the limit, before checking anything else", async () => {

@@ -9,6 +9,7 @@ import {
   clerkFrontendApiHost,
   generateNonce,
   isAuthPage,
+  isSessionPage,
 } from "./security-headers";
 
 describe("generateNonce", () => {
@@ -109,6 +110,75 @@ describe("isAuthPage", () => {
   it.each(["/", "/sign-inx", "/api/sign-in", "/settings/sign-in"])(
     "is false for %s",
     (path) => expect(isAuthPage(path)).toBe(false),
+  );
+});
+
+describe("buildContentSecurityPolicy for the settings pages", () => {
+  const policy = buildContentSecurityPolicy(
+    "abc123",
+    "clerk.example.accounts.dev",
+    "session",
+  );
+  const directives = Object.fromEntries(
+    policy.split("; ").map((part) => {
+      const [name, ...sources] = part.split(" ");
+      return [name, sources];
+    }),
+  );
+
+  it("adds only Clerk's script host to the scripts and to the connections", () => {
+    expect(directives["script-src"]).toEqual([
+      "'self'",
+      "'nonce-abc123'",
+      "https://clerk.example.accounts.dev",
+    ]);
+    expect(directives["connect-src"]).toEqual([
+      "'self'",
+      "https://clerk.example.accounts.dev",
+    ]);
+    expect(directives["worker-src"]).toEqual(["'self'", "blob:"]);
+  });
+
+  it("is narrower than the policy of the sign-in pages", () => {
+    const wide = buildContentSecurityPolicy(
+      "abc123",
+      "clerk.example.accounts.dev",
+      "auth",
+    );
+    expect(policy).not.toBe(wide);
+    // No Turnstile, no Clerk Protect, no Clerk images, no inline styles and no frames.
+    expect(policy).not.toContain("challenges.cloudflare.com");
+    expect(policy).not.toContain("protect.clerk.com");
+    expect(policy).not.toContain("img.clerk.com");
+    expect(directives["style-src"]).toEqual(["'self'"]);
+    expect(directives["frame-src"]).toEqual(["'none'"]);
+  });
+
+  it("never allows inline scripts, eval, framing or other forms of embedding", () => {
+    expect(policy).not.toContain("unsafe-inline");
+    expect(policy).not.toContain("unsafe-eval");
+    expect(directives["frame-ancestors"]).toEqual(["'none'"]);
+    expect(directives["object-src"]).toEqual(["'none'"]);
+    expect(directives["base-uri"]).toEqual(["'none'"]);
+    expect(directives["form-action"]).toEqual(["'self'"]);
+  });
+
+  it("is the strict policy when there is no Frontend API host", () => {
+    expect(buildContentSecurityPolicy("abc123", undefined, "session")).toBe(
+      buildContentSecurityPolicy("abc123"),
+    );
+  });
+});
+
+describe("isSessionPage", () => {
+  it.each(["/settings", "/settings/", "/settings/profile", "/settings/a/b"])(
+    "is true for %s",
+    (path) => expect(isSessionPage(path)).toBe(true),
+  );
+
+  it.each(["/", "/settingsx", "/api/settings", "/sign-in", "/setting"])(
+    "is false for %s",
+    (path) => expect(isSessionPage(path)).toBe(false),
   );
 });
 

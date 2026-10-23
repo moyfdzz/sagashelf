@@ -1,9 +1,10 @@
 import { getAuth } from "@clerk/react-router/server";
 import { createClerkClient } from "@clerk/backend";
 import { eq } from "drizzle-orm";
-import { data, redirect, type LoaderFunctionArgs } from "react-router";
+import { data, redirectDocument, type LoaderFunctionArgs } from "react-router";
 
 import { authorize, type Role, type SessionUser } from "./authorize";
+import { signInPath } from "./sign-in-url";
 import { getClerkKeys, getDb } from "../runtime-env";
 import { users } from "../db/schema";
 
@@ -42,10 +43,10 @@ async function guard(args: LoaderFunctionArgs, role?: Role) {
   if (result.ok) return result.user;
 
   if (result.reason === "signed_out") {
-    const { pathname, search } = new URL(args.request.url);
-    throw redirect(
-      `/sign-in?redirectTo=${encodeURIComponent(pathname + search)}`,
-    );
+    // A whole new page, not a move inside this one: the sign-in page has its own, wider CSP,
+    // which only a new document gets. From a form sent in the background, a move inside the
+    // page would leave a blank screen.
+    throw redirectDocument(signInPath(args.request.url));
   }
   // Same answer for "no account" and "wrong role": it does not tell which one failed.
   throw data({ error: "forbidden" }, { status: 403 });

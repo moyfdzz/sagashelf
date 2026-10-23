@@ -39,6 +39,11 @@ export async function action({ request }: Route.ActionArgs) {
 
   const secret = getClerkWebhookSecret();
   if (!secret) {
+    // A 503 alone leaves no trace, and this is the first thing to check when Clerk reports
+    // failed deliveries: the secret may be missing from this deployment.
+    console.warn(
+      "clerk webhook: CLERK_WEBHOOK_SIGNING_SECRET is not set in this deployment",
+    );
     return answerWithoutReading(
       request,
       Response.json({ error: "not_configured" }, { status: 503 }),

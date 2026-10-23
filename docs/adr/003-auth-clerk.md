@@ -15,7 +15,8 @@ Accounts with emails and passwords are the largest security risk in the product:
 - **The administrator signs in with Google and its 2-step verification.** The free Clerk plan has no multi-factor authentication and no passkeys (see "Verified facts"), so the administrator's account has no password and relies on the 2-step verification of the Google account. `requireRole('admin')` also checks that the Clerk account has a **verified Google login**, so an email code alone is never enough for the admin area.
 - **Roles live in our `users.role` column, not in Clerk.** The first version of this ADR said Clerk `publicMetadata`. A role in our own table is changed with SQL, is read in the same query that loads the user, and needs no call to Clerk. The first administrator is set by hand in the database. Authorization is checked on the server with `requireUser` and `requireRole('admin')` (`server/auth/`). A user id sent by the browser is never trusted: the id comes from the verified session.
 - **Sessions are verified in the Worker without a network call.** `clerkMiddleware` runs in the root route with the instance's JWT public key (`CLERK_JWT_KEY`), so a valid session token costs no request to Clerk. When the token has expired, Clerk's handshake refreshes it. Without Clerk keys (tests, previews) public pages still work and protected routes answer 503, never "allowed".
-- **Clerk's code runs only on the sign-in and sign-up pages.** Those two routes embed Clerk's components and get a wider content security policy; every other page reads the session on the server, ships no Clerk code, and keeps the strict policy (ADR-011). See "Content security policy per route".
+- **Clerk's code runs only where it is needed.** The sign-in and sign-up pages embed Clerk's components and get a wider content security policy. The settings pages (`/settings/*`) load Clerk's script with no visible component, only to keep the session alive (next bullet), and get a narrow policy. Every other page reads the session on the server, ships no Clerk code, and keeps the strict policy (ADR-011). See "Content security policy per route".
+- **A session token lasts 60 seconds, and only Clerk's script renews it.** On a page without that script, a normal navigation is renewed by a redirect through Clerk's server (the handshake), but a request sent in the background, such as a form saved with `fetch`, is not eligible for it. A person who left a form open for more than a minute was seen as signed out when saving (found in SAG-12). So a page where a form can stay open loads Clerk's script, which renews the token in the background. If the script cannot load, the page still works and only loses the renewal.
 - **A local `users` mirror** in Postgres is kept in sync by a Clerk webhook, `POST /webhooks/clerk` (SAG-11). A session without a mirror row is refused with 403 until the webhook has created it. See "The webhook" below for how it works.
 - **Email normalization is ours.** `email_canonical` (trim, Unicode NFKC, lowercase, IDN to punycode, and for providers that ignore dots and `+tags` also strip those) is stored as UNIQUE so one inbox cannot register many accounts. Clerk's own subaddress block is a second layer. The original address is kept for sending.
 - **Reserved usernames are checked on our side.** Clerk's free plan cannot block names such as `admin`, `api` or `settings`, so the webhook refuses to mirror an account that has one (`reservedUsernames` in `server/auth/clerk-user.ts`, compared in lower case like the `citext` column).
@@ -34,6 +35,10 @@ Clerk's embedded components need origins and a style allowance that the strict p
 - `style-src 'unsafe-inline'`, because Clerk styles itself at runtime. Scripts never get `'unsafe-inline'` or `'unsafe-eval'`.
 
 Unit tests pin the exact lists, and an e2e test checks that the home page keeps the strict policy and mentions no Clerk origin. In the production build, the sign-in page was loaded in a real browser with no policy violations.
+
+The settings pages (`isSessionPage`) get a narrower policy, built by `buildSessionContentSecurityPolicy`: the strict one plus the Frontend API host in `script-src` and `connect-src`, and `worker-src 'self' blob:`. There is nothing to draw, so no Turnstile, Clerk Protect, Clerk images, inline styles or frames are added. Unit tests pin it and check that none of those appear.
+
+**Verified in a browser on 2026-10-22, on a preview with a real session:** Clerk's script loaded under this narrow policy, the Network tab showed repeated `tokens` and `touch` requests to the instance's Frontend API answering `200`, the console had no policy violation (only Clerk's notice about development keys), and a form left open for more than a minute was saved without sending the person to sign in. If a later Clerk version needs another origin, the console names it: add only that one, with a test.
 
 ## The webhook
 
@@ -88,7 +93,19 @@ Revisit this decision if Clerk removes or changes the free plan, if the project 
 
 ## Open questions
 
-- CPU time in a real Cloudflare Worker (the Free plan allows 10 ms per request) was **not measured**: only local numbers exist. Measure it on a preview and record the result in SAG-10.
+- CPU time in a real Cloudflare Worker (the Free plan allows 10 ms per request, and going over answers error 1102 per the [limits page](https://developers.cloudflare.com/workers/platform/limits/), read 2026-10-22) is **still not measured on Cloudflare**. Local numbers exist (next section), and the real ones are read from Workers Observability (`$workers.cpuTimeMs`, with the median and P99 in the Query Builder, grouped by route and by version). Until then the figure in the Cloudflare dashboard, a median of about 19 ms for the active production version on 2026-10-22 with a 0% error rate, is unexplained: it could be mostly cold starts, and the plan of the account (Free or Paid) was not checked.
+
+## CPU cost, measured locally on 2026-10-22
+
+The production build (2.86 MiB raw, 620 KiB gzip as `wrangler check startup` counts it, against the 3 MiB gzip limit of the Free plan) was run in workerd with `vite preview`. This is a local machine, so read the figures as a ranking and not as milliseconds on Cloudflare.
+
+- **A warm request is cheap.** 1 to 3 ms (median) for `/`, `/sign-in`, the 404 page and `/api/health`, with a maximum of 5 ms over 60 requests each. Whole milliseconds of wall time from the local spans, which with no network is close to CPU time.
+- **The first request after a cold start is not.** About 95 to 100 ms (three runs: 98, 100 and 101 ms), because `workers/app.ts` loads the whole server build with a lazy `import()`, so its 2.4 MiB are evaluated during that first request and not in the startup phase. `wrangler check startup` only sees the startup phase: 19.8 ms of active time (the limit for startup is 1 second).
+- **What the first request spends** (a CPU profile taken through workerd's inspector, about 63 ms of JavaScript): about 18 ms evaluating the server build, about 13 ms rendering React for the first time, and about **10 ms in `getClientLocales`** of `remix-i18next`, which calls `new Intl.Locale` and `Intl.DateTimeFormat.supportedLocalesOf` and so loads ICU's locale data once per isolate. Evaluating the 20 Drizzle table definitions costs about 3 ms.
+- **Minifying the server bundle did not help.** It cut the bundle from 2400 to 1122 KiB, but the first request stayed at 93 to 97 ms. The cost is running the code, not reading it. The change was not kept.
+- **A measurement that is not evidence:** timing `import()` of each package in a fresh Node process ranked Drizzle and Clerk high, but Node loads hundreds of loose files and the bundle is one file, so it was discarded.
+- **What it means:** if Cloudflare counts the first request after a cold start in the 10 ms limit, a site with little traffic, where most requests start a new isolate, could be near it. The docs say that isolates tolerate occasional overruns, so one cold request is not by itself a failure, but this is not verified.
+- **Options if real data says there is a problem:** parse `Accept-Language` for the two languages ourselves, without `Intl` (about 10 ms of the cold request, once per isolate, and only for a first visit with no language cookie); import the database schema only where it is used (about 3 ms); or the Paid plan, which has no 10 ms limit. A change that keeps the Clerk script, React or Zod out of the first request is not possible with the server build as it is, because React Router loads every route module together.
 - The production instance (DNS records, Google OAuth credentials and the production keys) is not created yet.
 - Whether Clerk offers a way to disable the email-code sign-in for one account only. It stays enabled for everyone, and the admin guard requires a verified Google login instead.
 - The admin guard asks Clerk for the user's Google login with one API call, and that call was not tested against a real account yet.
@@ -115,3 +132,42 @@ Revisit this decision if Clerk removes or changes the free plan, if the project 
 - Added "The webhook" section, replacing the one-line plan. Ordering uses a new column, `users.clerk_updated_at`, not `updated_at` (which is when the row changed here).
 - Idempotency is one SQL statement per event instead of "in the same transaction", because the Neon HTTP driver cannot read between statements.
 - Refused accounts are recorded and queued instead of failing the webhook, so Svix does not retry them forever.
+
+## Changes made in SAG-12
+
+- Clerk's script now also runs on `/settings/*`, with a narrow policy, because the 60 second session token cannot be renewed on a page without it. The earlier decision, "no Clerk code outside the sign-in and sign-up pages", assumed that the server-side session was enough.
+- A visitor with no session is sent to sign in with a redirect to a **whole new page** (`redirectDocument`), because the sign-in page has its own policy and a move inside the page left it blank. The way back is the page itself, never the `.data` request of React Router, and always a path on this site.
+- Alternatives considered for the expired token: let the server validate an expired token against Clerk's API on each form save (strict policy, no script, but custom security code and a network call per save), or tell the person to save quickly (a poor experience, and the typed text is lost). Neither was chosen.
+
+### What Cloudflare showed, and the first change (2026-10-22)
+
+- **Real figures** (Workers Observability, the last hour, about 30 requests, which include test requests and visits to a preview): CPU **median 28 ms**, P75 49 ms, P90 75 ms, P95 and P99 80 ms. Wall time: median 54 ms, P90 1243 ms, P99 1469 ms. The peaks of more than a second of wall time look like something other than CPU (the database waking up is the guess, not verified). The CPU figures agree with the local measurement of a cold first request, so the cost of a cold start is the likely cause.
+- **The change:** `workers/app.ts` imports the server build at the top (`import * as serverBuild`) instead of with a lazy `import()`. Locally the first request after a cold start fell from about 97 ms to about 50 ms (47, 50 and 51 ms), and the startup phase rose from 19.8 to 37.1 ms of active CPU. The work moves to the start of the Worker, which has its own limit of 1 second.
+- **Not verified:** whether Cloudflare counts the work of starting in the `cpuTimeMs` of the first request. It is settled by deploying this to a preview and reading the same Observability query again (the preview and production share the Worker name, and each log line carries the version and, for a preview, its name). If `cpuTimeMs` does not fall for cold requests, revert it: the lazy import is Cloudflare's own template.
+
+### Result of the preview test, and the revert (2026-10-23)
+
+The change above was deployed to the preview (commit `ad798fc`) and measured with three rounds of requests, 11 minutes apart, so that the first request of each round met a cold isolate. Each round asked for `/` twice, `/sign-in` and a 404 page. `cpuTimeMs` comes from Workers Observability, filtered by time range. Twelve requests per environment is a small sample.
+
+CPU in ms, preview with the eager import:
+
+| Round (CST, 2026-10-22) | `/` first | `/` second | `/sign-in` | `/nope` (404) |
+| ----------------------- | --------- | ---------- | ---------- | ------------- |
+| 1, 16:39                | 43        | 79         | 44         | 16            |
+| 2, 16:50                | 41        | 40         | 87         | 11            |
+| 3, 17:01                | 78        | 40         | 41         | 17            |
+
+CPU in ms, production at the time (code of `main`, lazy import), same rounds:
+
+| Round (CST, 2026-10-23) | `/` first | `/` second | `/sign-in` (503) | `/nope` (404) |
+| ----------------------- | --------- | ---------- | ---------------- | ------------- |
+| 1, 12:03                | 34        | 32         | 34               | 66            |
+| 2, 12:14                | 34        | 14         | 57               | 68            |
+| 3, 12:25                | 92        | 57         | 96               | 10            |
+
+- **No measurable gain.** The preview had a median of about 41 ms and peaks of 78, 79 and 87. Production had a median of about 45 ms and peaks of 92 and 96. The peaks stayed near the 80 ms seen before the change, so Cloudflare does not seem to leave the startup work out of the request CPU, or the cost is not where the local measurement put it. Which of the two was not established.
+- **The peaks do not follow the cold request.** In the preview the peaks fell on the second `/` (round 1), on `/sign-in` (round 2) and on the first `/` (round 3). The cause (several isolates, or a first visit to each route) was not identified.
+- **The Free plan limit of 10 ms is exceeded in both environments.** Almost every request that renders a page is between 30 and 100 ms, warm or cold. Only the 404 pages in the preview and a few single requests were lower. The limit is not met by the startup phase alone.
+- **Clerk is not the main cause.** Production, which had no Clerk keys at the time, shows the same range as the preview, which does. An earlier guess that Clerk's work explained the preview figures is dropped.
+- **Production had no Clerk keys.** `/sign-in` answered 503 in all three rounds, which is the designed answer of the route when the keys are missing (`auth_not_configured`). Before this branch is merged, the keys must be set as Workers secrets for production, or sign-in and the settings pages will not work there.
+- **Decision:** the eager import is reverted, because it did not show a gain and the lazy import is Cloudflare's own template. This does not solve the CPU limit. The options left are a smaller bundle (2.4 MiB today) or the paid plan, and each needs its own ticket and measurement. A single request from the visits of 2026-10-22 to `sagashelf.app` showed 8 and 9 ms warm, but the rounds above do not repeat it.

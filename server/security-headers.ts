@@ -13,9 +13,13 @@ export function generateNonce(): string {
 export function buildContentSecurityPolicy(
   nonce: string,
   clerkFrontendApi?: string,
+  clerkUse: "auth" | "session" = "auth",
 ): string {
-  if (clerkFrontendApi)
-    return buildAuthContentSecurityPolicy(nonce, clerkFrontendApi);
+  if (clerkFrontendApi) {
+    return clerkUse === "session"
+      ? buildSessionContentSecurityPolicy(nonce, clerkFrontendApi)
+      : buildAuthContentSecurityPolicy(nonce, clerkFrontendApi);
+  }
 
   return [
     "default-src 'self'",
@@ -65,6 +69,43 @@ function buildAuthContentSecurityPolicy(
 /** The only pages that embed Clerk's components, and so the only ones with the wider CSP. */
 export function isAuthPage(pathname: string): boolean {
   return /^\/(sign-in|sign-up)(\/|$)/.test(pathname);
+}
+
+/**
+ * Pages of a signed-in person where a form can stay open for a while. Clerk's session token
+ * lasts 60 seconds and only Clerk's script renews it, so these pages load that script (with no
+ * visible component) to keep the session alive, and get the narrow policy below.
+ */
+export function isSessionPage(pathname: string): boolean {
+  return /^\/settings(\/|$)/.test(pathname);
+}
+
+/**
+ * The CSP of the pages in `isSessionPage` (SAG-12): the strict policy, plus the two origins that
+ * Clerk's script needs to load and to renew the session, and `blob:` workers. There is nothing
+ * to draw, so no inline styles, no images and no frames are added.
+ * Source: https://clerk.com/docs/guides/secure/best-practices/csp-headers (read 2026-10-21).
+ */
+function buildSessionContentSecurityPolicy(
+  nonce: string,
+  frontendApi: string,
+): string {
+  const fapi = `https://${frontendApi}`;
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' ${fapi}`,
+    "style-src 'self'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    `connect-src 'self' ${fapi}`,
+    "frame-src 'none'",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
 }
 
 /**

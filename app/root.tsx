@@ -8,6 +8,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteLoaderData,
 } from "react-router";
 
 import type { Route } from "./+types/root";
@@ -15,19 +16,29 @@ import "./app.css";
 import { ErrorPage } from "~/components/ErrorPage";
 import { Navbar } from "~/components/Navbar";
 import { authMiddleware } from "~/middleware/clerk";
+import { readTheme } from "~/lib/theme";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
 
-export function loader({ context }: Route.LoaderArgs) {
-  return data({ locale: getLocale(context) });
+export function loader({ context, request }: Route.LoaderArgs) {
+  return data({
+    locale: getLocale(context),
+    // The mode the person chose with the switch. With none, the page follows the system.
+    theme: readTheme(request.headers.get("Cookie")),
+  });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { i18n } = useTranslation();
+  const theme = useRouteLoaderData<typeof loader>("root")?.theme ?? null;
 
   return (
-    <html lang={i18n.language} dir={i18n.dir(i18n.language)}>
+    <html
+      lang={i18n.language}
+      dir={i18n.dir(i18n.language)}
+      data-theme={theme ?? undefined}
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -35,7 +46,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <Navbar />
+        <Navbar savedTheme={theme} />
         {children}
         <ScrollRestoration />
         <Scripts />

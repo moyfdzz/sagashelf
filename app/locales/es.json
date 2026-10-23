@@ -42,5 +42,41 @@
     "signUp": {
       "title": "Crear cuenta"
     }
+  },
+  "settings": {
+    "profile": {
+      "title": "Perfil",
+      "description": "Cambia cómo te ven las demás personas en SagaShelf.",
+      "username": "Nombre de usuario",
+      "usernameHint": "Por ahora no se puede cambiar desde aquí.",
+      "displayName": "Nombre para mostrar",
+      "displayNameHint": "Hasta {{max}} caracteres. Si lo dejas vacío, se muestra tu nombre de usuario.",
+      "bio": "Acerca de ti",
+      "bioHint": "Hasta {{max}} caracteres. Se muestra como texto sin formato.",
+      "language": "Idioma",
+      "privacy": "Privacidad del perfil",
+      "privacyOptions": {
+        "public": "Público",
+        "friends": "Solo amistades (seguimiento mutuo)",
+        "private": "Privado"
+      },
+      "save": "Guardar cambios",
+      "saving": "Guardando…",
+      "saved": "¡Listo! Tus cambios se guardaron.",
+      "errors": {
+        "summary": "Revisa los campos marcados.",
+        "display_name_too_long": "El nombre es demasiado largo.",
+        "bio_too_long": "El texto es demasiado largo.",
+        "invalid_locale": "Elige un idioma de la lista.",
+        "invalid_privacy": "Elige una opción de la lista.",
+        "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
+      }
+    }
+  },
+  "common": {
+    "close": "Cerrar"
+  },
+  "theme": {
+    "darkMode": "Modo oscuro"
   }
 }
