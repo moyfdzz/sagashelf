@@ -144,3 +144,30 @@ The production build (2.86 MiB raw, 620 KiB gzip as `wrangler check startup` cou
 - **Real figures** (Workers Observability, the last hour, about 30 requests, which include test requests and visits to a preview): CPU **median 28 ms**, P75 49 ms, P90 75 ms, P95 and P99 80 ms. Wall time: median 54 ms, P90 1243 ms, P99 1469 ms. The peaks of more than a second of wall time look like something other than CPU (the database waking up is the guess, not verified). The CPU figures agree with the local measurement of a cold first request, so the cost of a cold start is the likely cause.
 - **The change:** `workers/app.ts` imports the server build at the top (`import * as serverBuild`) instead of with a lazy `import()`. Locally the first request after a cold start fell from about 97 ms to about 50 ms (47, 50 and 51 ms), and the startup phase rose from 19.8 to 37.1 ms of active CPU. The work moves to the start of the Worker, which has its own limit of 1 second.
 - **Not verified:** whether Cloudflare counts the work of starting in the `cpuTimeMs` of the first request. It is settled by deploying this to a preview and reading the same Observability query again (the preview and production share the Worker name, and each log line carries the version and, for a preview, its name). If `cpuTimeMs` does not fall for cold requests, revert it: the lazy import is Cloudflare's own template.
+
+### Result of the preview test, and the revert (2026-10-23)
+
+The change above was deployed to the preview (commit `ad798fc`) and measured with three rounds of requests, 11 minutes apart, so that the first request of each round met a cold isolate. Each round asked for `/` twice, `/sign-in` and a 404 page. `cpuTimeMs` comes from Workers Observability, filtered by time range. Twelve requests per environment is a small sample.
+
+CPU in ms, preview with the eager import:
+
+| Round (CST, 2026-10-22) | `/` first | `/` second | `/sign-in` | `/nope` (404) |
+| ----------------------- | --------- | ---------- | ---------- | ------------- |
+| 1, 16:39                | 43        | 79         | 44         | 16            |
+| 2, 16:50                | 41        | 40         | 87         | 11            |
+| 3, 17:01                | 78        | 40         | 41         | 17            |
+
+CPU in ms, production at the time (code of `main`, lazy import), same rounds:
+
+| Round (CST, 2026-10-23) | `/` first | `/` second | `/sign-in` (503) | `/nope` (404) |
+| ----------------------- | --------- | ---------- | ---------------- | ------------- |
+| 1, 12:03                | 34        | 32         | 34               | 66            |
+| 2, 12:14                | 34        | 14         | 57               | 68            |
+| 3, 12:25                | 92        | 57         | 96               | 10            |
+
+- **No measurable gain.** The preview had a median of about 41 ms and peaks of 78, 79 and 87. Production had a median of about 45 ms and peaks of 92 and 96. The peaks stayed near the 80 ms seen before the change, so Cloudflare does not seem to leave the startup work out of the request CPU, or the cost is not where the local measurement put it. Which of the two was not established.
+- **The peaks do not follow the cold request.** In the preview the peaks fell on the second `/` (round 1), on `/sign-in` (round 2) and on the first `/` (round 3). The cause (several isolates, or a first visit to each route) was not identified.
+- **The Free plan limit of 10 ms is exceeded in both environments.** Almost every request that renders a page is between 30 and 100 ms, warm or cold. Only the 404 pages in the preview and a few single requests were lower. The limit is not met by the startup phase alone.
+- **Clerk is not the main cause.** Production, which had no Clerk keys at the time, shows the same range as the preview, which does. An earlier guess that Clerk's work explained the preview figures is dropped.
+- **Production had no Clerk keys.** `/sign-in` answered 503 in all three rounds, which is the designed answer of the route when the keys are missing (`auth_not_configured`). Before this branch is merged, the keys must be set as Workers secrets for production, or sign-in and the settings pages will not work there.
+- **Decision:** the eager import is reverted, because it did not show a gain and the lazy import is Cloudflare's own template. This does not solve the CPU limit. The options left are a smaller bundle (2.4 MiB today) or the paid plan, and each needs its own ticket and measurement. A single request from the visits of 2026-10-22 to `sagashelf.app` showed 8 and 9 ms warm, but the rounds above do not repeat it.
