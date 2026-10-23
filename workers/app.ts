@@ -1,14 +1,12 @@
 import { createRequestHandler } from "react-router";
-import * as serverBuild from "virtual:react-router/server-build";
 
 import { apexRedirectUrl } from "~server/host";
 import { applySecurityHeaders } from "~server/security-headers";
 
-// The server build is imported here, when the Worker starts, and not with a lazy import() on
-// the first request. A lazy import made that request evaluate 2.4 MiB of code: about 80 ms of
-// CPU on Cloudflare, against the 10 ms of the Free plan. Starting has its own limit (1 second).
-// See the CPU section of ADR-003.
-const requestHandler = createRequestHandler(serverBuild, import.meta.env.MODE);
+const requestHandler = createRequestHandler(
+  () => import("virtual:react-router/server-build"),
+  import.meta.env.MODE,
+);
 
 export default {
   async fetch(request) {
