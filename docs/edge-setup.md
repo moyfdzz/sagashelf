@@ -66,11 +66,11 @@ The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **
 
 ### Worker variables and secrets
 
-| Name                    | Kind                  | Where                                                             |
-| ----------------------- | --------------------- | ----------------------------------------------------------------- |
-| `CLERK_SECRET_KEY`      | Secret                | Previews Base now; Production when the production instance exists |
-| `CLERK_PUBLISHABLE_KEY` | Public variable       | `wrangler.jsonc` (`previews.vars` now; `vars` for production)     |
-| `CLERK_JWT_KEY`         | Public variable (PEM) | `wrangler.jsonc` (`previews.vars` now; `vars` for production)     |
+| Name                    | Kind                  | Where                                                           |
+| ----------------------- | --------------------- | --------------------------------------------------------------- |
+| `CLERK_SECRET_KEY`      | Secret                | Previews Base (development key) and Production (production key) |
+| `CLERK_PUBLISHABLE_KEY` | Public variable       | `wrangler.jsonc` (`previews.vars` and `vars` for production)    |
+| `CLERK_JWT_KEY`         | Public variable (PEM) | `wrangler.jsonc` (`previews.vars` and `vars` for production)    |
 
 - [x] The secret key is in **Previews Base** (set by the owner on 2026-10-21). The two public values live in `wrangler.jsonc`, not in the dashboard: a variable added by hand in the dashboard makes Cloudflare report that the dashboard and the file are out of sync, and a deployment can overwrite it. The JWT public key is written there as a normal JSON string with `\n` line breaks. A copy pasted into the dashboard keeps its quotes, and the code removes them anyway.
 - [x] gitleaks flags a publishable key as a generic API key, although it is public by design. `.gitleaks.toml` keeps the default rules and allows only the exact value of the development publishable key. When the production instance exists, add its `pk_live_` value to that list in the same way; never allow a whole rule or file. The action runs gitleaks 8.24.3, which reads the singular `[allowlist]` table (`[[allowlists]]` needs 8.25 and is ignored silently by 8.24.3, which is why the first attempt still failed). Checked on 2026-10-22 with the gitleaks Docker images 8.24.3 and latest, on the same commit range as the CI: the finding appears with the default rules and disappears with the exception, and a different `pk_test_` value is still reported.
@@ -79,13 +79,13 @@ The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **
 
 ### Production instance (when the site goes live)
 
-- [ ] In Clerk, create the Production instance from the Development one and choose the domain `sagashelf.app`.
-- [ ] In Cloudflare, DNS, add the CNAME records Clerk lists (the Frontend API, the account portal, and the email records). Set every one of them to **DNS only** (grey cloud, not proxied), as Clerk requires, so Cloudflare does not sit in front of its verification. Wait until Clerk shows the domain as verified and has issued its certificates.
-- [ ] Create our own Google OAuth credentials in Google Cloud (a consent screen and an OAuth client of type web), put the redirect URI that Clerk shows in them, and paste the client id and secret into Clerk's Google connection. The shared development credentials Clerk uses in the Development instance do not work in production.
-- [ ] Put the production publishable key, secret key and JWT public key in the **Production** variables. The JWT public key is read from the production instance, which has its own.
-- [ ] The Clerk instance, its webhook endpoint (section 9) and its Svix signing secret are separate for each instance.
-- [ ] Check in a browser: sign up with a new address, receive the code, sign in with Google, sign out, and confirm that the home page still has the strict policy (<https://securityheaders.com> and the Observatory should keep their grades, because only `/sign-in` and `/sign-up` use the wider policy).
-- [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification.
+- [x] In Clerk, create the Production instance from the Development one and choose the domain `sagashelf.app`. Done on 2026-10-23, and the domain shows as Verified.
+- [x] In Cloudflare, DNS, added the CNAME records Clerk lists, all set to **DNS only** (grey cloud). Done on 2026-10-23.
+- [x] Our own Google OAuth credentials were created in Google Cloud (a consent screen and an OAuth client of type web), with the redirect URI Clerk shows, and pasted into Clerk's Google connection with the default scopes only. The app was published on 2026-10-23, after SAG-34 added `/privacy` and `/terms`: Google keeps the Publish app button disabled without a privacy policy URL. No logo was uploaded, because Google asks for verification once there is one.
+- [x] The production publishable key and JWT public key are in `vars` of `wrangler.jsonc`, and the secret key is a Workers secret in Production (`wrangler secret put`, 2026-10-23). Before this, `/sign-in` answered 503 on `sagashelf.app`, which is the designed answer without keys.
+- [x] The Clerk instance, its webhook endpoint (section 9) and its Svix signing secret are separate for each instance.
+- [x] Checked in a browser by the owner on 2026-10-23: sign-up and sign-in with Google with an account outside the test users after publishing, and the new user appeared in the production database. The grades of securityheaders.com and the Observatory were not run again after this change.
+- [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification. **Open:** it has not been done, and no administrator exists in production; the admin guard needs a verified Google login. Whether Google stays the way to protect the administrator is undecided (see the notes of SAG-12).
 
 ## 9. Clerk webhook (SAG-11)
 
@@ -93,7 +93,7 @@ The endpoint is `POST /webhooks/clerk`. How it works is in [ADR-003](adr/003-aut
 
 ### Before the first deploy that uses it
 
-- [ ] Apply migration `0004_users_clerk_updated_at` to the Neon databases. It adds one column with a default, so it is safe with the old code running. Run it from your own terminal with `DATABASE_URL` in a session variable (read with `Read-Host -AsSecureString`), never in a file: `npm.cmd run db:migrate`. Do the preview database and the production database separately.
+- [x] Migration `0004_users_clerk_updated_at` was applied to the production database by the owner on 2026-10-23 (the preview database was not checked here).
 
 ### Create the endpoint (development instance first)
 
@@ -103,6 +103,13 @@ The endpoint is `POST /webhooks/clerk`. How it works is in [ADR-003](adr/003-aut
 - [ ] Without the secret the endpoint answers 503, so a deployment that has not been set up never accepts an event.
 - [ ] With the endpoint created, use Clerk's **Testing** tab to send an example event, and check the **delivery log**: the answer must be 200 with a body like `{"status":"applied"}` (or `"ignored"` for an event we do not use).
 - [ ] **Bot Fight Mode** (section 3) may challenge Svix's requests, because on the Free plan it cannot be skipped with a WAF rule. If the delivery log shows 403 or a Cloudflare challenge page, tell the owner before changing anything: the options are a narrow WAF rule, or turning that setting off for this path where the plan allows it. Not checked yet.
+
+### Production endpoint (done on 2026-10-23)
+
+- [x] Endpoint `https://sagashelf.app/webhooks/clerk` in the **Production** Clerk instance, subscribed to `user.created`, `user.updated` and `user.deleted` only. Its signing secret is the Workers secret `CLERK_WEBHOOK_SIGNING_SECRET` in Production.
+- [x] An unsigned request to the endpoint answered `401` (not `503`) once the secret was set.
+- [x] A real sign-up with Google created the row in `users` of the production database: Clerk delivered `user.created`, the signature was verified and the account was mirrored. Clerk's Testing tab sends an example user with no email, which the endpoint refuses on purpose (`rejected`, status 200).
+- [x] **Bot Fight Mode** did not stop Svix's delivery of a real event (the row exists), so no WAF exception was needed. This was seen once; check the delivery log again if deliveries start to fail.
 
 ### Test it locally, without real data
 
