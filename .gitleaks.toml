@@ -8,8 +8,9 @@ title = "SagaShelf gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Clerk publishable key of the development instance. It is public by design (it is served in the page HTML to the browser) and is declared in wrangler.jsonc. The secret key is a Workers secret and never goes in the repository. Add the production publishable key here the same way, by its exact value, when that instance exists."
+description = "Clerk publishable keys of the development and production instances. They are public by design (they are served in the page HTML to the browser) and are declared in wrangler.jsonc. The secret key is a Workers secret and never goes in the repository. A new publishable key is added here by its exact value."
 regexTarget = "match"
 regexes = [
   '''pk_test_bGl0ZXJhdGUtaGFtc3Rlci04MjQ0LmNsZXJrLmFjY291bnRzLmRldiQ''',
+  '''pk_live_Y2xlcmsuc2FnYXNoZWxmLmFwcCQ''',
 ]
