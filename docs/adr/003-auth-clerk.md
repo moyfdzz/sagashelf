@@ -171,3 +171,20 @@ CPU in ms, production at the time (code of `main`, lazy import), same rounds:
 - **Clerk is not the main cause.** Production, which had no Clerk keys at the time, shows the same range as the preview, which does. An earlier guess that Clerk's work explained the preview figures is dropped.
 - **Production had no Clerk keys.** `/sign-in` answered 503 in all three rounds, which is the designed answer of the route when the keys are missing (`auth_not_configured`). Before this branch is merged, the keys must be set as Workers secrets for production, or sign-in and the settings pages will not work there.
 - **Decision:** the eager import is reverted, because it did not show a gain and the lazy import is Cloudflare's own template. This does not solve the CPU limit. The options left are a smaller bundle (2.4 MiB today) or the paid plan, and each needs its own ticket and measurement. A single request from the visits of 2026-10-22 to `sagashelf.app` showed 8 and 9 ms warm, but the rounds above do not repeat it.
+
+### CPU measured on production after the merge (2026-10-23)
+
+The same rounds were run against `sagashelf.app` after SAG-12 reached `main` (the lazy import, the production Clerk keys in place, `/sign-in` answering 200). **Two copies of the script ran at the same time by mistake**, started 9 seconds apart, so each round has two sets of 4 requests. Both sets are kept, because the second one reached an isolate the first had just used. The 24 figures are from Workers Observability, host `sagashelf.app`, CST, with a bot probe and one request of the owner left out.
+
+CPU in ms (first set, then second set, each `/` first, `/` second, `/sign-in`, `/nope`):
+
+| Round (CST) | First set      | Second set     |
+| ----------- | -------------- | -------------- |
+| 16:36       | 40, 68, 42, 22 | 9, 7, 7, 39    |
+| 16:47       | 41, 99, 40, 10 | 40, 8, 86, 10  |
+| 16:58       | 19, 43, 22, 40 | 73, 13, 14, 15 |
+
+- **Median about 30 ms**, with the figures in two groups: 12 of 24 requests between 7 and 22 ms, and 12 between 39 and 99 ms (peaks of 99, 86 and 73). On 2026-10-23 before the merge the median was about 45 ms with peaks of 92 and 96, from a smaller sample and another version of the code, so it is not a comparison of one change.
+- **A request can cost less than 10 ms**: the pages of the second set of the first round took 7 to 9 ms. A request that renders a page costs 40 to 99 ms when it is not that lucky.
+- **There is no clean cold and warm pattern.** The second `/` of a set cost more than the first in several rounds (68, 99 and 43 against 40, 41 and 19), so the extra cost is not always on the first request after a pause. The cause (more than one isolate, or the first visit of an isolate to a route) was not found.
+- **No request failed**: 0 errors in the 26 events of the window, although most of them are above the 10 ms of the Free plan. The paid plan would remove the limit, but nothing here shows the Free plan cutting a request.
