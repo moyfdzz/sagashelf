@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 
 const pages = [
   { name: "home", path: "/" },
+  { name: "privacy", path: "/privacy" },
+  { name: "terms", path: "/terms" },
   { name: "404", path: "/does-not-exist" },
 ];
 

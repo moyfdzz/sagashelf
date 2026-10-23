@@ -14,6 +14,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { ErrorPage } from "~/components/ErrorPage";
+import { Footer } from "~/components/Footer";
 import { Navbar } from "~/components/Navbar";
 import { authMiddleware } from "~/middleware/clerk";
 import { readTheme } from "~/lib/theme";
@@ -48,6 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body>
         <Navbar savedTheme={theme} />
         {children}
+        <Footer />
         <ScrollRestoration />
         <Scripts />
       </body>
