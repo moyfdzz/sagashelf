@@ -25,6 +25,10 @@
   },
   "vars": {
     "APP_ENV": "production",
+    // The Clerk production instance. The publishable key and the JWT public key are public (the
+    // secret key and the webhook signing secret are Workers secrets).
+    "CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuc2FnYXNoZWxmLmFwcCQ",
+    "CLERK_JWT_KEY": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtRPvSubjsb+JJPy9BFGj\nz8qsPo7puHpfAKu62iwR3L7FS5YB7+vP2h14uusJGpxrCrOBJYFrndX5F+78uWZz\nIYfmej4eUCjIVCE99eyYrYw3WNTPG0i81ITLvp7GjydQzQJSLZnakzixsknmBQ4B\nFxgHv/j64qIHRqcw/LrrcMrqlgn/pRy4+i31/H5WskBJ0f4v1wfsi/wuxzq7x6wQ\nIp0d9onW142/9ILrSdXGvt87HRdJUhVKMezemqaZZ7PvjYGjuoaDDuVvzrFxuBj2\ngzozsB9B60+eWfIqN9LhrluucMF4LXc8qQPv0jVVY/HLmek+Prv0A+2n+tfTuqSG\nFwIDAQAB\n-----END PUBLIC KEY-----",
   },
   // App-level limit for write endpoints, counted per caller and per Cloudflare location.
   "ratelimits": [
