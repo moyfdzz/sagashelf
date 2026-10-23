@@ -78,5 +78,109 @@
   },
   "theme": {
     "darkMode": "Dark mode"
+  },
+  "footer": {
+    "label": "Legal information",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use"
+  },
+  "legal": {
+    "updated": "Last updated: {{date}}",
+    "consent": "By continuing you accept the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>."
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "description": "What data SagaShelf stores, what it is used for and what your rights are.",
+    "intro": "SagaShelf is a personal, non-commercial project to search and track anime, movies, series, books and manga. This policy explains what data we store and what you can do with it.",
+    "who": {
+      "title": "Who is responsible",
+      "body": "SagaShelf is run by its creator as a personal project. For any question about your data, write to {{email}}."
+    },
+    "data": {
+      "title": "What data we store",
+      "intro": "We store only what is needed for your account to work:",
+      "account": "Account: your email, your username and, if you use a password, a protected version of it. Clerk manages the password and SagaShelf never stores it.",
+      "google": "Google sign-in: if you choose it, Google shares your email, name and profile photo with Clerk. We do not access anything else in your Google account.",
+      "profile": "Profile: your display name, bio, language, privacy level and the photo you choose.",
+      "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service."
+    },
+    "not": {
+      "title": "What we do not do",
+      "body": "We do not sell your data, we do not show ads, and we do not use analytics or tracking cookies."
+    },
+    "processors": {
+      "title": "Who it is shared with",
+      "intro": "We use these providers to run the service:",
+      "clerk": "Clerk: manages accounts and sign-in.",
+      "neon": "Neon: hosts the database where your profile is stored.",
+      "cloudflare": "Cloudflare: hosts the site, delivers the pages and protects it from abuse.",
+      "outro": "These providers may process data outside Mexico, including in the United States. We use them only to run the service."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "body": "We use only necessary cookies: one that remembers your language, one that remembers whether you prefer light or dark mode, and Clerk's session cookies, which keep you signed in. We do not use advertising or tracking cookies."
+    },
+    "retention": {
+      "title": "How long we keep it",
+      "body": "We keep your data while your account exists. If you ask us to delete it, we delete your account, display name, bio and photo. We keep your username, an internal identifier and a normalized form of your email, to stop them from being reused or duplicate accounts from being created. Server logs are kept for a limited time."
+    },
+    "rights": {
+      "title": "Your rights",
+      "body": "You can ask for access to your data, ask us to correct or delete it, ask for a copy, or object to its use (the ARCO rights and their equivalents in other laws). For now these requests are made by email to {{email}}. You can change your profile and language in your settings."
+    },
+    "age": {
+      "title": "Minors",
+      "body": "SagaShelf is not aimed at children under 13. If you think a minor created an account, write to us and we will delete it."
+    },
+    "changes": {
+      "title": "Changes to this policy",
+      "body": "If what we store or who we share it with changes, we will update this page and its date."
+    },
+    "contact": {
+      "title": "Contact",
+      "body": "Write to us at {{email}}."
+    }
+  },
+  "terms": {
+    "title": "Terms of use",
+    "description": "The rules for using SagaShelf.",
+    "intro": "By creating an account or using SagaShelf you accept these terms. If you do not agree, do not use the service.",
+    "service": {
+      "title": "The service",
+      "body": "SagaShelf is a personal, non-commercial project. It is offered as is, with no guarantee that it is always available, and it may change or stop working at any time."
+    },
+    "account": {
+      "title": "Your account",
+      "body": "You are responsible for the activity of your account and for keeping your access safe. You must be at least 13 years old, give us true information and have only one account."
+    },
+    "use": {
+      "title": "Acceptable use",
+      "intro": "Do not use SagaShelf to:",
+      "harass": "harass, threaten or discriminate against other people;",
+      "spam": "send spam or post misleading content;",
+      "piracy": "share links to pirated or illegal content;",
+      "abuse": "try to get into accounts or systems without permission, or overload the service;",
+      "impersonate": "pretend to be someone else, or choose a username that impersonates them."
+    },
+    "content": {
+      "title": "Your content",
+      "body": "You are responsible for what you write in your profile (name, bio and photo). You choose who sees it with your privacy level. You keep your rights over your content and allow us to show it in the service according to that choice."
+    },
+    "suspension": {
+      "title": "Suspension",
+      "body": "We may suspend or delete accounts that break these terms or put the service at risk."
+    },
+    "liability": {
+      "title": "Limitation of liability",
+      "body": "To the extent the law allows, SagaShelf and its creator are not responsible for losses that result from using the service or from it being unavailable."
+    },
+    "changes": {
+      "title": "Changes to these terms",
+      "body": "We may update these terms. When we do, we will change the date of this page."
+    },
+    "contact": {
+      "title": "Contact",
+      "body": "Write to us at {{email}}."
+    }
   }
 }

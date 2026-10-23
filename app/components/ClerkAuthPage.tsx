@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/react-router";
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
 import { english, spanish } from "~/lib/clerk-localization";
 
@@ -25,8 +26,17 @@ export function ClerkAuthPage({ clerkState, publishableKey, children }: Props) {
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >
-      <main className="container mx-auto flex justify-center px-4 py-12">
+      <main className="container mx-auto flex flex-col items-center px-4 py-12">
         {children}
+        <p className="text-fg-muted mt-6 max-w-sm text-center text-sm">
+          <Trans
+            i18nKey="legal.consent"
+            components={{
+              terms: <Link to="/terms" className="text-accent underline" />,
+              privacy: <Link to="/privacy" className="text-accent underline" />,
+            }}
+          />
+        </p>
       </main>
     </ClerkProvider>
   );
