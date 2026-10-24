@@ -19,6 +19,7 @@ import { Navbar } from "~/components/Navbar";
 import { authMiddleware } from "~/middleware/clerk";
 import { readTheme } from "~/lib/theme";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
+import { isSignedIn } from "~server/auth/signed-in";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
 
@@ -30,17 +31,22 @@ export const links: Route.LinksFunction = () => [
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 ];
 
-export function loader({ context, request }: Route.LoaderArgs) {
+export async function loader(args: Route.LoaderArgs) {
+  const { context, request } = args;
   return data({
     locale: getLocale(context),
     // The mode the person chose with the switch. With none, the page follows the system.
     theme: readTheme(request.headers.get("Cookie")),
+    // Only a yes or no for the header. Who the person is stays in the pages that need it.
+    signedIn: await isSignedIn(args),
   });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { i18n } = useTranslation();
-  const theme = useRouteLoaderData<typeof loader>("root")?.theme ?? null;
+  const rootData = useRouteLoaderData<typeof loader>("root");
+  const theme = rootData?.theme ?? null;
+  const signedIn = rootData?.signedIn ?? false;
 
   return (
     <html
@@ -55,7 +61,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <Navbar savedTheme={theme} />
+        <Navbar savedTheme={theme} signedIn={signedIn} />
         {children}
         <Footer />
         <ScrollRestoration />

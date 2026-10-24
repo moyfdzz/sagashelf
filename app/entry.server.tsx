@@ -26,6 +26,11 @@ export default async function handleRequest(
   // The language depends on the cookie and on Accept-Language, so shared
   // caches must keep one copy per value.
   responseHeaders.append("Vary", "Cookie, Accept-Language");
+  // The header shows whether a session exists, so no page is the same for everyone. A page that
+  // sets its own rule (the ones with a person's data) keeps it.
+  if (!responseHeaders.has("Cache-Control")) {
+    responseHeaders.set("Cache-Control", "private");
+  }
 
   // A new nonce per page. Scripts without it are blocked by the CSP. The dev
   // server skips the policy because hot reload needs scripts it cannot sign.

@@ -1,12 +1,22 @@
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router";
 
+import { AccountMenu } from "~/components/AccountMenu";
 import { LanguageSwitcher } from "~/components/LanguageSwitcher";
 import { LogoMark } from "~/components/LogoMark";
 import { ThemeSwitch } from "~/components/ThemeSwitch";
 import type { Theme } from "~/lib/theme";
 
-export function Navbar({ savedTheme }: { savedTheme: Theme | null }) {
+const linkClass =
+  "text-fg-muted hover:text-accent focus-visible:outline-accent rounded-md px-3 py-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
+
+export function Navbar({
+  savedTheme,
+  signedIn,
+}: {
+  savedTheme: Theme | null;
+  signedIn: boolean;
+}) {
   const { t } = useTranslation();
   const navItems = [{ label: t("nav.home"), to: "/" }];
 
@@ -39,6 +49,23 @@ export function Navbar({ savedTheme }: { savedTheme: Theme | null }) {
           </nav>
           <LanguageSwitcher />
           <ThemeSwitch saved={savedTheme} />
+          {signedIn ? (
+            <AccountMenu />
+          ) : (
+            // Plain anchors: the sign-in and sign-up pages have their own, wider security policy,
+            // which only a new document gets.
+            <div className="flex items-center gap-2">
+              <a href="/sign-in" className={linkClass}>
+                {t("nav.signIn")}
+              </a>
+              <a
+                href="/sign-up"
+                className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-3 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                {t("nav.signUp")}
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </header>

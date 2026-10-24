@@ -74,10 +74,11 @@ export function isAuthPage(pathname: string): boolean {
 /**
  * Pages of a signed-in person where a form can stay open for a while. Clerk's session token
  * lasts 60 seconds and only Clerk's script renews it, so these pages load that script (with no
- * visible component) to keep the session alive, and get the narrow policy below.
+ * visible component) to keep the session alive, and get the narrow policy below. The sign-out
+ * page (SAG-38) needs the same script to end the session, and the same origins.
  */
 export function isSessionPage(pathname: string): boolean {
-  return /^\/settings(\/|$)/.test(pathname);
+  return /^\/(settings|sign-out)(\/|$)/.test(pathname);
 }
 
 /**

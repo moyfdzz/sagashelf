@@ -5,7 +5,13 @@
   },
   "nav": {
     "label": "Main",
-    "home": "Home"
+    "home": "Home",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "account": "Account",
+    "settings": "Settings",
+    "downloadData": "Download my data",
+    "signOut": "Sign out"
   },
   "language": {
     "label": "Language"
@@ -41,6 +47,11 @@
     },
     "signUp": {
       "title": "Create account"
+    },
+    "signOut": {
+      "title": "Sign out",
+      "working": "Signing you out…",
+      "noScript": "Signing out needs JavaScript. You can go back to the home page."
     }
   },
   "settings": {
@@ -91,6 +102,12 @@
         "failed": "We could not delete the account. Try again.",
         "invalid_request": "We could not process the request."
       }
+    },
+    "nav": {
+      "label": "Settings sections",
+      "profile": "Profile",
+      "data": "My data",
+      "delete": "Delete account"
     }
   },
   "common": {

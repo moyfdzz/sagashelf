@@ -7,6 +7,7 @@ import { rootAuthLoader } from "@clerk/react-router/server";
 import type { Route } from "./+types/settings.profile";
 import type { action as deleteAction } from "./settings.delete";
 import { ClerkSession } from "~/components/ClerkSession";
+import { SettingsNav } from "~/components/SettingsNav";
 import { StatusToast } from "~/components/StatusToast";
 import { localeNames, supportedLanguages } from "~/locales";
 import { getInstance, localeCookie } from "~/middleware/i18next";
@@ -201,6 +202,7 @@ export default function ProfileSettings({
         <p className="text-fg-muted mt-2">
           {t("settings.profile.description")}
         </p>
+        <SettingsNav />
 
         {/* Always in the page, so a screen reader announces each message that appears in it. */}
         <div
@@ -227,7 +229,8 @@ export default function ProfileSettings({
         {/* A key from the saved values makes the fields show what was stored after a save. */}
         <Form
           method="post"
-          className="mt-8 space-y-6"
+          id="profile"
+          className="mt-8 scroll-mt-4 space-y-6"
           key={JSON.stringify(profile)}
         >
           <div>
@@ -365,7 +368,11 @@ export default function ProfileSettings({
           </button>
         </Form>
 
-        <section aria-labelledby="data-title" className="mt-12">
+        <section
+          id="data"
+          aria-labelledby="data-title"
+          className="mt-12 scroll-mt-4"
+        >
           <h2 id="data-title" className="text-2xl font-bold">
             {t("settings.data.title")}
           </h2>
@@ -397,8 +404,9 @@ export default function ProfileSettings({
         </section>
 
         <section
+          id="delete"
           aria-labelledby="delete-title"
-          className="border-danger-edge mt-12 rounded-md border p-6"
+          className="border-danger-edge mt-12 scroll-mt-4 rounded-md border p-6"
         >
           <h2 id="delete-title" className="text-2xl font-bold">
             {t("settings.delete.title")}
