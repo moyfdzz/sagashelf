@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 
 import type { ClerkOperation, RejectReason } from "../auth/clerk-user";
+import { erasureCtes } from "./erase-user";
 
 /** What this needs from a database: it runs one SQL statement. Neon (HTTP) and `pg` both fit. */
 export type SqlExecutor = {
@@ -78,9 +79,12 @@ async function softDelete(
   eventId: string,
   op: Extract<ClerkOperation, { kind: "delete" }>,
 ): Promise<SyncResult> {
-  // The row stays, so the username, the Clerk id and the canonical email stay reserved. The
-  // personal profile fields are cleared; the rest of the erasure belongs to SAG-12. A delete
-  // wins a tie with an update of the same millisecond.
+  // The account is erased whole (see erase-user.ts): what the person made, the profile, and the
+  // username and the canonical email, which can be used again. The row stays with its Clerk id
+  // so a late update cannot bring it back. A delete wins a tie with an update of the same
+  // millisecond. When the person erased the account from their settings first, `target` is
+  // empty and this event is only recorded.
+  const at = op.at.toISOString();
   const { rows } = await db.execute(sql`
     WITH seen AS (
       INSERT INTO processed_webhooks (provider, event_id)
@@ -88,20 +92,14 @@ async function softDelete(
       ON CONFLICT DO NOTHING
       RETURNING 1
     ),
-    written AS (
-      UPDATE users SET
-        deleted_at = now(),
-        display_name = NULL,
-        avatar_url = NULL,
-        bio = NULL,
-        clerk_updated_at = ${op.at.toISOString()}::timestamptz,
-        updated_at = now()
+    target AS (
+      SELECT id FROM users
       WHERE clerk_id = ${op.clerkId}
         AND deleted_at IS NULL
-        AND clerk_updated_at <= ${op.at.toISOString()}::timestamptz
+        AND clerk_updated_at <= ${at}::timestamptz
         AND EXISTS (SELECT 1 FROM seen)
-      RETURNING 1
-    )
+    ),
+    ${erasureCtes(sql`${at}::timestamptz`)}
     SELECT (SELECT count(*) FROM seen)::int AS fresh,
            (SELECT count(*) FROM written)::int AS written
   `);

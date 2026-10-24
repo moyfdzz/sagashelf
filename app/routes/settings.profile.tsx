@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { data, Form, useNavigation } from "react-router";
+import { data, Form, useFetcher, useNavigation } from "react-router";
 import type { ZodError } from "zod";
 
 import { rootAuthLoader } from "@clerk/react-router/server";
 
 import type { Route } from "./+types/settings.profile";
+import type { action as deleteAction } from "./settings.delete";
 import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
 import { localeNames, supportedLanguages } from "~/locales";
@@ -166,6 +167,9 @@ export async function action(args: Route.ActionArgs) {
   return data({ ok: true as const, profile, savedAt: Date.now() }, { headers });
 }
 
+const secondaryButtonClass =
+  "border-input-edge bg-surface text-fg focus-visible:outline-accent rounded-md border px-4 py-2 font-semibold hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2";
+
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
 
@@ -176,6 +180,10 @@ export default function ProfileSettings({
   const { t } = useTranslation();
   const navigation = useNavigation();
   const saving = navigation.state === "submitting";
+  const deleter = useFetcher<typeof deleteAction>();
+  const deleting = deleter.state !== "idle";
+  const deleteError =
+    deleter.data && "error" in deleter.data ? deleter.data.error : null;
 
   const profile =
     actionData?.ok === true ? actionData.profile : loaderData.profile;
@@ -356,6 +364,88 @@ export default function ProfileSettings({
             {saving ? t("settings.profile.saving") : t("settings.profile.save")}
           </button>
         </Form>
+
+        <section aria-labelledby="data-title" className="mt-12">
+          <h2 id="data-title" className="text-2xl font-bold">
+            {t("settings.data.title")}
+          </h2>
+          <p className="text-fg-muted mt-2">{t("settings.data.description")}</p>
+          {/* A plain form: the browser asks for the file and saves it, and the page stays. */}
+          <Form
+            method="post"
+            action="/settings/export"
+            reloadDocument
+            className="mt-4 flex flex-wrap gap-3"
+          >
+            <button
+              type="submit"
+              name="format"
+              value="json"
+              className={secondaryButtonClass}
+            >
+              {t("settings.data.json")}
+            </button>
+            <button
+              type="submit"
+              name="format"
+              value="csv"
+              className={secondaryButtonClass}
+            >
+              {t("settings.data.csv")}
+            </button>
+          </Form>
+        </section>
+
+        <section
+          aria-labelledby="delete-title"
+          className="border-danger-edge mt-12 rounded-md border p-6"
+        >
+          <h2 id="delete-title" className="text-2xl font-bold">
+            {t("settings.delete.title")}
+          </h2>
+          <p className="mt-2">{t("settings.delete.description")}</p>
+          {deleteError ? (
+            <p
+              role="alert"
+              className="border-danger-edge bg-danger-bg text-danger-fg mt-4 rounded-md border px-4 py-3 font-semibold"
+            >
+              {t(`settings.delete.errors.${deleteError}`)}
+            </p>
+          ) : null}
+          <deleter.Form
+            method="post"
+            action="/settings/delete"
+            className="mt-4 space-y-4"
+          >
+            <div>
+              <label htmlFor="confirm" className="font-semibold">
+                {t("settings.delete.confirmLabel", {
+                  username: profile.username,
+                })}
+              </label>
+              <input
+                id="confirm"
+                name="confirm"
+                autoComplete="off"
+                required
+                className={inputClass}
+              />
+            </div>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" name="understood" required />
+              {t("settings.delete.understood")}
+            </label>
+            <button
+              type="submit"
+              disabled={deleting}
+              className="border-danger-edge bg-danger-bg text-danger-fg focus-visible:outline-accent rounded-md border px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
+            >
+              {deleting
+                ? t("settings.delete.submitting")
+                : t("settings.delete.submit")}
+            </button>
+          </deleter.Form>
+        </section>
       </main>
     </ClerkSession>
   );

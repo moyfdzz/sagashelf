@@ -7,6 +7,8 @@ export default [
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),
   route("settings/profile", "routes/settings.profile.tsx"),
+  route("settings/export", "routes/settings.export.ts"),
+  route("settings/delete", "routes/settings.delete.ts"),
   route("api/health", "routes/api.health.ts"),
   route("api/locale", "routes/api.locale.ts"),
   route("webhooks/clerk", "routes/webhooks.clerk.ts"),
