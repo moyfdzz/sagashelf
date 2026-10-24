@@ -71,6 +71,26 @@
         "invalid_privacy": "Elige una opción de la lista.",
         "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
       }
+    },
+    "data": {
+      "title": "Tus datos",
+      "description": "Descarga una copia de lo que SagaShelf guarda de ti: tu perfil y, cuando existan, tu biblioteca y tus listas.",
+      "json": "Descargar todo (JSON)",
+      "csv": "Descargar el perfil (CSV)"
+    },
+    "delete": {
+      "title": "Eliminar cuenta",
+      "description": "Esto borra tu cuenta y todo lo que hiciste en SagaShelf: tu perfil, tu biblioteca, tus listas y tus seguimientos. No se puede deshacer.",
+      "confirmLabel": "Escribe tu nombre de usuario ({{username}}) para confirmar",
+      "understood": "Entiendo que no se puede deshacer",
+      "submit": "Eliminar mi cuenta para siempre",
+      "submitting": "Eliminando…",
+      "errors": {
+        "confirm_mismatch": "El nombre de usuario no coincide.",
+        "reauth_required": "Por seguridad, inicia sesión de nuevo y vuelve a intentarlo: debes haber iniciado sesión en los últimos 10 minutos.",
+        "failed": "No pudimos eliminar la cuenta. Inténtalo de nuevo.",
+        "invalid_request": "No pudimos procesar la solicitud."
+      }
     }
   },
   "common": {
@@ -122,11 +142,11 @@
     },
     "retention": {
       "title": "Cuánto tiempo los conservamos",
-      "body": "Conservamos tus datos mientras tu cuenta exista. Si pides que la eliminemos, borramos tu cuenta, tu nombre para mostrar, tu biografía y tu foto. Conservamos tu nombre de usuario, un identificador interno y una forma normalizada del correo para evitar que se reutilicen o que se creen cuentas duplicadas. Los registros del servidor se conservan por un tiempo limitado."
+      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (biblioteca, listas y seguimientos), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado, y el proveedor de la base de datos puede conservar copias de respaldo por un periodo corto."
     },
     "rights": {
       "title": "Tus derechos",
-      "body": "Puedes pedir acceso a tus datos, que los corrijamos o los eliminemos, una copia de ellos, u oponerte a su uso (los derechos ARCO y sus equivalentes en otras leyes). Por ahora estas solicitudes se hacen por correo a {{email}}. Puedes cambiar tu perfil y tu idioma en tus ajustes."
+      "body": "En tus ajustes puedes descargar una copia de tus datos, cambiar tu perfil y eliminar tu cuenta. Para cualquier otra solicitud (acceso, corrección u oposición al uso de tus datos, los derechos ARCO y sus equivalentes en otras leyes) escribe a {{email}}."
     },
     "age": {
       "title": "Menores de edad",

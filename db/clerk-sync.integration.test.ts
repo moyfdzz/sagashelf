@@ -184,7 +184,7 @@ describe("user.deleted", () => {
     data: { id: "user_ana", deleted: true, object: "user" },
   });
 
-  it("soft deletes, clears the profile and keeps the names reserved", async () => {
+  it("erases the profile and frees the username and the email, keeping only the Clerk id", async () => {
     await apply("evt_1", created());
     await db
       .update(users)
@@ -199,10 +199,10 @@ describe("user.deleted", () => {
       displayName: null,
       avatarUrl: null,
       bio: null,
-      username: "ana_reads",
-      emailCanonical: "ana@example.test",
       clerkId: "user_ana",
     });
+    expect(row?.username).toMatch(/^deleted-[0-9a-f]{12}$/);
+    expect(row?.emailCanonical).toBe(`deleted:${row?.id}`);
   });
 
   it("does not bring the account back when a newer update arrives", async () => {
@@ -326,7 +326,7 @@ describe("accounts that are refused", () => {
     expect(await allUsers()).toHaveLength(1);
   });
 
-  it("does not let a deleted account's username or email be taken", async () => {
+  it("lets a new account take the username of a deleted one, and the same email", async () => {
     await apply("evt_1", created());
     await apply("evt_del", {
       type: "user.deleted",
@@ -334,21 +334,17 @@ describe("accounts that are refused", () => {
       data: { id: "user_ana" },
     });
 
-    const result = await apply(
-      "evt_2",
-      created({
-        id: "user_new",
-        email_addresses: [
-          {
-            id: "idn_1",
-            email_address: "new@example.test",
-            verification: { status: "verified" },
-          },
-        ],
-      }),
-    );
+    // The erasure freed the username and the email (ADR-014), so the same person, or
+    // another, can sign up with them again.
+    const result = await apply("evt_2", created({ id: "user_new" }));
 
-    expect(result).toBe("rejected");
+    expect(result).toBe("applied");
+    const taken = (await allUsers()).filter((u) => u.deletedAt === null);
+    expect(taken).toHaveLength(1);
+    expect(taken[0]).toMatchObject({
+      clerkId: "user_new",
+      username: "ana_reads",
+    });
   });
 });
 

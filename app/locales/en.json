@@ -71,6 +71,26 @@
         "invalid_privacy": "Choose an option from the list.",
         "generic": "We could not save the changes. Please try again."
       }
+    },
+    "data": {
+      "title": "Your data",
+      "description": "Download a copy of what SagaShelf keeps about you: your profile and, when they exist, your library and lists.",
+      "json": "Download everything (JSON)",
+      "csv": "Download the profile (CSV)"
+    },
+    "delete": {
+      "title": "Delete account",
+      "description": "This deletes your account and everything you did in SagaShelf: your profile, library, lists and follows. It cannot be undone.",
+      "confirmLabel": "Type your username ({{username}}) to confirm",
+      "understood": "I understand it cannot be undone",
+      "submit": "Delete my account forever",
+      "submitting": "Deleting…",
+      "errors": {
+        "confirm_mismatch": "The username does not match.",
+        "reauth_required": "For your safety, sign in again and try again: you must have signed in within the last 10 minutes.",
+        "failed": "We could not delete the account. Try again.",
+        "invalid_request": "We could not process the request."
+      }
     }
   },
   "common": {
@@ -122,11 +142,11 @@
     },
     "retention": {
       "title": "How long we keep it",
-      "body": "We keep your data while your account exists. If you ask us to delete it, we delete your account, display name, bio and photo. We keep your username, an internal identifier and a normalized form of your email, to stop them from being reused or duplicate accounts from being created. Server logs are kept for a limited time."
+      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (library, lists and follows), and Clerk deletes your sign-in data. Only an internal record with no personal data stays, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
     },
     "rights": {
       "title": "Your rights",
-      "body": "You can ask for access to your data, ask us to correct or delete it, ask for a copy, or object to its use (the ARCO rights and their equivalents in other laws). For now these requests are made by email to {{email}}. You can change your profile and language in your settings."
+      "body": "In your settings you can download a copy of your data, change your profile and delete your account. For any other request (access, correction or objection to the use of your data, the ARCO rights and their equivalents in other laws) write to {{email}}."
     },
     "age": {
       "title": "Minors",
