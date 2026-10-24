@@ -5,7 +5,13 @@
   },
   "nav": {
     "label": "Principal",
-    "home": "Inicio"
+    "home": "Inicio",
+    "signIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "account": "Cuenta",
+    "settings": "Ajustes",
+    "downloadData": "Descargar mis datos",
+    "signOut": "Cerrar sesión"
   },
   "language": {
     "label": "Idioma"
@@ -41,6 +47,11 @@
     },
     "signUp": {
       "title": "Crear cuenta"
+    },
+    "signOut": {
+      "title": "Cerrar sesión",
+      "working": "Cerrando tu sesión…",
+      "noScript": "Para cerrar la sesión hace falta JavaScript. Puedes volver al inicio."
     }
   },
   "settings": {
@@ -91,6 +102,12 @@
         "failed": "No pudimos eliminar la cuenta. Inténtalo de nuevo.",
         "invalid_request": "No pudimos procesar la solicitud."
       }
+    },
+    "nav": {
+      "label": "Secciones de los ajustes",
+      "profile": "Perfil",
+      "data": "Mis datos",
+      "delete": "Eliminar cuenta"
     }
   },
   "common": {

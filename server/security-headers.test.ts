@@ -171,15 +171,22 @@ describe("buildContentSecurityPolicy for the settings pages", () => {
 });
 
 describe("isSessionPage", () => {
-  it.each(["/settings", "/settings/", "/settings/profile", "/settings/a/b"])(
-    "is true for %s",
-    (path) => expect(isSessionPage(path)).toBe(true),
-  );
+  it.each([
+    "/settings",
+    "/settings/",
+    "/settings/profile",
+    "/settings/a/b",
+    "/sign-out",
+  ])("is true for %s", (path) => expect(isSessionPage(path)).toBe(true));
 
-  it.each(["/", "/settingsx", "/api/settings", "/sign-in", "/setting"])(
-    "is false for %s",
-    (path) => expect(isSessionPage(path)).toBe(false),
-  );
+  it.each([
+    "/",
+    "/settingsx",
+    "/api/settings",
+    "/sign-in",
+    "/setting",
+    "/sign-outx",
+  ])("is false for %s", (path) => expect(isSessionPage(path)).toBe(false));
 });
 
 describe("clerkFrontendApiHost", () => {
