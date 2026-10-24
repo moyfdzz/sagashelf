@@ -7,6 +7,7 @@ import {
   confirmsUsername,
   deleteAccountSchema,
 } from "~server/account/delete-schema";
+import { clearSessionCookies } from "~server/auth/clear-session-cookies";
 import { requireUser } from "~server/auth/require";
 import { eraseAccount } from "~server/db/erase-user";
 import { getProfile } from "~server/db/profile";
@@ -105,6 +106,12 @@ export async function action(args: Route.ActionArgs) {
     );
   }
 
-  // A whole new document: the session is gone and Clerk's script must start clean.
-  return redirectDocument("/", { headers: privateHeaders });
+  // A whole new document: the session is gone and Clerk's script must start clean. The session
+  // cookies are expired too: their token would verify for up to a minute and the header would
+  // still show the person as signed in.
+  const headers = new Headers(privateHeaders);
+  for (const cookie of clearSessionCookies(request)) {
+    headers.append("Set-Cookie", cookie);
+  }
+  return redirectDocument("/", { headers });
 }

@@ -66,11 +66,6 @@ export function AccountMenu() {
           </a>
         </li>
         <li>
-          <a href="/settings/profile#data" className={itemClass}>
-            {t("nav.downloadData")}
-          </a>
-        </li>
-        <li>
           <a href="/sign-out" className={itemClass}>
             {t("nav.signOut")}
           </a>
