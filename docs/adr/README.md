@@ -20,6 +20,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [012](012-neon-over-supabase.md)                 | Neon for the database, compared with Supabase on the Free plan                         | Accepted | Done (SAG-9)                          |
 | [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback | Accepted | Done (SAG-12)                         |
 | [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)     | Accepted | Done (SAG-12)                         |
+| [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                               | Accepted | Done (SAG-37)                         |
 
 "Accepted" means the decision is made. "Planned" means it is not built yet, so the ADR describes the intended design and may be refined by its ticket without a new ADR as long as the decision itself does not change.
 

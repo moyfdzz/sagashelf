@@ -58,7 +58,7 @@
       "title": "Profile",
       "description": "Change how other people see you on SagaShelf.",
       "username": "Username",
-      "usernameHint": "It cannot be changed from here yet.",
+      "usernameHint": "You can change it once every 30 days. Your old name is freed and anyone can use it.",
       "displayName": "Display name",
       "displayNameHint": "Up to {{max}} characters. If you leave it empty, your username is shown.",
       "bio": "About you",
@@ -100,13 +100,27 @@
         "reauth_required": "For your safety, sign in again and try again: you must have signed in within the last 10 minutes.",
         "failed": "We could not delete the account. Try again.",
         "invalid_request": "We could not process the request."
-      }
+      },
+      "usernameFreed": "Your username is freed at once and anyone will be able to use it."
     },
     "nav": {
       "label": "Settings sections",
       "profile": "Profile",
       "data": "My data",
       "delete": "Delete account"
+    },
+    "username": {
+      "submit": "Change username",
+      "submitting": "Changing…",
+      "saved": "Your username was changed.",
+      "cooldown": "You can change it again on {{date}}.",
+      "errors": {
+        "invalid": "Use 3 to 30 letters, numbers or underscores, and not only numbers.",
+        "unavailable": "That username is not available.",
+        "cooldown": "You changed your username recently. Try again later.",
+        "failed": "We could not change the username. Try again.",
+        "invalid_request": "We could not process the request."
+      }
     }
   },
   "common": {

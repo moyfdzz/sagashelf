@@ -36,6 +36,9 @@ export const users = pgTable(
     clerkUpdatedAt: timestamp("clerk_updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // When the person last changed the username (SAG-37). The server allows one change every 30
+    // days by reading this; null until the first change.
+    usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },

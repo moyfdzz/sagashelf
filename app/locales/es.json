@@ -58,7 +58,7 @@
       "title": "Perfil",
       "description": "Cambia cómo te ven las demás personas en SagaShelf.",
       "username": "Nombre de usuario",
-      "usernameHint": "Por ahora no se puede cambiar desde aquí.",
+      "usernameHint": "Puedes cambiarlo una vez cada 30 días. Tu nombre anterior queda libre y cualquier persona puede usarlo.",
       "displayName": "Nombre para mostrar",
       "displayNameHint": "Hasta {{max}} caracteres. Si lo dejas vacío, se muestra tu nombre de usuario.",
       "bio": "Acerca de ti",
@@ -100,13 +100,27 @@
         "reauth_required": "Por seguridad, inicia sesión de nuevo y vuelve a intentarlo: debes haber iniciado sesión en los últimos 10 minutos.",
         "failed": "No pudimos eliminar la cuenta. Inténtalo de nuevo.",
         "invalid_request": "No pudimos procesar la solicitud."
-      }
+      },
+      "usernameFreed": "Tu nombre de usuario quedará libre al instante y cualquier persona podrá usarlo."
     },
     "nav": {
       "label": "Secciones de los ajustes",
       "profile": "Perfil",
       "data": "Mis datos",
       "delete": "Eliminar cuenta"
+    },
+    "username": {
+      "submit": "Cambiar nombre de usuario",
+      "submitting": "Cambiando…",
+      "saved": "Tu nombre de usuario se cambió.",
+      "cooldown": "Podrás cambiarlo de nuevo el {{date}}.",
+      "errors": {
+        "invalid": "Usa de 3 a 30 letras, números o guion bajo, y no solo números.",
+        "unavailable": "Ese nombre de usuario no está disponible.",
+        "cooldown": "Ya cambiaste tu nombre de usuario hace poco. Inténtalo más adelante.",
+        "failed": "No pudimos cambiar el nombre de usuario. Inténtalo de nuevo.",
+        "invalid_request": "No pudimos procesar la solicitud."
+      }
     }
   },
   "common": {

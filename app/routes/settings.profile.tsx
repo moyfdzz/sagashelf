@@ -6,9 +6,11 @@ import { rootAuthLoader } from "@clerk/react-router/server";
 
 import type { Route } from "./+types/settings.profile";
 import type { action as deleteAction } from "./settings.delete";
+import type { action as usernameAction } from "./settings.username";
 import { ClerkSession } from "~/components/ClerkSession";
 import { SettingsNav } from "~/components/SettingsNav";
 import { StatusToast } from "~/components/StatusToast";
+import { formatDate } from "~/lib/format";
 import { localeNames, supportedLanguages } from "~/locales";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
@@ -16,8 +18,10 @@ import {
   displayNameMaxLength,
   profileUpdateSchema,
 } from "~server/account/profile-schema";
+import { usernameAvailableAt } from "~server/account/username-schema";
 import { requireUser } from "~server/auth/require";
 import { getProfile, updateProfile } from "~server/db/profile";
+import { getUsernameChangedAt } from "~server/db/username";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 
@@ -80,8 +84,13 @@ async function answerWithoutReading<T>(request: Request, response: T) {
 export async function loader(args: Route.LoaderArgs) {
   // Sends a visitor without a session to sign in, and refuses an account with no local row.
   const user = await requireUser(args);
-  const profile = await getProfile(await getDb(), user.id);
+  const db = await getDb();
+  const profile = await getProfile(db, user.id);
   if (!profile) throw data({ error: "forbidden" }, { status: 403 });
+  // When the username may be changed again, or null if it may be changed now.
+  const nextUsernameChange = usernameAvailableAt(
+    await getUsernameChangedAt(db, user.id),
+  );
 
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
@@ -90,6 +99,7 @@ export async function loader(args: Route.LoaderArgs) {
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
   return rootAuthLoader(args, () => ({
     profile,
+    nextUsernameChange: nextUsernameChange?.toISOString() ?? null,
     title: t("settings.profile.title"),
     publishableKey: keys.publishableKey,
   }));
@@ -178,13 +188,19 @@ export default function ProfileSettings({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
   const saving = navigation.state === "submitting";
   const deleter = useFetcher<typeof deleteAction>();
   const deleting = deleter.state !== "idle";
   const deleteError =
     deleter.data && "error" in deleter.data ? deleter.data.error : null;
+  const renamer = useFetcher<typeof usernameAction>();
+  const renaming = renamer.state !== "idle";
+  const renameError =
+    renamer.data && "error" in renamer.data ? renamer.data.error : null;
+  const renamed = renamer.data && "ok" in renamer.data && renamer.data.ok;
+  const { nextUsernameChange } = loaderData;
 
   const profile =
     actionData?.ok === true ? actionData.profile : loaderData.profile;
@@ -226,6 +242,63 @@ export default function ProfileSettings({
           </p>
         ) : null}
 
+        <renamer.Form
+          method="post"
+          action="/settings/username"
+          key={profile.username}
+          className="mt-8 space-y-2"
+        >
+          <label htmlFor="username" className="font-semibold">
+            {t("settings.profile.username")}
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <input
+              id="username"
+              name="username"
+              defaultValue={profile.username}
+              minLength={3}
+              maxLength={30}
+              pattern="[A-Za-z0-9_]+"
+              autoComplete="username"
+              spellCheck={false}
+              disabled={nextUsernameChange !== null}
+              aria-invalid={renameError ? true : undefined}
+              aria-describedby={`username-hint${renameError ? " username-error" : ""}`}
+              className={`${inputClass} mt-0 min-w-0 flex-1 disabled:opacity-60`}
+            />
+            <button
+              type="submit"
+              disabled={renaming || nextUsernameChange !== null}
+              className={`${secondaryButtonClass} disabled:opacity-60`}
+            >
+              {renaming
+                ? t("settings.username.submitting")
+                : t("settings.username.submit")}
+            </button>
+          </div>
+          <p id="username-hint" className="text-fg-muted text-sm">
+            {nextUsernameChange
+              ? t("settings.username.cooldown", {
+                  date: formatDate(new Date(nextUsernameChange), i18n.language),
+                })
+              : t("settings.profile.usernameHint")}
+          </p>
+          {renameError ? (
+            <p
+              id="username-error"
+              role="alert"
+              className="text-danger-text text-sm font-semibold"
+            >
+              {t(`settings.username.errors.${renameError}`)}
+            </p>
+          ) : null}
+          {renamed ? (
+            <p role="status" className="text-sm font-semibold">
+              {t("settings.username.saved")}
+            </p>
+          ) : null}
+        </renamer.Form>
+
         {/* A key from the saved values makes the fields show what was stored after a save. */}
         <Form
           method="post"
@@ -233,22 +306,6 @@ export default function ProfileSettings({
           className="mt-8 scroll-mt-4 space-y-6"
           key={JSON.stringify(profile)}
         >
-          <div>
-            <label htmlFor="username" className="font-semibold">
-              {t("settings.profile.username")}
-            </label>
-            <input
-              id="username"
-              value={profile.username}
-              readOnly
-              aria-describedby="username-hint"
-              className={`${inputClass} bg-surface-raised`}
-            />
-            <p id="username-hint" className="text-fg-muted mt-1 text-sm">
-              {t("settings.profile.usernameHint")}
-            </p>
-          </div>
-
           <div>
             <label htmlFor="displayName" className="font-semibold">
               {t("settings.profile.displayName")}
@@ -412,6 +469,7 @@ export default function ProfileSettings({
             {t("settings.delete.title")}
           </h2>
           <p className="mt-2">{t("settings.delete.description")}</p>
+          <p className="mt-2">{t("settings.delete.usernameFreed")}</p>
           {deleteError ? (
             <p
               role="alert"
