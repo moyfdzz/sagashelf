@@ -341,6 +341,10 @@ describe("listEntries", () => {
 
   it("sorts by the most recently changed by default", async () => {
     const { ana, bleach } = await fill();
+    // The writes of `fill` can land in the same millisecond, so the order is set by hand.
+    await db.execute(
+      sql`UPDATE library_entries SET updated_at = now() - interval '1 day'`,
+    );
     await saveEntry(db, ana.id, bleach, { ...completed, score: 5 });
 
     const { rows } = await listEntries(db, ana.id, query());

@@ -210,7 +210,8 @@ export async function listEntries(
     .from(libraryEntries)
     .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
     .where(where)
-    .orderBy(...orderBy[query.sort])
+    // The id at the end keeps entries that tie in the same order from one page to the next.
+    .orderBy(...orderBy[query.sort], asc(libraryEntries.id))
     .limit(pageSize)
     .offset((query.page - 1) * pageSize);
 
