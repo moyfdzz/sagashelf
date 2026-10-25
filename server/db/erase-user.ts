@@ -55,6 +55,7 @@ export function erasureCtes(clerkUpdatedAt: SQL): SQL {
         deleted_at = now(),
         username = 'deleted-' || substr(replace(id::text, '-', ''), 1, 12),
         email_canonical = 'deleted:' || id::text,
+        username_changed_at = NULL,
         display_name = NULL,
         avatar_url = NULL,
         bio = NULL,

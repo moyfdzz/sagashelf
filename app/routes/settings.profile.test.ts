@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   getProfile: vi.fn(),
   updateProfile: vi.fn(),
+  getUsernameChangedAt: vi.fn(),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
@@ -29,6 +30,9 @@ vi.mock("@clerk/react-router/server", () => ({
 vi.mock("~server/db/profile", () => ({
   getProfile: mocks.getProfile,
   updateProfile: mocks.updateProfile,
+}));
+vi.mock("~server/db/username", () => ({
+  getUsernameChangedAt: mocks.getUsernameChangedAt,
 }));
 vi.mock("~/middleware/i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("~/middleware/i18next")>()),
@@ -51,6 +55,7 @@ beforeEach(() => {
   mocks.getDb.mockReset().mockResolvedValue(db);
   mocks.getProfile.mockReset().mockResolvedValue(stored);
   mocks.updateProfile.mockReset().mockResolvedValue(stored);
+  mocks.getUsernameChangedAt.mockReset().mockResolvedValue(null);
   mocks.limit.mockReset().mockResolvedValue({ success: true });
 });
 
@@ -101,10 +106,25 @@ describe("GET /settings/profile", () => {
     expect(mocks.getProfile).toHaveBeenCalledWith(db, "user-from-session");
     expect(result).toMatchObject({
       profile: stored,
+      nextUsernameChange: null,
       title: "settings.profile.title",
       publishableKey: "pk_test_for_the_tests",
       __clerk_ssr_state: "state",
     });
+  });
+
+  it("tells when the username may be changed again, after a recent change", async () => {
+    mocks.getUsernameChangedAt.mockResolvedValue(new Date());
+
+    const result = await loader({
+      request: new Request("http://localhost/settings/profile"),
+      context: {},
+    } as unknown as Route.LoaderArgs);
+
+    const next = (result as { nextUsernameChange: string }).nextUsernameChange;
+    expect(new Date(next).getTime()).toBeGreaterThan(
+      Date.now() + 29 * 24 * 60 * 60 * 1000,
+    );
   });
 
   it("does not hand Clerk's state to a visitor who is not allowed in", async () => {

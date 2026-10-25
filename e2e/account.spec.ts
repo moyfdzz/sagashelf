@@ -2,7 +2,11 @@ import { expect, test } from "@playwright/test";
 
 // The two routes that act on an account are not pages: they answer only to the form of the
 // settings page, with a POST and a session.
-for (const path of ["/settings/export", "/settings/delete"]) {
+for (const path of [
+  "/settings/export",
+  "/settings/delete",
+  "/settings/username",
+]) {
   test(`${path} is not a page`, async ({ request }) => {
     const response = await request.get(path);
 
