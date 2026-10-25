@@ -13,6 +13,7 @@ import { eraseAccount } from "~server/db/erase-user";
 import { getProfile } from "~server/db/profile";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
+import { readForm } from "~server/http/body";
 
 // The form has a short text and a box. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -70,7 +71,7 @@ export async function action(args: Route.ActionArgs) {
   if (limited) return answerWithoutReading(request, limited);
 
   const parsed = deleteAccountSchema.safeParse(
-    Object.fromEntries(await request.formData()),
+    await readForm(request, maxFormBytes),
   );
   const db = await getDb();
   const profile = await getProfile(db, user.id);

@@ -6,6 +6,7 @@ import { exportAccount, profileCsv } from "~server/account/export";
 import { requireUser } from "~server/auth/require";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
+import { readForm } from "~server/http/body";
 
 // The form has one button. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -52,9 +53,7 @@ export async function action(args: Route.ActionArgs) {
   );
   if (limited) return answerWithoutReading(request, limited);
 
-  const parsed = formSchema.safeParse(
-    Object.fromEntries(await request.formData()),
-  );
+  const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) {
     return data({ error: "invalid_request" }, { status: 400 });
   }

@@ -26,6 +26,7 @@ import {
 import { mediaPath } from "~server/media/slug";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
+import { readForm } from "~server/http/body";
 import { z } from "zod";
 
 // The form has a few short fields and the notes (2000 characters, up to 4 bytes each).
@@ -188,7 +189,7 @@ export async function action(args: Route.ActionArgs) {
   if (!mediaId.success) throw data(null, { status: 404 });
 
   const parsed = libraryActionSchema.safeParse(
-    Object.fromEntries(await request.formData()),
+    await readForm(request, maxFormBytes),
   );
   if (!parsed.success) {
     return data(

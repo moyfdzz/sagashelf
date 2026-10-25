@@ -2,6 +2,7 @@ import { verifyWebhook } from "@clerk/backend/webhooks";
 
 import type { Route } from "./+types/webhooks.clerk";
 import { planClerkEvent } from "~server/auth/clerk-user";
+import { readText } from "~server/http/body";
 import { applyClerkOperation } from "~server/db/clerk-sync";
 import { rateLimit } from "~server/rate-limit";
 import {
@@ -50,8 +51,11 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  const body = await request.text();
-  if (body.length > maxBodyBytes) {
+  // The header can be left out, so the bytes that arrive are counted too.
+  let body: string;
+  try {
+    body = await readText(request, maxBodyBytes);
+  } catch {
     return Response.json({ error: "payload_too_large" }, { status: 413 });
   }
 

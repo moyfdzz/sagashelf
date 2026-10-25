@@ -7,6 +7,7 @@ import { addEntry } from "~server/db/library";
 import { addEntrySchema } from "~server/library/schema";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
+import { readForm } from "~server/http/body";
 
 // The form has one id. Anything bigger is not from the title page.
 const maxFormBytes = 1024;
@@ -79,7 +80,7 @@ export async function action(args: Route.ActionArgs) {
   if (limited) return answerWithoutReading(request, limited);
 
   const parsed = addEntrySchema.safeParse(
-    Object.fromEntries(await request.formData()),
+    await readForm(request, maxFormBytes),
   );
   if (!parsed.success) {
     return data({ error: "invalid_request" }, { status: 400 });
