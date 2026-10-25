@@ -34,7 +34,7 @@ The search (SAG-15) finds titles but a result opens nothing and shows no poster,
 - `IMAGE_LIMITER` (300 a minute per caller and location, namespaces 1003 and 2003) counts only a call to the provider, not an image served from the cache, because one page of results loads about twenty images.
 - A response out of the Cache API has immutable headers, and the Worker adds the security headers to every response, so the proxy sends a copy (`new Response(hit.body, hit)`). This was found by trying it against the real TMDB: the first request worked and the second answered `500`.
 
-**The search** now carries `imageUrl` in every result (from the database or the provider) and shows a poster and a link. Results kept in the Cache API before this change have no `imageUrl`: they show no poster until they expire (a day at most).
+**The search** now carries `imageUrl` in every result (from the database or the provider) and shows a poster and a link. The search cache key moved from `v1` to `v2` for this, so answers kept before the change (which have no `imageUrl`) are not read. They are not deleted: they expire on their own within a day.
 
 ## Alternatives considered
 
