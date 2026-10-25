@@ -12,6 +12,7 @@ export type LocalHit = {
   originalTitle: string | null;
   year: number | null;
   synopsis: LocalizedText;
+  imageUrl: string | null;
   popularity: number;
   provider: ProviderId;
   externalId: string;
@@ -52,7 +53,7 @@ export async function searchLocal(
 
   const { rows } = await db.execute(sql`
     SELECT m.id, m.type::text AS type, m.title, m.original_title, m.year, m.synopsis,
-           m.popularity, e.provider::text AS provider, e.external_id,
+           m.image_url, m.popularity, e.provider::text AS provider, e.external_id,
            (
              immutable_unaccent(lower(m.title)) = ${normalizedQuery}
              OR immutable_unaccent(lower(coalesce(m.original_title, ''))) = ${normalizedQuery}
@@ -84,6 +85,7 @@ export async function searchLocal(
     originalTitle: (row.original_title as string | null) ?? null,
     year: (row.year as number | null) ?? null,
     synopsis: (row.synopsis as LocalizedText | null) ?? {},
+    imageUrl: (row.image_url as string | null) ?? null,
     popularity: Number(row.popularity),
     provider: row.provider as ProviderId,
     externalId: String(row.external_id),

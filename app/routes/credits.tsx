@@ -50,7 +50,12 @@ export default function Credits() {
             className="h-auto max-w-full"
           />
         </a>
-        <p>{t("credits.tmdb.notice")}</p>
+        {/* TMDB requires this exact wording, so it stays in English in both languages. */}
+        <p lang="en">{t("credits.tmdb.notice")}</p>
+        {/* In English the courtesy line is the notice itself, so it is not repeated. */}
+        {t("credits.tmdb.noticeCourtesy") !== t("credits.tmdb.notice") ? (
+          <p className="text-fg-muted">{t("credits.tmdb.noticeCourtesy")}</p>
+        ) : null}
         <p>{t("credits.tmdb.body")}</p>
       </LegalSection>
       <LegalSection title={t("credits.soon.title")}>

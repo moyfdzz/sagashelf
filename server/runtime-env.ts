@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env, waitUntil } from "cloudflare:workers";
 
 import {
   clerkKeysFromEnv,
@@ -26,16 +26,36 @@ export function getSearchLimiter() {
   return env.SEARCH_LIMITER;
 }
 
+/** The Workers Rate Limiting binding for the image proxy (see `ratelimits` in wrangler.jsonc). */
+export function getImageLimiter() {
+  if (!env.IMAGE_LIMITER) {
+    throw new Error("The IMAGE_LIMITER binding is missing in wrangler.jsonc");
+  }
+  return env.IMAGE_LIMITER;
+}
+
+/** The Workers Cache API, or null when the runtime has none (it may not run on every host). */
+function defaultCache(): Cache | null {
+  if (typeof caches === "undefined") return null;
+  return (caches as unknown as { default?: Cache }).default ?? null;
+}
+
+/** Where the image proxy keeps the images it served, for a day. */
+export function getImageCache() {
+  return defaultCache();
+}
+
 /**
  * The search cache on the Workers Cache API, or one that keeps nothing when the runtime has no
  * `caches` (the Cache API may not run on every host, so the search must work without it).
  */
 export function getSearchCache() {
-  const cache =
-    typeof caches === "undefined"
-      ? null
-      : (caches as unknown as { default?: Cache }).default;
-  return createSearchCache(cache ?? null);
+  return createSearchCache(defaultCache());
+}
+
+/** Lets the Worker finish this work after the response has been sent. */
+export function runInBackground(work: Promise<unknown>): void {
+  waitUntil(work);
 }
 
 /** The only way app code reads environment variables. */

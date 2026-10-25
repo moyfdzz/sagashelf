@@ -18,6 +18,8 @@ export type SearchResult = {
   year: number | null;
   /** The synopsis in the language that was asked for, when there is one. */
   synopsis: string | null;
+  /** The provider's address of the poster. The page shows it through the image proxy. */
+  imageUrl: string | null;
   popularity: number;
   source: "local" | "provider";
 };
@@ -37,6 +39,7 @@ export function toResult(
     originalTitle: item.originalTitle,
     year: item.year,
     synopsis: item.synopsis[locale] ?? null,
+    imageUrl: item.imageUrl,
     popularity: item.popularity,
     source,
   };

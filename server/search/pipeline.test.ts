@@ -33,6 +33,7 @@ function hit(overrides: Partial<LocalHit> = {}): LocalHit {
     originalTitle: null,
     year: 2021,
     synopsis: {},
+    imageUrl: null,
     popularity: 5,
     provider: "tmdb",
     externalId: "movie/1",

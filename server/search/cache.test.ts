@@ -28,6 +28,7 @@ const dune: SearchResult = {
   originalTitle: null,
   year: 2021,
   synopsis: null,
+  imageUrl: null,
   popularity: 1,
   source: "provider",
 };

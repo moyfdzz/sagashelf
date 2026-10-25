@@ -14,6 +14,7 @@
     "server/db/profile.ts",
     "server/db/username.ts",
     "server/db/media-store.ts",
+    "server/db/media-detail.ts",
     "server/db/search-local.ts",
     "server/search/normalize.ts",
     "server/providers/types.ts",

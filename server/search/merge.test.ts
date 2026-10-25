@@ -17,6 +17,7 @@ function result(overrides: Partial<SearchResult> = {}): SearchResult {
     originalTitle: null,
     year: 2021,
     synopsis: null,
+    imageUrl: null,
     popularity: 0,
     source: "provider",
     ...overrides,

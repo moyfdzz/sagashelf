@@ -3,6 +3,8 @@ User-agent: *
 Disallow: /admin
 Disallow: /settings
 Disallow: /api/
+# Opening a title from a search result saves it; crawlers follow the canonical /media pages.
+Disallow: /media/open
 
 # Crawlers that collect content to train AI models, and AI agents. This file is a request,
 # not a lock: Cloudflare's AI bot setting is what enforces it for verified bots.

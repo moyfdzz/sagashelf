@@ -90,6 +90,38 @@ describe("the search page loader", () => {
     });
   });
 
+  it("links a title we hold to its page and one we do not to the address that saves it", async () => {
+    const hit = {
+      type: "movie",
+      title: "Dune",
+      provider: "tmdb",
+      externalId: "movie/438631",
+      imageUrl: "https://image.tmdb.org/t/p/w500/dune.jpg",
+    };
+    mocks.runSearch.mockResolvedValue({
+      results: [
+        { ...hit, id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f" },
+        { ...hit, id: null, imageUrl: undefined },
+      ],
+      failed: [],
+      source: "providers",
+    });
+
+    const result = (await load("?q=dune")) as {
+      results: { href: string; poster: string | null }[];
+    };
+
+    expect(result.results.map((entry) => entry.href)).toEqual([
+      "/media/movie/dune-0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
+      "/media/open?provider=tmdb&id=movie%2F438631",
+    ]);
+    // The poster goes through our proxy; a result kept in the cache before posters has none.
+    expect(result.results.map((entry) => entry.poster)).toEqual([
+      "/img/tmdb/w92/dune.jpg",
+      null,
+    ]);
+  });
+
   it("treats a type that is not ours as all of them", async () => {
     await load("?q=dune&type=book");
     await load("?q=dune&type=%3Cscript%3E");

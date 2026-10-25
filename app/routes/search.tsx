@@ -15,6 +15,8 @@ import {
   searchTypes,
   type SearchType,
 } from "~server/search/normalize";
+import { imageSrc } from "~server/images/sources";
+import { mediaPath, openPath } from "~server/media/slug";
 import { runSearch } from "~server/search/pipeline";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -68,7 +70,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     q,
     type,
     status: "done" as const,
-    results: response.results,
+    // A title we hold opens at once; one that only a provider knows is saved when it is opened.
+    results: response.results.map((result) => ({
+      ...result,
+      href: result.id
+        ? mediaPath(result.type, result.title, result.id)
+        : openPath(result.provider, result.externalId),
+      // Results kept in the cache before posters existed have no `imageUrl`.
+      poster: imageSrc(result.imageUrl ?? null, "w92"),
+    })),
     failed: response.failed,
   };
 }
@@ -156,26 +166,47 @@ export default function Search({ loaderData }: Route.ComponentProps) {
           {results.map((result) => (
             <li
               key={`${result.provider}:${result.externalId}`}
-              className="border-border bg-surface-raised rounded-md border p-4"
+              className="border-border bg-surface-raised flex gap-4 rounded-md border p-4"
             >
-              <p className="text-lg font-semibold">
-                {result.title}
-                {result.year ? (
-                  <span className="text-fg-muted font-normal">
-                    {" "}
-                    {t("search.year", { year: result.year })}
-                  </span>
+              {result.poster ? (
+                <img
+                  src={result.poster}
+                  alt={t("media.posterAlt", { title: result.title })}
+                  width={56}
+                  height={84}
+                  loading="lazy"
+                  className="h-[84px] w-14 shrink-0 rounded"
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="bg-border h-[84px] w-14 shrink-0 rounded"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-lg font-semibold">
+                  <Link to={result.href} className="text-accent underline">
+                    {result.title}
+                  </Link>
+                  {result.year ? (
+                    <span className="text-fg-muted font-normal">
+                      {" "}
+                      {t("search.year", { year: result.year })}
+                    </span>
+                  ) : null}
+                </p>
+                {result.originalTitle ? (
+                  <p className="text-fg-muted text-sm">
+                    {result.originalTitle}
+                  </p>
                 ) : null}
-              </p>
-              {result.originalTitle ? (
-                <p className="text-fg-muted text-sm">{result.originalTitle}</p>
-              ) : null}
-              <p className="text-fg-muted mt-1 text-sm font-semibold">
-                {t(`search.types.${result.type}`)}
-              </p>
-              {result.synopsis ? (
-                <p className="mt-2 line-clamp-2">{result.synopsis}</p>
-              ) : null}
+                <p className="text-fg-muted mt-1 text-sm font-semibold">
+                  {t(`search.types.${result.type}`)}
+                </p>
+                {result.synopsis ? (
+                  <p className="mt-2 line-clamp-2">{result.synopsis}</p>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
