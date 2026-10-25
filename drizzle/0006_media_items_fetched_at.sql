@@ -1,0 +1,1 @@
+ALTER TABLE "media_items" ADD COLUMN "fetched_at" timestamp with time zone DEFAULT now() NOT NULL;

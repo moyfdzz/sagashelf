@@ -28,6 +28,9 @@ const envSchema = z.object({
     .string()
     .regex(/^whsec_/)
     .optional(),
+  // The TMDB "API Read Access Token" (SAG-13), a Workers secret. Optional so previews and tests
+  // start without it; with none, no provider is used and the search answers from the database.
+  TMDB_READ_ACCESS_TOKEN: z.string().min(1).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

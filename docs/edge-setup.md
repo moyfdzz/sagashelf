@@ -125,3 +125,10 @@ The endpoint is `POST /webhooks/clerk`. How it works is in [ADR-003](adr/003-aut
 - **The preview URL of a branch is `https://<branch with dashes>-sagashelf.<account subdomain>.workers.dev`** and only exists while the branch does (it answers 404 after the branch is deleted). The endpoint URL in Clerk must be edited whenever the branch changes. Old per-version preview URLs of earlier pull requests answered Cloudflare error 1101, and the cause is unknown; a new preview worked.
 - **Clerk's example events give the event time in seconds** (the user's own times are in milliseconds). The webhook reads both.
 - The endpoint logs a warning that names `CLERK_WEBHOOK_SIGNING_SECRET` when the secret is missing, so a `503` can be traced in Observability.
+
+## 10. TMDB (SAG-13)
+
+- [x] Account on themoviedb.org (owner, 2026-10-25). The adapter uses the **API Read Access Token** (the long one that starts with `eyJ`), not the short v3 API key: it goes in an `Authorization` header, so it never appears in a URL, an error or a log.
+- [ ] Local value in `.dev.vars`: `TMDB_READ_ACCESS_TOKEN` (name in `.env.example`).
+- [ ] Workers secret `TMDB_READ_ACCESS_TOKEN`, with `wrangler secret put TMDB_READ_ACCESS_TOKEN` for Production, and in Previews Base. For a branch that already has a preview, also in that preview's own settings (see section 9). Without it no provider exists and the search answers from the database.
+- [ ] The TMDB logo and notice on the credits page (SAG-31). Terms read 2026-10-25; non-commercial use only; data kept at most 6 months (ADR-016).

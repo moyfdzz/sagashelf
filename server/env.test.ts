@@ -39,6 +39,15 @@ describe("parseEnv", () => {
     expect(message).not.toContain(bad);
   });
 
+  it("accepts the optional TMDB token and rejects an empty one", () => {
+    expect(
+      parseEnv({ APP_ENV: "preview", TMDB_READ_ACCESS_TOKEN: "set" }),
+    ).toEqual({ APP_ENV: "preview", TMDB_READ_ACCESS_TOKEN: "set" });
+    expect(() =>
+      parseEnv({ APP_ENV: "preview", TMDB_READ_ACCESS_TOKEN: "" }),
+    ).toThrow(/TMDB_READ_ACCESS_TOKEN/);
+  });
+
   it("names a missing variable", () => {
     expect(() => parseEnv({})).toThrow(/APP_ENV/);
   });
