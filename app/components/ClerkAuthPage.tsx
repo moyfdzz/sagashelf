@@ -34,6 +34,9 @@ export function ClerkAuthPage({ clerkState, publishableKey, children }: Props) {
             components={{
               terms: <Link to="/terms" className="text-accent underline" />,
               privacy: <Link to="/privacy" className="text-accent underline" />,
+              community: (
+                <Link to="/community" className="text-accent underline" />
+              ),
             }}
           />
         </p>

@@ -145,11 +145,72 @@
   "footer": {
     "label": "Legal information",
     "privacy": "Privacy policy",
-    "terms": "Terms of use"
+    "terms": "Terms of use",
+    "community": "Community rules",
+    "credits": "Credits"
   },
   "legal": {
     "updated": "Last updated: {{date}}",
-    "consent": "By continuing you accept the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>."
+    "consent": "By continuing you accept the <terms>Terms of use</terms>, the <privacy>Privacy policy</privacy> and the <community>Community rules</community>."
+  },
+  "community": {
+    "title": "Community rules",
+    "description": "How to get along on SagaShelf: what we expect from everyone and what is not allowed.",
+    "intro": "SagaShelf is a place to share what you like. These rules keep it friendly for everyone. They complement the <terms>Terms of use</terms>.",
+    "respect": {
+      "title": "Treat other people well",
+      "intro": "Not allowed:",
+      "harass": "harassment, threats or insults;",
+      "discriminate": "discrimination based on origin, gender, orientation, religion, disability or any other condition;",
+      "impersonate": "pretending to be someone else, or choosing a username that impersonates them."
+    },
+    "content": {
+      "title": "Mind what you publish",
+      "intro": "On your profile and in anything you share, do not post:",
+      "spam": "spam, advertising or misleading content;",
+      "piracy": "links to pirated or illegal content;",
+      "private": "other people's personal data without their permission."
+    },
+    "spoilers": {
+      "title": "Spoilers",
+      "body": "If you mention a major twist of a story, warn first so everyone can decide whether to read it."
+    },
+    "age": {
+      "title": "Minimum age",
+      "body": "You must be at least 13 to create an account. If you think a minor created one, write to us and we will delete it."
+    },
+    "report": {
+      "title": "Reports and consequences",
+      "body": "If you see something that breaks these rules, write to {{email}}. We may remove content and suspend or delete accounts that do not follow them."
+    }
+  },
+  "credits": {
+    "title": "Credits",
+    "description": "Where SagaShelf's data comes from and who gets the credit.",
+    "intro": "SagaShelf does not own the data of the titles it shows. Here is where it comes from and who we thank.",
+    "tmdb": {
+      "title": "TMDB",
+      "logoAlt": "The Movie Database (TMDB)",
+      "notice": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+      "body": "Movie, series and anime data comes from TMDB. SagaShelf does not store its images."
+    },
+    "soon": {
+      "title": "Sources to be added",
+      "intro": "SagaShelf does not use these sources yet. When it does, they will be shown with this credit:",
+      "tvmaze": "Episode schedules from <site>TVmaze</site>, licensed CC BY-SA.",
+      "wikidata": "Relations between titles from <site>Wikidata</site> (Powered by Wikidata), public domain (CC0).",
+      "openLibrary": "Books from <site>Open Library</site>.",
+      "googleBooks": "Books from <site>Google Books</site>, for display only and never stored.",
+      "mangadex": "Manga data from <site>MangaDex</site>, metadata only: SagaShelf does not show chapters."
+    },
+    "nonCommercial": {
+      "title": "A non-profit project",
+      "body": "SagaShelf is a personal, non-profit project: it shows no ads and charges for nothing. TMDB and MangaDex do not allow commercial use without a license, so each source's terms will be reviewed before any paid feature is added."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "body": "We only use necessary cookies, so there is no notice to accept. <site>More in the Privacy policy</site>."
+    }
   },
   "privacy": {
     "title": "Privacy policy",

@@ -8,6 +8,8 @@ export default [
   route("sign-out", "routes/sign-out.tsx"),
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),
+  route("community", "routes/community.tsx"),
+  route("credits", "routes/credits.tsx"),
   route("settings/profile", "routes/settings.profile.tsx"),
   route("settings/export", "routes/settings.export.ts"),
   route("settings/delete", "routes/settings.delete.ts"),

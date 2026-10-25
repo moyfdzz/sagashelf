@@ -54,7 +54,7 @@ export default function Privacy() {
         />
         <p>{t("privacy.processors.outro")}</p>
       </LegalSection>
-      <LegalSection title={t("privacy.cookies.title")}>
+      <LegalSection id="cookies" title={t("privacy.cookies.title")}>
         <p>{t("privacy.cookies.body")}</p>
       </LegalSection>
       <LegalSection title={t("privacy.retention.title")}>
