@@ -6,6 +6,7 @@ import { supportedLanguages } from "~/locales";
 import { localeCookie } from "~/middleware/i18next";
 import { rateLimit } from "~server/rate-limit";
 import { getWriteLimiter } from "~server/runtime-env";
+import { readForm } from "~server/http/body";
 
 const formSchema = z.object({
   locale: z.enum(supportedLanguages),
@@ -45,9 +46,7 @@ export async function action({ request }: Route.ActionArgs) {
   const limited = await rateLimit(getWriteLimiter(), request, "locale");
   if (limited) return answerWithoutReading(request, limited);
 
-  const form = formSchema.safeParse(
-    Object.fromEntries(await request.formData()),
-  );
+  const form = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!form.success) {
     return Response.json({ error: "invalid_locale" }, { status: 400 });
   }

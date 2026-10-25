@@ -52,6 +52,18 @@ async function guard(args: LoaderFunctionArgs, role?: Role) {
   throw data({ error: "forbidden" }, { status: 403 });
 }
 
+/**
+ * The signed-in user from our own table, or null for a visitor with no session or no account.
+ * For a public page that shows a little more to a person who is signed in.
+ */
+export async function getOptionalUser(
+  args: LoaderFunctionArgs,
+): Promise<SessionUser | null> {
+  if (!getClerkKeys()) return null;
+  const { userId } = await getAuth(args);
+  return userId ? findUser(userId) : null;
+}
+
 /** The signed-in user from our own table, or a redirect to sign in, or 403. */
 export function requireUser(args: LoaderFunctionArgs) {
   return guard(args);

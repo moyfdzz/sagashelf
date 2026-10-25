@@ -64,6 +64,11 @@ Read on 2026-10-21 from Clerk's pricing and documentation:
 - **Webhooks** are delivered by Svix, at least once and in no guaranteed order, so SAG-11 must be idempotent and order-safe.
 - **Measured locally in SAG-10:** the SDK runs in `workerd` and verifies valid, missing, expired and forged tokens without a network call, with about 1 ms of overhead. The Worker grew from about 216 to about 291 kB gzip for the SDK alone, and the server bundle reached about 481 kB gzip once the sign-in components were included, still far below the Free plan limit.
 
+## Hardening after a review (2026-10-25, SAG-18)
+
+- **A session token is accepted only for the site that was asked.** The auth middleware passes `authorizedParties: [origin of the request]` to Clerk, so a token made for another subdomain of the domain (the `azp` claim) is refused. The origin comes from each request, so previews accept the tokens of their own address.
+- **The size of a body is counted, not only declared.** `server/http/body.ts` reads a form or a webhook with a limit on the bytes that arrive, because a client can leave `Content-Length` out or lie about it. Every form and the webhook use it.
+
 ## Alternatives considered
 
 - **Own authentication with stored password hashes.** Maximum control, no per-user limit, a lighter Worker, and no exception to the strict policy. But the project would own credential storage, reset and email flows, sessions, OAuth, abuse protection and the legal duties around them: weeks of work plus permanent maintenance on something that is not the product, where a flaw does the most damage. Rejected, and revisited in "Reasons to reconsider".

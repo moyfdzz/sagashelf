@@ -15,5 +15,10 @@ export const authMiddleware: MiddlewareFunction<Response> = (args, next) => {
 
   const keys = getClerkKeys();
   if (!keys) return next();
-  return clerkMiddleware(keys)(args, next);
+  // A session token says which site it was made for (`azp`). Only this site is accepted, so a
+  // token made on another subdomain of the domain is refused here.
+  return clerkMiddleware({
+    ...keys,
+    authorizedParties: [new URL(args.request.url).origin],
+  })(args, next);
 };

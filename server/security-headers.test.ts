@@ -177,6 +177,9 @@ describe("isSessionPage", () => {
     "/settings/profile",
     "/settings/a/b",
     "/sign-out",
+    "/library",
+    "/library/",
+    "/library/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
   ])("is true for %s", (path) => expect(isSessionPage(path)).toBe(true));
 
   it.each([
@@ -186,6 +189,8 @@ describe("isSessionPage", () => {
     "/sign-in",
     "/setting",
     "/sign-outx",
+    "/libraryx",
+    "/api/library",
   ])("is false for %s", (path) => expect(isSessionPage(path)).toBe(false));
 });
 

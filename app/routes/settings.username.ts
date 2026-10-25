@@ -13,6 +13,7 @@ import {
 } from "~server/db/username";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
+import { readForm } from "~server/http/body";
 
 // The form has one short name. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -63,7 +64,7 @@ export async function action(args: Route.ActionArgs) {
   if (limited) return answerWithoutReading(request, limited);
 
   const parsed = usernameChangeSchema.safeParse(
-    Object.fromEntries(await request.formData()),
+    await readForm(request, maxFormBytes),
   );
   if (!parsed.success) {
     const reserved = parsed.error.issues.some(

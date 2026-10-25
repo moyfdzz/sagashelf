@@ -11,7 +11,8 @@
     "account": "Cuenta",
     "settings": "Ajustes",
     "signOut": "Cerrar sesión",
-    "search": "Buscar"
+    "search": "Buscar",
+    "library": "Mi biblioteca"
   },
   "language": {
     "label": "Idioma"
@@ -71,7 +72,13 @@
     "season": "Temporada {{number}}",
     "episode": "Episodio {{number}}",
     "viewOnTmdb": "Ver en TMDB",
-    "sources": "Los datos vienen de TMDB. Más en <credits>Créditos</credits>."
+    "sources": "Los datos vienen de TMDB. Más en <credits>Créditos</credits>.",
+    "library": {
+      "add": "Añadir a mi biblioteca",
+      "inLibrary": "En tu biblioteca: {{status}}",
+      "edit": "Editar mi entrada",
+      "signIn": "Inicia sesión para añadir este título a tu biblioteca"
+    }
   },
   "errors": {
     "backHome": "Volver al inicio",
@@ -337,6 +344,96 @@
     "contact": {
       "title": "Contacto",
       "body": "Escríbenos a {{email}}."
+    }
+  },
+  "library": {
+    "title": "Mi biblioteca",
+    "description": "Los títulos que sigues, con tu estado, progreso y puntuación.",
+    "count_one": "{{count}} título",
+    "count_other": "{{count}} títulos",
+    "status": {
+      "planned": "Pendiente",
+      "in_progress": "En curso",
+      "completed": "Completado",
+      "paused": "En pausa",
+      "dropped": "Abandonado"
+    },
+    "empty": {
+      "none": "Tu biblioteca está vacía. Busca un título y añádelo desde su página.",
+      "search": "Ir a buscar",
+      "noMatch": "Ningún título coincide con estos filtros."
+    },
+    "filters": {
+      "label": "Filtros de la biblioteca",
+      "type": "Tipo",
+      "status": "Estado",
+      "year": "Año",
+      "minScore": "Puntuación mínima",
+      "sort": "Ordenar por",
+      "any": "Todos",
+      "apply": "Aplicar",
+      "clear": "Quitar filtros"
+    },
+    "sort": {
+      "recent": "Recientes",
+      "title": "Título",
+      "score": "Puntuación",
+      "year": "Año"
+    },
+    "pagination": {
+      "label": "Páginas de la biblioteca",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {{page}} de {{pages}}"
+    },
+    "card": {
+      "progress": "{{done}} de {{total}} episodios",
+      "score": "Puntuación: {{score}} de 10",
+      "line": "{{kind}} · {{status}}"
+    },
+    "editor": {
+      "back": "Volver a mi biblioteca",
+      "viewTitle": "Ver la página del título",
+      "saved": "Se guardó tu entrada.",
+      "rewatched": "Empezaste de nuevo desde el primer episodio.",
+      "status": "Estado",
+      "progress": "Episodios vistos",
+      "progressHint": "De {{total}} episodios.",
+      "progressAt": "Vas en la temporada {{season}}, episodio {{episode}}.",
+      "score": "Puntuación",
+      "noScore": "Sin puntuar",
+      "scoreOption": "{{score}} de 10",
+      "startedAt": "Fecha de inicio",
+      "finishedAt": "Fecha de fin",
+      "notes": "Notas privadas",
+      "notesHint": "Solo tú las ves. Hasta {{max}} caracteres.",
+      "visibility": "Quién puede ver esta entrada",
+      "visibilityHint": "Por ahora solo tú ves tu biblioteca. Esta elección se aplicará cuando haya perfiles públicos.",
+      "visibilityOptions": {
+        "public": "Todas las personas",
+        "friends": "Solo amistades",
+        "private": "Solo yo"
+      },
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "rewatchCount_one": "Lo has vuelto a ver {{count}} vez.",
+      "rewatchCount_other": "Lo has vuelto a ver {{count}} veces.",
+      "rewatch": "Volver a verlo",
+      "rewatchHint": "Empieza de nuevo desde el primer episodio y suma una vez a tu contador.",
+      "remove": {
+        "summary": "Quitar de mi biblioteca",
+        "warning": "Se borran tu estado, tu progreso, tu puntuación y tus notas de este título. No se puede deshacer.",
+        "confirm": "Quitar definitivamente"
+      }
+    },
+    "errors": {
+      "summary": "Revisa los campos marcados.",
+      "invalid": "Revisa este campo.",
+      "progress_too_high": "El progreso supera los episodios del título.",
+      "dates_order": "La fecha de fin no puede ser anterior a la de inicio.",
+      "notes_too_long": "Las notas son demasiado largas.",
+      "not_completed": "Solo puedes volver a ver un título completado.",
+      "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
     }
   }
 }
