@@ -61,6 +61,11 @@ export function AccountMenu() {
         className="bg-surface-raised border-border absolute right-0 z-40 mt-2 w-60 rounded-md border p-1 shadow-lg"
       >
         <li>
+          <a href="/library" className={itemClass}>
+            {t("nav.library")}
+          </a>
+        </li>
+        <li>
           <a href="/settings/profile" className={itemClass}>
             {t("nav.settings")}
           </a>

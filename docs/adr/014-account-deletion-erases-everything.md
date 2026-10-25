@@ -2,7 +2,7 @@
 
 - **Status:** Accepted (supersedes the deletion rule of [ADR-003](003-auth-clerk.md), point 6 of "The webhook")
 - **Date:** 2026-10-24
-- **Implementation:** Done for the profile and for every table that holds what a person makes or follows (SAG-12). The tables that SAG-18 adds must be added to the erasure.
+- **Implementation:** Done for the profile and for every table that holds what a person makes or follows (SAG-12). SAG-18 added no table (see [ADR-018](018-personal-library.md)); a table that a later ticket adds must be added to the erasure.
 - **Tickets:** SAG-12, SAG-18, SAG-22
 - **Related:** [ADR-003](003-auth-clerk.md)
 

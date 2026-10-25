@@ -1,9 +1,12 @@
 import { Trans, useTranslation } from "react-i18next";
-import { data, Link, redirect } from "react-router";
+import { data, Form, Link, redirect } from "react-router";
 
 import type { Route } from "./+types/media.$type.$slug";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
+import { getOptionalUser } from "~server/auth/require";
+import { signInPath } from "~server/auth/sign-in-url";
+import { getEntry } from "~server/db/library";
 import { getMediaDetail } from "~server/db/media-detail";
 import { imageSrc } from "~server/images/sources";
 import { importMedia, needsRefresh } from "~server/media/import";
@@ -19,7 +22,8 @@ const openGraphType = {
   manga: "book",
 } as const;
 
-export async function loader({ params, request, context }: Route.LoaderArgs) {
+export async function loader(args: Route.LoaderArgs) {
+  const { params, request, context } = args;
   const id = idFromSlug(params.slug);
   if (!id || !isMediaKind(params.type)) throw data(null, { status: 404 });
 
@@ -58,6 +62,18 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const synopsisLocale = detail.synopsis[locale] ? locale : other;
   const synopsis = detail.synopsis[synopsisLocale] ?? null;
 
+  // What the signed-in person has done with this title. The page is the same for everyone
+  // otherwise, so only this block changes.
+  const user = await getOptionalUser(args);
+  const entry = user ? await getEntry(db, user.id, detail.id) : null;
+  const library = user
+    ? { signedIn: true as const, status: entry?.status ?? null }
+    : {
+        signedIn: false as const,
+        status: null,
+        signInPath: signInPath(request.url),
+      };
+
   const { t } = getInstance(context);
   const description = shortDescription(synopsis);
   const poster = imageSrc(detail.imageUrl, "w342");
@@ -67,6 +83,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
   return {
     id: detail.id,
+    library,
     type: detail.type,
     title: detail.title,
     pageTitle: t("app.pageTitle", { title: detail.title }),
@@ -96,6 +113,11 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       seasonCount: detail.seasons.filter((season) => season.number > 0).length,
     }),
   };
+}
+
+// The block of the library shows what this person has done, so no shared cache keeps the page.
+export function headers() {
+  return { "Cache-Control": "private, no-store" };
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -186,6 +208,46 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
               </a>
             </p>
           ) : null}
+
+          <div className="mt-6">
+            {item.library.signedIn ? (
+              item.library.status ? (
+                <p>
+                  <span className="font-semibold">
+                    {t("media.library.inLibrary", {
+                      status: t(`library.status.${item.library.status}`),
+                    })}
+                  </span>{" "}
+                  {/* A plain link: the entry page has its own security policy, which only a new
+                      document gets. */}
+                  <a
+                    href={`/library/${item.id}`}
+                    className="text-accent underline"
+                  >
+                    {t("media.library.edit")}
+                  </a>
+                </p>
+              ) : (
+                // A whole-page form: the entry page it leads to has its own security policy.
+                <Form method="post" action="/library/add" reloadDocument>
+                  <input type="hidden" name="mediaId" value={item.id} />
+                  <button
+                    type="submit"
+                    className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    {t("media.library.add")}
+                  </button>
+                </Form>
+              )
+            ) : (
+              <a
+                href={item.library.signInPath}
+                className="text-accent underline"
+              >
+                {t("media.library.signIn")}
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

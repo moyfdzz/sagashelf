@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/media.$type.$slug";
-import { loader, meta } from "./media.$type.$slug";
+import { headers, loader, meta } from "./media.$type.$slug";
 import type { MediaDetail } from "~server/db/media-detail";
 
 const mocks = vi.hoisted(() => ({
+  getOptionalUser: vi.fn(),
+  getEntry: vi.fn(),
   getMediaDetail: vi.fn(),
   importMedia: vi.fn(),
   runInBackground: vi.fn(),
   locale: "es",
 }));
 
+vi.mock("~server/auth/require", () => ({
+  getOptionalUser: mocks.getOptionalUser,
+}));
+vi.mock("~server/db/library", () => ({ getEntry: mocks.getEntry }));
 vi.mock("~server/db/media-detail", () => ({
   getMediaDetail: mocks.getMediaDetail,
 }));
@@ -53,6 +59,8 @@ function detail(overrides: Partial<MediaDetail> = {}): MediaDetail {
 
 beforeEach(() => {
   mocks.locale = "es";
+  mocks.getOptionalUser.mockReset().mockResolvedValue(null);
+  mocks.getEntry.mockReset().mockResolvedValue(null);
   mocks.getMediaDetail.mockReset().mockResolvedValue(detail());
   mocks.importMedia.mockReset().mockResolvedValue(null);
   mocks.runInBackground.mockReset();
@@ -92,6 +100,46 @@ describe("the detail page loader", () => {
       sourceUrl: "https://www.themoviedb.org/movie/603",
     });
     expect(result.jsonLd).toMatchObject({ "@type": "Movie", name: "Matrix" });
+  });
+
+  it("offers a visitor the way to sign in and come back to the title", async () => {
+    const result = await load("movie", `matrix-${id}`);
+
+    expect(result).toMatchObject({
+      library: {
+        signedIn: false,
+        signInPath: `/sign-in?redirectTo=${encodeURIComponent(`/media/movie/matrix-${id}`)}`,
+      },
+    });
+    expect(mocks.getEntry).not.toHaveBeenCalled();
+  });
+
+  it("offers a signed-in person to add the title when it is not in their library", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+
+    const result = await load("movie", `matrix-${id}`);
+
+    expect(result).toMatchObject({ library: { signedIn: true, status: null } });
+    expect(mocks.getEntry).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      id,
+    );
+  });
+
+  it("shows a signed-in person the status they gave the title", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    mocks.getEntry.mockResolvedValue({ status: "completed" });
+
+    const result = await load("movie", `matrix-${id}`);
+
+    expect(result).toMatchObject({
+      library: { signedIn: true, status: "completed" },
+    });
+  });
+
+  it("is never kept by a shared cache, because it shows the entry of the person", () => {
+    expect(headers()).toEqual({ "Cache-Control": "private, no-store" });
   });
 
   it("does not ask the provider for a title that is fresh", async () => {

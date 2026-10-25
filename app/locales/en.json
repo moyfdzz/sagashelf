@@ -11,7 +11,8 @@
     "account": "Account",
     "settings": "Settings",
     "signOut": "Sign out",
-    "search": "Search"
+    "search": "Search",
+    "library": "My library"
   },
   "language": {
     "label": "Language"
@@ -71,7 +72,13 @@
     "season": "Season {{number}}",
     "episode": "Episode {{number}}",
     "viewOnTmdb": "View on TMDB",
-    "sources": "The data comes from TMDB. More in <credits>Credits</credits>."
+    "sources": "The data comes from TMDB. More in <credits>Credits</credits>.",
+    "library": {
+      "add": "Add to my library",
+      "inLibrary": "In your library: {{status}}",
+      "edit": "Edit my entry",
+      "signIn": "Sign in to add this title to your library"
+    }
   },
   "errors": {
     "backHome": "Back to home",
@@ -337,6 +344,96 @@
     "contact": {
       "title": "Contact",
       "body": "Write to us at {{email}}."
+    }
+  },
+  "library": {
+    "title": "My library",
+    "description": "The titles you follow, with your status, progress and score.",
+    "count_one": "{{count}} title",
+    "count_other": "{{count}} titles",
+    "status": {
+      "planned": "Planned",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "paused": "On hold",
+      "dropped": "Dropped"
+    },
+    "empty": {
+      "none": "Your library is empty. Search for a title and add it from its page.",
+      "search": "Go to search",
+      "noMatch": "No title matches these filters."
+    },
+    "filters": {
+      "label": "Library filters",
+      "type": "Type",
+      "status": "Status",
+      "year": "Year",
+      "minScore": "Minimum score",
+      "sort": "Sort by",
+      "any": "All",
+      "apply": "Apply",
+      "clear": "Clear filters"
+    },
+    "sort": {
+      "recent": "Recent",
+      "title": "Title",
+      "score": "Score",
+      "year": "Year"
+    },
+    "pagination": {
+      "label": "Library pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} of {{pages}}"
+    },
+    "card": {
+      "progress": "{{done}} of {{total}} episodes",
+      "score": "Score: {{score}} out of 10",
+      "line": "{{kind}} · {{status}}"
+    },
+    "editor": {
+      "back": "Back to my library",
+      "viewTitle": "View the title page",
+      "saved": "Your entry was saved.",
+      "rewatched": "You started again from the first episode.",
+      "status": "Status",
+      "progress": "Episodes watched",
+      "progressHint": "Out of {{total}} episodes.",
+      "progressAt": "You are at season {{season}}, episode {{episode}}.",
+      "score": "Score",
+      "noScore": "Not scored",
+      "scoreOption": "{{score}} out of 10",
+      "startedAt": "Start date",
+      "finishedAt": "Finish date",
+      "notes": "Private notes",
+      "notesHint": "Only you see them. Up to {{max}} characters.",
+      "visibility": "Who can see this entry",
+      "visibilityHint": "For now only you see your library. This choice will apply once there are public profiles.",
+      "visibilityOptions": {
+        "public": "Everyone",
+        "friends": "Friends only",
+        "private": "Only me"
+      },
+      "save": "Save",
+      "saving": "Saving…",
+      "rewatchCount_one": "You have watched it again {{count}} time.",
+      "rewatchCount_other": "You have watched it again {{count}} times.",
+      "rewatch": "Watch it again",
+      "rewatchHint": "Start again from the first episode and add one to your counter.",
+      "remove": {
+        "summary": "Remove from my library",
+        "warning": "Your status, progress, score and notes for this title are deleted. This cannot be undone.",
+        "confirm": "Remove for good"
+      }
+    },
+    "errors": {
+      "summary": "Check the marked fields.",
+      "invalid": "Check this field.",
+      "progress_too_high": "The progress is more than the episodes of the title.",
+      "dates_order": "The finish date cannot be before the start date.",
+      "notes_too_long": "The notes are too long.",
+      "not_completed": "You can only watch a completed title again.",
+      "generic": "We could not save the changes. Try again."
     }
   }
 }
