@@ -37,6 +37,8 @@ A person needs to keep track of what they watch: a status, how far they got, a s
 - **Watching again**: "Watch it again" on a completed title sets it back to "in progress" with progress 0 and a new start date, and adds one to the counter **at that moment**. It counts the times a person started again, not the times they finished again. The score and the notes stay.
 - Scores are whole numbers from 1 to 10. Half points would need a migration and were left out.
 
+**The data export** has the library in the JSON file and, in the CSV file, as a second table below the profile (title, status, progress, score, dates, times watched again, notes, visibility, date added). Lists and custom entries are still only in the JSON file. A cell that starts like a formula is quoted so a spreadsheet does not run it.
+
 **Security policy.** `/library` and everything under it are session pages (`isSessionPage`): they get the narrow policy of ADR-011 that lets Clerk's script renew the session, because the entry page has a form that can stay open longer than the 60 seconds a session token lasts. No new origin is added. Links from other pages to the library are plain links, and the add form reloads the document, because a new document is what gets the policy.
 
 ## Alternatives considered

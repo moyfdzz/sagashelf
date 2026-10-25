@@ -145,7 +145,26 @@ function csvCell(value: unknown): string {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-/** The profile as a table of `field,value`. Library and lists join it with SAG-18. */
+const libraryColumns = [
+  "title",
+  "status",
+  "progress",
+  "score",
+  "started_at",
+  "finished_at",
+  "times_watched_again",
+  "notes",
+  "visibility",
+  "added_at",
+] as const;
+
+const day = (value: unknown) =>
+  value instanceof Date ? value.toISOString().slice(0, 10) : value;
+
+/**
+ * The profile as a table of `field,value`, and the library below it as a second table with its
+ * own header, after an empty line. Lists and custom entries are in the JSON file.
+ */
 export function profileCsv(data: AccountExport): string {
   const rows: [string, unknown][] = [
     ["username", data.profile.username],
@@ -156,10 +175,31 @@ export function profileCsv(data: AccountExport): string {
     ["privacy", data.profile.privacy],
     ["created_at", data.profile.createdAt],
   ];
-  return (
-    [
-      "field,value",
-      ...rows.map(([k, v]) => `${csvCell(k)},${csvCell(v)}`),
-    ].join("\r\n") + "\r\n"
-  );
+  const lines = [
+    "field,value",
+    ...rows.map(([k, v]) => `${csvCell(k)},${csvCell(v)}`),
+  ];
+
+  if (data.libraryEntries.length > 0) {
+    lines.push("", libraryColumns.join(","));
+    for (const entry of data.libraryEntries) {
+      lines.push(
+        [
+          entry.title,
+          entry.status,
+          entry.progress,
+          entry.score,
+          entry.startedAt,
+          entry.finishedAt,
+          entry.rewatchCount,
+          entry.notes,
+          entry.visibility,
+          day(entry.createdAt),
+        ]
+          .map(csvCell)
+          .join(","),
+      );
+    }
+  }
+  return lines.join("\r\n") + "\r\n";
 }

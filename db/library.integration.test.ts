@@ -10,6 +10,7 @@ import {
   saveEntry,
   totalEpisodes,
 } from "../server/db/library";
+import { exportAccount } from "../server/account/export";
 import { saveMedia, saveParts } from "../server/db/media-store";
 import { libraryEntries, mediaItems } from "../server/db/schema";
 import type { EntryState } from "../server/library/rules";
@@ -219,6 +220,36 @@ describe("saveEntry, getEntry and removeEntry", () => {
     await expect(
       saveEntry(db, ana.id, mediaId, { ...completed, score: 11 }),
     ).rejects.toThrow();
+  });
+});
+
+describe("the data export", () => {
+  it("has the library of the person and nothing of anybody else", async () => {
+    const ana = await newUser();
+    const beto = await newUser();
+    const mediaId = await addMedia("Ataque a los Titanes");
+    await addEntry(db, ana.id, mediaId);
+    await saveEntry(db, ana.id, mediaId, completed);
+    await addEntry(db, beto.id, mediaId);
+
+    const anaData = await exportAccount(db, ana.id);
+    const betoData = await exportAccount(db, beto.id);
+
+    expect(anaData?.libraryEntries).toEqual([
+      expect.objectContaining({
+        title: "Ataque a los Titanes",
+        status: "completed",
+        score: 9,
+        notes: "Muy buena",
+        visibility: "public",
+      }),
+    ]);
+    expect(betoData?.libraryEntries).toEqual([
+      expect.objectContaining({ status: "planned", score: null, notes: null }),
+    ]);
+    // Never the id of the account or of the title.
+    expect(JSON.stringify(anaData)).not.toContain(ana.id);
+    expect(JSON.stringify(anaData)).not.toContain(mediaId);
   });
 });
 
