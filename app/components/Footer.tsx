@@ -19,6 +19,18 @@ export function Footer() {
         <Link to="/terms" className="text-fg-muted hover:text-accent underline">
           {t("footer.terms")}
         </Link>
+        <Link
+          to="/community"
+          className="text-fg-muted hover:text-accent underline"
+        >
+          {t("footer.community")}
+        </Link>
+        <Link
+          to="/credits"
+          className="text-fg-muted hover:text-accent underline"
+        >
+          {t("footer.credits")}
+        </Link>
       </nav>
     </footer>
   );

@@ -5,6 +5,8 @@ const pages = [
   { name: "home", path: "/" },
   { name: "privacy", path: "/privacy" },
   { name: "terms", path: "/terms" },
+  { name: "community", path: "/community" },
+  { name: "credits", path: "/credits" },
   { name: "404", path: "/does-not-exist" },
 ];
 

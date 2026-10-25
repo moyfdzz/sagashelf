@@ -10,7 +10,7 @@ export function LegalPage({
   children,
 }: {
   title: string;
-  intro: string;
+  intro: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -30,24 +30,26 @@ export function LegalPage({
 
 export function LegalSection({
   title,
+  id,
   children,
 }: {
   title: string;
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="mt-8">
+    <section id={id} className="mt-8">
       <h2 className="text-xl font-semibold">{title}</h2>
       <div className="mt-2 space-y-3">{children}</div>
     </section>
   );
 }
 
-export function LegalList({ items }: { items: string[] }) {
+export function LegalList({ items }: { items: ReactNode[] }) {
   return (
     <ul className="list-disc space-y-2 pl-6">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
+      {items.map((item, index) => (
+        <li key={index}>{item}</li>
       ))}
     </ul>
   );

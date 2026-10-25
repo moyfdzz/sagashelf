@@ -11,6 +11,16 @@ const pages = [
     es: { title: "Términos de uso" },
     en: { title: "Terms of use" },
   },
+  {
+    path: "/community",
+    es: { title: "Reglas de la comunidad" },
+    en: { title: "Community rules" },
+  },
+  {
+    path: "/credits",
+    es: { title: "Créditos" },
+    en: { title: "Credits" },
+  },
 ];
 
 for (const [locale, key] of [
@@ -33,24 +43,44 @@ for (const [locale, key] of [
             name: page[key].title,
           }),
         ).toBeVisible();
-        await expect(
-          browserPage.getByText("contact@sagashelf.app").first(),
-        ).toBeVisible();
+        if (page.path !== "/credits") {
+          await expect(
+            browserPage.getByText("contact@sagashelf.app").first(),
+          ).toBeVisible();
+        }
       });
     }
 
-    test("the footer links open both pages", async ({ page }) => {
-      await page.goto("/");
-      const footer = page.getByRole("contentinfo");
+    test("the footer links open every legal page", async ({ page }) => {
+      for (const target of pages) {
+        await page.goto("/");
+        await page
+          .getByRole("contentinfo")
+          .getByRole("link", { name: target[key].title })
+          .click();
+        await expect(page).toHaveURL(new RegExp(`${target.path}$`));
+      }
+    });
 
-      await footer.getByRole("link", { name: pages[0][key].title }).click();
-      await expect(page).toHaveURL(/\/privacy$/);
+    test("the credits page shows the TMDB logo, its notice and the cookies link", async ({
+      page,
+    }) => {
+      await page.goto("/credits");
+
+      await expect(
+        page.getByRole("img", { name: "The Movie Database (TMDB)" }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(
+          "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+        ),
+      ).toBeVisible();
 
       await page
-        .getByRole("contentinfo")
-        .getByRole("link", { name: pages[1][key].title })
+        .getByRole("main")
+        .getByRole("link", { name: /privacy|privacidad/i })
         .click();
-      await expect(page).toHaveURL(/\/terms$/);
+      await expect(page).toHaveURL(/\/privacy#cookies$/);
     });
   });
 }
