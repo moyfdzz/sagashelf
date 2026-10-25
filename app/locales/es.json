@@ -42,6 +42,37 @@
     "partial": "Algunas fuentes no respondieron a tiempo, así que puede faltar algún resultado. Inténtalo de nuevo en un momento.",
     "year": "({{year}})"
   },
+  "media": {
+    "kinds": {
+      "anime": "Anime",
+      "movie": "Película",
+      "series": "Serie",
+      "book": "Libro",
+      "manga": "Manga"
+    },
+    "status": {
+      "upcoming": "Próximamente",
+      "ongoing": "En emisión",
+      "finished": "Finalizado",
+      "cancelled": "Cancelado",
+      "unknown": "Estado desconocido"
+    },
+    "summary": "{{kind}} · {{status}}",
+    "seasonDetails_one": " · {{count}} episodio",
+    "seasonDetails_other": " · {{count}} episodios",
+    "seasonDetails_dated_one": " · {{count}} episodio · {{date}}",
+    "seasonDetails_dated_other": " · {{count}} episodios · {{date}}",
+    "episodeLine": "{{number}}. {{title}}",
+    "posterAlt": "Póster de {{title}}",
+    "originalTitle": "Título original: {{title}}",
+    "synopsis": "Sinopsis",
+    "noSynopsis": "Todavía no hay sinopsis para este título.",
+    "seasons": "Temporadas",
+    "season": "Temporada {{number}}",
+    "episode": "Episodio {{number}}",
+    "viewOnTmdb": "Ver en TMDB",
+    "sources": "Los datos vienen de TMDB. Más en <credits>Créditos</credits>."
+  },
   "errors": {
     "backHome": "Volver al inicio",
     "notFound": {
@@ -192,6 +223,7 @@
       "title": "TMDB",
       "logoAlt": "The Movie Database (TMDB)",
       "notice": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+      "noticeCourtesy": "Este producto usa la API de TMDB, pero TMDB no lo respalda ni lo certifica. (Traducción de cortesía: el aviso oficial es el de arriba.)",
       "body": "Los datos de películas, series y anime vienen de TMDB. Las imágenes no se guardan en SagaShelf."
     },
     "soon": {

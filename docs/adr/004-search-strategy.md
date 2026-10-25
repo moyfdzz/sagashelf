@@ -75,12 +75,12 @@ These were read on 2026-10-20 (details and sources in ADR-005) and shape step 6 
 - **The cache** keeps what the providers answered for one query, type and language: one day, and one hour when the answer was empty. A partial answer (some provider failed) is not kept, because it would hide the titles of the one that failed. It is the Workers Cache API behind a wrapper that never throws, so a host without it just has no cache.
 - **The deadline** is 3 s for the whole search, passed to every provider as a signal and also raced against it, so a provider that ignores the signal cannot hold the search. Each provider keeps its own timeout and circuit breaker (ADR-016).
 - **Metrics** are one JSON line per provider and search (`search.provider`, with the provider, milliseconds, whether it answered, the type and the length of the query). The text that was searched is never logged. The admin dashboard (SAG-26) will read them from Workers Logs.
-- **The page** `/search` works without JavaScript (a plain GET form). With it, suggestions come from the same page after 350 ms without typing and from two characters, in a combobox with a list: arrows, Enter, Escape. A result has no link yet, because the detail page is SAG-17. It shows no poster either: the CSP allows only our own images, and posters go through the proxy of SAG-17.
+- **The page** `/search` works without JavaScript (a plain GET form). With it, suggestions come from the same page after 350 ms without typing and from two characters, in a combobox with a list: arrows, Enter, Escape. A result links to its title and shows a poster through the image proxy (SAG-17, [ADR-017](017-media-pages-and-image-proxy.md)).
 - **Limits:** the query is 2 to 100 characters, `SEARCH_LIMITER` allows 60 searches a minute per caller (only a real search counts, not the empty page), and the page is never kept by a shared cache.
 - **Checked against the real TMDB** on 2026-10-25 from a local preview with the owner's token: `dune` returned 40 titles in Spanish, with years, original titles and synopses.
 
 ### Still open
 
 - **The Cache API on `sagashelf.app`** (and on `workers.dev`) has not been checked in production. The code works either way; to see whether it caches, search the same term twice and compare the `search.provider` lines in Workers Logs: the second search should write none.
-- **Persisting what a person opens** (step 6) belongs to the detail page (SAG-17) and the library (SAG-18). Until then the database stays empty and every new query goes to TMDB once a day at most.
+- **Persisting what a person opens** (step 6) is done by the detail page (SAG-17, ADR-017): a title is saved when it is opened. Adding it to a library is SAG-18.
 - **Load tests** (k6) are left to SAG-30, when there are several providers and real data.

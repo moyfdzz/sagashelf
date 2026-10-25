@@ -42,6 +42,37 @@
     "partial": "Some sources did not answer in time, so a result may be missing. Try again in a moment.",
     "year": "({{year}})"
   },
+  "media": {
+    "kinds": {
+      "anime": "Anime",
+      "movie": "Movie",
+      "series": "Series",
+      "book": "Book",
+      "manga": "Manga"
+    },
+    "status": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "finished": "Finished",
+      "cancelled": "Cancelled",
+      "unknown": "Status unknown"
+    },
+    "summary": "{{kind}} · {{status}}",
+    "seasonDetails_one": " · {{count}} episode",
+    "seasonDetails_other": " · {{count}} episodes",
+    "seasonDetails_dated_one": " · {{count}} episode · {{date}}",
+    "seasonDetails_dated_other": " · {{count}} episodes · {{date}}",
+    "episodeLine": "{{number}}. {{title}}",
+    "posterAlt": "Poster of {{title}}",
+    "originalTitle": "Original title: {{title}}",
+    "synopsis": "Synopsis",
+    "noSynopsis": "There is no synopsis for this title yet.",
+    "seasons": "Seasons",
+    "season": "Season {{number}}",
+    "episode": "Episode {{number}}",
+    "viewOnTmdb": "View on TMDB",
+    "sources": "The data comes from TMDB. More in <credits>Credits</credits>."
+  },
   "errors": {
     "backHome": "Back to home",
     "notFound": {
@@ -192,6 +223,7 @@
       "title": "TMDB",
       "logoAlt": "The Movie Database (TMDB)",
       "notice": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+      "noticeCourtesy": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
       "body": "Movie, series and anime data comes from TMDB. SagaShelf does not store its images."
     },
     "soon": {

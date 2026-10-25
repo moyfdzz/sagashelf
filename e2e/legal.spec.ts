@@ -70,11 +70,16 @@ for (const [locale, key] of [
       await expect(
         page.getByRole("img", { name: "The Movie Database (TMDB)" }),
       ).toBeVisible();
+      // The notice is in English in both languages, so it says so to screen readers.
       await expect(
-        page.getByText(
-          "This product uses the TMDB API but is not endorsed or certified by TMDB.",
-        ),
+        page.locator("p[lang=en]", {
+          hasText:
+            "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+        }),
       ).toBeVisible();
+      if (key === "es") {
+        await expect(page.getByText("Traducción de cortesía")).toBeVisible();
+      }
 
       await page
         .getByRole("main")

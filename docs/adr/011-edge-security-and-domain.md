@@ -25,7 +25,7 @@ The base headers are `Strict-Transport-Security` (two years, subdomains included
 
 `default-src 'self'`, `script-src 'self' 'nonce-...'`, `style-src 'self'`, no `unsafe-inline` or `unsafe-eval`, `frame-ancestors 'none'`, `frame-src 'none'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'self'`, and no other origin. It is sent by the **production build only**, because the dev server's hot reload injects scripts it cannot sign. An end-to-end test on the production build loads the page, hydrates it, switches language and fails on any CSP violation.
 
-A feature that needs another origin adds exactly that origin to the one directive that needs it, in the ticket that introduces it. For example Turnstile needs `https://challenges.cloudflare.com` in `script-src` and `frame-src` (Cloudflare's documentation), and Clerk and the image proxy will add theirs in SAG-10 and SAG-17.
+A feature that needs another origin adds exactly that origin to the one directive that needs it, in the ticket that introduces it. For example Turnstile needs `https://challenges.cloudflare.com` in `script-src` and `frame-src` (Cloudflare's documentation), and Clerk adds its own in SAG-10. The image proxy of SAG-17 needed none, because it serves the images from our own origin.
 
 ### HSTS without preload
 
@@ -39,7 +39,7 @@ HSTS is sent with `includeSubDomains` but without the `preload` directive. Submi
 
 ### Rate limiting, in layers
 
-1. **A Workers Rate Limiting binding** (`WRITE_LIMITER`, 30 requests per minute per caller and per Cloudflare location) protects write endpoints. It is applied to `/api/locale` today, and later to follows and reports. Search has its own binding, `SEARCH_LIMITER` (60 requests per minute, namespaces 1002 and 2002), so reading does not use up the writes of the same caller (SAG-15). A caller over the limit gets `429` with `Retry-After`. Worker Previews do not inherit bindings from the top level, so `wrangler.jsonc` declares the binding again inside `previews`, with a separate counter. Until accounts exist the caller is the IP address given by Cloudflare, and then it should be the user id.
+1. **A Workers Rate Limiting binding** (`WRITE_LIMITER`, 30 requests per minute per caller and per Cloudflare location) protects write endpoints. It is applied to `/api/locale` today, and later to follows and reports. Search has its own binding, `SEARCH_LIMITER` (60 requests per minute, namespaces 1002 and 2002), so reading does not use up the writes of the same caller (SAG-15). The image proxy has `IMAGE_LIMITER` (300 requests per minute, namespaces 1003 and 2003), which counts only the calls to the provider (SAG-17). A caller over the limit gets `429` with `Retry-After`. Worker Previews do not inherit bindings from the top level, so `wrangler.jsonc` declares the binding again inside `previews`, with a separate counter. Until accounts exist the caller is the IP address given by Cloudflare, and then it should be the user id.
 2. **One WAF rate-limiting rule** at the zone level. The Free plan allows a single rule, with a 10 second window, the IP as the counting key, and only the path and the verified-bot flag as fields, so it covers `/api/*` as a whole.
 3. **Bot Fight Mode**, which cannot be customized or bypassed on the Free plan.
 

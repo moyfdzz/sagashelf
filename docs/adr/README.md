@@ -21,6 +21,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback | Accepted | Done (SAG-12)                          |
 | [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)     | Accepted | Done (SAG-12)                          |
 | [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                               | Accepted | Done (SAG-37)                          |
+| [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                     | Accepted | Done (SAG-17)                          |
 | [016](016-provider-layer-and-tmdb.md)            | The provider layer and TMDB: the interface, the HTTP client and the 6-month cache rule | Accepted | Partial (SAG-13; nothing calls it yet) |
 
 "Accepted" means the decision is made. "Planned" means it is not built yet, so the ADR describes the intended design and may be refined by its ticket without a new ADR as long as the decision itself does not change.

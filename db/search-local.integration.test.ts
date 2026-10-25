@@ -45,6 +45,18 @@ const find = (
 ) => searchLocal(db, normalizeQuery(query), type, limit);
 
 describe("searchLocal", () => {
+  it("brings the address of the poster, for the results page", async () => {
+    await add("Dune", { imageUrl: "https://image.tmdb.org/t/p/w500/dune.jpg" });
+    await add("Dune: Part Two");
+
+    const hits = await find("dune");
+
+    expect(hits.map((hit) => [hit.title, hit.imageUrl]).sort()).toEqual([
+      ["Dune", "https://image.tmdb.org/t/p/w500/dune.jpg"],
+      ["Dune: Part Two", null],
+    ]);
+  });
+
   it("finds a title by its words, without regard to case or accents", async () => {
     await add("Pokémon: La película");
 

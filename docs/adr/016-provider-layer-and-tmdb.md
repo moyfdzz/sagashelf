@@ -2,7 +2,7 @@
 
 - **Status:** Accepted (refines [ADR-005](005-providers-and-licensing.md) for TMDB)
 - **Date:** 2026-10-25
-- **Implementation:** Done for the interface, the HTTP client and the TMDB adapter (SAG-13). Nothing in the app calls it yet: the search (SAG-15) and the detail pages (SAG-17) do.
+- **Implementation:** Done for the interface, the HTTP client and the TMDB adapter (SAG-13). The search (SAG-15) and the detail pages (SAG-17) call it.
 - **Tickets:** SAG-13, SAG-15, SAG-17, SAG-23, SAG-31
 - **Related:** [ADR-004](004-search-strategy.md), [ADR-005](005-providers-and-licensing.md)
 
@@ -29,7 +29,7 @@ The terms say they can change at any time. This record is true only until the ne
 - **An outage degrades, it does not break.** `searchAll` asks every provider that covers the type at once and lists the ones that failed; the others still answer. TMDB asks for movies and series separately, and if one of the two fails the other still answers.
 - **The 6-month rule.** `media_items.fetched_at` (migration `0006`) holds when a provider last gave us the row, and `saveMedia` sets it on every refresh. `findStaleMedia` lists the titles older than 150 days (30 days before the limit) so a job can refresh them. **That job does not exist yet:** it belongs to the search and cache work (SAG-15). A title that a person has in their library is refreshed, never deleted, because deleting it would delete the entries that point to it.
 - **Saving is atomic and safe under concurrency.** `saveMedia` is one statement that claims the external id first (the unique index makes a second request wait and then update), so the same new title arriving together makes one row. `saveParts` is one statement too.
-- **Posters** are stored as the TMDB image URL (size w500). They are shown only through the image proxy of SAG-17, which also needs its own CSP origin in its ticket. Nothing in a browser calls TMDB.
+- **Posters** are stored as the TMDB image URL (size w500). They are shown only through the image proxy of SAG-17 ([ADR-017](017-media-pages-and-image-proxy.md)), which serves them from our own origin, so the CSP did not need another origin. Nothing in a browser calls TMDB.
 
 ## Alternatives considered
 

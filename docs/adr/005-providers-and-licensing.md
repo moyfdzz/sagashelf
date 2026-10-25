@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)) and the credits page is live (SAG-31); SAG-14, SAG-16 and SAG-17 are planned
+- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)) and the credits page is live (SAG-31); the title pages and the image proxy are live (SAG-17, [ADR-017](017-media-pages-and-image-proxy.md)); SAG-14 and SAG-16 are planned
 - **Tickets:** SAG-13, SAG-14, SAG-16, SAG-17, SAG-31, SAG-33
 
 ## Context
