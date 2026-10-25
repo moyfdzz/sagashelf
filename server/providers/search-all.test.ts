@@ -105,6 +105,82 @@ describe("searchAll", () => {
     expect(await searchAll([], "x", { locale: "es" })).toEqual({
       results: [],
       failures: [],
+      timings: [],
     });
+  });
+
+  it("stops waiting for a provider that never answers, at the deadline", async () => {
+    const providers = [
+      fake(
+        "tmdb",
+        ["movie"],
+        () => new Promise<NormalizedMedia[]>(() => undefined),
+      ),
+      fake("open_library", ["movie"], async () => [
+        item("Fast", "open_library"),
+      ]),
+    ];
+
+    const started = Date.now();
+    const outcome = await searchAll(
+      providers,
+      "x",
+      { locale: "es" },
+      { deadlineMs: 25 },
+    );
+
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(outcome.results.map((result) => result.item.title)).toEqual([
+      "Fast",
+    ]);
+    expect(outcome.failures).toEqual([{ provider: "tmdb", reason: "timeout" }]);
+  });
+
+  it("passes the deadline to the provider so it can cancel its request", async () => {
+    let received: AbortSignal | undefined;
+    const providers = [
+      fake("tmdb", ["movie"], async (_query, options) => {
+        received = options.signal;
+        return [];
+      }),
+    ];
+
+    await searchAll(providers, "x", { locale: "es" }, { deadlineMs: 5000 });
+
+    expect(received).toBeInstanceOf(AbortSignal);
+    expect(received?.aborted).toBe(false);
+  });
+
+  it("measures how long each provider took and whether it answered", async () => {
+    let time = 1000;
+    const providers = [
+      fake("tmdb", ["movie"], async () => {
+        time += 120;
+        return [item("A", "tmdb")];
+      }),
+    ];
+
+    const outcome = await searchAll(
+      providers,
+      "x",
+      { locale: "es" },
+      { now: () => time },
+    );
+
+    expect(outcome.timings).toEqual([{ provider: "tmdb", ms: 120, ok: true }]);
+  });
+
+  it("measures a failure too", async () => {
+    const providers = [
+      fake("tmdb", ["movie"], async () => {
+        throw new ProviderError("tmdb", "http", 503);
+      }),
+    ];
+
+    const outcome = await searchAll(providers, "x", { locale: "es" });
+
+    expect(outcome.timings).toEqual([
+      { provider: "tmdb", ms: expect.any(Number), ok: false },
+    ]);
   });
 });

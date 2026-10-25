@@ -10,7 +10,8 @@
     "signUp": "Create account",
     "account": "Account",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "search": "Search"
   },
   "language": {
     "label": "Language"
@@ -19,15 +20,27 @@
     "description": "Search and track anime, movies, series, books and manga. Sagas group every format of a story in one place."
   },
   "search": {
+    "title": "Search",
     "submit": "Search",
-    "inputLabel": "Search {{category}}",
-    "placeholder": "Type to search {{category}}",
-    "categories": {
+    "inputLabel": "Title you want to search for",
+    "placeholder": "Search anime, movies or series",
+    "suggestions": "Suggestions",
+    "tabsLabel": "Type of title",
+    "types": {
+      "all": "All",
       "anime": "Anime",
+      "movie": "Movies",
       "series": "Series",
-      "movies": "Movies",
-      "books": "Books"
-    }
+      "book": "Books",
+      "manga": "Manga"
+    },
+    "prompt": "Type at least {{min}} letters to search.",
+    "tooLong": "The search is too long: use up to {{max}} characters.",
+    "empty": "We found no results for “{{query}}”.",
+    "count_one": "{{count}} result",
+    "count_other": "{{count}} results",
+    "partial": "Some sources did not answer in time, so a result may be missing. Try again in a moment.",
+    "year": "({{year}})"
   },
   "errors": {
     "backHome": "Back to home",

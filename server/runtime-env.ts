@@ -7,6 +7,7 @@ import {
 } from "./auth/clerk-options";
 import { parseEnv, type AppEnv } from "./env";
 import { buildProviders } from "./providers/registry";
+import { createSearchCache } from "./search/cache";
 
 /** The Workers Rate Limiting binding for write endpoints (see `ratelimits` in wrangler.jsonc). */
 export function getWriteLimiter() {
@@ -15,6 +16,26 @@ export function getWriteLimiter() {
     throw new Error("The WRITE_LIMITER binding is missing in wrangler.jsonc");
   }
   return env.WRITE_LIMITER;
+}
+
+/** The Workers Rate Limiting binding for the search (see `ratelimits` in wrangler.jsonc). */
+export function getSearchLimiter() {
+  if (!env.SEARCH_LIMITER) {
+    throw new Error("The SEARCH_LIMITER binding is missing in wrangler.jsonc");
+  }
+  return env.SEARCH_LIMITER;
+}
+
+/**
+ * The search cache on the Workers Cache API, or one that keeps nothing when the runtime has no
+ * `caches` (the Cache API may not run on every host, so the search must work without it).
+ */
+export function getSearchCache() {
+  const cache =
+    typeof caches === "undefined"
+      ? null
+      : (caches as unknown as { default?: Cache }).default;
+  return createSearchCache(cache ?? null);
 }
 
 /** The only way app code reads environment variables. */

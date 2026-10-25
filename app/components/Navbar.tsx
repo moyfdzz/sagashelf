@@ -18,7 +18,10 @@ export function Navbar({
   signedIn: boolean;
 }) {
   const { t } = useTranslation();
-  const navItems = [{ label: t("nav.home"), to: "/" }];
+  const navItems = [
+    { label: t("nav.home"), to: "/" },
+    { label: t("nav.search"), to: "/search" },
+  ];
 
   return (
     <header data-chrome className="bg-surface-raised border-border border-b">
