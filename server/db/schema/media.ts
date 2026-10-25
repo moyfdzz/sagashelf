@@ -10,6 +10,7 @@ import {
   real,
   smallint,
   text,
+  timestamp,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -41,6 +42,12 @@ export const mediaItems = pgTable(
     imageUrl: text("image_url"),
     status: mediaStatus("status").notNull().default("unknown"),
     popularity: real("popularity").notNull().default(0),
+    // When a provider last gave us this row. TMDB lets us keep what it sends for 6 months at
+    // most (ADR-016), so a row older than that must be refreshed or have its provider data
+    // removed.
+    fetchedAt: timestamp("fetched_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     // Titles without accents, in the 'simple' configuration so every language is treated
     // alike. `immutable_unaccent` is created in the first migration: the extension's own
     // function is not allowed inside a generated column.

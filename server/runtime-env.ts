@@ -6,6 +6,7 @@ import {
   type ClerkKeys,
 } from "./auth/clerk-options";
 import { parseEnv, type AppEnv } from "./env";
+import { buildProviders } from "./providers/registry";
 
 /** The Workers Rate Limiting binding for write endpoints (see `ratelimits` in wrangler.jsonc). */
 export function getWriteLimiter() {
@@ -39,6 +40,13 @@ export async function getDb() {
 /** The Clerk keys, or null when this deployment has none. Reads only the Clerk variables. */
 export function getClerkKeys(): ClerkKeys | null {
   return clerkKeysFromEnv(env as unknown as Record<string, unknown>);
+}
+
+/** The data providers this deployment has a secret for (none in a preview without keys). */
+export function getMediaProviders() {
+  return buildProviders({
+    tmdbReadAccessToken: getEnv().TMDB_READ_ACCESS_TOKEN,
+  });
 }
 
 /** The Clerk webhook signing secret, or null when this deployment has none. */

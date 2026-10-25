@@ -43,6 +43,13 @@
       "when": 1792883510187,
       "tag": "0005_users_username_changed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792912464448,
+      "tag": "0006_media_items_fetched_at",
+      "breakpoints": true
     }
   ]
 }

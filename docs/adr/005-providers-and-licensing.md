@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Planned (SAG-13, SAG-14, SAG-16, SAG-17, SAG-31)
+- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)); SAG-14, SAG-16, SAG-17 and SAG-31 are planned
 - **Tickets:** SAG-13, SAG-14, SAG-16, SAG-17, SAG-31, SAG-33
 
 ## Context
@@ -57,7 +57,7 @@ A credits page (SAG-31) lists every source with its required wording: the TMDB l
 
 ## Open questions
 
-- **The TMDB terms page was not readable** (the connection was reset twice), so TMDB's rules on caching, storing and rate limits are unknown. The FAQ does not state them. Read <https://www.themoviedb.org/api-terms-of-use> before SAG-13 decides what to persist.
+- **The TMDB terms page was not readable on 2026-10-20.** It was read on 2026-10-25: caching is limited to 6 months, and the rest is in [ADR-016](016-provider-layer-and-tmdb.md).
 - The numeric Google Books quota, the Open Library attribution rule, and the exact MangaDex cover and image rules were not stated on the pages read.
 - **Cloudflare's Free plan and commercial use** is not addressed in its public terms (ADR-001). Another reason to keep the project non-commercial.
 

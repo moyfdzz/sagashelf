@@ -13,6 +13,8 @@
     "server/db/erase-user.ts",
     "server/db/profile.ts",
     "server/db/username.ts",
+    "server/db/media-store.ts",
+    "server/providers/types.ts",
     "server/account/profile-schema.ts",
     "server/account/export.ts",
     "server/account/username-schema.ts",
