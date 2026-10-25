@@ -39,7 +39,7 @@ HSTS is sent with `includeSubDomains` but without the `preload` directive. Submi
 
 ### Rate limiting, in layers
 
-1. **A Workers Rate Limiting binding** (`WRITE_LIMITER`, 30 requests per minute per caller and per Cloudflare location) protects write endpoints. It is applied to `/api/locale` today, and later to search, follows and reports. A caller over the limit gets `429` with `Retry-After`. Worker Previews do not inherit bindings from the top level, so `wrangler.jsonc` declares the binding again inside `previews`, with a separate counter. Until accounts exist the caller is the IP address given by Cloudflare, and then it should be the user id.
+1. **A Workers Rate Limiting binding** (`WRITE_LIMITER`, 30 requests per minute per caller and per Cloudflare location) protects write endpoints. It is applied to `/api/locale` today, and later to follows and reports. Search has its own binding, `SEARCH_LIMITER` (60 requests per minute, namespaces 1002 and 2002), so reading does not use up the writes of the same caller (SAG-15). A caller over the limit gets `429` with `Retry-After`. Worker Previews do not inherit bindings from the top level, so `wrangler.jsonc` declares the binding again inside `previews`, with a separate counter. Until accounts exist the caller is the IP address given by Cloudflare, and then it should be the user id.
 2. **One WAF rate-limiting rule** at the zone level. The Free plan allows a single rule, with a 10 second window, the IP as the counting key, and only the path and the verified-bot flag as fields, so it covers `/api/*` as a whole.
 3. **Bot Fight Mode**, which cannot be customized or bypassed on the Free plan.
 

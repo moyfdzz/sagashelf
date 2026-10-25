@@ -37,6 +37,13 @@
       "namespace_id": "1001",
       "simple": { "limit": 30, "period": 60 },
     },
+    // Searches are read-only but call paid-for or rate-limited providers, so they have their own
+    // counter and do not use up the writes of the same person (SAG-15).
+    {
+      "name": "SEARCH_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 },
+    },
   ],
   // Preview deployments (one per PR) get their own values and never reuse production ones.
   // Bindings are not inherited: each one is declared again here, with its own counter.
@@ -53,6 +60,11 @@
         "name": "WRITE_LIMITER",
         "namespace_id": "2001",
         "simple": { "limit": 30, "period": 60 },
+      },
+      {
+        "name": "SEARCH_LIMITER",
+        "namespace_id": "2002",
+        "simple": { "limit": 60, "period": 60 },
       },
     ],
   },

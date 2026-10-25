@@ -10,7 +10,8 @@
     "signUp": "Crear cuenta",
     "account": "Cuenta",
     "settings": "Ajustes",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "search": "Buscar"
   },
   "language": {
     "label": "Idioma"
@@ -19,15 +20,27 @@
     "description": "Busca y da seguimiento a anime, películas, series, libros y manga. Las sagas reúnen todos los formatos de una historia en un solo lugar."
   },
   "search": {
+    "title": "Buscar",
     "submit": "Buscar",
-    "inputLabel": "Buscar en {{category}}",
-    "placeholder": "Escribe para buscar en {{category}}",
-    "categories": {
+    "inputLabel": "Título que quieres buscar",
+    "placeholder": "Busca anime, películas o series",
+    "suggestions": "Sugerencias",
+    "tabsLabel": "Tipo de título",
+    "types": {
+      "all": "Todo",
       "anime": "Anime",
+      "movie": "Películas",
       "series": "Series",
-      "movies": "Películas",
-      "books": "Libros"
-    }
+      "book": "Libros",
+      "manga": "Manga"
+    },
+    "prompt": "Escribe al menos {{min}} letras para buscar.",
+    "tooLong": "La búsqueda es demasiado larga: usa hasta {{max}} caracteres.",
+    "empty": "No encontramos resultados para «{{query}}».",
+    "count_one": "{{count}} resultado",
+    "count_other": "{{count}} resultados",
+    "partial": "Algunas fuentes no respondieron a tiempo, así que puede faltar algún resultado. Inténtalo de nuevo en un momento.",
+    "year": "({{year}})"
   },
   "errors": {
     "backHome": "Volver al inicio",
