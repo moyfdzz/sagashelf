@@ -389,7 +389,9 @@
     "card": {
       "progress": "{{done}} of {{total}} episodes",
       "score": "Score: {{score}} out of 10",
-      "line": "{{kind}} · {{status}}"
+      "line": "{{kind}} · {{status}}",
+      "rewatched_one": "Watched again {{count}} time",
+      "rewatched_other": "Watched again {{count}} times"
     },
     "editor": {
       "back": "Back to my library",
@@ -424,7 +426,8 @@
         "summary": "Remove from my library",
         "warning": "Your status, progress, score and notes for this title are deleted. This cannot be undone.",
         "confirm": "Remove for good"
-      }
+      },
+      "finishedAtHint": "It can only be set when the status is Completed."
     },
     "errors": {
       "summary": "Check the marked fields.",

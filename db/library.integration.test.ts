@@ -320,6 +320,8 @@ describe("listEntries", () => {
       score: 8,
     });
     expect(rows[2]?.totalEpisodes).toBe(0);
+    // Every entry of `fill` was saved with the same counter.
+    expect(rows.map((row) => row.rewatchCount)).toEqual([1, 0, 1]);
   });
 
   it("never lists the entries of somebody else", async () => {

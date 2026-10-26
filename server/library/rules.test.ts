@@ -60,6 +60,35 @@ describe("applySave", () => {
     });
   });
 
+  it("has no finish date for a title that is not completed, whatever the form sends", () => {
+    for (const status of [
+      "planned",
+      "in_progress",
+      "paused",
+      "dropped",
+    ] as const) {
+      const next = save(
+        planned,
+        form({ status, progress: 1, finishedAt: "2026-05-01" }),
+      );
+
+      expect(next.finishedAt).toBeNull();
+    }
+  });
+
+  it("takes the finish date of a completed title from the form", () => {
+    const next = save(
+      planned,
+      form({
+        status: "completed",
+        startedAt: "2026-05-01",
+        finishedAt: "2026-05-09",
+      }),
+    );
+
+    expect(next.finishedAt).toBe("2026-05-09");
+  });
+
   it("never replaces a date the person typed", () => {
     const next = save(
       planned,

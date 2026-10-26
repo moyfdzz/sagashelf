@@ -55,6 +55,7 @@ const row = {
   progress: 2,
   totalEpisodes: 4,
   score: 8,
+  rewatchCount: 0,
 };
 
 const libraryProps = (overrides: Record<string, unknown> = {}) =>
@@ -81,6 +82,22 @@ describe("the library page", () => {
     expect(html).toContain("Anime · En curso");
     expect(html).toContain("2 de 4 episodios");
     expect(html).toContain("Puntuación: 8 de 10");
+  });
+
+  it("says how many times a title was started again, only when it was", async () => {
+    const once = await render(
+      "es",
+      <Library {...libraryProps({ rows: [{ ...row, rewatchCount: 1 }] })} />,
+    );
+    const many = await render(
+      "en",
+      <Library {...libraryProps({ rows: [{ ...row, rewatchCount: 3 }] })} />,
+    );
+    const never = await render("es", <Library {...libraryProps()} />);
+
+    expect(once).toContain("Lo has vuelto a ver 1 vez");
+    expect(many).toContain("Watched again 3 times");
+    expect(never).not.toContain("vuelto a ver");
   });
 
   it("shows the same in English", async () => {
@@ -192,6 +209,22 @@ describe("the entry page", () => {
     expect(html).toContain("Lo has vuelto a ver 0 veces.");
     // Not completed: no button to watch it again.
     expect(html).not.toContain("Volver a verlo");
+  });
+
+  it("lets the finish date be set only while the title is completed", async () => {
+    const open = await render("es", <LibraryEntry {...entryProps()} />);
+    const done = await render(
+      "es",
+      <LibraryEntry {...entryProps({ status: "completed" })} />,
+    );
+
+    const finishField = (html: string) =>
+      /<input id="finishedAt"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(finishField(open)).toContain('disabled=""');
+    expect(finishField(done)).not.toContain('disabled=""');
+    expect(open).toContain(
+      "Solo se puede poner cuando el estado es Completado.",
+    );
   });
 
   it("offers to watch a completed title again, and to remove the entry", async () => {

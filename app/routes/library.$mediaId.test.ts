@@ -178,7 +178,12 @@ describe("saving an entry", () => {
   });
 
   it("answers with an error on the field when the dates do not line up", async () => {
-    const result = await send({ ...form, finishedAt: "2025-01-01" });
+    const result = await send({
+      ...form,
+      status: "completed",
+      progress: "4",
+      finishedAt: "2025-01-01",
+    });
 
     expect(result).toMatchObject({
       data: { ok: false, errors: { finishedAt: "dates_order" } },
