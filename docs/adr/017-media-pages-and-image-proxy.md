@@ -56,8 +56,18 @@ The search (SAG-15) finds titles but a result opens nothing and shows no poster,
 
 - The first visit to a new title waits for TMDB (one call for a movie, up to three for a long series) before it is redirected.
 - Nobody refreshes a title nobody opens, so a row can pass 180 days. Until the cron job exists, a stale row is not removed either.
-- The title and the original title in the row are those of the last language that saved it, so the title of a page can change with the language of the last person to refresh it. The slug follows it (with a `301`).
+- ~~The title in the row is that of the last language that saved it, so the title of a page can change with the language of the last person to refresh it.~~ Superseded by the amendment below (SAG-47): the title is kept per language.
 - The pages and the proxy were tried against the real TMDB only for the poster and the search. The saving path (`/media/open` and the page) was covered by unit and integration tests and not run against a real database from the app, because the Worker's database client talks to Neon over HTTPS and the local Postgres is not reachable that way. It must be tried on a preview.
+
+## Amendment: titles and synopses by language (SAG-47, 2026-10-26)
+
+A movie first opened in Spanish showed its Spanish title and synopsis to a visitor in English, and the search results showed the Spanish title too.
+
+- `media_items.titles` (migration `0007`, additive, `jsonb` default `{}`) holds the title per language, as `synopsis` already did. `title` stays: the full-text and trigram search read it, and it is the fallback when a language is missing.
+- `saveMedia` takes the language the provider was asked for and merges `{[locale]: title}` into `titles`. A source with no synopsis in that language is stored as `""` (key present). A missing key means "not asked yet", an empty text means "asked, nothing there", and an empty text never replaces a synopsis we hold. Every reader treats `""` as no synopsis.
+- The first visit to a title in a language it was not saved in waits for the provider, up to 2.5 seconds, and shows the result. If it fails or is slow, that visit shows what we hold and a later one tries again. The refresh near the 6 months stays in the background. Titles saved before this change fill in the first time each is opened in each language.
+- The title page, its address and the share tags, the search results from our own database, the library (list, order by title and entry page) and the data export (`titles`) use the title in the language of the visitor, then `title`. The page address follows the language, so the canonical URL of a title can differ between Spanish and English (the old address redirects with a `301`).
+- Not changed: the search still matches `title` and `original_title` only. Finding a title by its name in the other language, and showing that name in parentheses, is SAG-49 (it needs the full-text column and its index rebuilt).
 
 ## Open questions
 

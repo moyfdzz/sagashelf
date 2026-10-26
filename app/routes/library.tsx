@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Form, Link } from "react-router";
 
 import type { Route } from "./+types/library";
-import { getInstance } from "~/middleware/i18next";
+import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { listEntries } from "~server/db/library";
 import { imageSrc } from "~server/images/sources";
@@ -21,7 +21,12 @@ export async function loader(args: Route.LoaderArgs) {
     Object.fromEntries(new URL(args.request.url).searchParams),
   );
 
-  const { rows, total } = await listEntries(await getDb(), user.id, query);
+  const { rows, total } = await listEntries(
+    await getDb(),
+    user.id,
+    query,
+    getLocale(args.context) === "en" ? "en" : "es",
+  );
   const { t } = getInstance(args.context);
 
   return {

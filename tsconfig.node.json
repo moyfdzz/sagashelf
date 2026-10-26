@@ -15,6 +15,7 @@
     "server/db/username.ts",
     "server/db/media-store.ts",
     "server/db/media-detail.ts",
+    "server/db/titles.ts",
     "server/db/library.ts",
     "server/library/**/*",
     "server/db/search-local.ts",

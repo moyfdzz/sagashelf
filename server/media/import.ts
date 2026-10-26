@@ -13,19 +13,23 @@ export const refreshAfterDays = providerDataMaxAgeDays - 30;
 const dayMs = 24 * 60 * 60 * 1000;
 
 /**
- * Whether a saved title should be asked for again: its data is close to the 6 months, or it has
- * no synopsis in the language of the visitor (it was saved in the other one). The second case
- * waits a day, so a title the source has no text for in that language is not asked for on every
- * visit.
+ * Whether a title was never asked for in the language of the visitor (it was saved in the other
+ * one). `saveMedia` stores an empty synopsis when the source has none, so a language the source
+ * has no text for is asked once and not on every visit.
  */
-export function needsRefresh(
-  detail: Pick<MediaDetail, "fetchedAt" | "synopsis">,
+export function isMissingLanguage(
+  detail: Pick<MediaDetail, "synopsis" | "titles">,
   locale: Locale,
+): boolean {
+  return !(locale in detail.synopsis) || !detail.titles[locale];
+}
+
+/** Whether a saved title should be asked for again: its data is close to the 6 months. */
+export function isStale(
+  detail: Pick<MediaDetail, "fetchedAt">,
   now: number = Date.now(),
 ): boolean {
-  const ageDays = (now - detail.fetchedAt.getTime()) / dayMs;
-  if (ageDays > refreshAfterDays) return true;
-  return !detail.synopsis[locale] && ageDays > 1;
+  return (now - detail.fetchedAt.getTime()) / dayMs > refreshAfterDays;
 }
 
 /**
@@ -38,17 +42,22 @@ export async function importMedia(
   provider: string,
   externalId: string,
   locale: Locale,
+  signal?: AbortSignal,
 ): Promise<{ id: string; type: MediaKind; title: string } | null> {
   const source = deps.providers.find((candidate) => candidate.id === provider);
   if (!source) return null;
 
-  const media = await source.getById(externalId, { locale });
+  const media = await source.getById(externalId, { locale, signal });
   if (!media) return null;
 
-  const id = await saveMedia(deps.db, media);
+  const id = await saveMedia(deps.db, media, locale);
   if (source.capabilities.parts) {
     try {
-      await saveParts(deps.db, id, await source.getParts(externalId));
+      await saveParts(
+        deps.db,
+        id,
+        await source.getParts(externalId, { signal }),
+      );
     } catch {
       // The title is useful without its seasons; the next refresh tries again.
     }

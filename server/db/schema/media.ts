@@ -33,6 +33,12 @@ export const mediaItems = pgTable(
     id: primaryId(),
     type: mediaType("type").notNull(),
     title: text("title").notNull(),
+    // The title in each language we have asked the source for. `title` is the one saved last: it
+    // feeds the search and is the fallback when a language is missing here.
+    titles: jsonb("titles")
+      .$type<LocalizedText>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     originalTitle: text("original_title"),
     year: smallint("year"),
     synopsis: jsonb("synopsis")

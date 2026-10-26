@@ -27,6 +27,7 @@ export type SearchDeps = {
   searchLocal: (
     normalizedQuery: string,
     type: SearchType | undefined,
+    locale: Locale,
   ) => Promise<LocalHit[]>;
   providers: readonly MediaProvider[];
   cache: SearchCache;
@@ -73,7 +74,7 @@ export async function runSearch(
 
   let hits: LocalHit[] = [];
   try {
-    hits = await deps.searchLocal(normalized, type);
+    hits = await deps.searchLocal(normalized, type, locale);
   } catch (error) {
     // Without the database the search still goes to the providers.
     log(

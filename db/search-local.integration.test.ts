@@ -42,9 +42,25 @@ const find = (
   query: string,
   type?: "anime" | "movie" | "series",
   limit?: number,
-) => searchLocal(db, normalizeQuery(query), type, limit);
+) => searchLocal(db, normalizeQuery(query), type, "es", limit);
 
 describe("searchLocal", () => {
+  it("brings the title in the language of the visitor, and the stored one when it has none", async () => {
+    await add("Interestelar", { originalTitle: "Interstellar" });
+    await db.execute(
+      sql`UPDATE media_items SET titles = '{"es":"Interestelar","en":"Interstellar"}'`,
+    );
+    await add("Origen", { originalTitle: "Inception" });
+
+    const inEnglish = await searchLocal(db, "interstellar", undefined, "en");
+    const inSpanish = await searchLocal(db, "interstellar", undefined, "es");
+    const noTitles = await searchLocal(db, "inception", undefined, "en");
+
+    expect(inEnglish.map((hit) => hit.title)).toEqual(["Interstellar"]);
+    expect(inSpanish.map((hit) => hit.title)).toEqual(["Interestelar"]);
+    expect(noTitles.map((hit) => hit.title)).toEqual(["Origen"]);
+  });
+
   it("brings the address of the poster, for the results page", async () => {
     await add("Dune", { imageUrl: "https://image.tmdb.org/t/p/w500/dune.jpg" });
     await add("Dune: Part Two");

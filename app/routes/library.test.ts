@@ -15,6 +15,7 @@ vi.mock("~server/runtime-env", () => ({
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
+  getLocale: () => "es",
 }));
 
 beforeEach(() => {
@@ -46,6 +47,7 @@ describe("the library page loader", () => {
         sort: "score",
         page: 2,
       },
+      "es",
     );
   });
 

@@ -1,7 +1,11 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
-import type { NormalizedMedia, NormalizedPart } from "../providers/types";
+import type {
+  Locale,
+  NormalizedMedia,
+  NormalizedPart,
+} from "../providers/types";
 
 /** How long TMDB lets us keep what it sent (ADR-016). Refresh a row well before this. */
 export const providerDataMaxAgeDays = 180;
@@ -12,12 +16,21 @@ export const providerDataMaxAgeDays = 180;
  * new title together end up with one row (the second waits on the unique index and then
  * updates). A title from a different source with the same name is a different row; matching them
  * is the job of the search (SAG-15).
+ *
+ * `locale` is the language the provider was asked for. The title and the synopsis are kept per
+ * language, so a visit in the other language does not show this one. A source with no synopsis in
+ * that language is stored as an empty text, which says "asked, nothing there" (a missing key
+ * says "not asked yet"); an empty text never replaces a synopsis we already hold.
  */
 export async function saveMedia(
   db: SqlExecutor,
   media: NormalizedMedia,
+  locale: Locale = "es",
 ): Promise<string> {
   const { provider, id } = media.externalId;
+  const titles = JSON.stringify({ [locale]: media.title });
+  const synopsis = JSON.stringify(media.synopsis);
+  const noSynopsis = JSON.stringify({ [locale]: "" });
   const { rows } = await db.execute(sql`
     WITH fresh AS (SELECT uuidv7() AS id),
     claimed AS (
@@ -28,21 +41,24 @@ export async function saveMedia(
     ),
     created AS (
       INSERT INTO media_items
-        (id, type, title, original_title, year, synopsis, image_url, status, popularity)
-      SELECT media_id, ${media.type}::media_type, ${media.title}, ${media.originalTitle},
-             ${media.year}, ${JSON.stringify(media.synopsis)}::jsonb, ${media.imageUrl},
+        (id, type, title, titles, original_title, year, synopsis, image_url, status, popularity)
+      SELECT media_id, ${media.type}::media_type, ${media.title}, ${titles}::jsonb,
+             ${media.originalTitle}, ${media.year},
+             ${noSynopsis}::jsonb || ${synopsis}::jsonb, ${media.imageUrl},
              ${media.status}::media_status, ${media.popularity}
       FROM claimed WHERE inserted
       RETURNING id
     ),
     refreshed AS (
-      -- A synopsis in another language that we already hold is kept; the new one is added.
+      -- A title or synopsis in another language that we already hold is kept; the new one is
+      -- added.
       UPDATE media_items SET
         type = ${media.type}::media_type,
         title = ${media.title},
+        titles = titles || ${titles}::jsonb,
         original_title = ${media.originalTitle},
         year = ${media.year},
-        synopsis = synopsis || ${JSON.stringify(media.synopsis)}::jsonb,
+        synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
         image_url = ${media.imageUrl},
         status = ${media.status}::media_status,
         popularity = ${media.popularity},

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { importMedia, needsRefresh, refreshAfterDays } from "./import";
+import {
+  importMedia,
+  isMissingLanguage,
+  isStale,
+  refreshAfterDays,
+} from "./import";
 import type { MediaProvider, NormalizedMedia } from "../providers/types";
 
 const mocks = vi.hoisted(() => ({
@@ -17,47 +22,49 @@ vi.mock("../db/media-store", async (importOriginal) => ({
 const now = Date.UTC(2026, 9, 25);
 const daysAgo = (days: number) => new Date(now - days * 24 * 60 * 60 * 1000);
 
-describe("needsRefresh", () => {
-  it("leaves a recent title with its synopsis alone", () => {
-    expect(
-      needsRefresh(
-        { fetchedAt: daysAgo(3), synopsis: { es: "Hola" } },
-        "es",
-        now,
-      ),
-    ).toBe(false);
+describe("isStale", () => {
+  it("leaves a recent title alone", () => {
+    expect(isStale({ fetchedAt: daysAgo(3) }, now)).toBe(false);
   });
 
   it("asks again for a title close to the 6 months TMDB allows", () => {
+    expect(isStale({ fetchedAt: daysAgo(refreshAfterDays + 1) }, now)).toBe(
+      true,
+    );
+    expect(isStale({ fetchedAt: daysAgo(refreshAfterDays - 1) }, now)).toBe(
+      false,
+    );
+  });
+});
+
+describe("isMissingLanguage", () => {
+  it("is false once the title and the synopsis were asked for in that language", () => {
     expect(
-      needsRefresh(
-        { fetchedAt: daysAgo(refreshAfterDays + 1), synopsis: { es: "Hola" } },
+      isMissingLanguage(
+        { synopsis: { es: "Hola" }, titles: { es: "Hola" } },
         "es",
-        now,
-      ),
-    ).toBe(true);
-    expect(
-      needsRefresh(
-        { fetchedAt: daysAgo(refreshAfterDays - 1), synopsis: { es: "Hola" } },
-        "es",
-        now,
       ),
     ).toBe(false);
   });
 
-  it("asks again when the synopsis is only in the other language, but not on every visit", () => {
-    const onlyEnglish = { en: "Hello" };
-
+  it("is true when the title was saved only in the other language", () => {
     expect(
-      needsRefresh({ fetchedAt: daysAgo(2), synopsis: onlyEnglish }, "es", now),
-    ).toBe(true);
-    // Saved a minute ago: the source had no text in this language, so wait before asking again.
-    expect(
-      needsRefresh(
-        { fetchedAt: new Date(now - 60_000), synopsis: onlyEnglish },
+      isMissingLanguage(
+        { synopsis: { en: "Hello" }, titles: { en: "Hello" } },
         "es",
-        now,
       ),
+    ).toBe(true);
+  });
+
+  it("is true for a title saved before titles were kept per language", () => {
+    expect(
+      isMissingLanguage({ synopsis: { es: "Hola" }, titles: {} }, "es"),
+    ).toBe(true);
+  });
+
+  it("is false when the source had no synopsis (an empty text), so it is not asked on every visit", () => {
+    expect(
+      isMissingLanguage({ synopsis: { es: "" }, titles: { es: "Hola" } }, "es"),
     ).toBe(false);
   });
 });
@@ -110,7 +117,7 @@ describe("importMedia", () => {
 
     expect(saved).toEqual({ id: "id-1", type: "movie", title: "Matrix" });
     expect(tmdb.getById).toHaveBeenCalledWith("movie/603", { locale: "es" });
-    expect(mocks.saveMedia).toHaveBeenCalledWith(db, movie);
+    expect(mocks.saveMedia).toHaveBeenCalledWith(db, movie, "es");
     expect(mocks.saveParts).toHaveBeenCalledWith(db, "id-1", []);
   });
 

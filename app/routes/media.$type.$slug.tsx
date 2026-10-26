@@ -9,10 +9,23 @@ import { signInPath } from "~server/auth/sign-in-url";
 import { getEntry } from "~server/db/library";
 import { getMediaDetail } from "~server/db/media-detail";
 import { imageSrc } from "~server/images/sources";
-import { importMedia, needsRefresh } from "~server/media/import";
+import { importMedia, isMissingLanguage, isStale } from "~server/media/import";
 import { buildJsonLd, shortDescription } from "~server/media/json-ld";
 import { idFromSlug, isMediaKind, mediaPath } from "~server/media/slug";
 import { getDb, getMediaProviders, runInBackground } from "~server/runtime-env";
+import { pickTitle } from "~server/db/titles";
+
+/** How long a first visit in a new language waits for the provider before showing what it holds. */
+const firstVisitWaitMs = 2500;
+
+const logRefreshFailed = (provider: string, error: unknown) =>
+  console.log(
+    JSON.stringify({
+      event: "media.refresh_failed",
+      provider,
+      error: error instanceof Error ? error.name : "unknown",
+    }),
+  );
 
 const openGraphType = {
   movie: "video.movie",
@@ -28,35 +41,44 @@ export async function loader(args: Route.LoaderArgs) {
   if (!id || !isMediaKind(params.type)) throw data(null, { status: 404 });
 
   const db = await getDb();
-  const detail = await getMediaDetail(db, id);
-  if (!detail) throw data(null, { status: 404 });
-
-  // The words in the address are for people. A wrong or old one goes to the right one.
-  const url = new URL(request.url);
-  const path = mediaPath(detail.type, detail.title, detail.id);
-  if (url.pathname !== path) return redirect(path, 301);
+  const stored = await getMediaDetail(db, id);
+  if (!stored) throw data(null, { status: 404 });
+  let detail = stored;
 
   const locale = getLocale(context) === "en" ? "en" : "es";
-  if (needsRefresh(detail, locale)) {
+  const refresh = (signal?: AbortSignal) =>
+    importMedia(
+      { db, providers: getMediaProviders() },
+      stored.provider,
+      stored.externalId,
+      locale,
+      signal,
+    );
+  if (isMissingLanguage(stored, locale)) {
+    // The first visit in this language waits a moment for the provider, so the title and the
+    // synopsis come in the right language. If it fails or is slow, this visit shows what we hold
+    // and a later visit tries again.
+    try {
+      await refresh(AbortSignal.timeout(firstVisitWaitMs));
+      detail = (await getMediaDetail(db, id)) ?? detail;
+    } catch (error) {
+      logRefreshFailed(stored.provider, error);
+    }
+  } else if (isStale(stored)) {
     // The page does not wait for the provider: this visit shows what we hold, the next one the
     // fresh data. A failure only means it is tried again on a later visit.
     runInBackground(
-      importMedia(
-        { db, providers: getMediaProviders() },
-        detail.provider,
-        detail.externalId,
-        locale,
-      ).catch((error: unknown) => {
-        console.log(
-          JSON.stringify({
-            event: "media.refresh_failed",
-            provider: detail.provider,
-            error: error instanceof Error ? error.name : "unknown",
-          }),
-        );
-      }),
+      refresh().catch((error: unknown) =>
+        logRefreshFailed(stored.provider, error),
+      ),
     );
   }
+
+  // The words in the address are for people. A wrong or old one goes to the right one.
+  const title = pickTitle(detail, locale);
+  const url = new URL(request.url);
+  const path = mediaPath(detail.type, title, detail.id);
+  if (url.pathname !== path) return redirect(path, 301);
 
   const other = locale === "es" ? "en" : "es";
   const synopsisLocale = detail.synopsis[locale] ? locale : other;
@@ -65,7 +87,7 @@ export async function loader(args: Route.LoaderArgs) {
   // What the signed-in person has done with this title. The page is the same for everyone
   // otherwise, so only this block changes.
   const user = await getOptionalUser(args);
-  const entry = user ? await getEntry(db, user.id, detail.id) : null;
+  const entry = user ? await getEntry(db, user.id, detail.id, locale) : null;
   const library = user
     ? { signedIn: true as const, status: entry?.status ?? null }
     : {
@@ -85,8 +107,8 @@ export async function loader(args: Route.LoaderArgs) {
     id: detail.id,
     library,
     type: detail.type,
-    title: detail.title,
-    pageTitle: t("app.pageTitle", { title: detail.title }),
+    title,
+    pageTitle: t("app.pageTitle", { title }),
     originalTitle: detail.originalTitle,
     year: detail.year,
     status: detail.status,
@@ -104,7 +126,7 @@ export async function loader(args: Route.LoaderArgs) {
     jsonLd: buildJsonLd({
       type: detail.type,
       externalId: detail.externalId,
-      title: detail.title,
+      title,
       originalTitle: detail.originalTitle,
       description,
       year: detail.year,
