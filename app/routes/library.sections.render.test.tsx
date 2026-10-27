@@ -540,6 +540,88 @@ describe("the visibility", () => {
   });
 });
 
+describe("the controls", () => {
+  const tagOf = (html: string, text: string) => {
+    const match = new RegExp("<a[^>]*>" + text + "</a>").exec(html);
+    return match?.[0] ?? "";
+  };
+
+  it("show the chosen view filled and marked, and the others as options", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ view: "grid", sections: threeEntries() })} />,
+    );
+
+    const chosen = tagOf(html, "Cuadrícula");
+    expect(chosen).toContain('aria-current="true"');
+    expect(chosen).toContain("bg-accent text-accent-fg");
+    for (const other of ["Portadas", "Solo títulos"]) {
+      const tag = tagOf(html, other);
+      expect(tag).not.toContain("aria-current");
+      expect(tag).not.toContain("bg-accent");
+      expect(tag).not.toContain("underline");
+    }
+  });
+
+  it("show the chosen tab filled and marked, and the others with a border", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    const links = html.match(/<a[^>]*href="\/library[^"]*"[^>]*>/g) ?? [];
+    const chosen =
+      links.find((tag) => tag.includes('aria-current="page"')) ?? "";
+    expect(chosen).toContain("bg-accent text-accent-fg");
+    const others = links.filter((tag) => tag.includes("type=book"));
+    expect(others[0]).toContain("border-border");
+    expect(others[0]).not.toContain("aria-current");
+  });
+
+  it("keep Clear filters on one line, as a button", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({ params: { q: "dune" }, sections: threeEntries() })}
+      />,
+    );
+
+    const clear = tagOf(html, "Quitar filtros");
+    expect(clear).toContain("whitespace-nowrap");
+    expect(clear).toContain("border-input-edge");
+    expect(clear).not.toContain("underline");
+  });
+
+  it("draw the page links of a section as buttons", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          sections: sectionsOf(
+            { completed: [row("c", "Matrix", "completed")] },
+            { completed: { total: 30, page: 2, pages: 3 } },
+          ),
+        })}
+      />,
+    );
+
+    for (const text of ["Anterior", "Siguiente"]) {
+      const tag = tagOf(html, text);
+      expect(tag).toContain("whitespace-nowrap");
+      expect(tag).not.toContain("underline");
+    }
+  });
+
+  it("leave the title of an entry as a hyperlink", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    expect(tagOf(html, "Matrix")).toContain("text-accent underline");
+  });
+});
+
 describe("the progress bar", () => {
   const withEpisodes = (view: LibraryView, totalEpisodes: number) =>
     props({

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { Route } from "./+types/settings.import";
 import { ClerkSession } from "~/components/ClerkSession";
+import { primaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { readForm } from "~server/http/body";
@@ -150,9 +151,6 @@ export async function action(args: Route.ActionArgs) {
 
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
-const primaryButtonClass =
-  "bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60";
-
 function SkippedList({ skipped }: { skipped: Skipped[] }) {
   const { t } = useTranslation();
   if (skipped.length === 0) return null;
@@ -195,7 +193,7 @@ export default function SettingsImport({
         <p>
           {/* A plain link: the settings page has its own security policy, which only a new
               document gets. */}
-          <a href="/settings/profile#data" className="text-accent underline">
+          <a href="/settings/profile#data" className={secondaryLinkClass}>
             {t("settings.import.back")}
           </a>
         </p>
@@ -245,7 +243,7 @@ export default function SettingsImport({
             <SkippedList skipped={actionData.result.skipped} />
             <p className="mt-4">
               {/* A plain link: the library has its own security policy. */}
-              <a href="/library" className="text-accent underline">
+              <a href="/library" className={secondaryLinkClass}>
                 {t("settings.import.done.library")}
               </a>
             </p>
