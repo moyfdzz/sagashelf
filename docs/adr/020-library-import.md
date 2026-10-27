@@ -63,6 +63,18 @@ A person can download their data (SAG-12) and delete their account (ADR-014). Th
 - The import of a CSV (SAG-52) and how its rows are processed.
 - Whether the cap should be higher on the paid plan, which has a much larger subrequest limit.
 
+## Amendment (2026-10-27, SAG-55): keep the visibility of the file, if the person asks
+
+The rule "Never public" above becomes **private unless the person asks otherwise**. After restoring a whole library the person had to mark the public entries again one by one.
+
+- The confirm step has a checkbox, "Keep the visibility stored in the file", **unchecked by default**. Like "replace", it travels in the confirm form, because that step keeps no state.
+- Unchecked: as before, every new entry is `private`. Checked: a **new** entry gets `public`, `friends` or `private` as the file says. An entry the person already has keeps its own visibility, also with "replace" (the `DO UPDATE` never writes it).
+- The file is still data from outside, so `visibility` is read with the strict entry schema: any value that is not one of the three levels, or a missing one (a file from an older export), reads as `private` and the entry is not rejected. Nothing else changes about who the entries belong to.
+- The preview says it before the person confirms: how many of the titles it would add are public or for friends in the file, and that they stay private unless the box is checked. It counts the titles we hold and the ones asked of the provider; a title the provider then does not find is not added, so the count can be a little high.
+- `friends` is kept as the file says even though nothing shows it differently from `private` yet.
+
+The open question of the caveat in "Consequences" is unchanged: a full run as a signed-in person was not done in the end-to-end tests, only the unit, render and integration tests.
+
 ## References
 
 - Tickets SAG-41 and SAG-52 (Linear)

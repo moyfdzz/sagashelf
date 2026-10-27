@@ -62,6 +62,8 @@ export type EntryToWrite = {
   startedAt: string | null;
   finishedAt: string | null;
   notes: string | null;
+  /** Used only when the entry is new; an existing entry keeps its own. */
+  visibility: "public" | "friends" | "private";
   viewings: {
     startedOn: string | null;
     finishedOn: string | null;
@@ -71,8 +73,9 @@ export type EntryToWrite = {
 
 /**
  * Writes the entries of this person with their earlier viewings, in one statement, so a file is
- * imported whole or not at all. The visibility is always `private` for a new entry, and an
- * existing entry keeps the one it has. An entry the person already has stays as it is, unless
+ * imported whole or not at all. A new entry gets the visibility it comes with (the caller passes
+ * `private` unless the person asked to keep the file's), and an existing entry keeps the one it
+ * has. An entry the person already has stays as it is, unless
  * `replace` is true: then its fields and its viewings are replaced by those of the file.
  * Returns how many entries were added and how many were replaced. `mediaId` must come from
  * `lookupTitles`, never from the file, and must not repeat.
@@ -93,6 +96,7 @@ export async function writeEntries(
       started_at: entry.startedAt,
       finished_at: entry.finishedAt,
       notes: entry.notes,
+      visibility: entry.visibility,
       viewings: entry.viewings.map((viewing) => ({
         started_on: viewing.startedOn,
         finished_on: viewing.finishedOn,
@@ -109,14 +113,14 @@ export async function writeEntries(
     WITH input AS (
       SELECT * FROM jsonb_to_recordset(${payload}::jsonb) AS x(
         media_id uuid, status text, progress int, score int, started_at date,
-        finished_at date, notes text, viewings jsonb
+        finished_at date, notes text, visibility text, viewings jsonb
       )
     ),
     written AS (
       INSERT INTO library_entries
         (user_id, media_id, status, progress, score, started_at, finished_at, notes, visibility)
       SELECT ${userId}::uuid, media_id, status::library_status, progress, score, started_at,
-             finished_at, notes, 'private'
+             finished_at, notes, visibility::privacy_level
       FROM input
       ON CONFLICT ON CONSTRAINT library_entries_user_media_unique ${onConflict}
       RETURNING id, media_id, (xmax = 0) AS added

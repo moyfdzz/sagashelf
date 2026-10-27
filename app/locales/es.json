@@ -176,11 +176,16 @@
         "exists_one": "Ya tienes {{count}} título en tu biblioteca.",
         "exists_other": "Ya tienes {{count}} títulos en tu biblioteca.",
         "fetch_one": "{{count}} título aún no está en SagaShelf y se buscará en TMDB (máximo {{max}} por importación).",
-        "fetch_other": "{{count}} títulos aún no están en SagaShelf y se buscarán en TMDB (máximo {{max}} por importación)."
+        "fetch_other": "{{count}} títulos aún no están en SagaShelf y se buscarán en TMDB (máximo {{max}} por importación).",
+        "sharedPublic_one": "{{count}} de los títulos nuevos es público en el archivo. Quedará privado si no marcas la casilla de abajo.",
+        "sharedPublic_other": "{{count}} de los títulos nuevos son públicos en el archivo. Quedarán privados si no marcas la casilla de abajo.",
+        "sharedFriends_one": "{{count}} de los títulos nuevos es para amigos en el archivo. Quedará privado si no marcas la casilla de abajo.",
+        "sharedFriends_other": "{{count}} de los títulos nuevos son para amigos en el archivo. Quedarán privados si no marcas la casilla de abajo."
       },
       "replace": "Reemplazar lo que ya tengo con lo del archivo",
       "replaceHint": "Si no lo marcas, tus entradas actuales se quedan como están.",
-      "private": "Todo lo que se importe queda privado.",
+      "keepVisibility": "Conservar la visibilidad del archivo",
+      "keepVisibilityHint": "Si no lo marcas, todo lo que se añada queda privado. Si lo marcas, los títulos nuevos quedan como estaban en el archivo (público, amigos o privado). Lo que ya tienes conserva su visibilidad actual.",
       "confirm": "Importar",
       "importing": "Importando…",
       "done": {

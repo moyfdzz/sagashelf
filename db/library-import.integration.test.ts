@@ -90,17 +90,25 @@ function fileOf(entries: unknown[]) {
 const run = (
   userId: string,
   entries: unknown[],
-  options: { replace?: boolean; providers?: MediaProvider[] } = {},
+  options: {
+    replace?: boolean;
+    keepVisibility?: boolean;
+    providers?: MediaProvider[];
+  } = {},
 ) =>
   runImport(
     { db, providers: options.providers ?? [provider()] },
     userId,
     fileOf(entries),
-    { replace: options.replace ?? false, locale: "es" },
+    {
+      replace: options.replace ?? false,
+      keepVisibility: options.keepVisibility,
+      locale: "es",
+    },
   );
 
 describe("importing titles we already hold", () => {
-  it("adds the entries with their fields and viewings, always private", async () => {
+  it("adds the entries with their fields and viewings, private by default", async () => {
     const ana = await newUser();
     const media = await saveMedia(db, movie(1));
 
@@ -135,6 +143,67 @@ describe("importing titles we already hold", () => {
         notes: "Cine",
       }),
     ]);
+  });
+
+  it("gives a new entry the visibility of the file only when the person keeps it", async () => {
+    const ana = await newUser();
+    const beto = await newUser();
+    const medias = await Promise.all(
+      [1, 2, 3].map((n) => saveMedia(db, movie(n))),
+    );
+    const file = [
+      entry("movie/1", { visibility: "public" }),
+      entry("movie/2", { visibility: "friends" }),
+      entry("movie/3", { visibility: "private" }),
+    ];
+    const visibilities = async (userId: string) =>
+      Promise.all(
+        medias.map(
+          async (media) =>
+            (await getEntry(db, userId, media, "es"))?.visibility,
+        ),
+      );
+
+    await run(ana.id, file);
+    await run(beto.id, file, { keepVisibility: true });
+
+    expect(await visibilities(ana.id)).toEqual([
+      "private",
+      "private",
+      "private",
+    ]);
+    expect(await visibilities(beto.id)).toEqual([
+      "public",
+      "friends",
+      "private",
+    ]);
+  });
+
+  it("never changes the visibility of an entry the person already has, even replacing it", async () => {
+    const ana = await newUser();
+    const media = await saveMedia(db, movie(1));
+    await addEntry(db, ana.id, media);
+    await saveEntry(db, ana.id, media, {
+      status: "in_progress",
+      progress: 0,
+      score: 3,
+      startedAt: null,
+      finishedAt: null,
+      notes: null,
+      visibility: "private",
+    } satisfies EntryState);
+
+    const result = await run(
+      ana.id,
+      [entry("movie/1", { visibility: "public" })],
+      { replace: true, keepVisibility: true },
+    );
+
+    expect(result).toMatchObject({ added: 0, replaced: 1 });
+    expect(await getEntry(db, ana.id, media, "es")).toMatchObject({
+      score: 9,
+      visibility: "private",
+    });
   });
 
   it("keeps an entry the person already has, unless they ask to replace it", async () => {
@@ -348,8 +417,35 @@ describe("the preview", () => {
       fileOf([entry("movie/1"), entry("movie/2"), entry("movie/3")]),
     );
 
-    expect(preview).toMatchObject({ add: 1, exists: 1, fetch: 1, skipped: [] });
+    expect(preview).toMatchObject({
+      add: 1,
+      exists: 1,
+      fetch: 1,
+      shared: { public: 0, friends: 0 },
+      skipped: [],
+    });
     expect(await db.select().from(libraryEntries)).toHaveLength(1);
+  });
+
+  it("counts the new titles the file marks as public or for friends, not the ones already owned", async () => {
+    const ana = await newUser();
+    const have = await saveMedia(db, movie(1));
+    await saveMedia(db, movie(2));
+    await addEntry(db, ana.id, have);
+
+    const preview = await previewImport(
+      { db, providers: [provider()] },
+      ana.id,
+      fileOf([
+        entry("movie/1", { visibility: "public" }),
+        entry("movie/2", { visibility: "public" }),
+        entry("movie/3", { visibility: "friends" }),
+        entry("movie/4", { visibility: "private" }),
+        entry("movie/5"),
+      ]),
+    );
+
+    expect(preview.shared).toEqual({ public: 1, friends: 1 });
   });
 });
 
@@ -398,7 +494,7 @@ describe("export, delete the account, create another, import", () => {
         if (!parsed.ok) throw new Error(parsed.error);
         return parsed.value;
       })(),
-      { replace: false, locale: "es" },
+      { replace: false, keepVisibility: true, locale: "es" },
     );
 
     expect(result).toMatchObject({ added: 2, skipped: [] });
@@ -408,12 +504,13 @@ describe("export, delete the account, create another, import", () => {
       startedAt: "2026-01-01",
       finishedAt: "2026-01-09",
       notes: "Una nota\ncon salto",
-      // The file said public; an import never makes anything public.
-      visibility: "private",
+      // The person kept the visibility of the file.
+      visibility: "public",
     });
     expect(await getEntry(db, again.id, second, "es")).toMatchObject({
       status: "paused",
       startedAt: "2026-02-01",
+      visibility: "private",
     });
     expect(await listViewings(db, again.id, first)).toEqual([
       expect.objectContaining({

@@ -33,7 +33,13 @@ vi.mock("~/middleware/i18next", () => ({
   getLocale: () => "en",
 }));
 
-const preview = { add: 1, exists: 0, fetch: 0, skipped: [] };
+const preview = {
+  add: 1,
+  exists: 0,
+  fetch: 0,
+  shared: { public: 1, friends: 0 },
+  skipped: [],
+};
 const result = { added: 1, replaced: 0, kept: 0, skipped: [] };
 
 beforeEach(() => {
@@ -114,7 +120,6 @@ describe("the preview", () => {
     expect(mocks.previewImport.mock.calls[0]?.[1]).toBe("user-from-session");
     const parsedEntries = mocks.previewImport.mock.calls[0]?.[2].entries;
     expect(JSON.stringify(parsedEntries)).not.toContain("someone-else");
-    expect(JSON.stringify(parsedEntries)).not.toContain("public");
   });
 
   it("answers with a code for a file that is not valid, a missing file and a version it does not know", async () => {
@@ -161,15 +166,28 @@ describe("the import", () => {
       expect.anything(),
       "user-from-session",
       expect.objectContaining({ entries: expect.any(Array) }),
-      { replace: true, locale: "en" },
+      { replace: true, keepVisibility: false, locale: "en" },
     );
   });
 
-  it("does not replace unless asked", async () => {
+  it("does not replace, and keeps nothing public, unless asked", async () => {
     await send({ intent: "confirm", payload: goodFile });
 
     expect(mocks.runImport.mock.calls[0]?.[3]).toMatchObject({
       replace: false,
+      keepVisibility: false,
+    });
+  });
+
+  it("keeps the visibility of the file only when the person checks the box", async () => {
+    await send({
+      intent: "confirm",
+      payload: goodFile,
+      keepVisibility: "on",
+    });
+
+    expect(mocks.runImport.mock.calls[0]?.[3]).toMatchObject({
+      keepVisibility: true,
     });
   });
 

@@ -70,6 +70,7 @@ describe("the import page", () => {
             add: 2,
             exists: 1,
             fetch: 3,
+            shared: { public: 2, friends: 1 },
             skipped: [{ title: "Algo raro", reason: "invalid" }],
           },
         })}
@@ -82,7 +83,38 @@ describe("the import page", () => {
     expect(html).toContain("Algo raro: datos no válidos");
     expect(html).toContain('name="intent" value="confirm"');
     expect(html).toContain('name="replace"');
-    expect(html).toContain("Todo lo que se importe queda privado.");
+    expect(html).toContain(
+      "2 de los títulos nuevos son públicos en el archivo. Quedarán privados si no marcas la casilla de abajo.",
+    );
+    expect(html).toContain("1 de los títulos nuevos es para amigos");
+    expect(html).toContain("Conservar la visibilidad del archivo");
+  });
+
+  it("leaves the box to keep the visibility unchecked, and says nothing of it when nothing is shared", async () => {
+    const html = await render(
+      "en",
+      <SettingsImport
+        {...props({
+          ok: true,
+          step: "preview",
+          payload: "{}",
+          preview: {
+            add: 1,
+            exists: 0,
+            fetch: 0,
+            shared: { public: 0, friends: 0 },
+            skipped: [],
+          },
+        })}
+      />,
+    );
+
+    const box = /<input[^>]*name="keepVisibility"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(box).toContain('type="checkbox"');
+    expect(box).not.toContain("checked");
+    expect(html).toContain("Keep the visibility stored in the file");
+    expect(html).not.toContain("in the file. It will be private");
+    expect(html).not.toContain("in the file. They will be private");
   });
 
   it("says what was imported and what was not", async () => {

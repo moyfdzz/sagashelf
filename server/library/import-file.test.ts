@@ -117,7 +117,20 @@ describe("parseImportFile", () => {
     ).toBe(true);
   });
 
-  it("ignores everything that is not a library entry field: the profile, ids and the visibility", () => {
+  it("reads the visibility, and takes a missing or unknown one as private", () => {
+    const visibilityOf = (overrides: Record<string, unknown>) =>
+      parsed(file([entry(overrides)])).entries[0]?.entry.visibility;
+
+    expect(visibilityOf({ visibility: "public" })).toBe("public");
+    expect(visibilityOf({ visibility: "friends" })).toBe("friends");
+    expect(visibilityOf({ visibility: "private" })).toBe("private");
+    expect(visibilityOf({})).toBe("private");
+    expect(visibilityOf({ visibility: "everyone" })).toBe("private");
+    expect(visibilityOf({ visibility: 1 })).toBe("private");
+    expect(visibilityOf({ visibility: null })).toBe("private");
+  });
+
+  it("ignores everything that is not a library entry field: the profile and ids", () => {
     const { entries } = parsed(
       file(
         [
@@ -145,6 +158,7 @@ describe("parseImportFile", () => {
         "status",
         "title",
         "viewings",
+        "visibility",
       ].sort(),
     );
   });
@@ -271,5 +285,15 @@ describe("normalizeImported", () => {
 
   it("leaves the progress of a title with no episodes as it is", () => {
     expect(normalizeImported(read({ progress: 5 }), 0).progress).toBe(5);
+  });
+
+  it("makes every entry private unless the person keeps the visibility of the file", () => {
+    for (const visibility of ["public", "friends", "private"]) {
+      const item = read({ visibility });
+
+      expect(normalizeImported(item, 0).visibility).toBe("private");
+      expect(normalizeImported(item, 0, false).visibility).toBe("private");
+      expect(normalizeImported(item, 0, true).visibility).toBe(visibility);
+    }
   });
 });
