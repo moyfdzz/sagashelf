@@ -145,7 +145,7 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
             {t("library.notes.dialogTitle", { title })}
           </h2>
           {/* Browsers let the keyboard reach a box that scrolls, so it needs no tabindex. */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-2">
             <p className="break-words whitespace-pre-wrap">{notes}</p>
           </div>
           <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">

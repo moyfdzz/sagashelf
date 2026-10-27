@@ -764,6 +764,14 @@ describe("the notes", () => {
     expect(html).not.toMatch(/<dialog[^>]*overflow-y-auto/);
   });
 
+  it("keep the scroll of the text from passing to the page behind", async () => {
+    const html = await render("es", <Library {...withNotes("covers", long)} />);
+
+    const body =
+      /<div class="[^"]*overflow-y-auto[^"]*">/.exec(html)?.[0] ?? "";
+    expect(body).toContain("overscroll-contain");
+  });
+
   it("do not open on hover", async () => {
     const html = await render(
       "es",
