@@ -39,6 +39,7 @@ const formSchema = z.strictObject({
   file: z.instanceof(File).optional(),
   payload: z.string().optional(),
   replace: z.literal("on").optional(),
+  keepVisibility: z.literal("on").optional(),
 });
 
 // Answering before the body is read leaves it open (see settings.profile.tsx).
@@ -139,6 +140,7 @@ export async function action(args: Route.ActionArgs) {
       step: "done" as const,
       result: await runImport(deps, user.id, parsed.value, {
         replace: form.replace === "on",
+        keepVisibility: form.keepVisibility === "on",
         locale: getLocale(args.context) === "en" ? "en" : "es",
       }),
     },
@@ -274,6 +276,20 @@ export default function SettingsImport({
                   })}
                 </li>
               ) : null}
+              {actionData.preview.shared.public > 0 ? (
+                <li>
+                  {t("settings.import.preview.sharedPublic", {
+                    count: actionData.preview.shared.public,
+                  })}
+                </li>
+              ) : null}
+              {actionData.preview.shared.friends > 0 ? (
+                <li>
+                  {t("settings.import.preview.sharedFriends", {
+                    count: actionData.preview.shared.friends,
+                  })}
+                </li>
+              ) : null}
             </ul>
             <SkippedList skipped={actionData.preview.skipped} />
             <Form method="post" className="mt-6 space-y-4">
@@ -296,9 +312,23 @@ export default function SettingsImport({
                   </p>
                 </div>
               </div>
-              <p className="text-fg-muted text-sm">
-                {t("settings.import.private")}
-              </p>
+              <div className="flex items-start gap-3">
+                <input
+                  id="keepVisibility"
+                  name="keepVisibility"
+                  type="checkbox"
+                  className="mt-1 h-5 w-5"
+                  aria-describedby="keepVisibility-hint"
+                />
+                <div>
+                  <label htmlFor="keepVisibility" className="font-semibold">
+                    {t("settings.import.keepVisibility")}
+                  </label>
+                  <p id="keepVisibility-hint" className="text-fg-muted text-sm">
+                    {t("settings.import.keepVisibilityHint")}
+                  </p>
+                </div>
+              </div>
               <button
                 type="submit"
                 disabled={busy}

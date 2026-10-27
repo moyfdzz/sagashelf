@@ -62,6 +62,8 @@ const entrySchema = z.object({
   startedAt: isoDate.nullable(),
   finishedAt: isoDate.nullable(),
   notes: shortText(notesMaxLength).nullable(),
+  // Missing or unknown (a file from an older export, or edited by hand) reads as private.
+  visibility: z.enum(["public", "friends", "private"]).catch("private"),
   viewings: z.array(viewingSchema).max(maxViewings).catch([]),
 });
 
@@ -95,8 +97,8 @@ const fileSchema = z.object({
 
 /**
  * Reads the text of a file made by the data export. The file is data from outside, so only the
- * library entries are read and only the fields of `entrySchema`: the profile, the lists, an id of
- * a person or a visibility in the file are never looked at. An entry that does not pass is left
+ * library entries are read and only the fields of `entrySchema`: the profile, the lists and an id
+ * of a person in the file are never looked at. An entry that does not pass is left
  * out and listed, and the rest still import. Two entries of the same title count once.
  */
 export function parseImportFile(
@@ -173,11 +175,14 @@ function datesInOrder(entry: ImportEntry): boolean {
  * What an imported entry becomes, with the same rules as the editor (`applySave`) except that no
  * date is invented: a title marked completed has all its episodes seen, the progress never passes
  * the last episode, episodes seen mean it is not just planned, and the finish date only belongs to
- * a completed title. The visibility is not an input at all: an import never makes anything public.
+ * a completed title. The visibility of the file is used only when the person asks to keep it
+ * (`keepVisibility`); otherwise an import never makes anything public. It only applies to a new
+ * entry: one the person already has keeps its own.
  */
 export function normalizeImported(
   entry: ImportEntry,
   totalEpisodes: number,
+  keepVisibility = false,
 ): {
   status: LibraryStatus;
   progress: number;
@@ -185,6 +190,7 @@ export function normalizeImported(
   startedAt: string | null;
   finishedAt: string | null;
   notes: string | null;
+  visibility: ImportEntry["visibility"];
 } {
   let { status, progress } = entry;
   if (totalEpisodes > 0) {
@@ -201,5 +207,6 @@ export function normalizeImported(
     startedAt: entry.startedAt,
     finishedAt: status === "completed" ? entry.finishedAt : null,
     notes: entry.notes,
+    visibility: keepVisibility ? entry.visibility : "private",
   };
 }

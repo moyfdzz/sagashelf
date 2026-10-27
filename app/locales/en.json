@@ -176,11 +176,16 @@
         "exists_one": "You already have {{count}} title in your library.",
         "exists_other": "You already have {{count}} titles in your library.",
         "fetch_one": "{{count}} title is not in SagaShelf yet and will be looked up in TMDB (at most {{max}} per import).",
-        "fetch_other": "{{count}} titles are not in SagaShelf yet and will be looked up in TMDB (at most {{max}} per import)."
+        "fetch_other": "{{count}} titles are not in SagaShelf yet and will be looked up in TMDB (at most {{max}} per import).",
+        "sharedPublic_one": "{{count}} of the new titles is public in the file. It will be private unless you check the box below.",
+        "sharedPublic_other": "{{count}} of the new titles are public in the file. They will be private unless you check the box below.",
+        "sharedFriends_one": "{{count}} of the new titles is for friends in the file. It will be private unless you check the box below.",
+        "sharedFriends_other": "{{count}} of the new titles are for friends in the file. They will be private unless you check the box below."
       },
       "replace": "Replace what I already have with what is in the file",
       "replaceHint": "If you do not check it, your current entries stay as they are.",
-      "private": "Everything that is imported stays private.",
+      "keepVisibility": "Keep the visibility stored in the file",
+      "keepVisibilityHint": "If you do not check it, everything that is added stays private. If you check it, new titles keep what the file says (public, friends or private). What you already have keeps its current visibility.",
       "confirm": "Import",
       "importing": "Importing…",
       "done": {

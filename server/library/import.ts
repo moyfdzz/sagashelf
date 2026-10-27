@@ -70,6 +70,12 @@ export type ImportPreview = {
   exists: number;
   /** Titles we do not hold yet, asked of the provider when the person confirms. */
   fetch: number;
+  /**
+   * Of the titles that would be added (those we hold and those asked of the provider), how many
+   * the file marks as public or for friends. They become private unless the person keeps the
+   * visibility of the file.
+   */
+  shared: { public: number; friends: number };
   skipped: Skipped[];
 };
 
@@ -80,10 +86,17 @@ export async function previewImport(
   parsed: ParsedImport,
 ): Promise<ImportPreview> {
   const sorted = await classify(deps.db, userId, parsed, deps.providers);
+  const added = [
+    ...sorted.known.filter(({ title }) => !title.hasEntry),
+    ...sorted.toFetch,
+  ];
+  const countOf = (visibility: ImportEntry["visibility"]) =>
+    added.filter(({ entry }) => entry.visibility === visibility).length;
   return {
     add: sorted.known.filter(({ title }) => !title.hasEntry).length,
     exists: sorted.known.filter(({ title }) => title.hasEntry).length,
     fetch: sorted.toFetch.length,
+    shared: { public: countOf("public"), friends: countOf("friends") },
     skipped: sorted.skipped,
   };
 }
@@ -100,13 +113,14 @@ export type ImportResult = {
  * Imports the entries of a file for `userId`, who comes from the session. A title we do not hold
  * is saved only through the provider (never from the data of the file), up to `maxNewTitles`; the
  * rest are listed as pending and a second import brings them. The entries are written in one
- * statement. Nothing in the file chooses the person, the visibility or an id of ours.
+ * statement. Nothing in the file chooses the person or an id of ours, and the visibility of the
+ * file counts only with `keepVisibility`, only for new entries.
  */
 export async function runImport(
   deps: { db: Db; providers: readonly MediaProvider[] },
   userId: string,
   parsed: ParsedImport,
-  options: { replace: boolean; locale: Locale },
+  options: { replace: boolean; keepVisibility?: boolean; locale: Locale },
 ): Promise<ImportResult> {
   const { db, providers } = deps;
   const sorted = await classify(db, userId, parsed, providers);
@@ -161,7 +175,11 @@ export async function runImport(
     seen.add(title.mediaId);
     rows.push({
       mediaId: title.mediaId,
-      ...normalizeImported(entry, title.episodes),
+      ...normalizeImported(
+        entry,
+        title.episodes,
+        options.keepVisibility ?? false,
+      ),
       viewings: entry.viewings,
     });
   }
