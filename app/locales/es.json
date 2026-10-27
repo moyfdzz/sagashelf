@@ -389,7 +389,9 @@
     "card": {
       "progress": "{{done}} de {{total}} episodios",
       "score": "Puntuación: {{score}} de 10",
-      "line": "{{kind}} · {{status}}"
+      "line": "{{kind}} · {{status}}",
+      "rewatched_one": "Lo has vuelto a ver {{count}} vez",
+      "rewatched_other": "Lo has vuelto a ver {{count}} veces"
     },
     "editor": {
       "back": "Volver a mi biblioteca",
@@ -424,7 +426,8 @@
         "summary": "Quitar de mi biblioteca",
         "warning": "Se borran tu estado, tu progreso, tu puntuación y tus notas de este título. No se puede deshacer.",
         "confirm": "Quitar definitivamente"
-      }
+      },
+      "finishedAtHint": "Solo se puede poner cuando el estado es Completado."
     },
     "errors": {
       "summary": "Revisa los campos marcados.",

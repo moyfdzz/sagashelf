@@ -76,6 +76,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       href: result.id
         ? mediaPath(result.type, result.title, result.id)
         : openPath(result.provider, result.externalId),
+      // `/media/open` saves the title and redirects: it has no page of its own, so a move
+      // inside the page (which asks for the data of a page) cannot follow it.
+      wholePage: result.id === null,
       // Results kept in the cache before posters existed have no `imageUrl`.
       poster: imageSrc(result.imageUrl ?? null, "w92"),
     })),
@@ -185,9 +188,15 @@ export default function Search({ loaderData }: Route.ComponentProps) {
               )}
               <div className="min-w-0">
                 <p className="text-lg font-semibold">
-                  <Link to={result.href} className="text-accent underline">
-                    {result.title}
-                  </Link>
+                  {result.wholePage ? (
+                    <a href={result.href} className="text-accent underline">
+                      {result.title}
+                    </a>
+                  ) : (
+                    <Link to={result.href} className="text-accent underline">
+                      {result.title}
+                    </Link>
+                  )}
                   {result.year ? (
                     <span className="text-fg-muted font-normal">
                       {" "}

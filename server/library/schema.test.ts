@@ -47,6 +47,14 @@ describe("libraryActionSchema", () => {
     });
   });
 
+  it("reads a form that leaves out the finish date, which the page does while the title is not completed", () => {
+    const withoutFinish = { ...valid, finishedAt: undefined };
+
+    expect(libraryActionSchema.parse(withoutFinish)).toMatchObject({
+      finishedAt: null,
+    });
+  });
+
   it("reads the two short forms", () => {
     expect(libraryActionSchema.parse({ intent: "remove" })).toEqual({
       intent: "remove",

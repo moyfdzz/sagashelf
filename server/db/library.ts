@@ -162,6 +162,7 @@ export type LibraryRow = {
   progress: number;
   totalEpisodes: number;
   score: number | null;
+  rewatchCount: number;
 };
 
 const orderBy: Record<LibraryQuery["sort"], SQL[]> = {
@@ -201,6 +202,7 @@ export async function listEntries(
       status: libraryEntries.status,
       progress: libraryEntries.progress,
       score: libraryEntries.score,
+      rewatchCount: libraryEntries.rewatchCount,
       totalEpisodes: sql<number>`(
         SELECT count(*)::int FROM media_parts e
         JOIN media_parts s ON s.id = e.parent_id

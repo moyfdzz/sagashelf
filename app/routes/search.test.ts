@@ -111,6 +111,12 @@ describe("the search page loader", () => {
       results: { href: string; poster: string | null }[];
     };
 
+    // Only the one that is not saved yet needs a whole-page navigation.
+    expect(
+      (result.results as unknown as { wholePage: boolean }[]).map(
+        (entry) => entry.wholePage,
+      ),
+    ).toEqual([false, true]);
     expect(result.results.map((entry) => entry.href)).toEqual([
       "/media/movie/dune-0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
       "/media/open?provider=tmdb&id=movie%2F438631",

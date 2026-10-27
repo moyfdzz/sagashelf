@@ -79,9 +79,10 @@ export default function Library({ loaderData }: Route.ComponentProps) {
 
       <Form
         method="get"
+        key={JSON.stringify(query)}
         role="search"
         aria-label={t("library.filters.label")}
-        className="mt-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-6"
+        className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] items-end gap-4"
       >
         <div>
           <label htmlFor="type" className="font-semibold">
@@ -252,6 +253,11 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                       done: row.progress,
                       total: row.totalEpisodes,
                     })}
+                  </p>
+                ) : null}
+                {row.rewatchCount > 0 ? (
+                  <p className="mt-1 text-sm">
+                    {t("library.card.rewatched", { count: row.rewatchCount })}
                   </p>
                 ) : null}
                 {row.score ? (

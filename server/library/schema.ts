@@ -26,10 +26,14 @@ const isoDate = z
     );
   });
 
-/** An empty field of the form means "no value". */
+/**
+ * An empty field of the form means "no value". A field that is missing (the form leaves out the
+ * finish date while the title is not completed) means the same.
+ */
 const optionalDate = z
   .union([z.literal(""), isoDate])
-  .transform((value) => (value === "" ? null : value));
+  .optional()
+  .transform((value) => (value ? value : null));
 
 const saveSchema = z.strictObject({
   intent: z.literal("save"),

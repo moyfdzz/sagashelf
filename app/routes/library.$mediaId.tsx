@@ -1,4 +1,5 @@
 import { rootAuthLoader } from "@clerk/react-router/server";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import type { ZodError } from "zod";
@@ -255,6 +256,8 @@ export default function LibraryEntry({
   const { t } = useTranslation();
   const navigation = useNavigation();
   const saving = navigation.state === "submitting";
+  // The finish date can only be set while the status is "completed".
+  const [status, setStatus] = useState(loaderData.entry.status);
   const { entry, media, totalEpisodes: total, progressAt } = loaderData;
   const errors: FieldErrors = actionData?.ok === false ? actionData.errors : {};
   const hasErrors = Object.keys(errors).length > 0;
@@ -351,6 +354,9 @@ export default function LibraryEntry({
               id="status"
               name="status"
               defaultValue={entry.status}
+              onChange={(event) =>
+                setStatus(event.target.value as typeof entry.status)
+              }
               {...invalid("status")}
               className={inputClass}
             >
@@ -437,9 +443,13 @@ export default function LibraryEntry({
                 name="finishedAt"
                 type="date"
                 defaultValue={entry.finishedAt ?? ""}
-                {...invalid("finishedAt")}
-                className={inputClass}
+                disabled={status !== "completed"}
+                {...invalid("finishedAt", "finishedAt-hint")}
+                className={`${inputClass} disabled:opacity-60`}
               />
+              <p id="finishedAt-hint" className="text-fg-muted mt-1 text-sm">
+                {t("library.editor.finishedAtHint")}
+              </p>
               {fieldError("finishedAt")}
             </div>
           </div>

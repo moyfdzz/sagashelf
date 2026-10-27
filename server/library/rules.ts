@@ -59,7 +59,8 @@ export function applySave(
   if (status === "planned" && progress > 0) status = "in_progress";
 
   let startedAt = input.startedAt;
-  let finishedAt = input.finishedAt;
+  // A title that is not completed has not been finished, whatever the form says.
+  let finishedAt = status === "completed" ? input.finishedAt : null;
   const started = status !== "planned" || progress > 0;
   if (started && !startedAt) startedAt = today;
   if (status === "completed" && !finishedAt) finishedAt = today;
