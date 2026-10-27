@@ -265,18 +265,19 @@
       "account": "Cuenta: tu correo, tu nombre de usuario y, si usas contraseña, una versión protegida de ella. La contraseña la gestiona Clerk y SagaShelf nunca la guarda.",
       "google": "Inicio con Google: si eliges esta opción, Google comparte con Clerk tu correo, tu nombre y tu foto de perfil. No accedemos a nada más de tu cuenta de Google.",
       "profile": "Perfil: el nombre para mostrar, la biografía, el idioma, tu nivel de privacidad y la foto que elijas.",
-      "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio."
+      "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
+      "analytics": "Estadísticas de uso: medimos cuántas visitas recibe cada página y qué tan rápido carga con Cloudflare Web Analytics. Según Cloudflare, no usa cookies ni almacenamiento del navegador y no identifica a cada persona: recibe sobre todo tiempos de carga y páginas vistas."
     },
     "not": {
       "title": "Lo que no hacemos",
-      "body": "No vendemos tus datos, no mostramos anuncios y no usamos analíticas ni cookies de seguimiento."
+      "body": "No vendemos tus datos, no mostramos anuncios y no usamos cookies de seguimiento."
     },
     "processors": {
       "title": "Con quién se comparten",
       "intro": "Usamos estos proveedores para operar el servicio:",
       "clerk": "Clerk: gestiona las cuentas y el inicio de sesión.",
       "neon": "Neon: aloja la base de datos donde se guarda tu perfil.",
-      "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas y lo protege contra abusos.",
+      "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos y mide visitas y velocidad con Web Analytics.",
       "outro": "Estos proveedores pueden procesar datos fuera de México, incluso en Estados Unidos. No los usamos para nada más que operar el servicio."
     },
     "cookies": {

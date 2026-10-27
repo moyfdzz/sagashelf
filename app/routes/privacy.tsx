@@ -37,6 +37,7 @@ export default function Privacy() {
             t("privacy.data.google"),
             t("privacy.data.profile"),
             t("privacy.data.technical"),
+            t("privacy.data.analytics"),
           ]}
         />
       </LegalSection>
