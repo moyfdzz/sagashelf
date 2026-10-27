@@ -147,6 +147,28 @@ describe("the import page", () => {
     expect(html).toContain('href="/library"');
   });
 
+  it("draws the links to other pages as buttons, not as hyperlinks", async () => {
+    const page = await render("es", <SettingsImport {...props()} />);
+    const done = await render(
+      "es",
+      <SettingsImport
+        {...props({
+          ok: true,
+          step: "done",
+          result: { added: 1, replaced: 0, kept: 0, skipped: [] },
+        })}
+      />,
+    );
+
+    const back = /<a[^>]*href="\/settings\/profile#data"[^>]*>/.exec(page)?.[0];
+    const library = /<a[^>]*href="\/library"[^>]*>/.exec(done)?.[0];
+    for (const tag of [back, library]) {
+      expect(tag).toContain("border-input-edge");
+      expect(tag).toContain("whitespace-nowrap");
+      expect(tag).not.toContain("underline");
+    }
+  });
+
   it("shows the message of an error", async () => {
     const html = await render(
       "es",

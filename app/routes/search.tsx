@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import type { Route } from "./+types/search";
 import { SearchBox } from "~/components/SearchBox";
+import { tabClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { getMediaProviders } from "~server/runtime-env";
 import { getDb, getSearchCache, getSearchLimiter } from "~server/runtime-env";
@@ -119,17 +120,13 @@ export default function Search({ loaderData }: Route.ComponentProps) {
       <SearchBox initialQuery={q} type={type} />
 
       <nav aria-label={t("search.tabsLabel")} className="mt-6">
-        <ul className="border-border flex flex-wrap gap-x-2 gap-y-1 border-b pb-2">
+        <ul className="flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <li key={tab ?? "all"}>
               <Link
                 to={tabHref(q, tab)}
                 aria-current={tab === type ? "page" : undefined}
-                className={`focus-visible:outline-accent rounded-md px-3 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  tab === type
-                    ? "text-accent underline underline-offset-8"
-                    : "text-fg-muted hover:text-accent"
-                }`}
+                className={tabClass(tab === type)}
               >
                 {t(`search.types.${tab ?? "all"}`)}
               </Link>

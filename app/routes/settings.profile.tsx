@@ -12,6 +12,7 @@ import { SettingsNav } from "~/components/SettingsNav";
 import { StatusToast } from "~/components/StatusToast";
 import { formatDate } from "~/lib/format";
 import { localeNames, supportedLanguages } from "~/locales";
+import { secondaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
   bioMaxLength,
@@ -178,9 +179,6 @@ export async function action(args: Route.ActionArgs) {
   }
   return data({ ok: true as const, profile, savedAt: Date.now() }, { headers });
 }
-
-const secondaryButtonClass =
-  "border-input-edge bg-surface text-fg focus-visible:outline-accent rounded-md border px-4 py-2 font-semibold hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -462,7 +460,7 @@ export default function ProfileSettings({
           {/* A plain link: the import page has its own security policy, which only a new
               document gets. */}
           <p className="mt-4">
-            <a href="/settings/import" className="text-accent underline">
+            <a href="/settings/import" className={secondaryLinkClass}>
               {t("settings.data.import")}
             </a>
           </p>

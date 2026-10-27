@@ -2,6 +2,13 @@ import { useTranslation } from "react-i18next";
 import { data, Form, Link } from "react-router";
 
 import type { Route } from "./+types/library";
+import {
+  primaryButtonClass,
+  secondaryLinkClass,
+  segmentClass,
+  segmentedGroupClass,
+  tabClass,
+} from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { listLibrary, type LibraryRow } from "~server/db/library";
@@ -355,11 +362,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                 <Link
                   to={libraryHref(query, pages, { type })}
                   aria-current={active ? "page" : undefined}
-                  className={`focus-visible:outline-accent inline-block rounded-md border px-3 py-1.5 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                    active
-                      ? "bg-accent text-accent-fg border-transparent"
-                      : "border-border text-fg"
-                  }`}
+                  className={tabClass(active)}
                 >
                   {t(`library.tabs.${type ?? "all"}`)}{" "}
                   <span className="font-normal">
@@ -468,17 +471,14 @@ export default function Library({ loaderData }: Route.ComponentProps) {
             ))}
           </select>
         </div>
-        <div className="flex items-end gap-3">
-          <button
-            type="submit"
-            className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
+        <div className="col-span-full flex flex-wrap items-center gap-3">
+          <button type="submit" className={primaryButtonClass}>
             {t("library.filters.apply")}
           </button>
           {searching || query.sort !== "recent" ? (
             <Link
               to={libraryHref(query, pages, { clear: true })}
-              className="text-accent py-2 underline"
+              className={secondaryLinkClass}
             >
               {t("library.filters.clear")}
             </Link>
@@ -491,17 +491,13 @@ export default function Library({ loaderData }: Route.ComponentProps) {
           {t("library.count", { count: total })}
         </p>
         <nav aria-label={t("library.views.label")}>
-          <ul className="flex gap-3">
+          <ul className={segmentedGroupClass}>
             {libraryViews.map((option) => (
               <li key={option}>
                 <Link
                   to={libraryHref(query, pages, { view: option })}
                   aria-current={view === option ? "true" : undefined}
-                  className={
-                    view === option
-                      ? "font-semibold"
-                      : `${linkClass} font-normal`
-                  }
+                  className={segmentClass(view === option)}
                 >
                   {t(`library.views.${option}`)}
                 </Link>
@@ -524,7 +520,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
             <p className="mt-3">
               <Link
                 to={libraryHref(query, pages, { clear: true })}
-                className={linkClass}
+                className={secondaryLinkClass}
               >
                 {t("library.filters.clear")}
               </Link>
@@ -597,7 +593,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                               },
                             })}
                             rel="prev"
-                            className={linkClass}
+                            className={secondaryLinkClass}
                           >
                             {t("library.pagination.previous")}
                           </Link>
@@ -619,7 +615,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                               },
                             })}
                             rel="next"
-                            className={linkClass}
+                            className={secondaryLinkClass}
                           >
                             {t("library.pagination.next")}
                           </Link>

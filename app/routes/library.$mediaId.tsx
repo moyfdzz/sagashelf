@@ -8,6 +8,7 @@ import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
 import { useFormatters } from "~/lib/format";
+import { primaryButtonClass, secondaryButtonClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -333,11 +334,6 @@ export async function action(args: Route.ActionArgs) {
 
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
-const secondaryButtonClass =
-  "border-input-edge bg-surface text-fg focus-visible:outline-accent rounded-md border px-4 py-2 font-semibold hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2";
-const primaryButtonClass =
-  "bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60";
-
 export default function LibraryEntry({
   loaderData,
   actionData,
