@@ -342,7 +342,7 @@
     },
     "cookies": {
       "title": "Cookies",
-      "body": "We use only necessary cookies: one that remembers your language, one that remembers whether you prefer light or dark mode, and Clerk's session cookies, which keep you signed in. We do not use advertising or tracking cookies."
+      "body": "We use only necessary cookies: one that remembers your language, one that remembers whether you prefer light or dark mode, one that remembers how you like to see your library (covers, titles only or grid), and Clerk's session cookies, which keep you signed in. We do not use advertising or tracking cookies."
     },
     "retention": {
       "title": "How long we keep it",
@@ -410,6 +410,7 @@
   "library": {
     "title": "My library",
     "description": "The titles you follow, with your status, progress and score.",
+    "badge": "({{count}})",
     "count_one": "{{count}} title",
     "count_other": "{{count}} titles",
     "status": {
@@ -422,12 +423,36 @@
     "empty": {
       "none": "Your library is empty. Search for a title and add it from its page.",
       "search": "Go to search",
-      "noMatch": "No title matches these filters."
+      "noMatch": "No title matches your search.",
+      "byType": {
+        "anime": "You have not saved any anime yet.",
+        "movie": "You have not saved any movies yet.",
+        "series": "You have not saved any series yet.",
+        "book": "You have not saved any books yet.",
+        "manga": "You have not saved any manga yet."
+      }
+    },
+    "tabs": {
+      "label": "Types of content",
+      "all": "All",
+      "anime": "Anime",
+      "movie": "Movies",
+      "series": "Series",
+      "book": "Books",
+      "manga": "Manga"
+    },
+    "views": {
+      "label": "How to see the library",
+      "covers": "Covers",
+      "titles": "Titles only",
+      "grid": "Grid"
+    },
+    "sections": {
+      "empty": "You have no entries in {{section}}."
     },
     "filters": {
-      "label": "Library filters",
-      "type": "Type",
-      "status": "Status",
+      "label": "Search and filter the library",
+      "search": "Search by title",
       "year": "Year",
       "minScore": "Minimum score",
       "sort": "Sort by",
@@ -442,7 +467,7 @@
       "year": "Year"
     },
     "pagination": {
-      "label": "Library pages",
+      "label": "Pages of {{section}}",
       "previous": "Previous",
       "next": "Next",
       "page": "Page {{page}} of {{pages}}"

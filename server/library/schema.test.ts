@@ -5,6 +5,7 @@ import {
   libraryActionSchema,
   libraryQuerySchema,
   notesMaxLength,
+  searchMaxLength,
 } from "./schema";
 
 const valid = {
@@ -127,31 +128,42 @@ describe("addEntrySchema", () => {
   });
 });
 
+const firstPages = {
+  in_progress: 1,
+  planned: 1,
+  paused: 1,
+  dropped: 1,
+  completed: 1,
+};
+
 describe("libraryQuerySchema", () => {
   it("has defaults for an address with no filters", () => {
     expect(libraryQuerySchema.parse({})).toEqual({
       sort: "recent",
-      page: 1,
+      pages: firstPages,
     });
   });
 
-  it("reads the filters, the sort and the page", () => {
+  it("reads the tab, the search, the filters, the sort, the view and the page of each section", () => {
     expect(
       libraryQuerySchema.parse({
         type: "anime",
-        status: "completed",
+        q: "  dune ",
         year: "2013",
         score: "8",
         sort: "score",
-        page: "3",
+        view: "grid",
+        completed_page: "3",
+        planned_page: "2",
       }),
     ).toEqual({
       type: "anime",
-      status: "completed",
+      q: "dune",
       year: 2013,
       score: 8,
       sort: "score",
-      page: 3,
+      view: "grid",
+      pages: { ...firstPages, completed: 3, planned: 2 },
     });
   });
 
@@ -159,12 +171,22 @@ describe("libraryQuerySchema", () => {
     expect(
       libraryQuerySchema.parse({
         type: "custom",
-        status: "<script>",
+        q: "   ",
         year: "20x3",
         score: "11",
         sort: "random",
-        page: "0",
+        view: "table",
+        completed_page: "0",
+        paused_page: "abc",
+        status: "completed",
+        page: "4",
       }),
-    ).toEqual({ sort: "recent", page: 1 });
+    ).toEqual({ sort: "recent", pages: firstPages });
+  });
+
+  it("cuts a search that is too long", () => {
+    expect(libraryQuerySchema.parse({ q: "a".repeat(500) }).q).toHaveLength(
+      searchMaxLength,
+    );
   });
 });

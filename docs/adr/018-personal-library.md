@@ -2,7 +2,7 @@
 
 - **Status:** Accepted. The "Watching again" rule is superseded by [ADR-019](019-library-viewings.md).
 - **Date:** 2026-10-25
-- **Implementation:** Partial (SAG-18): the core for movies, series and anime. Import from CSV, quick actions with an optimistic interface, a grid view, progress for books and manga, and the `activity` and `outbox` events are separate tickets.
+- **Implementation:** Partial (SAG-18): the core for movies, series and anime. Import from CSV, quick actions with an optimistic interface, progress for books and manga, and the `activity` and `outbox` events are separate tickets.
 - **Tickets:** SAG-18, SAG-17, SAG-12, SAG-21, SAG-27
 - **Related:** [ADR-014](014-account-deletion-erases-everything.md), [ADR-017](017-media-pages-and-image-proxy.md), [ADR-011](011-edge-security-and-domain.md)
 
@@ -67,6 +67,18 @@ A person needs to keep track of what they watch: a status, how far they got, a s
 - Whether "friends only" and "public" entries should show the notes. The notes are described as private today, and no one else sees anything, so the question is for SAG-21.
 - The progress of a book or manga (pages, chapters, volumes) depends on SAG-14.
 - Whether the library page needs a search box of its own once libraries are large.
+
+## Amendment (2026-10-27, SAG-57): tabs by type, sections by status
+
+The library page was one list with a form of filters. Most of the time the person wants to see what they are watching now, so the page changed. The data, the rules of an entry and the privacy of the library are the same.
+
+- **Tabs by type** (`?type=`): all (the default), anime, movies, series, books and manga. A tab is never hidden; a tab with nothing says so. Each tab shows how many entries match the search and the filters.
+- **Sections by status**, in a fixed order: in progress, planned, paused, dropped, completed. The sort applies inside each section, never to the order of the sections. Each section is a native `<details>` (it works without JavaScript); completed starts closed and opens by itself when the person is searching or on a later page of it. A section with nothing starts closed and says so. The old `?status=` filter is gone: the sections replace it, and an address that still has it opens the library without it.
+- **Search and filters, one set per tab**: text in the title (ignoring case and accents), year, minimum score and sort. The text matches the title, the original title and the name in every language we hold, with `immutable_unaccent` (ADR-002, migration 0002), so it needs no migration and `%` and `_` are plain characters. The search and the filters stay when the tab changes.
+- **Pages by section** (`?completed_page=2`), 12 entries each, as plain links: a page past the last one shows the last one. Changing the tab or the view sends every section back to its first page.
+- **Two queries** whatever the number of sections (ADR-001, 50 subrequests per request): one counts by type and status (the tabs, the totals and the last page of each section), and one takes the page of every section with `row_number() OVER (PARTITION BY status)`. The id at the end of the order keeps entries that tie from one page to the next. With 3000 synthetic entries on a local database each answered in under 30 ms; a real database over the network will be slower, and this was not measured.
+- **Three views**: covers (as before), titles only and a grid of covers. The address (`?view=`) wins and is remembered in a preference cookie, `libraryView`, like the language one: it works without JavaScript and holds nothing else. The privacy policy names it. Whether a section is open or closed is **not** remembered.
+- **Not done**: a table view, and remembering open sections.
 
 ## References
 
