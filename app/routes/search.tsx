@@ -57,8 +57,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const response = await runSearch(
     {
-      searchLocal: async (normalized, kind) =>
-        searchLocal(await getDb(), normalized, kind),
+      searchLocal: async (normalized, kind, language) =>
+        searchLocal(await getDb(), normalized, kind, language),
       providers: getMediaProviders(),
       cache: getSearchCache(),
     },

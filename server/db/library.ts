@@ -2,6 +2,8 @@ import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 
 import type { ProfileDb } from "./profile";
 import { libraryEntries, mediaItems } from "./schema";
+import { localizedTitleSql } from "./titles";
+import type { Locale } from "../providers/types";
 import type { EntryState, SeasonCount } from "../library/rules";
 import { pageSize, type LibraryQuery } from "../library/schema";
 
@@ -43,7 +45,7 @@ export type StoredEntry = EntryState & {
   updatedAt: Date;
 };
 
-const entryColumns = {
+const entryColumns = (locale: Locale) => ({
   mediaId: libraryEntries.mediaId,
   status: libraryEntries.status,
   progress: libraryEntries.progress,
@@ -54,20 +56,21 @@ const entryColumns = {
   notes: libraryEntries.notes,
   visibility: libraryEntries.visibility,
   updatedAt: libraryEntries.updatedAt,
-  title: mediaItems.title,
+  title: localizedTitleSql("media_items", locale),
   type: mediaItems.type,
   year: mediaItems.year,
   imageUrl: mediaItems.imageUrl,
-};
+});
 
 /** The entry of this person for this title, or null when they have none. */
 export async function getEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
+  locale: Locale,
 ): Promise<StoredEntry | null> {
   const [row] = await db
-    .select(entryColumns)
+    .select(entryColumns(locale))
     .from(libraryEntries)
     .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
     .where(
@@ -165,9 +168,9 @@ export type LibraryRow = {
   rewatchCount: number;
 };
 
-const orderBy: Record<LibraryQuery["sort"], SQL[]> = {
+const orderBy = (locale: Locale): Record<LibraryQuery["sort"], SQL[]> => ({
   recent: [desc(libraryEntries.updatedAt)],
-  title: [asc(sql`lower(${mediaItems.title})`)],
+  title: [asc(sql`lower(${localizedTitleSql("media_items", locale)})`)],
   score: [
     sql`${libraryEntries.score} DESC NULLS LAST`,
     desc(libraryEntries.updatedAt),
@@ -176,13 +179,14 @@ const orderBy: Record<LibraryQuery["sort"], SQL[]> = {
     sql`${mediaItems.year} DESC NULLS LAST`,
     desc(libraryEntries.updatedAt),
   ],
-};
+});
 
 /** One page of the library of this person, filtered and sorted, and how many entries match. */
 export async function listEntries(
   db: ProfileDb,
   userId: string,
   query: LibraryQuery,
+  locale: Locale,
 ): Promise<{ rows: LibraryRow[]; total: number }> {
   const filters: (SQL | undefined)[] = [eq(libraryEntries.userId, userId)];
   if (query.type) filters.push(eq(mediaItems.type, query.type));
@@ -195,7 +199,7 @@ export async function listEntries(
   const rows = await db
     .select({
       mediaId: libraryEntries.mediaId,
-      title: mediaItems.title,
+      title: localizedTitleSql("media_items", locale),
       type: mediaItems.type,
       year: mediaItems.year,
       imageUrl: mediaItems.imageUrl,
@@ -213,7 +217,7 @@ export async function listEntries(
     .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
     .where(where)
     // The id at the end keeps entries that tie in the same order from one page to the next.
-    .orderBy(...orderBy[query.sort], asc(libraryEntries.id))
+    .orderBy(...orderBy(locale)[query.sort], asc(libraryEntries.id))
     .limit(pageSize)
     .offset((query.page - 1) * pageSize);
 

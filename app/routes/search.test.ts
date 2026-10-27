@@ -151,12 +151,13 @@ describe("the search page loader", () => {
     const deps = mocks.runSearch.mock.calls[0][0];
 
     expect(mocks.getDb).not.toHaveBeenCalled();
-    await deps.searchLocal("dune", undefined);
+    await deps.searchLocal("dune", undefined, "es");
     expect(mocks.getDb).toHaveBeenCalledTimes(1);
     expect(mocks.searchLocal).toHaveBeenCalledWith(
       { fake: "database" },
       "dune",
       undefined,
+      "es",
     );
   });
 });

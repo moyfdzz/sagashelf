@@ -139,7 +139,11 @@ describe("runSearch", () => {
 
     await runSearch(deps, ask("  Pokémon   GO "));
 
-    expect(deps.searchLocal).toHaveBeenCalledWith("pokemon go", undefined);
+    expect(deps.searchLocal).toHaveBeenCalledWith(
+      "pokemon go",
+      undefined,
+      "es",
+    );
     expect(search.mock.calls[0][0]).toBe("pokemon go");
   });
 

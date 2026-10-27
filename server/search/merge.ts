@@ -38,7 +38,8 @@ export function toResult(
     title: item.title,
     originalTitle: item.originalTitle,
     year: item.year,
-    synopsis: item.synopsis[locale] ?? null,
+    // An empty text means the source has none in this language.
+    synopsis: item.synopsis[locale] || null,
     imageUrl: item.imageUrl,
     popularity: item.popularity,
     source,

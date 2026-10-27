@@ -7,7 +7,7 @@ import type { ZodError } from "zod";
 import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
-import { getInstance } from "~/middleware/i18next";
+import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
   getEntry,
@@ -102,7 +102,8 @@ export async function loader(args: Route.LoaderArgs) {
   if (!mediaId.success) throw data(null, { status: 404 });
 
   const db = await getDb();
-  const entry = await getEntry(db, user.id, mediaId.data);
+  const locale = getLocale(args.context) === "en" ? "en" : "es";
+  const entry = await getEntry(db, user.id, mediaId.data, locale);
   // Somebody else's entry and no entry at all look the same.
   if (!entry) throw data(null, { status: 404 });
   const seasons = await getSeasonCounts(db, mediaId.data);
@@ -206,7 +207,12 @@ export async function action(args: Route.ActionArgs) {
     return redirect("/library", { status: 303, headers: privateHeaders });
   }
 
-  const current = await getEntry(db, user.id, mediaId.data);
+  const current = await getEntry(
+    db,
+    user.id,
+    mediaId.data,
+    getLocale(args.context) === "en" ? "en" : "es",
+  );
   if (!current) throw data(null, { status: 404 });
 
   const result =

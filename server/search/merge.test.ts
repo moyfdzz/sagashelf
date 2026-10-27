@@ -25,6 +25,26 @@ function result(overrides: Partial<SearchResult> = {}): SearchResult {
 }
 
 describe("toResult", () => {
+  it("gives no synopsis when the source stored an empty one for that language", () => {
+    const item = toResult(
+      {
+        type: "movie",
+        title: "Dune",
+        originalTitle: null,
+        year: 2021,
+        synopsis: { es: "" },
+        imageUrl: null,
+        status: "unknown",
+        popularity: 3,
+        externalId: { provider: "tmdb", id: "movie/1" },
+      },
+      "es",
+      "local",
+    );
+
+    expect(item.synopsis).toBeNull();
+  });
+
   it("takes the synopsis of the language that was asked for", () => {
     const item = toResult(
       {

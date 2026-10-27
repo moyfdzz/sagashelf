@@ -22,6 +22,8 @@ export type MediaDetail = {
   id: string;
   type: MediaKind;
   title: string;
+  /** The title in each language we hold. Read it with `pickTitle`. */
+  titles: LocalizedText;
   originalTitle: string | null;
   year: number | null;
   synopsis: LocalizedText;
@@ -50,7 +52,7 @@ export async function getMediaDetail(
   id: string,
 ): Promise<MediaDetail | null> {
   const { rows } = await db.execute(sql`
-    SELECT m.id, m.type::text AS type, m.title, m.original_title, m.year, m.synopsis,
+    SELECT m.id, m.type::text AS type, m.title, m.titles, m.original_title, m.year, m.synopsis,
            m.image_url, m.status::text AS status, m.fetched_at,
            e.provider::text AS provider, e.external_id,
            COALESCE((
@@ -95,6 +97,7 @@ export async function getMediaDetail(
     id: String(row.id),
     type: row.type as MediaKind,
     title: String(row.title),
+    titles: (row.titles as LocalizedText | null) ?? {},
     originalTitle: (row.original_title as string | null) ?? null,
     year: (row.year as number | null) ?? null,
     synopsis: (row.synopsis as LocalizedText) ?? {},

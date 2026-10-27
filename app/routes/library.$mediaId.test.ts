@@ -34,6 +34,7 @@ vi.mock("~server/runtime-env", () => ({
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
+  getLocale: () => "es",
 }));
 
 const mediaId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
@@ -126,6 +127,7 @@ describe("the entry page loader", () => {
       { fake: "database" },
       "user-1",
       mediaId,
+      "es",
     );
     expect(result).toMatchObject({
       entry: { status: "in_progress", progress: 2, score: 8 },

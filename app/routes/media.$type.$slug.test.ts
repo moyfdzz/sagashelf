@@ -44,6 +44,7 @@ function detail(overrides: Partial<MediaDetail> = {}): MediaDetail {
     id,
     type: "movie",
     title: "Matrix",
+    titles: { es: "Matrix", en: "The Matrix" },
     originalTitle: "The Matrix",
     year: 1999,
     synopsis: { es: "Un programador descubre la verdad." },
@@ -124,6 +125,7 @@ describe("the detail page loader", () => {
       { fake: "database" },
       "user-1",
       id,
+      "es",
     );
   });
 
@@ -163,6 +165,7 @@ describe("the detail page loader", () => {
       "tmdb",
       "movie/603",
       "es",
+      undefined,
     );
     await expect(
       mocks.runInBackground.mock.calls[0]?.[0],
@@ -171,6 +174,81 @@ describe("the detail page loader", () => {
       expect.stringContaining("media.refresh_failed"),
     );
     log.mockRestore();
+  });
+
+  it("waits for the provider on the first visit in a language and shows what it brings", async () => {
+    mocks.locale = "en";
+    mocks.getMediaDetail
+      .mockResolvedValueOnce(
+        detail({
+          titles: { es: "Matrix" },
+          synopsis: { es: "Un programador." },
+        }),
+      )
+      .mockResolvedValueOnce(
+        detail({
+          titles: { es: "Matrix", en: "The Matrix" },
+          synopsis: { es: "Un programador.", en: "A hacker." },
+        }),
+      );
+    mocks.importMedia.mockResolvedValue({ id, type: "movie", title: "x" });
+
+    const result = await load("movie", `the-matrix-${id}`);
+
+    expect(mocks.importMedia).toHaveBeenCalledWith(
+      expect.anything(),
+      "tmdb",
+      "movie/603",
+      "en",
+      expect.any(AbortSignal),
+    );
+    expect(mocks.runInBackground).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      title: "The Matrix",
+      synopsis: "A hacker.",
+      synopsisLocale: "en",
+    });
+  });
+
+  it("shows what it holds, and logs, when the provider fails on the first visit in a language", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    mocks.locale = "en";
+    mocks.getMediaDetail.mockResolvedValue(
+      detail({ titles: { es: "Matrix" }, synopsis: { es: "Un programador." } }),
+    );
+    mocks.importMedia.mockRejectedValue(new Error("down"));
+
+    const result = await load("movie", `matrix-${id}`);
+
+    expect(result).toMatchObject({
+      title: "Matrix",
+      synopsis: "Un programador.",
+      synopsisLocale: "es",
+    });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("media.refresh_failed"),
+    );
+    log.mockRestore();
+  });
+
+  it("uses the title of the visitor's language for the address and the page", async () => {
+    mocks.locale = "en";
+
+    const response = (await load("movie", `matrix-${id}`)) as Response;
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe(
+      `/media/movie/the-matrix-${id}`,
+    );
+  });
+
+  it("does not ask again for a language the source had no synopsis in", async () => {
+    mocks.getMediaDetail.mockResolvedValue(detail({ synopsis: { es: "" } }));
+
+    const result = await load("movie", `matrix-${id}`);
+
+    expect(mocks.importMedia).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ synopsis: null });
   });
 
   it("shows the other language when the synopsis has none in this one, and says which", async () => {

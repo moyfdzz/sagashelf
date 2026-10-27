@@ -1,13 +1,15 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
-import type { MediaKind, ProviderId } from "../providers/types";
+import type { Locale, MediaKind, ProviderId } from "../providers/types";
 import type { LocalizedText } from "./schema/shared";
+import { localizedTitleSql } from "./titles";
 
 /** A title from our own database, with how well it matched. */
 export type LocalHit = {
   id: string;
   type: MediaKind;
+  /** In the language of the visitor when we hold it. */
   title: string;
   originalTitle: string | null;
   year: number | null;
@@ -39,20 +41,23 @@ export function toTsQuery(normalizedQuery: string): string {
  * Looks for the query in the titles we already hold: a full-text match (the last word may be
  * unfinished), or titles that are close by trigram similarity (so "pokemn" finds "Pokémon"),
  * both without accents. Exact titles first, then the closest, then the most popular. Titles that
- * people made themselves (`custom`) are private and never come out of here.
+ * people made themselves (`custom`) are private and never come out of here. The title that comes
+ * back is the one in `locale`; what is matched is still `title` and `original_title`.
  * `normalizedQuery` comes from `normalizeQuery`.
  */
 export async function searchLocal(
   db: SqlExecutor,
   normalizedQuery: string,
   type: MediaKind | undefined,
+  locale: Locale,
   limit = 20,
 ): Promise<LocalHit[]> {
   const tsQuery = toTsQuery(normalizedQuery);
   if (tsQuery === "") return [];
 
   const { rows } = await db.execute(sql`
-    SELECT m.id, m.type::text AS type, m.title, m.original_title, m.year, m.synopsis,
+    SELECT m.id, m.type::text AS type, ${localizedTitleSql("m", locale)} AS title,
+           m.original_title, m.year, m.synopsis,
            m.image_url, m.popularity, e.provider::text AS provider, e.external_id,
            (
              immutable_unaccent(lower(m.title)) = ${normalizedQuery}

@@ -76,10 +76,15 @@ describe("saveMedia", () => {
   it("keeps the synopsis of the other language when it adds a new one", async () => {
     const id = await saveMedia(db, titan);
 
-    await saveMedia(db, {
-      ...titan,
-      synopsis: { en: "Humanity lives behind walls." },
-    });
+    await saveMedia(
+      db,
+      {
+        ...titan,
+        title: "Attack on Titan",
+        synopsis: { en: "Humanity lives behind walls." },
+      },
+      "en",
+    );
 
     const [item] = await db
       .select()
@@ -89,6 +94,58 @@ describe("saveMedia", () => {
       es: "La humanidad vive tras enormes muros.",
       en: "Humanity lives behind walls.",
     });
+  });
+
+  it("keeps the title of each language, and the last one saved in `title`", async () => {
+    const id = await saveMedia(db, titan, "es");
+    await saveMedia(db, { ...titan, title: "Attack on Titan" }, "en");
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.titles).toEqual({
+      es: "Ataque a los Titanes",
+      en: "Attack on Titan",
+    });
+    expect(item.title).toBe("Attack on Titan");
+  });
+
+  it("stores an empty synopsis for a language the source has no text in, once", async () => {
+    const id = await saveMedia(db, { ...titan, synopsis: {} }, "en");
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.synopsis).toEqual({ en: "" });
+  });
+
+  it("never replaces a synopsis we hold with the empty one of a later answer", async () => {
+    const id = await saveMedia(db, titan, "es");
+
+    await saveMedia(db, { ...titan, synopsis: {} }, "es");
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.synopsis).toEqual({
+      es: "La humanidad vive tras enormes muros.",
+    });
+  });
+
+  it("starts a row saved before titles were kept per language with no titles", async () => {
+    const id = await saveMedia(db, titan, "es");
+    await db.execute(
+      sql`UPDATE media_items SET titles = '{}' WHERE id = ${id}`,
+    );
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.titles).toEqual({});
   });
 
   it("makes one row when the same new title arrives many times together", async () => {

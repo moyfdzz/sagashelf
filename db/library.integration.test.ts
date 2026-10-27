@@ -94,7 +94,7 @@ describe("addEntry", () => {
     await saveEntry(db, ana.id, mediaId, completed);
     expect(await addEntry(db, ana.id, mediaId)).toBe(true);
 
-    const entry = await getEntry(db, ana.id, mediaId);
+    const entry = await getEntry(db, ana.id, mediaId, "es");
     expect(entry).toMatchObject({ status: "completed", score: 9 });
     expect(await db.select().from(libraryEntries)).toHaveLength(1);
   });
@@ -105,7 +105,7 @@ describe("addEntry", () => {
 
     await addEntry(db, ana.id, mediaId);
 
-    expect(await getEntry(db, ana.id, mediaId)).toMatchObject({
+    expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject({
       mediaId,
       title: "Ataque a los Titanes",
       status: "planned",
@@ -148,7 +148,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
 
     expect(await saveEntry(db, ana.id, mediaId, completed)).toBe(true);
 
-    expect(await getEntry(db, ana.id, mediaId)).toMatchObject(completed);
+    expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject(completed);
   });
 
   it("never lets a person read, change or remove the entry of somebody else", async () => {
@@ -159,7 +159,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     await saveEntry(db, ana.id, mediaId, completed);
 
     // Beto knows the title id, and that is all he has.
-    expect(await getEntry(db, beto.id, mediaId)).toBeNull();
+    expect(await getEntry(db, beto.id, mediaId, "es")).toBeNull();
     expect(
       await saveEntry(db, beto.id, mediaId, {
         ...completed,
@@ -169,7 +169,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     ).toBe(false);
     expect(await removeEntry(db, beto.id, mediaId)).toBe(false);
 
-    expect(await getEntry(db, ana.id, mediaId)).toMatchObject(completed);
+    expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject(completed);
   });
 
   it("gives each person their own entry for the same title", async () => {
@@ -181,7 +181,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
 
     await saveEntry(db, ana.id, mediaId, completed);
 
-    expect(await getEntry(db, beto.id, mediaId)).toMatchObject({
+    expect(await getEntry(db, beto.id, mediaId, "es")).toMatchObject({
       status: "planned",
       score: null,
     });
@@ -195,7 +195,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     expect(await removeEntry(db, ana.id, mediaId)).toBe(true);
     expect(await removeEntry(db, ana.id, mediaId)).toBe(false);
 
-    expect(await getEntry(db, ana.id, mediaId)).toBeNull();
+    expect(await getEntry(db, ana.id, mediaId, "es")).toBeNull();
     expect(await db.select().from(mediaItems)).toHaveLength(1);
   });
 
@@ -304,6 +304,7 @@ describe("listEntries", () => {
       db,
       ana.id,
       query({ sort: "title" }),
+      "es",
     );
 
     expect(total).toBe(3);
@@ -329,7 +330,7 @@ describe("listEntries", () => {
     const beto = await newUser();
     await addEntry(db, beto.id, bleach);
 
-    const { rows, total } = await listEntries(db, beto.id, query());
+    const { rows, total } = await listEntries(db, beto.id, query(), "es");
 
     expect(total).toBe(1);
     expect(rows.map((row) => row.title)).toEqual(["Bleach"]);
@@ -339,7 +340,7 @@ describe("listEntries", () => {
     const { ana } = await fill();
     const titles = async (params: Record<string, string>) =>
       (
-        await listEntries(db, ana.id, query({ sort: "title", ...params }))
+        await listEntries(db, ana.id, query({ sort: "title", ...params }), "es")
       ).rows.map((row) => row.title);
 
     expect(await titles({ type: "movie" })).toEqual(["Matrix"]);
@@ -356,7 +357,7 @@ describe("listEntries", () => {
   it("sorts by score and by year, with the ones without a value last", async () => {
     const { ana } = await fill();
     const titles = async (sort: string) =>
-      (await listEntries(db, ana.id, query({ sort }))).rows.map(
+      (await listEntries(db, ana.id, query({ sort }), "es")).rows.map(
         (row) => row.title,
       );
 
@@ -380,7 +381,7 @@ describe("listEntries", () => {
     );
     await saveEntry(db, ana.id, bleach, { ...completed, score: 5 });
 
-    const { rows } = await listEntries(db, ana.id, query());
+    const { rows } = await listEntries(db, ana.id, query(), "es");
 
     expect(rows[0]?.title).toBe("Bleach");
   });
@@ -395,16 +396,89 @@ describe("listEntries", () => {
       );
     }
 
-    const first = await listEntries(db, ana.id, query({ sort: "title" }));
+    const first = await listEntries(db, ana.id, query({ sort: "title" }), "es");
     const second = await listEntries(
       db,
       ana.id,
       query({ sort: "title", page: "2" }),
+      "es",
     );
 
     expect(first.total).toBe(30);
     expect(first.rows).toHaveLength(24);
     expect(second.rows).toHaveLength(6);
     expect(second.rows[0]?.title).toBe("Titulo 25");
+  });
+});
+
+describe("titles by language", () => {
+  const query = (params: Record<string, string> = {}) =>
+    libraryQuerySchema.parse(params);
+
+  async function addBilingual() {
+    const media = {
+      type: "movie",
+      title: "Interestelar",
+      originalTitle: "Interstellar",
+      year: 2014,
+      synopsis: {},
+      imageUrl: null,
+      status: "finished",
+      popularity: 1,
+      externalId: { provider: "tmdb", id: "movie/157336" },
+    } as const;
+    const mediaId = await saveMedia(db, media, "es");
+    await saveMedia(db, { ...media, title: "Interstellar" }, "en");
+    return mediaId;
+  }
+
+  it("shows the entry and the list with the title of the language asked", async () => {
+    const ana = await newUser();
+    const mediaId = await addBilingual();
+    await addEntry(db, ana.id, mediaId);
+
+    expect((await getEntry(db, ana.id, mediaId, "es"))?.title).toBe(
+      "Interestelar",
+    );
+    expect((await getEntry(db, ana.id, mediaId, "en"))?.title).toBe(
+      "Interstellar",
+    );
+    const list = await listEntries(db, ana.id, query(), "es");
+    expect(list.rows.map((row) => row.title)).toEqual(["Interestelar"]);
+  });
+
+  it("sorts by the title of the language asked", async () => {
+    const ana = await newUser();
+    // In Spanish: "Alfa" < "Zeta"; in English the same two titles swap places.
+    const first = await addMedia("Zeta");
+    const second = await addMedia("Alfa");
+    await db.execute(
+      sql`UPDATE media_items SET titles = '{"es":"Zeta","en":"Alpha"}' WHERE id = ${first}`,
+    );
+    await db.execute(
+      sql`UPDATE media_items SET titles = '{"es":"Alfa","en":"Zulu"}' WHERE id = ${second}`,
+    );
+    await addEntry(db, ana.id, first);
+    await addEntry(db, ana.id, second);
+
+    const titles = async (locale: "es" | "en") =>
+      (
+        await listEntries(db, ana.id, query({ sort: "title" }), locale)
+      ).rows.map((row) => row.title);
+
+    expect(await titles("es")).toEqual(["Alfa", "Zeta"]);
+    expect(await titles("en")).toEqual(["Alpha", "Zulu"]);
+  });
+
+  it("puts the titles of every language in the data export", async () => {
+    const ana = await newUser();
+    const mediaId = await addBilingual();
+    await addEntry(db, ana.id, mediaId);
+
+    const data = await exportAccount(db, ana.id);
+
+    expect(data?.libraryEntries[0]).toMatchObject({
+      titles: { es: "Interestelar", en: "Interstellar" },
+    });
   });
 });

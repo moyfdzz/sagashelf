@@ -56,6 +56,7 @@ export async function exportAccount(
   const entries = await db
     .select({
       title: mediaItems.title,
+      titles: mediaItems.titles,
       status: libraryEntries.status,
       progress: libraryEntries.progress,
       score: libraryEntries.score,

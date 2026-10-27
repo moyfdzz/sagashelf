@@ -1,0 +1,1 @@
+ALTER TABLE "media_items" ADD COLUMN "titles" jsonb DEFAULT '{}'::jsonb NOT NULL;
