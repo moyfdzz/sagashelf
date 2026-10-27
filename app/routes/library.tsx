@@ -124,6 +124,16 @@ const inputClass =
 
 const linkClass = "text-accent underline";
 
+// The color of the stripe of a section. It reuses the colors of the design (light and dark); the
+// name of the section is always written, so the color is never the only signal.
+const stripe: Record<LibraryStatus, string> = {
+  in_progress: "border-l-accent",
+  planned: "border-l-fg-muted",
+  paused: "border-l-fg-muted",
+  dropped: "border-l-danger-edge",
+  completed: "border-l-success-edge",
+};
+
 type Row = LibraryRow & { poster: string | null };
 
 function Cover({ row, className }: { row: Row; className: string }) {
@@ -161,15 +171,45 @@ function TitleLink({ row }: { row: Row }) {
   );
 }
 
+// A native <progress>: a bar needs no inline style (the strict CSP forbids it) and no script. It is
+// decorative, because the text next to it already says "2 of 12 episodes".
+function Bar({ row, className }: { row: Row; className: string }) {
+  return (
+    <progress
+      aria-hidden="true"
+      value={Math.min(row.progress, row.totalEpisodes)}
+      max={row.totalEpisodes}
+      className={`bg-border [&::-moz-progress-bar]:bg-accent [&::-webkit-progress-bar]:bg-border [&::-webkit-progress-value]:bg-accent h-1.5 w-full appearance-none overflow-hidden rounded-full ${className}`}
+    />
+  );
+}
+
 function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
   const { t } = useTranslation();
 
   if (view === "titles") {
     return (
-      <ul className="mt-3 space-y-1">
+      <ul className="mt-3">
         {rows.map((row) => (
-          <li key={row.mediaId} className="font-semibold">
-            <TitleLink row={row} />
+          <li
+            key={row.mediaId}
+            className="border-border flex items-baseline justify-between gap-4 border-b py-2 last:border-b-0"
+          >
+            <p className="min-w-0 font-semibold">
+              <TitleLink row={row} />
+            </p>
+            <p className="text-fg-muted shrink-0 text-sm tabular-nums">
+              {row.score ? (
+                t("library.card.scoreShort", { score: row.score })
+              ) : (
+                <>
+                  <span aria-hidden="true">
+                    {t("library.card.noScoreMark")}
+                  </span>
+                  <span className="sr-only">{t("library.editor.noScore")}</span>
+                </>
+              )}
+            </p>
           </li>
         ))}
       </ul>
@@ -180,14 +220,37 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
     return (
       <ul className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
         {rows.map((row) => (
-          <li key={row.mediaId} className="min-w-0">
-            <Cover
-              row={row}
-              className="aspect-[2/3] w-full rounded object-cover"
-            />
+          <li key={row.mediaId} className="group/card min-w-0">
+            <div className="group-focus-within/card:ring-accent group-hover/card:ring-accent relative overflow-hidden rounded ring-2 ring-transparent transition-colors">
+              <Cover
+                row={row}
+                className="aspect-[2/3] w-full rounded object-cover"
+              />
+              {row.score ? (
+                <p className="bg-surface-raised text-fg absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-bold shadow">
+                  <span aria-hidden="true">
+                    {t("library.card.badge", { score: row.score })}
+                  </span>
+                  <span className="sr-only">
+                    {t("library.card.score", { score: row.score })}
+                  </span>
+                </p>
+              ) : null}
+              {row.totalEpisodes > 0 ? (
+                <Bar row={row} className="absolute right-0 bottom-0 left-0" />
+              ) : null}
+            </div>
             <p className="mt-2 text-sm font-semibold break-words">
               <TitleLink row={row} />
             </p>
+            {row.totalEpisodes > 0 ? (
+              <p className="sr-only">
+                {t("library.card.progress", {
+                  done: row.progress,
+                  total: row.totalEpisodes,
+                })}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -199,10 +262,10 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
       {rows.map((row) => (
         <li
           key={row.mediaId}
-          className="border-border bg-surface-raised flex gap-4 rounded-md border p-4"
+          className="border-border bg-surface-raised hover:border-accent focus-within:border-accent flex gap-4 rounded-md border p-4 transition-colors hover:shadow-sm"
         >
-          <Cover row={row} className="h-[84px] w-14 shrink-0 rounded" />
-          <div className="min-w-0">
+          <Cover row={row} className="h-[120px] w-20 shrink-0 rounded" />
+          <div className="min-w-0 flex-1">
             <p className="text-lg font-semibold">
               <TitleLink row={row} />
             </p>
@@ -213,23 +276,26 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
               })}
             </p>
             {row.totalEpisodes > 0 ? (
-              <p className="mt-1 text-sm">
-                {t("library.card.progress", {
-                  done: row.progress,
-                  total: row.totalEpisodes,
-                })}
-              </p>
+              <div className="mt-2 max-w-xs">
+                <p className="text-sm">
+                  {t("library.card.progress", {
+                    done: row.progress,
+                    total: row.totalEpisodes,
+                  })}
+                </p>
+                <Bar row={row} className="mt-1" />
+              </div>
             ) : null}
             {row.timesWatched > 0 ? (
-              <p className="mt-1 text-sm">
+              <p className="mt-2 text-sm">
                 {t("library.card.watched", { count: row.timesWatched })}
               </p>
             ) : null}
-            {row.score ? (
-              <p className="mt-1 text-sm">
-                {t("library.card.score", { score: row.score })}
-              </p>
-            ) : null}
+            <p className="mt-2 text-sm">
+              {row.score
+                ? t("library.card.score", { score: row.score })
+                : t("library.editor.noScore")}
+            </p>
           </div>
         </li>
       ))}
@@ -437,13 +503,29 @@ export default function Library({ loaderData }: Route.ComponentProps) {
               <details
                 key={`${query.type ?? "all"}-${section.status}`}
                 open={open}
-                className="border-border rounded-md border p-4"
+                className={`group/section border-border rounded-md border border-l-4 p-4 ${stripe[section.status]}`}
               >
-                <summary className="cursor-pointer text-xl font-semibold">
-                  {name}{" "}
-                  <span className="text-fg-muted font-normal">
-                    {t("library.badge", { count: section.total })}
+                <summary className="focus-visible:outline-accent flex cursor-pointer list-none items-center justify-between gap-3 rounded text-xl font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 [&::-webkit-details-marker]:hidden">
+                  <span className="flex min-w-0 items-center gap-3">
+                    {name}
+                    <span className="border-border bg-surface-raised text-fg-muted rounded-full border px-2.5 py-0.5 text-sm font-semibold">
+                      {t("library.badge", { count: section.total })}
+                    </span>
                   </span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-fg-muted shrink-0 transition-transform group-open/section:rotate-180"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
                 </summary>
                 {section.total === 0 ? (
                   <p className="text-fg-muted mt-3">
