@@ -232,6 +232,14 @@ header[data-chrome] {
   }
 }
 
+/* A modal dialog blocks the clicks and the focus behind it, but not the scroll of the page: while
+   one is open, the page stays where it is, and it scrolls again when the dialog closes. */
+@layer base {
+  html:has(dialog[open]:modal) {
+    overflow: hidden;
+  }
+}
+
 body {
   @apply bg-surface text-fg font-sans antialiased;
 }
