@@ -5,16 +5,17 @@ import {
   addEntry,
   getEntry,
   getSeasonCounts,
-  listEntries,
+  listLibrary,
   removeEntry,
   saveEntry,
   totalEpisodes,
+  type Library,
 } from "../server/db/library";
 import { exportAccount } from "../server/account/export";
 import { saveMedia, saveParts } from "../server/db/media-store";
 import { libraryEntries, mediaItems } from "../server/db/schema";
 import type { EntryState } from "../server/library/rules";
-import { libraryQuerySchema } from "../server/library/schema";
+import { libraryQuerySchema, pageSize } from "../server/library/schema";
 import type { NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
 import { factories } from "./test-helpers";
@@ -271,10 +272,14 @@ describe("getSeasonCounts and totalEpisodes", () => {
   });
 });
 
-describe("listEntries", () => {
-  const query = (params: Record<string, string> = {}) =>
-    libraryQuerySchema.parse(params);
+const query = (params: Record<string, string> = {}) =>
+  libraryQuerySchema.parse(params);
 
+/** Every row of every section, in the order of the sections. */
+const flat = (library: Library) =>
+  library.sections.flatMap((section) => section.rows);
+
+describe("listLibrary", () => {
   async function fill() {
     const ana = await newUser();
     const titan = await addSeries("Ataque a los Titanes", { year: 2013 });
@@ -295,124 +300,374 @@ describe("listEntries", () => {
     return { ana, titan, matrix, bleach };
   }
 
-  it("lists the entries of the person with the episodes seen and the total", async () => {
+  const titles = async (
+    userId: string,
+    params: Record<string, string>,
+    locale: "es" | "en" = "es",
+  ) =>
+    flat(
+      await listLibrary(
+        db,
+        userId,
+        query({ sort: "title", ...params }),
+        locale,
+      ),
+    ).map((row) => row.title);
+
+  it("groups the entries by status in the order they are shown, empty sections included", async () => {
     const { ana, titan } = await fill();
 
-    const { rows, total } = await listEntries(
-      db,
-      ana.id,
-      query({ sort: "title" }),
-      "es",
-    );
+    const library = await listLibrary(db, ana.id, query(), "es");
 
-    expect(total).toBe(3);
-    expect(rows.map((row) => row.title)).toEqual([
-      "Ataque a los Titanes",
-      "Bleach",
-      "Matrix",
+    expect(
+      library.sections.map((section) => [
+        section.status,
+        section.total,
+        section.rows.map((row) => row.title),
+      ]),
+    ).toEqual([
+      ["in_progress", 1, ["Ataque a los Titanes"]],
+      ["planned", 1, ["Bleach"]],
+      ["paused", 0, []],
+      ["dropped", 0, []],
+      ["completed", 1, ["Matrix"]],
     ]);
-    expect(rows[0]).toMatchObject({
+    expect(library.sections[0]?.rows[0]).toMatchObject({
       mediaId: titan,
       status: "in_progress",
       progress: 2,
       totalEpisodes: 3,
       score: 8,
+      timesWatched: 0,
     });
-    expect(rows[2]?.totalEpisodes).toBe(0);
     // Only the completed title counts as watched once.
-    expect(rows.map((row) => row.timesWatched)).toEqual([0, 0, 1]);
+    expect(library.sections[4]?.rows[0]).toMatchObject({
+      totalEpisodes: 0,
+      timesWatched: 1,
+    });
   });
 
-  it("never lists the entries of somebody else", async () => {
+  it("counts the entries of every tab", async () => {
+    const { ana } = await fill();
+
+    expect((await listLibrary(db, ana.id, query(), "es")).counts).toEqual({
+      all: 3,
+      anime: 2,
+      movie: 1,
+      series: 0,
+      book: 0,
+      manga: 0,
+    });
+  });
+
+  it("answers for a person with nothing", async () => {
+    const ana = await newUser();
+
+    const library = await listLibrary(db, ana.id, query(), "es");
+
+    expect(library.counts.all).toBe(0);
+    expect(library.sections.map((section) => section.total)).toEqual([
+      0, 0, 0, 0, 0,
+    ]);
+    expect(flat(library)).toEqual([]);
+  });
+
+  it("never lists or counts the entries of somebody else", async () => {
     const { bleach } = await fill();
     const beto = await newUser();
     await addEntry(db, beto.id, bleach);
 
-    const { rows, total } = await listEntries(db, beto.id, query(), "es");
+    const library = await listLibrary(db, beto.id, query(), "es");
 
-    expect(total).toBe(1);
-    expect(rows.map((row) => row.title)).toEqual(["Bleach"]);
+    expect(library.counts.all).toBe(1);
+    expect(flat(library).map((row) => row.title)).toEqual(["Bleach"]);
   });
 
-  it("filters by type, status, year and minimum score", async () => {
+  it("narrows the sections to the tab, and leaves the count of every tab as it is", async () => {
     const { ana } = await fill();
-    const titles = async (params: Record<string, string>) =>
-      (
-        await listEntries(db, ana.id, query({ sort: "title", ...params }), "es")
-      ).rows.map((row) => row.title);
 
-    expect(await titles({ type: "movie" })).toEqual(["Matrix"]);
-    expect(await titles({ status: "planned" })).toEqual(["Bleach"]);
-    expect(await titles({ year: "2013" })).toEqual(["Ataque a los Titanes"]);
-    expect(await titles({ score: "9" })).toEqual(["Matrix"]);
-    expect(await titles({ score: "8" })).toEqual([
-      "Ataque a los Titanes",
-      "Matrix",
-    ]);
-    expect(await titles({ type: "anime", status: "completed" })).toEqual([]);
-  });
-
-  it("sorts by score and by year, with the ones without a value last", async () => {
-    const { ana } = await fill();
-    const titles = async (sort: string) =>
-      (await listEntries(db, ana.id, query({ sort }), "es")).rows.map(
-        (row) => row.title,
-      );
-
-    expect(await titles("score")).toEqual([
-      "Matrix",
-      "Ataque a los Titanes",
-      "Bleach",
-    ]);
-    expect(await titles("year")).toEqual([
-      "Ataque a los Titanes",
-      "Bleach",
-      "Matrix",
-    ]);
-  });
-
-  it("sorts by the most recently changed by default", async () => {
-    const { ana, bleach } = await fill();
-    // The writes of `fill` can land in the same millisecond, so the order is set by hand.
-    await db.execute(
-      sql`UPDATE library_entries SET updated_at = now() - interval '1 day'`,
-    );
-    await saveEntry(db, ana.id, bleach, { ...completed, score: 5 });
-
-    const { rows } = await listEntries(db, ana.id, query(), "es");
-
-    expect(rows[0]?.title).toBe("Bleach");
-  });
-
-  it("pages the answer and counts every match", async () => {
-    const ana = await newUser();
-    for (let index = 1; index <= 30; index += 1) {
-      await addEntry(
-        db,
-        ana.id,
-        await addMedia(`Titulo ${String(index).padStart(2, "0")}`),
-      );
-    }
-
-    const first = await listEntries(db, ana.id, query({ sort: "title" }), "es");
-    const second = await listEntries(
+    const library = await listLibrary(
       db,
       ana.id,
-      query({ sort: "title", page: "2" }),
+      query({ type: "movie" }),
       "es",
     );
 
-    expect(first.total).toBe(30);
-    expect(first.rows).toHaveLength(24);
-    expect(second.rows).toHaveLength(6);
-    expect(second.rows[0]?.title).toBe("Titulo 25");
+    expect(flat(library).map((row) => row.title)).toEqual(["Matrix"]);
+    expect(library.sections.map((section) => section.total)).toEqual([
+      0, 0, 0, 0, 1,
+    ]);
+    expect(library.counts).toMatchObject({ all: 3, anime: 2, movie: 1 });
+  });
+
+  it("filters by year and minimum score, and the tabs count only what matches", async () => {
+    const { ana } = await fill();
+
+    expect(await titles(ana.id, { year: "2013" })).toEqual([
+      "Ataque a los Titanes",
+    ]);
+    expect(await titles(ana.id, { score: "9" })).toEqual(["Matrix"]);
+    expect(await titles(ana.id, { score: "8" })).toEqual([
+      "Ataque a los Titanes",
+      "Matrix",
+    ]);
+    expect(await titles(ana.id, { type: "anime", score: "9" })).toEqual([]);
+    expect(
+      (await listLibrary(db, ana.id, query({ score: "8" }), "es")).counts,
+    ).toMatchObject({ all: 2, anime: 1, movie: 1 });
+  });
+
+  describe("the search", () => {
+    async function fillForSearch() {
+      const ana = await newUser();
+      const ids = {
+        sky: await addMedia("El castillo en el cielo", {
+          originalTitle: "Tenkū no Shiro Rapyuta",
+        }),
+        mon: await addMedia("Pokémon"),
+        rate: await addMedia("Éxito al 100% de nota_buena"),
+        other: await addMedia("Otro"),
+      };
+      await db.execute(
+        sql`UPDATE media_items SET titles = '{"es":"El castillo en el cielo","en":"Castle in the Sky"}' WHERE id = ${ids.sky}`,
+      );
+      for (const id of Object.values(ids)) await addEntry(db, ana.id, id);
+      return ana;
+    }
+
+    it("matches part of a title, ignoring case and accents", async () => {
+      const ana = await fillForSearch();
+
+      expect(await titles(ana.id, { q: "POKEMON" })).toEqual(["Pokémon"]);
+      expect(await titles(ana.id, { q: "poké" })).toEqual(["Pokémon"]);
+      expect(await titles(ana.id, { q: "castillo en" })).toEqual([
+        "El castillo en el cielo",
+      ]);
+      expect(await titles(ana.id, { q: "nada así" })).toEqual([]);
+    });
+
+    it("also finds a title by its original title and by its name in another language", async () => {
+      const ana = await fillForSearch();
+
+      expect(await titles(ana.id, { q: "rapyuta" })).toEqual([
+        "El castillo en el cielo",
+      ]);
+      expect(await titles(ana.id, { q: "castle in" })).toEqual([
+        "El castillo en el cielo",
+      ]);
+      // In English the title shown is the English one.
+      expect(await titles(ana.id, { q: "castillo" }, "en")).toEqual([
+        "Castle in the Sky",
+      ]);
+    });
+
+    it("takes % and _ as plain characters, not as wildcards", async () => {
+      const ana = await fillForSearch();
+
+      expect(await titles(ana.id, { q: "100%" })).toEqual([
+        "Éxito al 100% de nota_buena",
+      ]);
+      expect(await titles(ana.id, { q: "%" })).toEqual([
+        "Éxito al 100% de nota_buena",
+      ]);
+      expect(await titles(ana.id, { q: "nota_b" })).toEqual([
+        "Éxito al 100% de nota_buena",
+      ]);
+      expect(await titles(ana.id, { q: "nota_" })).toEqual([
+        "Éxito al 100% de nota_buena",
+      ]);
+      expect(await titles(ana.id, { q: "o_a" })).toEqual([]);
+      expect(await titles(ana.id, { q: "\\" })).toEqual([]);
+    });
+
+    it("counts the tabs by what matches the search", async () => {
+      const ana = await fillForSearch();
+      const movie = await addMedia("Pokémon la película", { type: "movie" });
+      await addEntry(db, ana.id, movie);
+
+      const library = await listLibrary(
+        db,
+        ana.id,
+        query({ q: "pokemon" }),
+        "es",
+      );
+
+      expect(library.counts).toMatchObject({ all: 2, anime: 1, movie: 1 });
+    });
+  });
+
+  it("sorts by score, by year and by title inside each section, the ones without a value last", async () => {
+    const ana = await newUser();
+    const rows = [
+      { title: "Bravo", year: 2000, score: 5 },
+      { title: "Alfa", year: 2020, score: null },
+      { title: "Charlie", year: null, score: 9 },
+    ];
+    for (const row of rows) {
+      const id = await addMedia(row.title, { year: row.year });
+      await addEntry(db, ana.id, id);
+      await saveEntry(db, ana.id, id, { ...completed, score: row.score });
+    }
+
+    expect(await titles(ana.id, { sort: "score" })).toEqual([
+      "Charlie",
+      "Bravo",
+      "Alfa",
+    ]);
+    expect(await titles(ana.id, { sort: "year" })).toEqual([
+      "Alfa",
+      "Bravo",
+      "Charlie",
+    ]);
+    expect(await titles(ana.id, { sort: "title" })).toEqual([
+      "Alfa",
+      "Bravo",
+      "Charlie",
+    ]);
+  });
+
+  it("keeps the sections in their order whatever the sort", async () => {
+    const { ana } = await fill();
+
+    for (const sort of ["recent", "title", "score", "year"]) {
+      const library = await listLibrary(db, ana.id, query({ sort }), "es");
+      expect(library.sections.map((section) => section.status)).toEqual([
+        "in_progress",
+        "planned",
+        "paused",
+        "dropped",
+        "completed",
+      ]);
+    }
+  });
+
+  it("sorts by the most recently changed by default", async () => {
+    const ana = await newUser();
+    const first = await addMedia("Primero");
+    const second = await addMedia("Segundo");
+    await addEntry(db, ana.id, first);
+    await addEntry(db, ana.id, second);
+    // The writes above can land in the same millisecond, so the order is set by hand.
+    await db.execute(
+      sql`UPDATE library_entries SET updated_at = now() - interval '1 day'`,
+    );
+    await saveEntry(db, ana.id, second, { ...completed, status: "planned" });
+
+    const library = await listLibrary(db, ana.id, query(), "es");
+
+    expect(library.sections[1]?.rows.map((row) => row.title)).toEqual([
+      "Segundo",
+      "Primero",
+    ]);
+  });
+
+  describe("the pages of a section", () => {
+    async function fillMany() {
+      const ana = await newUser();
+      for (let index = 1; index <= 30; index += 1) {
+        const id = await addMedia(`Titulo ${String(index).padStart(2, "0")}`);
+        await addEntry(db, ana.id, id);
+        await saveEntry(db, ana.id, id, { ...completed, status: "completed" });
+      }
+      for (let index = 1; index <= 14; index += 1) {
+        await addEntry(
+          db,
+          ana.id,
+          await addMedia(`Pendiente ${String(index).padStart(2, "0")}`),
+        );
+      }
+      return ana;
+    }
+
+    it("takes a page of each section and counts every match", async () => {
+      const ana = await fillMany();
+
+      const library = await listLibrary(
+        db,
+        ana.id,
+        query({ sort: "title" }),
+        "es",
+      );
+
+      const completedSection = library.sections[4];
+      expect(completedSection).toMatchObject({
+        status: "completed",
+        total: 30,
+        page: 1,
+        pages: 3,
+      });
+      expect(completedSection?.rows).toHaveLength(pageSize);
+      expect(library.sections[1]).toMatchObject({ total: 14, pages: 2 });
+      expect(library.sections[1]?.rows).toHaveLength(pageSize);
+    });
+
+    it("moves one section to another page and leaves the rest", async () => {
+      const ana = await fillMany();
+
+      const library = await listLibrary(
+        db,
+        ana.id,
+        query({ sort: "title", completed_page: "3" }),
+        "es",
+      );
+
+      expect(library.sections[4]?.page).toBe(3);
+      expect(library.sections[4]?.rows.map((row) => row.title)).toEqual([
+        "Titulo 25",
+        "Titulo 26",
+        "Titulo 27",
+        "Titulo 28",
+        "Titulo 29",
+        "Titulo 30",
+      ]);
+      expect(library.sections[1]?.page).toBe(1);
+      expect(library.sections[1]?.rows[0]?.title).toBe("Pendiente 01");
+    });
+
+    it("shows the last page for a page that does not exist", async () => {
+      const ana = await fillMany();
+
+      const library = await listLibrary(
+        db,
+        ana.id,
+        query({ sort: "title", completed_page: "9", planned_page: "9999" }),
+        "es",
+      );
+
+      expect(library.sections[4]).toMatchObject({ page: 3 });
+      expect(library.sections[4]?.rows).toHaveLength(6);
+      expect(library.sections[1]).toMatchObject({ page: 2 });
+      expect(library.sections[1]?.rows).toHaveLength(2);
+    });
+
+    it("does not repeat or lose an entry from one page to the next when they tie", async () => {
+      const ana = await newUser();
+      for (let index = 1; index <= 30; index += 1) {
+        const id = await addMedia(`Igual ${index}`, { year: 2000 });
+        await addEntry(db, ana.id, id);
+        await saveEntry(db, ana.id, id, { ...completed, score: 7 });
+      }
+
+      const seen: string[] = [];
+      for (const page of ["1", "2", "3"]) {
+        const library = await listLibrary(
+          db,
+          ana.id,
+          query({ sort: "score", completed_page: page }),
+          "es",
+        );
+        seen.push(
+          ...(library.sections[4]?.rows ?? []).map((row) => row.mediaId),
+        );
+      }
+
+      expect(seen).toHaveLength(30);
+      expect(new Set(seen).size).toBe(30);
+    });
   });
 });
 
 describe("titles by language", () => {
-  const query = (params: Record<string, string> = {}) =>
-    libraryQuerySchema.parse(params);
-
   async function addBilingual() {
     const media = {
       type: "movie",
@@ -441,8 +696,8 @@ describe("titles by language", () => {
     expect((await getEntry(db, ana.id, mediaId, "en"))?.title).toBe(
       "Interstellar",
     );
-    const list = await listEntries(db, ana.id, query(), "es");
-    expect(list.rows.map((row) => row.title)).toEqual(["Interestelar"]);
+    const list = await listLibrary(db, ana.id, query(), "es");
+    expect(flat(list).map((row) => row.title)).toEqual(["Interestelar"]);
   });
 
   it("sorts by the title of the language asked", async () => {
@@ -461,8 +716,8 @@ describe("titles by language", () => {
 
     const titles = async (locale: "es" | "en") =>
       (
-        await listEntries(db, ana.id, query({ sort: "title" }), locale)
-      ).rows.map((row) => row.title);
+        await listLibrary(db, ana.id, query({ sort: "title" }), locale)
+      ).sections.flatMap((section) => section.rows.map((row) => row.title));
 
     expect(await titles("es")).toEqual(["Alfa", "Zeta"]);
     expect(await titles("en")).toEqual(["Alpha", "Zulu"]);

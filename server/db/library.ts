@@ -5,7 +5,13 @@ import { libraryEntries, mediaItems } from "./schema";
 import { localizedTitleSql } from "./titles";
 import type { Locale } from "../providers/types";
 import type { EntryState, SeasonCount } from "../library/rules";
-import { pageSize, type LibraryQuery } from "../library/schema";
+import {
+  pageSize,
+  sectionOrder,
+  type LibraryQuery,
+  type LibraryStatus,
+  type LibraryType,
+} from "../library/schema";
 import { maxViewings } from "./viewings";
 
 // Neon (HTTP) and `pg` both answer a raw statement with `{ rows }`; the type of the shared
@@ -211,61 +217,167 @@ const orderBy = (locale: Locale): Record<LibraryQuery["sort"], SQL[]> => ({
   ],
 });
 
-/** One page of the library of this person, filtered and sorted, and how many entries match. */
-export async function listEntries(
+/** Makes the text of the search box literal for LIKE: `%` and `_` are not wildcards there. */
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
+
+/**
+ * A title matches the search when it contains the text, ignoring case and accents, in its name,
+ * its original title or the name it has in any language we hold.
+ */
+function matchesSearch(text: string): SQL {
+  const needle = sql`immutable_unaccent(lower(${`%${escapeLike(text)}%`}::text))`;
+  const like = (value: SQL) =>
+    sql`immutable_unaccent(lower(${value})) LIKE ${needle}`;
+  return sql`(
+    ${like(sql`${mediaItems.title}`)}
+    OR ${like(sql`coalesce(${mediaItems.originalTitle}, '')`)}
+    OR EXISTS (
+      SELECT 1 FROM jsonb_each_text(${mediaItems.titles}) AS other_title
+      WHERE ${like(sql`other_title.value`)}
+    )
+  )`;
+}
+
+function filtersOf(
+  userId: string,
+  query: LibraryQuery,
+  withType: boolean,
+): SQL {
+  const parts: SQL[] = [eq(libraryEntries.userId, userId)];
+  if (withType && query.type) parts.push(eq(mediaItems.type, query.type));
+  if (query.year) parts.push(eq(mediaItems.year, query.year));
+  // "Score" filters by a minimum: 8 shows everything rated 8 or higher.
+  if (query.score) parts.push(sql`${libraryEntries.score} >= ${query.score}`);
+  if (query.q) parts.push(matchesSearch(query.q));
+  return and(...parts) ?? sql`true`;
+}
+
+export type LibrarySection = {
+  status: LibraryStatus;
+  /** Every entry of the section that matches, not only the ones of this page. */
+  total: number;
+  page: number;
+  pages: number;
+  rows: LibraryRow[];
+};
+
+export type Library = {
+  /** Entries that match the search and the filters, by tab: all of them, and each type. */
+  counts: Record<"all" | LibraryType, number>;
+  /** The five sections of the tab, in the order they are shown, empty ones included. */
+  sections: LibrarySection[];
+};
+
+/**
+ * The library of this person for one tab: how many entries each tab has, and a page of every
+ * status section. Two queries however many sections there are: one counts by type and status
+ * (which gives the totals and clamps each page to the last one that exists), and one takes the
+ * page of every section with a window function. The search and the filters apply to both, the
+ * type only to the second.
+ */
+export async function listLibrary(
   db: ProfileDb,
   userId: string,
   query: LibraryQuery,
   locale: Locale,
-): Promise<{ rows: LibraryRow[]; total: number }> {
-  const filters: (SQL | undefined)[] = [eq(libraryEntries.userId, userId)];
-  if (query.type) filters.push(eq(mediaItems.type, query.type));
-  if (query.status) filters.push(eq(libraryEntries.status, query.status));
-  if (query.year) filters.push(eq(mediaItems.year, query.year));
-  // "Score" filters by a minimum: 8 shows everything rated 8 or higher.
-  if (query.score) filters.push(sql`${libraryEntries.score} >= ${query.score}`);
-  const where = and(...filters);
+): Promise<Library> {
+  const { rows: counted } = (await db.execute(sql`
+    SELECT ${mediaItems.type}::text AS type, ${libraryEntries.status}::text AS status,
+           count(*)::int AS total
+    FROM ${libraryEntries}
+    JOIN ${mediaItems} ON ${libraryEntries.mediaId} = ${mediaItems.id}
+    WHERE ${filtersOf(userId, query, false)}
+    GROUP BY 1, 2
+  `)) as RawRows;
 
-  const rows = await db
-    .select({
-      mediaId: libraryEntries.mediaId,
-      title: localizedTitleSql("media_items", locale),
-      type: mediaItems.type,
-      year: mediaItems.year,
-      imageUrl: mediaItems.imageUrl,
-      status: libraryEntries.status,
-      progress: libraryEntries.progress,
-      score: libraryEntries.score,
-      rewatchCount: libraryEntries.rewatchCount,
-      timesWatched: sql<number>`(
-        SELECT count(*)::int FROM library_viewings v WHERE v.entry_id = ${libraryEntries.id}
-      ) + (CASE WHEN ${libraryEntries.status} = 'completed' THEN 1 ELSE 0 END)`,
-      totalEpisodes: sql<number>`(
-        SELECT count(*)::int FROM media_parts e
-        JOIN media_parts s ON s.id = e.parent_id
-        WHERE e.media_id = ${mediaItems.id} AND e.kind = 'episode' AND s.number > 0
-      )`,
-    })
-    .from(libraryEntries)
-    .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
-    .where(where)
-    // The id at the end keeps entries that tie in the same order from one page to the next.
-    .orderBy(...orderBy(locale)[query.sort], asc(libraryEntries.id))
-    .limit(pageSize)
-    .offset((query.page - 1) * pageSize);
+  const counts: Library["counts"] = {
+    all: 0,
+    anime: 0,
+    movie: 0,
+    series: 0,
+    book: 0,
+    manga: 0,
+  };
+  const totals: Record<string, number> = {};
+  for (const row of counted) {
+    const total = Number(row.total);
+    const type = String(row.type);
+    counts.all += total;
+    if (type in counts) counts[type as LibraryType] += total;
+    if (!query.type || query.type === type) {
+      const status = String(row.status);
+      totals[status] = (totals[status] ?? 0) + total;
+    }
+  }
 
-  const [count] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(libraryEntries)
-    .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
-    .where(where);
+  // A page past the last one (a link that went stale) shows the last one.
+  const pageCount = (status: LibraryStatus) =>
+    Math.max(1, Math.ceil((totals[status] ?? 0) / pageSize));
+  const pages = Object.fromEntries(
+    sectionOrder.map((status) => [
+      status,
+      Math.min(query.pages[status], pageCount(status)),
+    ]),
+  ) as Record<LibraryStatus, number>;
+
+  const byStatus = new Map<string, LibraryRow[]>();
+  if (Object.keys(totals).length > 0) {
+    const pagesJson = JSON.stringify(pages);
+    const { rows } = (await db.execute(sql`
+      SELECT * FROM (
+        SELECT ${libraryEntries.mediaId} AS media_id,
+               ${localizedTitleSql("media_items", locale)} AS title,
+               ${mediaItems.type}::text AS type, ${mediaItems.year} AS year,
+               ${mediaItems.imageUrl} AS image_url, ${libraryEntries.status}::text AS status,
+               ${libraryEntries.progress} AS progress, ${libraryEntries.score} AS score,
+               (
+                 SELECT count(*)::int FROM library_viewings v WHERE v.entry_id = ${libraryEntries.id}
+               ) + (CASE WHEN ${libraryEntries.status} = 'completed' THEN 1 ELSE 0 END)
+                 AS times_watched,
+               (
+                 SELECT count(*)::int FROM media_parts e
+                 JOIN media_parts s ON s.id = e.parent_id
+                 WHERE e.media_id = ${mediaItems.id} AND e.kind = 'episode' AND s.number > 0
+               ) AS total_episodes,
+               row_number() OVER (
+                 PARTITION BY ${libraryEntries.status}
+                 ORDER BY ${sql.join(orderBy(locale)[query.sort], sql`, `)}, ${libraryEntries.id}
+               ) AS rn
+        FROM ${libraryEntries}
+        JOIN ${mediaItems} ON ${libraryEntries.mediaId} = ${mediaItems.id}
+        WHERE ${filtersOf(userId, query, true)}
+      ) ranked
+      WHERE ranked.rn > ((${pagesJson}::jsonb ->> ranked.status)::int - 1) * ${pageSize}::int
+        AND ranked.rn <= (${pagesJson}::jsonb ->> ranked.status)::int * ${pageSize}::int
+      ORDER BY ranked.rn
+    `)) as RawRows;
+    for (const row of rows) {
+      const status = String(row.status);
+      const list = byStatus.get(status) ?? [];
+      list.push({
+        mediaId: String(row.media_id),
+        title: String(row.title),
+        type: String(row.type),
+        year: row.year === null ? null : Number(row.year),
+        imageUrl: row.image_url === null ? null : String(row.image_url),
+        status: status as LibraryStatus,
+        progress: Number(row.progress),
+        score: row.score === null ? null : Number(row.score),
+        timesWatched: Number(row.times_watched),
+        totalEpisodes: Number(row.total_episodes),
+      });
+      byStatus.set(status, list);
+    }
+  }
 
   return {
-    rows: rows.map((row) => ({
-      ...row,
-      totalEpisodes: Number(row.totalEpisodes),
-      timesWatched: Number(row.timesWatched),
+    counts,
+    sections: sectionOrder.map((status) => ({
+      status,
+      total: totals[status] ?? 0,
+      page: pages[status],
+      pages: pageCount(status),
+      rows: byStatus.get(status) ?? [],
     })),
-    total: Number(count?.total ?? 0),
   };
 }

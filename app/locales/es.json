@@ -342,7 +342,7 @@
     },
     "cookies": {
       "title": "Cookies",
-      "body": "Usamos solo cookies necesarias: una que recuerda tu idioma, una que recuerda si prefieres el modo claro u oscuro, y las de sesión de Clerk, que mantienen tu sesión iniciada. No usamos cookies de publicidad ni de seguimiento."
+      "body": "Usamos solo cookies necesarias: una que recuerda tu idioma, una que recuerda si prefieres el modo claro u oscuro, una que recuerda cómo prefieres ver tu biblioteca (portadas, solo títulos o cuadrícula), y las de sesión de Clerk, que mantienen tu sesión iniciada. No usamos cookies de publicidad ni de seguimiento."
     },
     "retention": {
       "title": "Cuánto tiempo los conservamos",
@@ -410,6 +410,7 @@
   "library": {
     "title": "Mi biblioteca",
     "description": "Los títulos que sigues, con tu estado, progreso y puntuación.",
+    "badge": "({{count}})",
     "count_one": "{{count}} título",
     "count_other": "{{count}} títulos",
     "status": {
@@ -422,12 +423,36 @@
     "empty": {
       "none": "Tu biblioteca está vacía. Busca un título y añádelo desde su página.",
       "search": "Ir a buscar",
-      "noMatch": "Ningún título coincide con estos filtros."
+      "noMatch": "Ningún título coincide con tu búsqueda.",
+      "byType": {
+        "anime": "Aún no has guardado anime.",
+        "movie": "Aún no has guardado películas.",
+        "series": "Aún no has guardado series.",
+        "book": "Aún no has guardado libros.",
+        "manga": "Aún no has guardado manga."
+      }
+    },
+    "tabs": {
+      "label": "Tipos de contenido",
+      "all": "Todos",
+      "anime": "Anime",
+      "movie": "Películas",
+      "series": "Series",
+      "book": "Libros",
+      "manga": "Manga"
+    },
+    "views": {
+      "label": "Cómo ver la biblioteca",
+      "covers": "Portadas",
+      "titles": "Solo títulos",
+      "grid": "Cuadrícula"
+    },
+    "sections": {
+      "empty": "No tienes entradas en {{section}}."
     },
     "filters": {
-      "label": "Filtros de la biblioteca",
-      "type": "Tipo",
-      "status": "Estado",
+      "label": "Buscar y filtrar la biblioteca",
+      "search": "Buscar por título",
       "year": "Año",
       "minScore": "Puntuación mínima",
       "sort": "Ordenar por",
@@ -442,7 +467,7 @@
       "year": "Año"
     },
     "pagination": {
-      "label": "Páginas de la biblioteca",
+      "label": "Páginas de {{section}}",
       "previous": "Anterior",
       "next": "Siguiente",
       "page": "Página {{page}} de {{pages}}"

@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { exportAccount } from "../server/account/export";
 import {
   addEntry,
-  listEntries,
+  listLibrary,
   removeEntry,
   rewatchEntry,
   saveEntry,
@@ -144,7 +144,9 @@ describe("times watched in the list", () => {
   it("counts the earlier viewings and the current run when it is completed", async () => {
     const { ana, mediaId } = await watched();
     const times = async () =>
-      (await listEntries(db, ana.id, query, "es")).rows[0]?.timesWatched;
+      (await listLibrary(db, ana.id, query, "es")).sections.flatMap(
+        (section) => section.rows,
+      )[0]?.timesWatched;
 
     expect(await times()).toBe(1);
     await rewatchEntry(db, ana.id, mediaId, restarted);
@@ -166,7 +168,9 @@ describe("times watched in the list", () => {
     await addViewing(db, ana.id, mediaId, noViewing);
 
     expect(
-      (await listEntries(db, ana.id, query, "es")).rows[0]?.timesWatched,
+      (await listLibrary(db, ana.id, query, "es")).sections.flatMap(
+        (section) => section.rows,
+      )[0]?.timesWatched,
     ).toBe(1);
   });
 });

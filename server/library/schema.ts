@@ -120,34 +120,95 @@ export const addEntrySchema = z.strictObject({ mediaId: z.uuid() });
 export const sortOptions = ["recent", "title", "score", "year"] as const;
 export type LibrarySort = (typeof sortOptions)[number];
 
-export const pageSize = 24;
+/** How many entries one section of the library shows on a page. */
+export const pageSize = 12;
 
-/** The filters of the library page, read from the address. A value that is not valid is ignored. */
-export const libraryQuerySchema = z.object({
-  type: z
-    .enum(["anime", "movie", "series", "book", "manga"])
-    .optional()
-    .catch(undefined),
-  status: z.enum(libraryStatuses).optional().catch(undefined),
-  year: z
-    .string()
-    .regex(/^\d{4}$/)
-    .transform(Number)
-    .optional()
-    .catch(undefined),
-  score: z
-    .string()
-    .regex(/^(?:10|[1-9])$/)
-    .transform(Number)
-    .optional()
-    .catch(undefined),
-  sort: z.enum(sortOptions).catch("recent"),
-  page: z
-    .string()
-    .regex(/^\d{1,4}$/)
-    .transform(Number)
-    .pipe(z.number().int().min(1))
-    .catch(1),
-});
+/** The sections of the library page, in the order they are shown. */
+export const sectionOrder = [
+  "in_progress",
+  "planned",
+  "paused",
+  "dropped",
+  "completed",
+] as const satisfies readonly LibraryStatus[];
+
+export const libraryTypes = [
+  "anime",
+  "movie",
+  "series",
+  "book",
+  "manga",
+] as const;
+export type LibraryType = (typeof libraryTypes)[number];
+
+export const libraryViews = ["covers", "titles", "grid"] as const;
+export type LibraryView = (typeof libraryViews)[number];
+
+/** The longest text the search box accepts. */
+export const searchMaxLength = 100;
+
+const pageParam = z
+  .string()
+  .regex(/^\d{1,4}$/)
+  .transform(Number)
+  .pipe(z.number().int().min(1))
+  .catch(1);
+
+/**
+ * The filters of the library page, read from the address. A value that is not valid is ignored.
+ * Each section has its own page: `?completed_page=2`.
+ */
+export const libraryQuerySchema = z
+  .object({
+    type: z.enum(libraryTypes).optional().catch(undefined),
+    q: z
+      .string()
+      .transform((value) => value.trim().slice(0, searchMaxLength))
+      .transform((value) => (value === "" ? undefined : value))
+      .optional()
+      .catch(undefined),
+    view: z.enum(libraryViews).optional().catch(undefined),
+    in_progress_page: pageParam,
+    planned_page: pageParam,
+    paused_page: pageParam,
+    dropped_page: pageParam,
+    completed_page: pageParam,
+    year: z
+      .string()
+      .regex(/^\d{4}$/)
+      .transform(Number)
+      .optional()
+      .catch(undefined),
+    score: z
+      .string()
+      .regex(/^(?:10|[1-9])$/)
+      .transform(Number)
+      .optional()
+      .catch(undefined),
+    sort: z.enum(sortOptions).catch("recent"),
+  })
+  .transform(
+    ({
+      in_progress_page,
+      planned_page,
+      paused_page,
+      dropped_page,
+      completed_page,
+      ...rest
+    }) => ({
+      ...rest,
+      pages: {
+        in_progress: in_progress_page,
+        planned: planned_page,
+        paused: paused_page,
+        dropped: dropped_page,
+        completed: completed_page,
+      } satisfies Record<LibraryStatus, number>,
+    }),
+  );
 
 export type LibraryQuery = z.output<typeof libraryQuerySchema>;
+
+/** The way the library is drawn is kept in a cookie, so it works without JavaScript. */
+export const libraryViewCookie = "libraryView";
+export const defaultLibraryView: LibraryView = "covers";

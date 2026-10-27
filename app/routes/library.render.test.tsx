@@ -5,7 +5,6 @@ import { I18nextProvider, initReactI18next } from "react-i18next";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
-import Library from "./library";
 import LibraryEntry from "./library.$mediaId";
 import MediaDetail from "./media.$type.$slug";
 import { resources } from "~/locales";
@@ -44,117 +43,7 @@ async function render(
 
 const mediaId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 
-const row = {
-  mediaId,
-  title: "Ataque a los Titanes",
-  type: "anime",
-  year: 2013,
-  imageUrl: null,
-  poster: "/img/tmdb/w185/aot.jpg",
-  status: "in_progress" as const,
-  progress: 2,
-  totalEpisodes: 4,
-  score: 8,
-  timesWatched: 0,
-};
-
-const libraryProps = (overrides: Record<string, unknown> = {}) =>
-  ({
-    loaderData: {
-      title: "Mi biblioteca",
-      query: { sort: "recent", page: 1 },
-      total: 1,
-      pages: 1,
-      rows: [row],
-      ...overrides,
-    },
-  }) as unknown as Parameters<typeof Library>[0];
-
-describe("the library page", () => {
-  it("shows each entry with its poster, status, progress and score, in Spanish", async () => {
-    const html = await render("es", <Library {...libraryProps()} />);
-
-    expect(html).toContain("Mi biblioteca");
-    expect(html).toContain("1 título");
-    expect(html).toContain("Ataque a los Titanes");
-    expect(html).toContain(`href="/library/${mediaId}"`);
-    expect(html).toContain('src="/img/tmdb/w185/aot.jpg"');
-    expect(html).toContain("Anime · En curso");
-    expect(html).toContain("2 de 4 episodios");
-    expect(html).toContain("Puntuación: 8 de 10");
-  });
-
-  it("says how many times a title was watched, only when it was", async () => {
-    const once = await render(
-      "es",
-      <Library {...libraryProps({ rows: [{ ...row, timesWatched: 1 }] })} />,
-    );
-    const many = await render(
-      "en",
-      <Library {...libraryProps({ rows: [{ ...row, timesWatched: 3 }] })} />,
-    );
-    const never = await render("es", <Library {...libraryProps()} />);
-
-    expect(once).toContain("Lo has visto 1 vez");
-    expect(many).toContain("You have watched it 3 times");
-    expect(never).not.toContain("Lo has visto");
-  });
-
-  it("shows the same in English", async () => {
-    const html = await render("en", <Library {...libraryProps()} />);
-
-    expect(html).toContain("My library");
-    expect(html).toContain("1 title");
-    expect(html).toContain("Anime · In progress");
-    expect(html).toContain("2 of 4 episodes");
-  });
-
-  it("invites a person with an empty library to search", async () => {
-    const html = await render(
-      "es",
-      <Library {...libraryProps({ total: 0, rows: [] })} />,
-    );
-
-    expect(html).toContain("Tu biblioteca está vacía");
-    expect(html).toContain('href="/search"');
-  });
-
-  it("says no title matches when filters leave nothing, and offers to clear them", async () => {
-    const html = await render(
-      "es",
-      <Library
-        {...libraryProps({
-          total: 0,
-          rows: [],
-          query: { sort: "recent", page: 1, status: "dropped" },
-        })}
-      />,
-    );
-
-    expect(html).toContain("Ningún título coincide con estos filtros.");
-    expect(html).toContain("Quitar filtros");
-    expect(html).not.toContain("Tu biblioteca está vacía");
-  });
-
-  it("links the pages of a long library and keeps the filters", async () => {
-    const html = await render(
-      "es",
-      <Library
-        {...libraryProps({
-          total: 60,
-          pages: 3,
-          query: { sort: "score", page: 2, type: "anime" },
-        })}
-      />,
-    );
-
-    expect(html).toContain("Página 2 de 3");
-    expect(html).toContain('href="/library?type=anime&amp;sort=score"');
-    expect(html).toContain(
-      'href="/library?type=anime&amp;sort=score&amp;page=3"',
-    );
-  });
-});
+// The library page has its own file: library.sections.render.test.tsx.
 
 const entryProps = (
   entry: Record<string, unknown> = {},
