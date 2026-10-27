@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyRewatch,
+  timesWatched,
   applySave,
   locateProgress,
   type EntryState,
@@ -16,7 +17,6 @@ const planned: EntryState = {
   score: null,
   startedAt: null,
   finishedAt: null,
-  rewatchCount: 0,
   notes: null,
   visibility: "private",
 };
@@ -204,12 +204,6 @@ describe("applySave", () => {
     expect(result).toEqual({ ok: false, error: "dates_order" });
   });
 
-  it("keeps the counter of times watched again, which only a new start changes", () => {
-    const current = { ...planned, rewatchCount: 3 };
-
-    expect(save(current, form({ score: 8 })).rewatchCount).toBe(3);
-  });
-
   it("takes the score, the notes and the visibility from the form", () => {
     const next = save(
       planned,
@@ -232,11 +226,10 @@ describe("applyRewatch", () => {
     score: 9,
     startedAt: "2026-01-01",
     finishedAt: "2026-02-01",
-    rewatchCount: 1,
     notes: "Para ver otra vez",
   };
 
-  it("starts again from the first episode, counts it, and keeps the score and the notes", () => {
+  it("starts again from the first episode and keeps the score and the notes", () => {
     const result = applyRewatch(completed, { today });
 
     expect(result).toEqual({
@@ -247,7 +240,6 @@ describe("applyRewatch", () => {
         progress: 0,
         startedAt: today,
         finishedAt: null,
-        rewatchCount: 2,
       },
     });
   });
@@ -261,6 +253,15 @@ describe("applyRewatch", () => {
       });
     },
   );
+});
+
+describe("timesWatched", () => {
+  it("counts the earlier viewings, and the current run only when it is completed", () => {
+    expect(timesWatched(0, "completed")).toBe(1);
+    expect(timesWatched(2, "completed")).toBe(3);
+    expect(timesWatched(2, "in_progress")).toBe(2);
+    expect(timesWatched(0, "planned")).toBe(0);
+  });
 });
 
 describe("locateProgress", () => {

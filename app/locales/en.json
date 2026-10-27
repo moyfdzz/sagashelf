@@ -391,8 +391,8 @@
       "progress": "{{done}} of {{total}} episodes",
       "score": "Score: {{score}} out of 10",
       "line": "{{kind}} · {{status}}",
-      "rewatched_one": "Watched again {{count}} time",
-      "rewatched_other": "Watched again {{count}} times"
+      "watched_one": "You have watched it {{count}} time",
+      "watched_other": "You have watched it {{count}} times"
     },
     "editor": {
       "back": "Back to my library",
@@ -419,10 +419,29 @@
       },
       "save": "Save",
       "saving": "Saving…",
-      "rewatchCount_one": "You have watched it again {{count}} time.",
-      "rewatchCount_other": "You have watched it again {{count}} times.",
       "rewatch": "Watch it again",
-      "rewatchHint": "Start again from the first episode and add one to your counter.",
+      "rewatchHint": "Save this run in your history and start again from the first episode.",
+      "viewings": {
+        "title": "Times you have watched it",
+        "count_one": "You have watched it {{count}} time.",
+        "count_other": "You have watched it {{count}} times.",
+        "empty": "Earlier times appear here. The current time is the one above.",
+        "dates_range": "From {{from}} to {{to}}",
+        "dates_from": "Since {{from}}",
+        "dates_to": "Until {{to}}",
+        "dates_none": "No dates",
+        "notes": "Notes for this time",
+        "notesHint": "Only you see them. Up to {{max}} characters.",
+        "save": "Save changes",
+        "remove": "Remove this time",
+        "add": "Add an earlier time",
+        "addSubmit": "Add",
+        "toast": {
+          "viewing_add": "The time was added.",
+          "viewing_save": "The time was saved.",
+          "viewing_remove": "The time was removed."
+        }
+      },
       "remove": {
         "summary": "Remove from my library",
         "warning": "Your status, progress, score and notes for this title are deleted. This cannot be undone.",
@@ -437,6 +456,7 @@
       "dates_order": "The finish date cannot be before the start date.",
       "notes_too_long": "The notes are too long.",
       "not_completed": "You can only watch a completed title again.",
+      "viewings_limit": "You reached the most times that can be saved for this title.",
       "generic": "We could not save the changes. Try again."
     }
   }

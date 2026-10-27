@@ -17,6 +17,7 @@
     "server/db/media-detail.ts",
     "server/db/titles.ts",
     "server/db/library.ts",
+    "server/db/viewings.ts",
     "server/library/**/*",
     "server/db/search-local.ts",
     "server/search/normalize.ts",

@@ -9,6 +9,11 @@ const mocks = vi.hoisted(() => ({
   getSeasonCounts: vi.fn(),
   saveEntry: vi.fn(),
   removeEntry: vi.fn(),
+  rewatchEntry: vi.fn(),
+  listViewings: vi.fn(),
+  addViewing: vi.fn(),
+  saveViewing: vi.fn(),
+  removeViewing: vi.fn(),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
@@ -21,8 +26,15 @@ vi.mock("~server/db/library", () => ({
   getSeasonCounts: mocks.getSeasonCounts,
   saveEntry: mocks.saveEntry,
   removeEntry: mocks.removeEntry,
+  rewatchEntry: mocks.rewatchEntry,
   totalEpisodes: (seasons: { episodes: number }[]) =>
     seasons.reduce((sum, season) => sum + season.episodes, 0),
+}));
+vi.mock("~server/db/viewings", () => ({
+  listViewings: mocks.listViewings,
+  addViewing: mocks.addViewing,
+  saveViewing: mocks.saveViewing,
+  removeViewing: mocks.removeViewing,
 }));
 vi.mock("~server/runtime-env", () => ({
   getDb: async () => ({ fake: "database" }),
@@ -50,7 +62,6 @@ const stored = {
   score: 8,
   startedAt: "2026-01-02",
   finishedAt: null,
-  rewatchCount: 0,
   notes: "nota",
   visibility: "private",
   updatedAt: new Date(),
@@ -67,6 +78,11 @@ beforeEach(() => {
   mocks.getSeasonCounts.mockReset().mockResolvedValue(seasons);
   mocks.saveEntry.mockReset().mockResolvedValue(true);
   mocks.removeEntry.mockReset().mockResolvedValue(true);
+  mocks.rewatchEntry.mockReset().mockResolvedValue(true);
+  mocks.listViewings.mockReset().mockResolvedValue([]);
+  mocks.addViewing.mockReset().mockResolvedValue("ok");
+  mocks.saveViewing.mockReset().mockResolvedValue(true);
+  mocks.removeViewing.mockReset().mockResolvedValue(true);
   mocks.limit.mockReset().mockResolvedValue({ success: true });
 });
 
@@ -236,18 +252,18 @@ describe("saving an entry", () => {
 });
 
 describe("watching a title again", () => {
-  it("starts again a completed title and counts it", async () => {
+  it("starts again a completed title, saving the run that ends in the history", async () => {
     mocks.getEntry.mockResolvedValue({
       ...stored,
       status: "completed",
       progress: 4,
       finishedAt: "2026-02-01",
-      rewatchCount: 1,
     });
 
     const result = await send({ intent: "rewatch" });
 
-    expect(mocks.saveEntry).toHaveBeenCalledWith(
+    expect(mocks.saveEntry).not.toHaveBeenCalled();
+    expect(mocks.rewatchEntry).toHaveBeenCalledWith(
       { fake: "database" },
       "user-1",
       mediaId,
@@ -255,10 +271,21 @@ describe("watching a title again", () => {
         status: "in_progress",
         progress: 0,
         finishedAt: null,
-        rewatchCount: 2,
       }),
     );
     expect(result).toMatchObject({ data: { ok: true, saved: "rewatch" } });
+  });
+
+  it("says the history is full when the run cannot be saved", async () => {
+    mocks.getEntry.mockResolvedValue({ ...stored, status: "completed" });
+    mocks.rewatchEntry.mockResolvedValue(false);
+
+    const result = await send({ intent: "rewatch" });
+
+    expect(result).toMatchObject({
+      init: { status: 400 },
+      data: { ok: false, errors: { viewings: "viewings_limit" } },
+    });
   });
 
   it("refuses a title that is not completed", async () => {
@@ -269,6 +296,144 @@ describe("watching a title again", () => {
       data: { ok: false, errors: { form: "not_completed" } },
     });
     expect(mocks.saveEntry).not.toHaveBeenCalled();
+  });
+});
+
+describe("the earlier viewings", () => {
+  const viewing = {
+    viewStartedOn: "2025-05-01",
+    viewFinishedOn: "2025-05-03",
+    viewNotes: "En el cine",
+  };
+  const viewingId = "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa";
+
+  it("lists them in the loader with the times watched", async () => {
+    mocks.getEntry.mockResolvedValue({ ...stored, status: "completed" });
+    mocks.listViewings.mockResolvedValue([
+      { id: viewingId, startedOn: null, finishedOn: null, notes: null },
+    ]);
+
+    const result = (await load()) as unknown as Record<string, unknown>;
+
+    expect(mocks.listViewings).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+    );
+    expect(result).toMatchObject({ timesWatched: 2 });
+  });
+
+  it("adds one for the person of the session", async () => {
+    const result = await send({ intent: "viewing_add", ...viewing });
+
+    expect(mocks.addViewing).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      {
+        startedOn: "2025-05-01",
+        finishedOn: "2025-05-03",
+        notes: "En el cine",
+      },
+    );
+    expect(result).toMatchObject({ data: { ok: true, saved: "viewing_add" } });
+  });
+
+  it("accepts a viewing with no dates and no notes", async () => {
+    await send({
+      intent: "viewing_add",
+      viewStartedOn: "",
+      viewFinishedOn: "",
+      viewNotes: "",
+    });
+
+    expect(mocks.addViewing).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      { startedOn: null, finishedOn: null, notes: null },
+    );
+  });
+
+  it("refuses a viewing that ends before it starts, and notes that are too long", async () => {
+    const dates = await send({
+      intent: "viewing_add",
+      ...viewing,
+      viewFinishedOn: "2025-04-01",
+    });
+    const notes = await send({
+      intent: "viewing_add",
+      ...viewing,
+      viewNotes: "x".repeat(501),
+    });
+
+    expect(dates).toMatchObject({
+      init: { status: 400 },
+      data: { errors: { viewFinishedOn: "dates_order" } },
+    });
+    expect(notes).toMatchObject({
+      init: { status: 400 },
+      data: { errors: { viewNotes: "notes_too_long" } },
+    });
+    expect(mocks.addViewing).not.toHaveBeenCalled();
+  });
+
+  it("says the history is full at the limit, and 404 when there is no entry", async () => {
+    mocks.addViewing.mockResolvedValueOnce("limit");
+    expect(await send({ intent: "viewing_add", ...viewing })).toMatchObject({
+      init: { status: 400 },
+      data: { errors: { viewings: "viewings_limit" } },
+    });
+
+    mocks.addViewing.mockResolvedValueOnce("missing");
+    expect(await statusOf(send({ intent: "viewing_add", ...viewing }))).toBe(
+      404,
+    );
+  });
+
+  it("changes and removes one of the person, and answers 404 for one that is not theirs", async () => {
+    await send({ intent: "viewing_save", viewingId, ...viewing });
+    expect(mocks.saveViewing).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      viewingId,
+      {
+        startedOn: "2025-05-01",
+        finishedOn: "2025-05-03",
+        notes: "En el cine",
+      },
+    );
+
+    await send({ intent: "viewing_remove", viewingId });
+    expect(mocks.removeViewing).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      viewingId,
+    );
+
+    mocks.saveViewing.mockResolvedValue(false);
+    mocks.removeViewing.mockResolvedValue(false);
+    expect(
+      await statusOf(send({ intent: "viewing_save", viewingId, ...viewing })),
+    ).toBe(404);
+    expect(await statusOf(send({ intent: "viewing_remove", viewingId }))).toBe(
+      404,
+    );
+  });
+
+  it("refuses a field the form does not have and an id that is not an id", async () => {
+    expect(
+      await send({ intent: "viewing_add", ...viewing, userId: "other" }),
+    ).toMatchObject({
+      init: { status: 400 },
+      data: { errors: { form: "generic" } },
+    });
+    expect(
+      await send({ intent: "viewing_remove", viewingId: "not-an-id" }),
+    ).toMatchObject({ init: { status: 400 } });
+    expect(mocks.removeViewing).not.toHaveBeenCalled();
   });
 });
 

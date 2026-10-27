@@ -260,9 +260,9 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                     })}
                   </p>
                 ) : null}
-                {row.rewatchCount > 0 ? (
+                {row.timesWatched > 0 ? (
                   <p className="mt-1 text-sm">
-                    {t("library.card.rewatched", { count: row.rewatchCount })}
+                    {t("library.card.watched", { count: row.timesWatched })}
                   </p>
                 ) : null}
                 {row.score ? (

@@ -13,6 +13,7 @@ export const visibilityLevels = ["public", "friends", "private"] as const;
 export type Visibility = (typeof visibilityLevels)[number];
 
 export const notesMaxLength = 2000;
+export const viewingNotesMaxLength = 500;
 /** More episodes than any series has: a typo does not reach the database as a huge number. */
 export const progressMax = 100_000;
 
@@ -58,11 +59,58 @@ const saveSchema = z.strictObject({
   visibility: z.enum(visibilityLevels),
 });
 
-/** What the editor form can send: save every field, start again, or remove the entry. */
+// The fields of an earlier viewing have their own names, so an error names the form it belongs to.
+const viewingFields = {
+  viewStartedOn: optionalDate,
+  viewFinishedOn: optionalDate,
+  viewNotes: z
+    .string()
+    .transform((value) => value.replace(/\r\n/g, "\n").trim())
+    .refine(
+      (value) => [...value].length <= viewingNotesMaxLength,
+      "notes_too_long",
+    )
+    .transform((value) => (value === "" ? null : value)),
+};
+
+type ViewingDates = {
+  viewStartedOn: string | null;
+  viewFinishedOn: string | null;
+};
+
+/** A viewing cannot end before it starts. The database has the same rule as a second wall. */
+const datesInOrder = (
+  { viewStartedOn, viewFinishedOn }: ViewingDates,
+  context: z.RefinementCtx,
+) => {
+  if (viewStartedOn && viewFinishedOn && viewFinishedOn < viewStartedOn) {
+    context.addIssue({
+      code: "custom",
+      path: ["viewFinishedOn"],
+      message: "dates_order",
+    });
+  }
+};
+
+/**
+ * What the editor forms can send: save every field, start again, remove the entry, or add,
+ * change or remove an earlier viewing.
+ */
 export const libraryActionSchema = z.discriminatedUnion("intent", [
   saveSchema,
   z.strictObject({ intent: z.literal("remove") }),
   z.strictObject({ intent: z.literal("rewatch") }),
+  z
+    .strictObject({ intent: z.literal("viewing_add"), ...viewingFields })
+    .superRefine(datesInOrder),
+  z
+    .strictObject({
+      intent: z.literal("viewing_save"),
+      viewingId: z.uuid(),
+      ...viewingFields,
+    })
+    .superRefine(datesInOrder),
+  z.strictObject({ intent: z.literal("viewing_remove"), viewingId: z.uuid() }),
 ]);
 
 export type SaveInput = z.output<typeof saveSchema>;

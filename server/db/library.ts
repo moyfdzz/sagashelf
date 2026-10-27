@@ -6,6 +6,7 @@ import { localizedTitleSql } from "./titles";
 import type { Locale } from "../providers/types";
 import type { EntryState, SeasonCount } from "../library/rules";
 import { pageSize, type LibraryQuery } from "../library/schema";
+import { maxViewings } from "./viewings";
 
 // Neon (HTTP) and `pg` both answer a raw statement with `{ rows }`; the type of the shared
 // database does not say so.
@@ -52,7 +53,6 @@ const entryColumns = (locale: Locale) => ({
   score: libraryEntries.score,
   startedAt: libraryEntries.startedAt,
   finishedAt: libraryEntries.finishedAt,
-  rewatchCount: libraryEntries.rewatchCount,
   notes: libraryEntries.notes,
   visibility: libraryEntries.visibility,
   updatedAt: libraryEntries.updatedAt,
@@ -122,7 +122,6 @@ export async function saveEntry(
       score: next.score,
       startedAt: next.startedAt,
       finishedAt: next.finishedAt,
-      rewatchCount: next.rewatchCount,
       notes: next.notes,
       visibility: next.visibility,
       updatedAt: new Date(),
@@ -135,6 +134,36 @@ export async function saveEntry(
     )
     .returning({ id: libraryEntries.id });
   return updated.length > 0;
+}
+
+/**
+ * Starts a completed title again: saves the run that ends in the history of viewings, with its
+ * dates, and writes the entry as the rules decided. One statement, so the run is saved if and only
+ * if the entry restarts. False when the person has no completed entry for the title, or it
+ * already holds the most viewings it can.
+ */
+export async function rewatchEntry(
+  db: ProfileDb,
+  userId: string,
+  mediaId: string,
+  next: EntryState,
+): Promise<boolean> {
+  const { rows } = (await db.execute(sql`
+    WITH archived AS (
+      INSERT INTO library_viewings (entry_id, started_on, finished_on)
+      SELECT id, started_at, finished_at FROM library_entries
+      WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid AND status = 'completed'
+        AND (SELECT count(*) FROM library_viewings WHERE entry_id = library_entries.id) < ${maxViewings}
+      RETURNING entry_id
+    )
+    UPDATE library_entries
+    SET status = ${next.status}::library_status, progress = ${next.progress},
+        started_at = ${next.startedAt}::date, finished_at = ${next.finishedAt}::date,
+        updated_at = now()
+    WHERE id IN (SELECT entry_id FROM archived)
+    RETURNING id
+  `)) as RawRows;
+  return rows.length > 0;
 }
 
 /** Removes the entry of this person for this title. False when they had none. */
@@ -165,7 +194,8 @@ export type LibraryRow = {
   progress: number;
   totalEpisodes: number;
   score: number | null;
-  rewatchCount: number;
+  /** The earlier viewings, and the current run if it is completed. */
+  timesWatched: number;
 };
 
 const orderBy = (locale: Locale): Record<LibraryQuery["sort"], SQL[]> => ({
@@ -207,6 +237,9 @@ export async function listEntries(
       progress: libraryEntries.progress,
       score: libraryEntries.score,
       rewatchCount: libraryEntries.rewatchCount,
+      timesWatched: sql<number>`(
+        SELECT count(*)::int FROM library_viewings v WHERE v.entry_id = ${libraryEntries.id}
+      ) + (CASE WHEN ${libraryEntries.status} = 'completed' THEN 1 ELSE 0 END)`,
       totalEpisodes: sql<number>`(
         SELECT count(*)::int FROM media_parts e
         JOIN media_parts s ON s.id = e.parent_id
@@ -231,6 +264,7 @@ export async function listEntries(
     rows: rows.map((row) => ({
       ...row,
       totalEpisodes: Number(row.totalEpisodes),
+      timesWatched: Number(row.timesWatched),
     })),
     total: Number(count?.total ?? 0),
   };

@@ -1,6 +1,6 @@
 # ADR-018: The personal library
 
-- **Status:** Accepted
+- **Status:** Accepted. The "Watching again" rule is superseded by [ADR-019](019-library-viewings.md).
 - **Date:** 2026-10-25
 - **Implementation:** Partial (SAG-18): the core for movies, series and anime. Import from CSV, quick actions with an optimistic interface, a grid view, progress for books and manga, and the `activity` and `outbox` events are separate tickets.
 - **Tickets:** SAG-18, SAG-17, SAG-12, SAG-21, SAG-27

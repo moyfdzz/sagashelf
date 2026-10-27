@@ -9,6 +9,7 @@ import {
   customEntries,
   follows,
   libraryEntries,
+  libraryViewings,
   likes,
   listItems,
   lists,
@@ -45,11 +46,20 @@ async function personWithEverything() {
   const movie = await newMedia({ title: "A shared movie" });
   const mine = await newMedia({ title: "Ana's secret custom title" });
 
-  await db.insert(libraryEntries).values({
-    userId: ana.id,
-    mediaId: movie.id,
-    status: "completed",
-    notes: "a private note",
+  const [entry] = await db
+    .insert(libraryEntries)
+    .values({
+      userId: ana.id,
+      mediaId: movie.id,
+      status: "completed",
+      notes: "a private note",
+    })
+    .returning();
+  if (!entry) throw new Error("The entry was not created");
+  await db.insert(libraryViewings).values({
+    entryId: entry.id,
+    finishedOn: "2025-05-03",
+    notes: "an old viewing",
   });
   await db.insert(customEntries).values({ mediaId: mine.id, ownerId: ana.id });
   const [list] = await db
@@ -82,6 +92,7 @@ describe("eraseAccount", () => {
 
     for (const table of [
       libraryEntries,
+      libraryViewings,
       customEntries,
       lists,
       listItems,
