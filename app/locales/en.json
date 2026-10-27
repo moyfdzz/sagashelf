@@ -265,18 +265,19 @@
       "account": "Account: your email, your username and, if you use a password, a protected version of it. Clerk manages the password and SagaShelf never stores it.",
       "google": "Google sign-in: if you choose it, Google shares your email, name and profile photo with Clerk. We do not access anything else in your Google account.",
       "profile": "Profile: your display name, bio, language, privacy level and the photo you choose.",
-      "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service."
+      "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
+      "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views."
     },
     "not": {
       "title": "What we do not do",
-      "body": "We do not sell your data, we do not show ads, and we do not use analytics or tracking cookies."
+      "body": "We do not sell your data, we do not show ads, and we do not use tracking cookies."
     },
     "processors": {
       "title": "Who it is shared with",
       "intro": "We use these providers to run the service:",
       "clerk": "Clerk: manages accounts and sign-in.",
       "neon": "Neon: hosts the database where your profile is stored.",
-      "cloudflare": "Cloudflare: hosts the site, delivers the pages and protects it from abuse.",
+      "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it from abuse and measures visits and speed with Web Analytics.",
       "outro": "These providers may process data outside Mexico, including in the United States. We use them only to run the service."
     },
     "cookies": {

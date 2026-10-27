@@ -40,6 +40,14 @@ The owner wants to know how the site is used (traffic, where visitors come from,
 - The rollup job competes for the 10 ms CPU budget of a Cron invocation on the Free plan (ADR-007) and may need to run in small steps.
 - The only cookie the site sets is `locale`, a language preference (ADR-008). It is not used for analytics, and the privacy policy lists it.
 
+## Amendment: Cloudflare Web Analytics in the meantime (SAG-51, 2026-10-26)
+
+Cloudflare injects its Web Analytics beacon (`beacon.min.js`) into the pages of the production Worker, and the owner decided to keep it until SAG-24 ships. This is a third-party script, which this ADR avoids as the final design, so it is temporary.
+
+- The privacy policy no longer says "no analytics": it says that Cloudflare Web Analytics measures visits and page speed, and what Cloudflare states it collects. The cookies text stays as it was, because Cloudflare states the beacon uses no cookies or `localStorage`.
+- What Cloudflare states (read 2026-10-26): "It does not use any client-side state, such as cookies or `localStorage`, to collect usage metrics" and it does not fingerprint people by IP address or User Agent (<https://developers.cloudflare.com/web-analytics/data-metrics/core-web-vitals/>); it collects "the minimum amount of information - timing metrics" and "does not track individual end users across our customers' Internet properties" (<https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/>). The fields the beacon sends beyond timings were not found in the documentation. These are Cloudflare's own statements, not an audit. Its "no personal data" wording has an exception for visitors from the EU and the UK (<https://blog.cloudflare.com/the-rum-diaries-enabling-web-analytics-by-default/>).
+- When SAG-24 ships: turn Web Analytics off in the Cloudflare dashboard and update the policy again.
+
 ## Open questions
 
 - Whether `request.cf` city-level location is precise and stable enough to be worth storing, or whether country and region are enough.
