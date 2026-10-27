@@ -9,6 +9,7 @@ import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
 import { useFormatters } from "~/lib/format";
 import { primaryButtonClass, secondaryButtonClass } from "~/lib/ui";
+import { CountedTextarea } from "~/components/CountedTextarea";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -569,11 +570,11 @@ export default function LibraryEntry({
             <label htmlFor="notes" className="font-semibold">
               {t("library.editor.notes")}
             </label>
-            <textarea
+            <CountedTextarea
               id="notes"
               name="notes"
               rows={5}
-              maxLength={notesMaxLength}
+              max={notesMaxLength}
               defaultValue={entry.notes ?? ""}
               {...invalid("notes", "notes-hint")}
               className={inputClass}
@@ -699,11 +700,11 @@ export default function LibraryEntry({
                         >
                           {t("library.editor.viewings.notes")}
                         </label>
-                        <textarea
+                        <CountedTextarea
                           id={`viewNotes-${viewing.id}`}
                           name="viewNotes"
                           rows={2}
-                          maxLength={viewingNotesMaxLength}
+                          max={viewingNotesMaxLength}
                           defaultValue={viewing.notes ?? ""}
                           className={inputClass}
                         />
@@ -771,11 +772,11 @@ export default function LibraryEntry({
                 <label htmlFor="viewNotes" className="font-semibold">
                   {t("library.editor.viewings.notes")}
                 </label>
-                <textarea
+                <CountedTextarea
                   id="viewNotes"
                   name="viewNotes"
                   rows={2}
-                  maxLength={viewingNotesMaxLength}
+                  max={viewingNotesMaxLength}
                   aria-describedby="viewNotes-hint"
                   className={inputClass}
                 />

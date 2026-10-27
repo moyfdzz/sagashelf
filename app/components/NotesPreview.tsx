@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { previewNotes } from "~/lib/notes";
+import { panelOffset, previewNotes } from "~/lib/notes";
 import { secondaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 
 type Props = {
@@ -14,11 +14,13 @@ type Props = {
 
 /**
  * A notes icon for a library card. Pressing it (a click, a tap, Enter or Space) opens a small
- * panel with the start of the notes, and for a long note a button that opens the whole note in a
- * dialog. It is a native `<details>`, so the panel opens and closes without JavaScript; with
- * JavaScript, Escape and a click outside close it too and the focus goes back to the icon. The
- * dialog is a native `<dialog>`: it keeps the focus inside, scrolls, and Escape closes it. It
- * needs JavaScript to open, and the link to the entry is the way to the whole note without it.
+ * panel below the icon with the start of the notes, and for a long note a button that opens the
+ * whole note in a dialog. It is a native `<details>`, so the panel opens and closes without
+ * JavaScript, aligned to the left of the icon; with JavaScript the panel is measured when it
+ * opens and slid sideways so it never runs past an edge of the screen, and Escape and a click
+ * outside close it and the focus goes back to the icon. The dialog is a native `<dialog>` of a
+ * fixed size: it keeps the focus inside, only its text scrolls, and Escape closes it. It needs
+ * JavaScript to open, and the link to the entry is the way to the whole note without it.
  * The panel does not open on hover: that cannot be done with a finger, opens by accident when the
  * pointer crosses a list, and would have to stay open while the pointer moves onto it.
  */
@@ -27,9 +29,27 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDetailsElement>(null);
   const icon = useRef<HTMLElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   const preview = previewNotes(notes);
+
+  // Slides the panel so it stays inside the screen. The position is set on the element and not in
+  // the markup: the strict policy of the page forbids inline styles in the HTML.
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (!element) return;
+    if (!open || !icon.current) {
+      element.style.removeProperty("left");
+      return;
+    }
+    const offset = panelOffset({
+      iconLeft: icon.current.getBoundingClientRect().left,
+      panelWidth: element.offsetWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    });
+    element.style.setProperty("left", `${offset}px`);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +87,7 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
         ref={root}
         open={open}
         onToggle={(event) => setOpen(event.currentTarget.open)}
-        className="inline-block align-middle"
+        className="relative inline-block align-middle"
       >
         <summary
           ref={icon}
@@ -89,12 +109,12 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
             <path d="M8 9h8M8 12h5" />
           </svg>
         </summary>
-        {/* A card fixed to the bottom of the screen, on a phone and on a desktop: it cannot run
-            past an edge, wherever the icon is. */}
+        {/* Hangs below the icon, no wider than the screen minus a margin on each side. */}
         <div
+          ref={panel}
           role="group"
           aria-label={t("library.notes.preview")}
-          className="border-border bg-surface-raised text-fg fixed inset-x-4 bottom-4 z-20 mx-auto max-w-sm rounded-md border p-4 text-left text-sm font-normal shadow-lg"
+          className="border-border bg-surface-raised text-fg absolute top-full left-0 z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-md border p-4 text-left text-sm font-normal shadow-lg"
         >
           <p className="break-words whitespace-pre-line">{preview.text}</p>
           {preview.truncated ? (
@@ -117,13 +137,18 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
           aria-labelledby={headingId}
           // The focus was on a button inside the panel, which is now closed: it goes to the icon.
           onClose={() => icon.current?.focus()}
-          className="border-border bg-surface text-fg m-auto max-h-[85vh] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto rounded-md border p-6 backdrop:bg-black/60"
+          // A fixed size, never larger than the screen: the heading and the buttons stay in place
+          // and only the text scrolls. `open:flex` so a closed dialog stays hidden.
+          className="border-border bg-surface text-fg m-auto h-[min(32rem,calc(100vh-2rem))] w-[min(36rem,calc(100vw-2rem))] flex-col rounded-md border p-0 open:flex backdrop:bg-black/60"
         >
-          <h2 id={headingId} className="text-xl font-semibold">
+          <h2 id={headingId} className="px-6 pt-6 pb-3 text-xl font-semibold">
             {t("library.notes.dialogTitle", { title })}
           </h2>
-          <p className="mt-4 break-words whitespace-pre-wrap">{notes}</p>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          {/* Browsers let the keyboard reach a box that scrolls, so it needs no tabindex. */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
+            <p className="break-words whitespace-pre-wrap">{notes}</p>
+          </div>
+          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">
             {/* A plain link: the entry page has its own security policy, which only a new
                 document gets. */}
             <a href={entryHref} className={secondaryLinkClass}>
