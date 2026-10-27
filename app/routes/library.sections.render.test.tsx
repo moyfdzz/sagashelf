@@ -399,6 +399,156 @@ describe("the card of an entry", () => {
   });
 });
 
+describe("the score of an entry", () => {
+  const withRow = (view: LibraryView, extra: Record<string, unknown>) =>
+    props({
+      view,
+      sections: sectionsOf({
+        completed: [row("a", "Dune", "completed", extra)],
+      }),
+    });
+
+  it("is written on the card, or says it is not rated", async () => {
+    const rated = await render(
+      "es",
+      <Library {...withRow("covers", { score: 8 })} />,
+    );
+    const unrated = await render("es", <Library {...withRow("covers", {})} />);
+    const english = await render("en", <Library {...withRow("covers", {})} />);
+
+    expect(rated).toContain("Puntuación: 8 de 10");
+    expect(unrated).toContain("Sin puntuar");
+    expect(english).toContain("Not scored");
+  });
+
+  it("is at the right of the row when only the titles are shown", async () => {
+    const rated = await render(
+      "es",
+      <Library {...withRow("titles", { score: 8 })} />,
+    );
+    const unrated = await render("es", <Library {...withRow("titles", {})} />);
+
+    expect(rated).toContain("8/10");
+    // The dash is for the eyes; a screen reader gets the words.
+    expect(unrated).toContain('<span aria-hidden="true">—</span>');
+    expect(unrated).toContain('<span class="sr-only">Sin puntuar</span>');
+  });
+
+  it("is a badge on the cover in the grid, and nothing when there is no score", async () => {
+    const rated = await render(
+      "es",
+      <Library {...withRow("grid", { score: 8 })} />,
+    );
+    const unrated = await render("es", <Library {...withRow("grid", {})} />);
+
+    expect(rated).toContain('<span aria-hidden="true">★ 8</span>');
+    expect(rated).toContain("Puntuación: 8 de 10");
+    expect(unrated).not.toContain("★");
+    expect(unrated).not.toContain("Sin puntuar");
+  });
+});
+
+describe("the progress bar", () => {
+  const withEpisodes = (view: LibraryView, totalEpisodes: number) =>
+    props({
+      view,
+      sections: sectionsOf({
+        in_progress: [
+          row("a", "Dune", "in_progress", { progress: 3, totalEpisodes }),
+        ],
+      }),
+    });
+
+  it("is drawn for a title with episodes, next to the words, in covers and in the grid", async () => {
+    const covers = await render(
+      "es",
+      <Library {...withEpisodes("covers", 12)} />,
+    );
+    const grid = await render("es", <Library {...withEpisodes("grid", 12)} />);
+
+    for (const html of [covers, grid]) {
+      expect(html).toMatch(/<progress[^>]*aria-hidden="true"[^>]*>/);
+      expect(html).toContain('value="3"');
+      expect(html).toContain('max="12"');
+      expect(html).toContain("3 de 12 episodios");
+    }
+  });
+
+  it("never passes its end", async () => {
+    const html = await render("es", <Library {...withEpisodes("covers", 2)} />);
+
+    expect(html).toContain('value="2"');
+    expect(html).toContain('max="2"');
+  });
+
+  it("is not drawn for a title with no episodes, nor in the list of titles", async () => {
+    const movie = await render(
+      "es",
+      <Library {...withEpisodes("covers", 0)} />,
+    );
+    const titles = await render(
+      "es",
+      <Library {...withEpisodes("titles", 12)} />,
+    );
+
+    expect(movie).not.toContain("<progress");
+    expect(titles).not.toContain("<progress");
+  });
+
+  it("uses no inline style, which the strict policy of the page forbids", async () => {
+    const html = await render(
+      "es",
+      <Library {...withEpisodes("covers", 12)} />,
+    );
+
+    expect(html).not.toContain("style=");
+  });
+});
+
+describe("the header of a section", () => {
+  it("has the name and the count at the left and the arrow at the right, inside the summary", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    const summary = /<summary[^>]*>.*?<\/summary>/.exec(html)?.[0] ?? "";
+    expect(summary).toContain("En curso");
+    expect(summary.indexOf("En curso")).toBeLessThan(summary.indexOf("(1)"));
+    expect(summary.indexOf("(1)")).toBeLessThan(summary.indexOf("<svg"));
+    expect(summary).toContain('<svg aria-hidden="true"');
+    expect(summary).toContain("group-open/section:rotate-180");
+    // The native triangle is hidden, and the whole bar can be pressed.
+    expect(summary).toContain("list-none");
+    expect(summary).toContain("cursor-pointer");
+  });
+
+  it("has a stripe of the color of its status, and the name written", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    const details = html.match(/<details[^>]*>/g) ?? [];
+    expect(details[0]).toContain("border-l-accent");
+    expect(details[3]).toContain("border-l-danger-edge");
+    expect(details[4]).toContain("border-l-success-edge");
+  });
+});
+
+describe("the covers", () => {
+  it("are larger on the card, and the card reacts to the pointer and the keyboard", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    expect(html).toContain("h-[120px] w-20");
+    expect(html).toContain("hover:border-accent");
+    expect(html).toContain("focus-within:border-accent");
+  });
+});
+
 describe("the entries", () => {
   it("link to the page of the entry with a plain link", async () => {
     const page = await render(

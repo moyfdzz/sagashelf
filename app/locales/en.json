@@ -476,6 +476,9 @@
       "progress": "{{done}} of {{total}} episodes",
       "score": "Score: {{score}} out of 10",
       "line": "{{kind}} · {{status}}",
+      "scoreShort": "{{score}}/10",
+      "noScoreMark": "—",
+      "badge": "★ {{score}}",
       "watched_one": "You have watched it {{count}} time",
       "watched_other": "You have watched it {{count}} times"
     },
