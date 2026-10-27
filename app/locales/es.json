@@ -137,7 +137,8 @@
       "title": "Tus datos",
       "description": "Descarga una copia de lo que SagaShelf guarda de ti: tu perfil y, cuando existan, tu biblioteca y tus listas.",
       "json": "Descargar todo (JSON)",
-      "csv": "Descargar el perfil (CSV)"
+      "csv": "Descargar el perfil (CSV)",
+      "import": "Importar mi biblioteca desde un archivo"
     },
     "delete": {
       "title": "Eliminar cuenta",
@@ -159,6 +160,60 @@
       "profile": "Perfil",
       "data": "Mis datos",
       "delete": "Eliminar cuenta"
+    },
+    "import": {
+      "title": "Importar tu biblioteca",
+      "description": "Recupera tu biblioteca desde el archivo JSON que descargaste en Mis datos.",
+      "back": "Volver a mis datos",
+      "file": "Archivo JSON de SagaShelf",
+      "fileHint": "Hasta {{mb}} MB y {{max}} títulos. Solo se lee tu biblioteca: tu perfil y lo que sea de otras personas se ignora.",
+      "previewButton": "Ver qué se importaría",
+      "previewing": "Revisando el archivo…",
+      "preview": {
+        "title": "Esto es lo que pasaría",
+        "add_one": "Se añadirá {{count}} título a tu biblioteca.",
+        "add_other": "Se añadirán {{count}} títulos a tu biblioteca.",
+        "exists_one": "Ya tienes {{count}} título en tu biblioteca.",
+        "exists_other": "Ya tienes {{count}} títulos en tu biblioteca.",
+        "fetch_one": "{{count}} título aún no está en SagaShelf y se buscará en TMDB (máximo {{max}} por importación).",
+        "fetch_other": "{{count}} títulos aún no están en SagaShelf y se buscarán en TMDB (máximo {{max}} por importación)."
+      },
+      "replace": "Reemplazar lo que ya tengo con lo del archivo",
+      "replaceHint": "Si no lo marcas, tus entradas actuales se quedan como están.",
+      "private": "Todo lo que se importe queda privado.",
+      "confirm": "Importar",
+      "importing": "Importando…",
+      "done": {
+        "title": "Listo, se importó tu biblioteca",
+        "added_one": "Se añadió {{count}} título.",
+        "added_other": "Se añadieron {{count}} títulos.",
+        "replaced_one": "Se reemplazó {{count}} título.",
+        "replaced_other": "Se reemplazaron {{count}} títulos.",
+        "kept_one": "{{count}} título que ya tenías se quedó como estaba.",
+        "kept_other": "{{count}} títulos que ya tenías se quedaron como estaban.",
+        "library": "Ir a mi biblioteca"
+      },
+      "skipped": "No se importaron",
+      "skippedLine": "{{title}}: {{reason}}",
+      "skippedMore_one": "Y {{count}} más.",
+      "skippedMore_other": "Y {{count}} más.",
+      "untitled": "Sin título",
+      "reasons": {
+        "invalid": "datos no válidos",
+        "no_source": "sin el identificador del catálogo",
+        "duplicate": "repetido en el archivo",
+        "unsupported_provider": "esa fuente no está disponible",
+        "not_found": "la fuente no lo encontró",
+        "pending": "pendiente: vuelve a importar el archivo para traerlo"
+      },
+      "errors": {
+        "invalid_file": "El archivo no es una exportación válida de SagaShelf.",
+        "unsupported_version": "Este archivo es de una versión que no se puede importar. Descarga uno nuevo en Mis datos.",
+        "too_many": "El archivo tiene demasiados títulos (máximo {{max}}).",
+        "file_missing": "Elige un archivo.",
+        "file_too_large": "El archivo pesa más de {{mb}} MB.",
+        "generic": "No pudimos procesar la solicitud. Inténtalo de nuevo."
+      }
     },
     "username": {
       "submit": "Cambiar nombre de usuario",

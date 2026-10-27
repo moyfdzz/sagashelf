@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { profileCsv, type AccountExport } from "./export";
 
 const base: AccountExport = {
+  schemaVersion: 1,
   exportedAt: "2026-10-25T12:00:00.000Z",
   profile: {
     username: "ana",
@@ -49,6 +50,7 @@ describe("profileCsv", () => {
           startedAt: "2026-01-02",
           finishedAt: "2026-02-03",
           timesWatched: 2,
+          source: { provider: "tmdb", id: "tv/1429" },
           viewings: [
             {
               startedOn: "2025-05-01",
@@ -69,6 +71,7 @@ describe("profileCsv", () => {
           startedAt: null,
           finishedAt: null,
           timesWatched: 0,
+          source: null,
           viewings: [],
           notes: null,
           visibility: "public",
@@ -80,9 +83,9 @@ describe("profileCsv", () => {
     const rows = lines(csv);
     const at = rows.indexOf("");
     expect(rows.slice(at + 1)).toEqual([
-      "title,status,progress,score,started_at,finished_at,times_watched,notes,visibility,added_at",
-      'Ataque a los Titanes,completed,25,9,2026-01-02,2026-02-03,2,"Muy buena, con coma",private,2026-01-01',
-      "Matrix,planned,0,,,,0,,public,2026-03-04",
+      "title,status,progress,score,started_at,finished_at,times_watched,notes,visibility,added_at,provider,external_id",
+      'Ataque a los Titanes,completed,25,9,2026-01-02,2026-02-03,2,"Muy buena, con coma",private,2026-01-01,tmdb,tv/1429',
+      "Matrix,planned,0,,,,0,,public,2026-03-04,,",
       "",
       "title,started_on,finished_on,notes",
       'Ataque a los Titanes,2025-05-01,2025-05-03,"En el cine, con coma"',

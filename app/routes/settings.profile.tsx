@@ -459,6 +459,13 @@ export default function ProfileSettings({
               {t("settings.data.csv")}
             </button>
           </Form>
+          {/* A plain link: the import page has its own security policy, which only a new
+              document gets. */}
+          <p className="mt-4">
+            <a href="/settings/import" className="text-accent underline">
+              {t("settings.data.import")}
+            </a>
+          </p>
         </section>
 
         <section

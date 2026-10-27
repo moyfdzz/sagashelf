@@ -21,6 +21,43 @@ test.describe("the library without a session", () => {
   }
 });
 
+test.describe("importing the library", () => {
+  test("the page is not shown to a visitor", async ({ request }) => {
+    const response = await request.get("/settings/import", { maxRedirects: 0 });
+
+    // With Clerk's keys the visitor is sent to sign in; without them (CI) nobody gets in.
+    expect([302, 303, 307, 503]).toContain(response.status());
+    if (response.status() !== 503) {
+      expect(response.headers()["location"]).toMatch(/sign-in|clerk/);
+    }
+    expect(await response.text()).not.toContain("Importar tu biblioteca");
+  });
+
+  test("a file sent by a visitor, or from another site, writes nothing", async ({
+    request,
+  }) => {
+    const file = {
+      name: "sagashelf.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(
+        JSON.stringify({ schemaVersion: 1, libraryEntries: [] }),
+      ),
+    };
+    const visitor = await request.post("/settings/import", {
+      multipart: { intent: "preview", file },
+      maxRedirects: 0,
+    });
+    const otherSite = await request.post("/settings/import", {
+      multipart: { intent: "preview", file },
+      headers: { Origin: "https://evil.example" },
+      maxRedirects: 0,
+    });
+
+    expect(visitor.status()).toBeGreaterThanOrEqual(300);
+    expect(otherSite.status()).toBeGreaterThanOrEqual(400);
+  });
+});
+
 test.describe("adding a title to the library", () => {
   test("is only for a POST", async ({ request }) => {
     const response = await request.get("/library/add");
