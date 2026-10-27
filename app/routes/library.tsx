@@ -9,6 +9,7 @@ import {
   segmentedGroupClass,
   tabClass,
 } from "~/lib/ui";
+import { NotesPreview } from "~/components/NotesPreview";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { listLibrary, type LibraryRow } from "~server/db/library";
@@ -226,7 +227,14 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
             <p className="min-w-0 font-semibold">
               <TitleLink row={row} />
             </p>
-            <p className="text-fg-muted flex shrink-0 items-center gap-2 text-sm tabular-nums">
+            <div className="text-fg-muted flex shrink-0 items-center gap-2 text-sm tabular-nums">
+              {row.notes ? (
+                <NotesPreview
+                  title={row.title}
+                  notes={row.notes}
+                  entryHref={`/library/${row.mediaId}`}
+                />
+              ) : null}
               <VisibilityTag row={row} />
               {row.score ? (
                 t("library.card.scoreShort", { score: row.score })
@@ -238,7 +246,7 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
                   <span className="sr-only">{t("library.editor.noScore")}</span>
                 </>
               )}
-            </p>
+            </div>
           </li>
         ))}
       </ul>
@@ -276,6 +284,15 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
             <p className="mt-2 text-sm font-semibold break-words">
               <TitleLink row={row} />
             </p>
+            <div className="mt-1">
+              {row.notes ? (
+                <NotesPreview
+                  title={row.title}
+                  notes={row.notes}
+                  entryHref={`/library/${row.mediaId}`}
+                />
+              ) : null}
+            </div>
             {row.totalEpisodes > 0 ? (
               <p className="sr-only">
                 {t("library.card.progress", {
@@ -302,13 +319,20 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
             <p className="text-lg font-semibold">
               <TitleLink row={row} />
             </p>
-            <p className="text-fg-muted mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <div className="text-fg-muted mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
               {t("library.card.line", {
                 kind: t(`media.kinds.${row.type as "movie"}`),
                 status: t(`library.status.${row.status}`),
               })}
               <VisibilityTag row={row} />
-            </p>
+              {row.notes ? (
+                <NotesPreview
+                  title={row.title}
+                  notes={row.notes}
+                  entryHref={`/library/${row.mediaId}`}
+                />
+              ) : null}
+            </div>
             {row.totalEpisodes > 0 ? (
               <div className="mt-2 max-w-xs">
                 <p className="text-sm">

@@ -202,6 +202,8 @@ export type LibraryRow = {
   totalEpisodes: number;
   score: number | null;
   visibility: Visibility;
+  /** The private notes of the person, up to the limit of the editor. */
+  notes: string | null;
   /** The earlier viewings, and the current run if it is completed. */
   timesWatched: number;
 };
@@ -336,6 +338,7 @@ export async function listLibrary(
                ${mediaItems.imageUrl} AS image_url, ${libraryEntries.status}::text AS status,
                ${libraryEntries.progress} AS progress, ${libraryEntries.score} AS score,
                ${libraryEntries.visibility}::text AS visibility,
+               ${libraryEntries.notes} AS notes,
                (
                  SELECT count(*)::int FROM library_viewings v WHERE v.entry_id = ${libraryEntries.id}
                ) + (CASE WHEN ${libraryEntries.status} = 'completed' THEN 1 ELSE 0 END)
@@ -370,6 +373,7 @@ export async function listLibrary(
         progress: Number(row.progress),
         score: row.score === null ? null : Number(row.score),
         visibility: String(row.visibility) as Visibility,
+        notes: row.notes === null ? null : String(row.notes),
         timesWatched: Number(row.times_watched),
         totalEpisodes: Number(row.total_episodes),
       });
