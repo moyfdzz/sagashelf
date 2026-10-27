@@ -300,7 +300,7 @@ export default function SettingsImport({
                   id="replace"
                   name="replace"
                   type="checkbox"
-                  className="mt-1 h-5 w-5"
+                  className="mt-1 h-5 w-5 shrink-0"
                   aria-describedby="replace-hint"
                 />
                 <div>
@@ -317,7 +317,7 @@ export default function SettingsImport({
                   id="keepVisibility"
                   name="keepVisibility"
                   type="checkbox"
-                  className="mt-1 h-5 w-5"
+                  className="mt-1 h-5 w-5 shrink-0"
                   aria-describedby="keepVisibility-hint"
                 />
                 <div>
