@@ -22,6 +22,11 @@ export type SearchResult = {
   imageUrl: string | null;
   popularity: number;
   source: "local" | "provider";
+  /**
+   * For a title from our database, how the query matched it there, where every saved title is
+   * compared. The title shown may be in another language than the one that matched.
+   */
+  match?: { exact: boolean; similarity: number };
 };
 
 export function toResult(
@@ -90,10 +95,16 @@ export function rankResults(
     const original = normalizeQuery(result.originalTitle ?? "");
     return {
       result,
-      exact: title === normalizedQuery || original === normalizedQuery ? 1 : 0,
+      exact:
+        title === normalizedQuery ||
+        original === normalizedQuery ||
+        result.match?.exact
+          ? 1
+          : 0,
       close: Math.max(
         similarity(title, normalizedQuery),
         similarity(original, normalizedQuery),
+        result.match?.similarity ?? 0,
       ),
       // The synopsis is already in the language that was asked for, or missing.
       language: result.synopsis !== null ? 1 : 0,

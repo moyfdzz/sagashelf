@@ -118,6 +118,25 @@ describe("rankResults", () => {
     expect(ranked.map((r) => r.externalId)).toEqual(["1", "2", "3"]);
   });
 
+  it("trusts the match of our database when the title shown is in another language", () => {
+    // Saved as "The Shining" in the database, shown as "El resplandor", with no original title.
+    const shown = result({
+      externalId: "1",
+      title: "El resplandor",
+      year: 1980,
+      match: { exact: true, similarity: 1 },
+    });
+    const popular = result({
+      externalId: "2",
+      title: "The Shining Hour",
+      popularity: 500,
+    });
+
+    const ranked = rankResults([popular, shown], "the shining");
+
+    expect(ranked[0].externalId).toBe("1");
+  });
+
   it("matches the original title too, without accents", () => {
     const byOriginal = result({
       externalId: "1",

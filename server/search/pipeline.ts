@@ -37,7 +37,7 @@ export type SearchDeps = {
 };
 
 function localToResult(hit: LocalHit, locale: Locale): SearchResult {
-  return toResult(
+  const result = toResult(
     {
       type: hit.type,
       title: hit.title,
@@ -53,6 +53,7 @@ function localToResult(hit: LocalHit, locale: Locale): SearchResult {
     "local",
     hit.id,
   );
+  return { ...result, match: { exact: hit.exact, similarity: hit.similarity } };
 }
 
 /**

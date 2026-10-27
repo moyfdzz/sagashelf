@@ -56,7 +56,9 @@ export async function saveMedia(
         type = ${media.type}::media_type,
         title = ${media.title},
         titles = titles || ${titles}::jsonb,
-        original_title = ${media.originalTitle},
+        -- The source says null when the original title is the one of the language asked, so a
+        -- null never erases the original title a visit in another language left.
+        original_title = coalesce(${media.originalTitle}::text, original_title),
         year = ${media.year},
         synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
         image_url = ${media.imageUrl},
