@@ -11,6 +11,7 @@ import {
   libraryTypes,
   libraryViews,
   searchMaxLength,
+  visibilityLevels,
   sectionOrder,
   sortOptions,
   type LibraryQuery,
@@ -104,6 +105,7 @@ function libraryHref(
     if (query.q) params.set("q", query.q);
     if (query.year) params.set("year", String(query.year));
     if (query.score) params.set("score", String(query.score));
+    if (query.visibility) params.set("visibility", query.visibility);
     if (query.sort !== "recent") params.set("sort", query.sort);
   }
   const view = change.view ?? query.view;
@@ -171,6 +173,25 @@ function TitleLink({ row }: { row: Row }) {
   );
 }
 
+/** Says who can see the entry, only when it is not private: most are, and a label on each would be noise. */
+function VisibilityTag({
+  row,
+  className = "",
+}: {
+  row: Row;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  if (row.visibility === "private") return null;
+  return (
+    <span
+      className={`border-border bg-surface-raised text-fg-muted inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${className}`}
+    >
+      {t(`library.visibility.${row.visibility}`)}
+    </span>
+  );
+}
+
 // A native <progress>: a bar needs no inline style (the strict CSP forbids it) and no script. It is
 // decorative, because the text next to it already says "2 of 12 episodes".
 function Bar({ row, className }: { row: Row; className: string }) {
@@ -198,7 +219,8 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
             <p className="min-w-0 font-semibold">
               <TitleLink row={row} />
             </p>
-            <p className="text-fg-muted shrink-0 text-sm tabular-nums">
+            <p className="text-fg-muted flex shrink-0 items-center gap-2 text-sm tabular-nums">
+              <VisibilityTag row={row} />
               {row.score ? (
                 t("library.card.scoreShort", { score: row.score })
               ) : (
@@ -225,6 +247,10 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
               <Cover
                 row={row}
                 className="aspect-[2/3] w-full rounded object-cover"
+              />
+              <VisibilityTag
+                row={row}
+                className="absolute top-2 left-2 shadow"
               />
               {row.score ? (
                 <p className="bg-surface-raised text-fg absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-bold shadow">
@@ -269,11 +295,12 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
             <p className="text-lg font-semibold">
               <TitleLink row={row} />
             </p>
-            <p className="text-fg-muted mt-1 text-sm font-semibold">
+            <p className="text-fg-muted mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
               {t("library.card.line", {
                 kind: t(`media.kinds.${row.type as "movie"}`),
                 status: t(`library.status.${row.status}`),
               })}
+              <VisibilityTag row={row} />
             </p>
             {row.totalEpisodes > 0 ? (
               <div className="mt-2 max-w-xs">
@@ -309,7 +336,9 @@ export default function Library({ loaderData }: Route.ComponentProps) {
   const pages = Object.fromEntries(
     sections.map((section) => [section.status, section.page]),
   ) as Record<LibraryStatus, number>;
-  const searching = Boolean(query.q || query.year || query.score);
+  const searching = Boolean(
+    query.q || query.year || query.score || query.visibility,
+  );
   const total = query.type ? counts[query.type] : counts.all;
 
   return (
@@ -400,6 +429,24 @@ export default function Library({ loaderData }: Route.ComponentProps) {
             {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((score) => (
               <option key={score} value={score}>
                 {score}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="visibility" className="font-semibold">
+            {t("library.filters.visibility")}
+          </label>
+          <select
+            id="visibility"
+            name="visibility"
+            defaultValue={query.visibility ?? ""}
+            className={inputClass}
+          >
+            <option value="">{t("library.visibility.any")}</option>
+            {visibilityLevels.map((level) => (
+              <option key={level} value={level}>
+                {t(`library.visibility.${level}`)}
               </option>
             ))}
           </select>

@@ -48,7 +48,7 @@ const cookieOf = (answer: unknown) =>
 describe("the library page loader", () => {
   it("lists the library of the person of the session, with what the address says", async () => {
     await load(
-      "?type=anime&q=dune&year=2013&score=8&sort=score&completed_page=2",
+      "?type=anime&q=dune&year=2013&score=8&visibility=public&sort=score&completed_page=2",
     );
 
     expect(mocks.listLibrary).toHaveBeenCalledWith(
@@ -59,6 +59,7 @@ describe("the library page loader", () => {
         q: "dune",
         year: 2013,
         score: 8,
+        visibility: "public",
         sort: "score",
         pages: {
           in_progress: 1,

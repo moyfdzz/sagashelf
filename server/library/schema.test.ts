@@ -184,6 +184,19 @@ describe("libraryQuerySchema", () => {
     ).toEqual({ sort: "recent", pages: firstPages });
   });
 
+  it("reads the visibility, and ignores one that is not a level", () => {
+    for (const visibility of ["public", "friends", "private"]) {
+      expect(libraryQuerySchema.parse({ visibility }).visibility).toBe(
+        visibility,
+      );
+    }
+    for (const visibility of ["everyone", "PUBLIC", "", "1"]) {
+      expect(
+        libraryQuerySchema.parse({ visibility }).visibility,
+      ).toBeUndefined();
+    }
+  });
+
   it("cuts a search that is too long", () => {
     expect(libraryQuerySchema.parse({ q: "a".repeat(500) }).q).toHaveLength(
       searchMaxLength,

@@ -78,6 +78,7 @@ The library page was one list with a form of filters. Most of the time the perso
 - **Pages by section** (`?completed_page=2`), 12 entries each, as plain links: a page past the last one shows the last one. Changing the tab or the view sends every section back to its first page.
 - **Two queries** whatever the number of sections (ADR-001, 50 subrequests per request): one counts by type and status (the tabs, the totals and the last page of each section), and one takes the page of every section with `row_number() OVER (PARTITION BY status)`. The id at the end of the order keeps entries that tie from one page to the next. With 3000 synthetic entries on a local database each answered in under 30 ms; a real database over the network will be slower, and this was not measured.
 - **Three views**: covers (as before), titles only and a grid of covers. The address (`?view=`) wins and is remembered in a preference cookie, `libraryView`, like the language one: it works without JavaScript and holds nothing else. The privacy policy names it. Whether a section is open or closed is **not** remembered.
+- **Visibility filter** (SAG-59): `?visibility=public|friends|private`, a select next to the year and the score, kept when the tab changes and applied to the totals, the tab counts and the sections. A small label ("Public", "Friends") appears on the card only when the entry is not private. No migration: the column and the filter by person already existed.
 - **Not done**: a table view, and remembering open sections.
 
 ## References
