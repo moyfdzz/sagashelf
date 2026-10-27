@@ -55,7 +55,7 @@ const row = {
   progress: 2,
   totalEpisodes: 4,
   score: 8,
-  rewatchCount: 0,
+  timesWatched: 0,
 };
 
 const libraryProps = (overrides: Record<string, unknown> = {}) =>
@@ -84,20 +84,20 @@ describe("the library page", () => {
     expect(html).toContain("Puntuación: 8 de 10");
   });
 
-  it("says how many times a title was started again, only when it was", async () => {
+  it("says how many times a title was watched, only when it was", async () => {
     const once = await render(
       "es",
-      <Library {...libraryProps({ rows: [{ ...row, rewatchCount: 1 }] })} />,
+      <Library {...libraryProps({ rows: [{ ...row, timesWatched: 1 }] })} />,
     );
     const many = await render(
       "en",
-      <Library {...libraryProps({ rows: [{ ...row, rewatchCount: 3 }] })} />,
+      <Library {...libraryProps({ rows: [{ ...row, timesWatched: 3 }] })} />,
     );
     const never = await render("es", <Library {...libraryProps()} />);
 
-    expect(once).toContain("Lo has vuelto a ver 1 vez");
-    expect(many).toContain("Watched again 3 times");
-    expect(never).not.toContain("vuelto a ver");
+    expect(once).toContain("Lo has visto 1 vez");
+    expect(many).toContain("You have watched it 3 times");
+    expect(never).not.toContain("Lo has visto");
   });
 
   it("shows the same in English", async () => {
@@ -172,7 +172,6 @@ const entryProps = (
         score: 8,
         startedAt: "2026-01-02",
         finishedAt: null,
-        rewatchCount: 0,
         notes: "una nota",
         visibility: "private",
         ...entry,
@@ -184,6 +183,8 @@ const entryProps = (
         poster: "/img/tmdb/w185/aot.jpg",
         detailPath: `/media/anime/ataque-a-los-titanes-${mediaId}`,
       },
+      viewings: [],
+      timesWatched: 0,
       totalEpisodes: 4,
       progressAt: { season: 1, episode: 2 },
       ...extra,
@@ -206,7 +207,7 @@ describe("the entry page", () => {
     expect(html).toContain('<option value="8" selected="">8 de 10</option>');
     expect(html).toContain('value="2026-01-02"');
     expect(html).toContain(">una nota</textarea>");
-    expect(html).toContain("Lo has vuelto a ver 0 veces.");
+    expect(html).toContain("Lo has visto 0 veces.");
     // Not completed: no button to watch it again.
     expect(html).not.toContain("Volver a verlo");
   });
@@ -231,13 +232,28 @@ describe("the entry page", () => {
     const html = await render(
       "es",
       <LibraryEntry
-        {...entryProps({ status: "completed", rewatchCount: 1 })}
+        {...entryProps({ status: "completed" }, undefined, {
+          viewings: [
+            {
+              id: "0199a3c2-7d4e-7b1a-8c3f-bbbbbbbbbbbb",
+              startedOn: "2025-05-01",
+              finishedOn: "2025-05-03",
+              notes: "En el cine",
+            },
+          ],
+          timesWatched: 2,
+        })}
       />,
     );
 
     expect(html).toContain('name="intent" value="rewatch"');
     expect(html).toContain("Volver a verlo");
-    expect(html).toContain("Lo has vuelto a ver 1 vez.");
+    expect(html).toContain("Lo has visto 2 veces.");
+    expect(html).toContain("Del 1 de mayo de 2025 al 3 de mayo de 2025");
+    expect(html).toContain("En el cine");
+    expect(html).toContain('name="intent" value="viewing_add"');
+    expect(html).toContain('value="viewing_save"');
+    expect(html).toContain('value="viewing_remove"');
     expect(html).toContain('name="intent" value="remove"');
     expect(html).toContain("Quitar de mi biblioteca");
   });

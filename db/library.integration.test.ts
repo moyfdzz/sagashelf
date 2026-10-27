@@ -80,7 +80,6 @@ const completed: EntryState = {
   score: 9,
   startedAt: "2026-01-01",
   finishedAt: "2026-02-01",
-  rewatchCount: 1,
   notes: "Muy buena",
   visibility: "public",
 };
@@ -113,7 +112,6 @@ describe("addEntry", () => {
       score: null,
       startedAt: null,
       finishedAt: null,
-      rewatchCount: 0,
       notes: null,
       visibility: "private",
     });
@@ -321,8 +319,8 @@ describe("listEntries", () => {
       score: 8,
     });
     expect(rows[2]?.totalEpisodes).toBe(0);
-    // Every entry of `fill` was saved with the same counter.
-    expect(rows.map((row) => row.rewatchCount)).toEqual([1, 0, 1]);
+    // Only the completed title counts as watched once.
+    expect(rows.map((row) => row.timesWatched)).toEqual([0, 0, 1]);
   });
 
   it("never lists the entries of somebody else", async () => {

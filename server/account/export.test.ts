@@ -48,7 +48,15 @@ describe("profileCsv", () => {
           score: 9,
           startedAt: "2026-01-02",
           finishedAt: "2026-02-03",
-          rewatchCount: 1,
+          timesWatched: 2,
+          viewings: [
+            {
+              startedOn: "2025-05-01",
+              finishedOn: "2025-05-03",
+              notes: "En el cine, con coma",
+            },
+            { startedOn: null, finishedOn: null, notes: null },
+          ],
           notes: "Muy buena, con coma",
           visibility: "private",
           createdAt: new Date("2026-01-01T10:00:00Z"),
@@ -60,7 +68,8 @@ describe("profileCsv", () => {
           score: null,
           startedAt: null,
           finishedAt: null,
-          rewatchCount: 0,
+          timesWatched: 0,
+          viewings: [],
           notes: null,
           visibility: "public",
           createdAt: new Date("2026-03-04T10:00:00Z"),
@@ -71,9 +80,13 @@ describe("profileCsv", () => {
     const rows = lines(csv);
     const at = rows.indexOf("");
     expect(rows.slice(at + 1)).toEqual([
-      "title,status,progress,score,started_at,finished_at,times_watched_again,notes,visibility,added_at",
-      'Ataque a los Titanes,completed,25,9,2026-01-02,2026-02-03,1,"Muy buena, con coma",private,2026-01-01',
+      "title,status,progress,score,started_at,finished_at,times_watched,notes,visibility,added_at",
+      'Ataque a los Titanes,completed,25,9,2026-01-02,2026-02-03,2,"Muy buena, con coma",private,2026-01-01',
       "Matrix,planned,0,,,,0,,public,2026-03-04",
+      "",
+      "title,started_on,finished_on,notes",
+      'Ataque a los Titanes,2025-05-01,2025-05-03,"En el cine, con coma"',
+      "Ataque a los Titanes,,,",
       "",
     ]);
   });
@@ -90,7 +103,8 @@ describe("profileCsv", () => {
           score: null,
           startedAt: null,
           finishedAt: null,
-          rewatchCount: 0,
+          timesWatched: 0,
+          viewings: [{ startedOn: null, finishedOn: null, notes: "=2+2" }],
           notes: "@SUM(A1)",
           visibility: "private",
           createdAt: new Date("2026-03-04T10:00:00Z"),
@@ -101,6 +115,7 @@ describe("profileCsv", () => {
     expect(csv).toContain('bio,"\'=HYPERLINK(""http://evil"")"');
     expect(csv).toContain("'=1+1,planned");
     expect(csv).toContain("'@SUM(A1)");
+    expect(csv).toContain("'=2+2");
     expect(csv).not.toMatch(/(^|,)[=@]/m);
   });
 });

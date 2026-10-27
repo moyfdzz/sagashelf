@@ -60,3 +60,34 @@ export const libraryEntries = pgTable(
       .where(sql`${t.visibility} = 'public'`),
   ],
 );
+
+/**
+ * A time a person finished watching a title, before the one the entry holds now. The entry keeps
+ * the dates of the current run; "Watch it again" and the editor add the earlier ones here. The
+ * dates are optional: somebody may remember they saw it and not when. The rows belong to the
+ * entry, so removing the entry or the account removes them.
+ */
+export const libraryViewings = pgTable(
+  "library_viewings",
+  {
+    id: primaryId(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => libraryEntries.id, { onDelete: "cascade" }),
+    startedOn: date("started_on"),
+    finishedOn: date("finished_on"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [
+    check(
+      "library_viewings_dates_check",
+      sql`${t.startedOn} is null or ${t.finishedOn} is null or ${t.finishedOn} >= ${t.startedOn}`,
+    ),
+    check(
+      "library_viewings_notes_length_check",
+      sql`char_length(${t.notes}) <= 500`,
+    ),
+    index("library_viewings_entry_idx").on(t.entryId),
+  ],
+);

@@ -4,11 +4,13 @@ import type { ProfileDb } from "../db/profile";
 import {
   customEntries,
   libraryEntries,
+  libraryViewings,
   listItems,
   lists,
   mediaItems,
   users,
 } from "../db/schema";
+import { timesWatched } from "../library/rules";
 
 /** Everything SagaShelf holds about one person, in a shape they can read and keep. */
 export type AccountExport = {
@@ -53,8 +55,9 @@ export async function exportAccount(
     .limit(1);
   if (!user || user.deletedAt) return null;
 
-  const entries = await db
+  const entryRows = await db
     .select({
+      entryId: libraryEntries.id,
       title: mediaItems.title,
       titles: mediaItems.titles,
       status: libraryEntries.status,
@@ -62,7 +65,6 @@ export async function exportAccount(
       score: libraryEntries.score,
       startedAt: libraryEntries.startedAt,
       finishedAt: libraryEntries.finishedAt,
-      rewatchCount: libraryEntries.rewatchCount,
       notes: libraryEntries.notes,
       visibility: libraryEntries.visibility,
       createdAt: libraryEntries.createdAt,
@@ -70,6 +72,43 @@ export async function exportAccount(
     .from(libraryEntries)
     .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
     .where(eq(libraryEntries.userId, userId));
+
+  const earlier = entryRows.length
+    ? await db
+        .select({
+          entryId: libraryViewings.entryId,
+          startedOn: libraryViewings.startedOn,
+          finishedOn: libraryViewings.finishedOn,
+          notes: libraryViewings.notes,
+        })
+        .from(libraryViewings)
+        .where(
+          inArray(
+            libraryViewings.entryId,
+            entryRows.map((entry) => entry.entryId),
+          ),
+        )
+    : [];
+  // Never the id of the entry: each one carries its own viewings, the latest first.
+  const entries = entryRows.map(({ entryId, ...entry }) => {
+    const viewings = earlier
+      .filter((viewing) => viewing.entryId === entryId)
+      .sort((a, b) =>
+        String(b.finishedOn ?? b.startedOn ?? "").localeCompare(
+          String(a.finishedOn ?? a.startedOn ?? ""),
+        ),
+      )
+      .map(({ startedOn, finishedOn, notes }) => ({
+        startedOn,
+        finishedOn,
+        notes,
+      }));
+    return {
+      ...entry,
+      timesWatched: timesWatched(viewings.length, entry.status),
+      viewings,
+    };
+  });
 
   const custom = await db
     .select({
@@ -153,18 +192,27 @@ const libraryColumns = [
   "score",
   "started_at",
   "finished_at",
-  "times_watched_again",
+  "times_watched",
   "notes",
   "visibility",
   "added_at",
 ] as const;
 
+const viewingColumns = ["title", "started_on", "finished_on", "notes"] as const;
+
+type EarlierViewing = {
+  startedOn: string | null;
+  finishedOn: string | null;
+  notes: string | null;
+};
+
 const day = (value: unknown) =>
   value instanceof Date ? value.toISOString().slice(0, 10) : value;
 
 /**
- * The profile as a table of `field,value`, and the library below it as a second table with its
- * own header, after an empty line. Lists and custom entries are in the JSON file.
+ * The profile as a table of `field,value`, the library below it as a second table and the earlier
+ * times each title was watched as a third, each with its own header after an empty line. Lists
+ * and custom entries are in the JSON file.
  */
 export function profileCsv(data: AccountExport): string {
   const rows: [string, unknown][] = [
@@ -192,7 +240,7 @@ export function profileCsv(data: AccountExport): string {
           entry.score,
           entry.startedAt,
           entry.finishedAt,
-          entry.rewatchCount,
+          entry.timesWatched,
           entry.notes,
           entry.visibility,
           day(entry.createdAt),
@@ -200,6 +248,18 @@ export function profileCsv(data: AccountExport): string {
           .map(csvCell)
           .join(","),
       );
+    }
+
+    // The earlier times of each title, as a third table. Left out when there are none.
+    const viewingLines = data.libraryEntries.flatMap((entry) =>
+      (entry.viewings as EarlierViewing[]).map((viewing) =>
+        [entry.title, viewing.startedOn, viewing.finishedOn, viewing.notes]
+          .map(csvCell)
+          .join(","),
+      ),
+    );
+    if (viewingLines.length > 0) {
+      lines.push("", viewingColumns.join(","), ...viewingLines);
     }
   }
   return lines.join("\r\n") + "\r\n";

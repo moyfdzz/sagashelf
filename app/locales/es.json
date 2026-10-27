@@ -391,8 +391,8 @@
       "progress": "{{done}} de {{total}} episodios",
       "score": "Puntuación: {{score}} de 10",
       "line": "{{kind}} · {{status}}",
-      "rewatched_one": "Lo has vuelto a ver {{count}} vez",
-      "rewatched_other": "Lo has vuelto a ver {{count}} veces"
+      "watched_one": "Lo has visto {{count}} vez",
+      "watched_other": "Lo has visto {{count}} veces"
     },
     "editor": {
       "back": "Volver a mi biblioteca",
@@ -419,10 +419,29 @@
       },
       "save": "Guardar",
       "saving": "Guardando…",
-      "rewatchCount_one": "Lo has vuelto a ver {{count}} vez.",
-      "rewatchCount_other": "Lo has vuelto a ver {{count}} veces.",
       "rewatch": "Volver a verlo",
-      "rewatchHint": "Empieza de nuevo desde el primer episodio y suma una vez a tu contador.",
+      "rewatchHint": "Guarda esta vez en tu historial y empieza de nuevo desde el primer episodio.",
+      "viewings": {
+        "title": "Veces que lo has visto",
+        "count_one": "Lo has visto {{count}} vez.",
+        "count_other": "Lo has visto {{count}} veces.",
+        "empty": "Aquí aparecen las veces anteriores. La vez actual es la de arriba.",
+        "dates_range": "Del {{from}} al {{to}}",
+        "dates_from": "Desde el {{from}}",
+        "dates_to": "Hasta el {{to}}",
+        "dates_none": "Sin fechas",
+        "notes": "Notas de esta vez",
+        "notesHint": "Solo tú las ves. Hasta {{max}} caracteres.",
+        "save": "Guardar cambios",
+        "remove": "Quitar esta vez",
+        "add": "Añadir una vez anterior",
+        "addSubmit": "Añadir",
+        "toast": {
+          "viewing_add": "Se añadió la vez.",
+          "viewing_save": "Se guardó la vez.",
+          "viewing_remove": "Se quitó la vez."
+        }
+      },
       "remove": {
         "summary": "Quitar de mi biblioteca",
         "warning": "Se borran tu estado, tu progreso, tu puntuación y tus notas de este título. No se puede deshacer.",
@@ -437,6 +456,7 @@
       "dates_order": "La fecha de fin no puede ser anterior a la de inicio.",
       "notes_too_long": "Las notas son demasiado largas.",
       "not_completed": "Solo puedes volver a ver un título completado.",
+      "viewings_limit": "Llegaste al máximo de veces que se pueden guardar para este título.",
       "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
     }
   }

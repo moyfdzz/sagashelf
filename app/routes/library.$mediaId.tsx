@@ -7,21 +7,35 @@ import type { ZodError } from "zod";
 import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
+import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
   getEntry,
   getSeasonCounts,
   removeEntry,
+  rewatchEntry,
   saveEntry,
   totalEpisodes,
 } from "~server/db/library";
+import {
+  addViewing,
+  listViewings,
+  removeViewing,
+  saveViewing,
+} from "~server/db/viewings";
 import { imageSrc } from "~server/images/sources";
-import { applyRewatch, applySave, locateProgress } from "~server/library/rules";
+import {
+  applyRewatch,
+  applySave,
+  locateProgress,
+  timesWatched,
+} from "~server/library/rules";
 import {
   libraryActionSchema,
   libraryStatuses,
   notesMaxLength,
+  viewingNotesMaxLength,
   visibilityLevels,
 } from "~server/library/schema";
 import { mediaPath } from "~server/media/slug";
@@ -45,6 +59,7 @@ type ErrorCode =
   | "dates_order"
   | "notes_too_long"
   | "not_completed"
+  | "viewings_limit"
   | "generic";
 
 type Field =
@@ -55,6 +70,10 @@ type Field =
   | "finishedAt"
   | "notes"
   | "visibility"
+  | "viewStartedOn"
+  | "viewFinishedOn"
+  | "viewNotes"
+  | "viewings"
   | "form";
 
 type FieldErrors = Partial<Record<Field, ErrorCode>>;
@@ -67,6 +86,9 @@ const fields: readonly Field[] = [
   "finishedAt",
   "notes",
   "visibility",
+  "viewStartedOn",
+  "viewFinishedOn",
+  "viewNotes",
 ];
 
 /** One error code per field, never the text or the value that was sent. */
@@ -79,6 +101,10 @@ function fieldErrors(error: ZodError): FieldErrors {
       errors.form = "generic";
     } else if (field === "notes" && issue.message === "notes_too_long") {
       errors.notes = "notes_too_long";
+    } else if (field === "viewNotes" && issue.message === "notes_too_long") {
+      errors.viewNotes = "notes_too_long";
+    } else if (field === "viewFinishedOn" && issue.message === "dates_order") {
+      errors.viewFinishedOn = "dates_order";
     } else {
       errors[field as Field] = "invalid";
     }
@@ -107,6 +133,7 @@ export async function loader(args: Route.LoaderArgs) {
   // Somebody else's entry and no entry at all look the same.
   if (!entry) throw data(null, { status: 404 });
   const seasons = await getSeasonCounts(db, mediaId.data);
+  const viewings = await listViewings(db, user.id, mediaId.data);
 
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
@@ -123,7 +150,6 @@ export async function loader(args: Route.LoaderArgs) {
       score: entry.score,
       startedAt: entry.startedAt,
       finishedAt: entry.finishedAt,
-      rewatchCount: entry.rewatchCount,
       notes: entry.notes,
       visibility: entry.visibility,
     },
@@ -138,6 +164,8 @@ export async function loader(args: Route.LoaderArgs) {
         entry.mediaId,
       ),
     },
+    viewings,
+    timesWatched: timesWatched(viewings.length, entry.status),
     totalEpisodes: totalEpisodes(seasons),
     progressAt: locateProgress(seasons, entry.progress),
   }));
@@ -207,6 +235,50 @@ export async function action(args: Route.ActionArgs) {
     return redirect("/library", { status: 303, headers: privateHeaders });
   }
 
+  const intent = parsed.data.intent;
+  if (
+    intent === "viewing_add" ||
+    intent === "viewing_save" ||
+    intent === "viewing_remove"
+  ) {
+    const form = parsed.data;
+    const viewing =
+      "viewStartedOn" in form
+        ? {
+            startedOn: form.viewStartedOn,
+            finishedOn: form.viewFinishedOn,
+            notes: form.viewNotes,
+          }
+        : null;
+    if (intent === "viewing_add" && viewing) {
+      const added = await addViewing(db, user.id, mediaId.data, viewing);
+      if (added === "missing") throw data(null, { status: 404 });
+      if (added === "limit") {
+        return data(
+          {
+            ok: false as const,
+            errors: { viewings: "viewings_limit" } as FieldErrors,
+          },
+          { status: 400, headers: privateHeaders },
+        );
+      }
+    } else if (intent === "viewing_save" && viewing && "viewingId" in form) {
+      if (
+        !(await saveViewing(db, user.id, mediaId.data, form.viewingId, viewing))
+      ) {
+        throw data(null, { status: 404 });
+      }
+    } else if (intent === "viewing_remove" && "viewingId" in form) {
+      if (!(await removeViewing(db, user.id, mediaId.data, form.viewingId))) {
+        throw data(null, { status: 404 });
+      }
+    }
+    return data(
+      { ok: true as const, saved: intent, savedAt: Date.now() },
+      { headers: privateHeaders },
+    );
+  }
+
   const current = await getEntry(
     db,
     user.id,
@@ -235,7 +307,18 @@ export async function action(args: Route.ActionArgs) {
     );
   }
 
-  if (!(await saveEntry(db, user.id, mediaId.data, result.next))) {
+  if (parsed.data.intent === "rewatch") {
+    // The run that ends goes into the history in the same statement that restarts the entry.
+    if (!(await rewatchEntry(db, user.id, mediaId.data, result.next))) {
+      return data(
+        {
+          ok: false as const,
+          errors: { viewings: "viewings_limit" } as FieldErrors,
+        },
+        { status: 400, headers: privateHeaders },
+      );
+    }
+  } else if (!(await saveEntry(db, user.id, mediaId.data, result.next))) {
     throw data(null, { status: 404 });
   }
   return data(
@@ -264,9 +347,31 @@ export default function LibraryEntry({
   const saving = navigation.state === "submitting";
   // The finish date can only be set while the status is "completed".
   const [status, setStatus] = useState(loaderData.entry.status);
-  const { entry, media, totalEpisodes: total, progressAt } = loaderData;
+  const { formatDate } = useFormatters();
+  const {
+    entry,
+    media,
+    viewings,
+    timesWatched: watchedCount,
+    totalEpisodes: total,
+    progressAt,
+  } = loaderData;
+  const dayText = (value: string) =>
+    formatDate(Date.parse(`${value}T00:00:00Z`));
+  const viewingDates = (from: string | null, to: string | null) =>
+    t("library.editor.viewings.dates", {
+      context: from && to ? "range" : from ? "from" : to ? "to" : "none",
+      from: from ? dayText(from) : "",
+      to: to ? dayText(to) : "",
+    });
   const errors: FieldErrors = actionData?.ok === false ? actionData.errors : {};
   const hasErrors = Object.keys(errors).length > 0;
+  // The errors of the three viewing forms are shown once, above the list.
+  const viewingError =
+    errors.viewings ??
+    errors.viewFinishedOn ??
+    errors.viewStartedOn ??
+    errors.viewNotes;
   const errorText = (code: ErrorCode) => t(`library.errors.${code}`);
 
   const fieldError = (field: Field) =>
@@ -331,7 +436,11 @@ export default function LibraryEntry({
             <StatusToast key={actionData.savedAt}>
               {actionData.saved === "rewatch"
                 ? t("library.editor.rewatched")
-                : t("library.editor.saved")}
+                : actionData.saved === "viewing_add" ||
+                    actionData.saved === "viewing_save" ||
+                    actionData.saved === "viewing_remove"
+                  ? t(`library.editor.viewings.toast.${actionData.saved}`)
+                  : t("library.editor.saved")}
             </StatusToast>
           ) : null}
         </div>
@@ -512,9 +621,180 @@ export default function LibraryEntry({
         </Form>
 
         <section className="border-border mt-10 border-t pt-6">
-          <p className="text-fg-muted">
-            {t("library.editor.rewatchCount", { count: entry.rewatchCount })}
+          <h2 className="text-xl font-semibold">
+            {t("library.editor.viewings.title")}
+          </h2>
+          <p className="text-fg-muted mt-1">
+            {t("library.editor.viewings.count", { count: watchedCount })}
           </p>
+          {viewingError ? (
+            <p role="alert" className="text-danger-text mt-2 font-semibold">
+              {errorText(viewingError)}
+            </p>
+          ) : null}
+          {viewings.length === 0 ? (
+            <p className="text-fg-muted mt-3 text-sm">
+              {t("library.editor.viewings.empty")}
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {viewings.map((viewing) => (
+                <li
+                  key={viewing.id}
+                  className="border-border bg-surface-raised rounded-md border"
+                >
+                  <details>
+                    <summary className="cursor-pointer px-4 py-3">
+                      <span className="font-semibold">
+                        {viewingDates(viewing.startedOn, viewing.finishedOn)}
+                      </span>
+                      {viewing.notes ? (
+                        <span className="text-fg-muted block text-sm">
+                          {viewing.notes}
+                        </span>
+                      ) : null}
+                    </summary>
+                    <Form
+                      method="post"
+                      key={JSON.stringify(viewing)}
+                      className="border-border space-y-4 border-t px-4 py-4"
+                    >
+                      <input
+                        type="hidden"
+                        name="viewingId"
+                        value={viewing.id}
+                      />
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label
+                            htmlFor={`viewStartedOn-${viewing.id}`}
+                            className="font-semibold"
+                          >
+                            {t("library.editor.startedAt")}
+                          </label>
+                          <input
+                            id={`viewStartedOn-${viewing.id}`}
+                            name="viewStartedOn"
+                            type="date"
+                            defaultValue={viewing.startedOn ?? ""}
+                            className={inputClass}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor={`viewFinishedOn-${viewing.id}`}
+                            className="font-semibold"
+                          >
+                            {t("library.editor.finishedAt")}
+                          </label>
+                          <input
+                            id={`viewFinishedOn-${viewing.id}`}
+                            name="viewFinishedOn"
+                            type="date"
+                            defaultValue={viewing.finishedOn ?? ""}
+                            className={inputClass}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`viewNotes-${viewing.id}`}
+                          className="font-semibold"
+                        >
+                          {t("library.editor.viewings.notes")}
+                        </label>
+                        <textarea
+                          id={`viewNotes-${viewing.id}`}
+                          name="viewNotes"
+                          rows={2}
+                          maxLength={viewingNotesMaxLength}
+                          defaultValue={viewing.notes ?? ""}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="submit"
+                          name="intent"
+                          value="viewing_save"
+                          className={primaryButtonClass}
+                        >
+                          {t("library.editor.viewings.save")}
+                        </button>
+                        <button
+                          type="submit"
+                          name="intent"
+                          value="viewing_remove"
+                          className={secondaryButtonClass}
+                        >
+                          {t("library.editor.viewings.remove")}
+                        </button>
+                      </div>
+                    </Form>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <details className="border-border mt-4 rounded-md border">
+            <summary className="cursor-pointer px-4 py-3 font-semibold">
+              {t("library.editor.viewings.add")}
+            </summary>
+            <Form
+              method="post"
+              key={`add-${viewings.length}`}
+              className="border-border space-y-4 border-t px-4 py-4"
+            >
+              <input type="hidden" name="intent" value="viewing_add" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="viewStartedOn" className="font-semibold">
+                    {t("library.editor.startedAt")}
+                  </label>
+                  <input
+                    id="viewStartedOn"
+                    name="viewStartedOn"
+                    type="date"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="viewFinishedOn" className="font-semibold">
+                    {t("library.editor.finishedAt")}
+                  </label>
+                  <input
+                    id="viewFinishedOn"
+                    name="viewFinishedOn"
+                    type="date"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="viewNotes" className="font-semibold">
+                  {t("library.editor.viewings.notes")}
+                </label>
+                <textarea
+                  id="viewNotes"
+                  name="viewNotes"
+                  rows={2}
+                  maxLength={viewingNotesMaxLength}
+                  aria-describedby="viewNotes-hint"
+                  className={inputClass}
+                />
+                <p id="viewNotes-hint" className="text-fg-muted mt-1 text-sm">
+                  {t("library.editor.viewings.notesHint", {
+                    max: viewingNotesMaxLength,
+                  })}
+                </p>
+              </div>
+              <button type="submit" className={primaryButtonClass}>
+                {t("library.editor.viewings.addSubmit")}
+              </button>
+            </Form>
+          </details>
+
           {entry.status === "completed" ? (
             <Form method="post" className="mt-3 space-y-2">
               <input type="hidden" name="intent" value="rewatch" />

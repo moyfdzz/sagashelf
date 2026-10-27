@@ -8,7 +8,6 @@ export type EntryState = {
   /** `YYYY-MM-DD`. */
   startedAt: string | null;
   finishedAt: string | null;
-  rewatchCount: number;
   notes: string | null;
   visibility: Visibility;
 };
@@ -77,7 +76,6 @@ export function applySave(
       score: input.score,
       startedAt,
       finishedAt,
-      rewatchCount: current.rewatchCount,
       notes: input.notes,
       visibility: input.visibility,
     },
@@ -85,9 +83,9 @@ export function applySave(
 }
 
 /**
- * Starts a completed title again: back to the first episode, with a new start date. The counter
- * of times it was watched again goes up now, so it counts the times a person started again.
- * The score and the notes stay.
+ * Starts a completed title again: back to the first episode, with a new start date. The run that
+ * ends is saved with its dates in the history of viewings by the caller (`rewatchEntry`), so
+ * nothing is counted here. The score and the notes stay.
  */
 export function applyRewatch(
   current: EntryState,
@@ -104,10 +102,15 @@ export function applyRewatch(
       progress: 0,
       startedAt: today,
       finishedAt: null,
-      rewatchCount: current.rewatchCount + 1,
     },
   };
 }
+
+/** The times a person has watched a title: the earlier viewings, and the current run if finished. */
+export const timesWatched = (
+  earlierViewings: number,
+  status: LibraryStatus,
+): number => earlierViewings + (status === "completed" ? 1 : 0);
 
 export type SeasonCount = { number: number; episodes: number };
 
