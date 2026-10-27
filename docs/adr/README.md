@@ -21,6 +21,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback | Accepted | Done (SAG-12)                          |
 | [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)     | Accepted | Done (SAG-12)                          |
 | [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                               | Accepted | Done (SAG-37)                          |
+| [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                  | Accepted | Partial (SAG-41)                       |
 | [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)    | Accepted | Done (SAG-48)                          |
 | [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry          | Accepted | Partial (SAG-18)                       |
 | [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                     | Accepted | Done (SAG-17)                          |

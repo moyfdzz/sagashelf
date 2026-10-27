@@ -137,7 +137,8 @@
       "title": "Your data",
       "description": "Download a copy of what SagaShelf keeps about you: your profile and, when they exist, your library and lists.",
       "json": "Download everything (JSON)",
-      "csv": "Download the profile (CSV)"
+      "csv": "Download the profile (CSV)",
+      "import": "Import my library from a file"
     },
     "delete": {
       "title": "Delete account",
@@ -159,6 +160,60 @@
       "profile": "Profile",
       "data": "My data",
       "delete": "Delete account"
+    },
+    "import": {
+      "title": "Import your library",
+      "description": "Get your library back from the JSON file you downloaded in My data.",
+      "back": "Back to my data",
+      "file": "SagaShelf JSON file",
+      "fileHint": "Up to {{mb}} MB and {{max}} titles. Only your library is read: your profile and anything that belongs to other people is ignored.",
+      "previewButton": "See what would be imported",
+      "previewing": "Checking the file…",
+      "preview": {
+        "title": "This is what would happen",
+        "add_one": "{{count}} title will be added to your library.",
+        "add_other": "{{count}} titles will be added to your library.",
+        "exists_one": "You already have {{count}} title in your library.",
+        "exists_other": "You already have {{count}} titles in your library.",
+        "fetch_one": "{{count}} title is not in SagaShelf yet and will be looked up in TMDB (at most {{max}} per import).",
+        "fetch_other": "{{count}} titles are not in SagaShelf yet and will be looked up in TMDB (at most {{max}} per import)."
+      },
+      "replace": "Replace what I already have with what is in the file",
+      "replaceHint": "If you do not check it, your current entries stay as they are.",
+      "private": "Everything that is imported stays private.",
+      "confirm": "Import",
+      "importing": "Importing…",
+      "done": {
+        "title": "Done, your library was imported",
+        "added_one": "{{count}} title was added.",
+        "added_other": "{{count}} titles were added.",
+        "replaced_one": "{{count}} title was replaced.",
+        "replaced_other": "{{count}} titles were replaced.",
+        "kept_one": "{{count}} title you already had stayed as it was.",
+        "kept_other": "{{count}} titles you already had stayed as they were.",
+        "library": "Go to my library"
+      },
+      "skipped": "Not imported",
+      "skippedLine": "{{title}}: {{reason}}",
+      "skippedMore_one": "And {{count}} more.",
+      "skippedMore_other": "And {{count}} more.",
+      "untitled": "Untitled",
+      "reasons": {
+        "invalid": "invalid data",
+        "no_source": "no catalog id",
+        "duplicate": "repeated in the file",
+        "unsupported_provider": "that source is not available",
+        "not_found": "the source did not find it",
+        "pending": "pending: import the file again to bring it"
+      },
+      "errors": {
+        "invalid_file": "The file is not a valid SagaShelf export.",
+        "unsupported_version": "This file is from a version that cannot be imported. Download a new one in My data.",
+        "too_many": "The file has too many titles (at most {{max}}).",
+        "file_missing": "Choose a file.",
+        "file_too_large": "The file is bigger than {{mb}} MB.",
+        "generic": "We could not process the request. Try again."
+      }
     },
     "username": {
       "submit": "Change username",

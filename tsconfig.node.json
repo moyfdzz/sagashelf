@@ -18,6 +18,8 @@
     "server/db/titles.ts",
     "server/db/library.ts",
     "server/db/viewings.ts",
+    "server/db/import.ts",
+    "server/media/import.ts",
     "server/library/**/*",
     "server/db/search-local.ts",
     "server/search/normalize.ts",

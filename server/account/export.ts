@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 import type { ProfileDb } from "../db/profile";
 import {
@@ -14,6 +14,8 @@ import { timesWatched } from "../library/rules";
 
 /** Everything SagaShelf holds about one person, in a shape they can read and keep. */
 export type AccountExport = {
+  /** The shape of this file. The import (SAG-41) reads this version and refuses any other. */
+  schemaVersion: 1;
   exportedAt: string;
   profile: {
     username: string;
@@ -58,6 +60,14 @@ export async function exportAccount(
   const entryRows = await db
     .select({
       entryId: libraryEntries.id,
+      // Where the title comes from. Public catalog ids, not personal data: they are what lets
+      // an import match the title exactly instead of by its name.
+      source: sql<{ provider: string; id: string } | null>`(
+        SELECT jsonb_build_object('provider', e.provider, 'id', e.external_id)
+        FROM media_external_ids e
+        WHERE e.media_id = ${libraryEntries.mediaId}
+        ORDER BY e.created_at, e.id LIMIT 1
+      )`,
       title: mediaItems.title,
       titles: mediaItems.titles,
       status: libraryEntries.status,
@@ -149,6 +159,7 @@ export async function exportAccount(
     : [];
 
   return {
+    schemaVersion: 1,
     exportedAt: now.toISOString(),
     profile: {
       username: user.username,
@@ -196,9 +207,13 @@ const libraryColumns = [
   "notes",
   "visibility",
   "added_at",
+  "provider",
+  "external_id",
 ] as const;
 
 const viewingColumns = ["title", "started_on", "finished_on", "notes"] as const;
+
+type EntrySource = { provider: string; id: string };
 
 type EarlierViewing = {
   startedOn: string | null;
@@ -244,6 +259,8 @@ export function profileCsv(data: AccountExport): string {
           entry.notes,
           entry.visibility,
           day(entry.createdAt),
+          (entry.source as EntrySource | null)?.provider,
+          (entry.source as EntrySource | null)?.id,
         ]
           .map(csvCell)
           .join(","),
