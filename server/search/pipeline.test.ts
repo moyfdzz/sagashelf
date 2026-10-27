@@ -120,6 +120,27 @@ describe("runSearch", () => {
     expect(search).not.toHaveBeenCalled();
   });
 
+  it("keeps how the database matched a title, so a title shown in another language ranks first", async () => {
+    const { deps } = setup({
+      searchLocal: vi.fn(async () => [
+        hit({ id: "l1", title: "El resplandor", exact: true, similarity: 1 }),
+      ]),
+      providers: [
+        provider(
+          "tmdb",
+          vi.fn(async () => [
+            media("The Shining Hour", "movie/2"),
+            media("El resplandor", "movie/3"),
+          ]),
+        ),
+      ],
+    });
+
+    const response = await runSearch(deps, ask("the shining"));
+
+    expect(response.results[0]).toMatchObject({ id: "l1" });
+  });
+
   it("asks the providers when the database has too few good hits", async () => {
     const search = vi.fn(async () => [media("Dune", "movie/7")]);
     const { deps } = setup({

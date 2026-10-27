@@ -148,6 +148,31 @@ describe("saveMedia", () => {
     expect(item.titles).toEqual({});
   });
 
+  it("keeps the original title when a save in another language has none", async () => {
+    const id = await saveMedia(
+      db,
+      { ...titan, title: "The Shining", originalTitle: "The Shining" },
+      "en",
+    );
+    await saveMedia(
+      db,
+      { ...titan, title: "El resplandor", originalTitle: "The Shining" },
+      "es",
+    );
+    // In English the source says the original title is the title itself, so it sends none.
+    await saveMedia(
+      db,
+      { ...titan, title: "The Shining", originalTitle: null },
+      "en",
+    );
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.originalTitle).toBe("The Shining");
+  });
+
   it("makes one row when the same new title arrives many times together", async () => {
     const ids = await Promise.all(
       Array.from({ length: 8 }, () => saveMedia(db, titan)),
