@@ -496,6 +496,107 @@ describe("listLibrary", () => {
     });
   });
 
+  describe("the visibility filter", () => {
+    async function fillVisibility() {
+      const ana = await newUser();
+      const ids: Record<string, string> = {};
+      for (const [title, visibility, status, type] of [
+        ["Pública anime", "public", "in_progress", "anime"],
+        ["Pública peli", "public", "completed", "movie"],
+        ["Amigos anime", "friends", "completed", "anime"],
+        ["Privada anime", "private", "planned", "anime"],
+        ["Privada peli", "private", "completed", "movie"],
+      ] as const) {
+        const id = await addMedia(title, { type });
+        ids[title] = id;
+        await addEntry(db, ana.id, id);
+        await saveEntry(db, ana.id, id, { ...completed, status, visibility });
+      }
+      return { ana, ids };
+    }
+
+    it("keeps one level at a time, and shows the level of each row", async () => {
+      const { ana } = await fillVisibility();
+
+      expect(await titles(ana.id, { visibility: "public" })).toEqual([
+        "Pública anime",
+        "Pública peli",
+      ]);
+      expect(await titles(ana.id, { visibility: "friends" })).toEqual([
+        "Amigos anime",
+      ]);
+      expect(await titles(ana.id, { visibility: "private" })).toEqual([
+        "Privada anime",
+        "Privada peli",
+      ]);
+      const all = flat(await listLibrary(db, ana.id, query(), "es"));
+      expect(
+        Object.fromEntries(all.map((row) => [row.title, row.visibility])),
+      ).toEqual({
+        "Pública anime": "public",
+        "Pública peli": "public",
+        "Amigos anime": "friends",
+        "Privada anime": "private",
+        "Privada peli": "private",
+      });
+    });
+
+    it("works with a tab and with the search, and the counts of the tabs follow it", async () => {
+      const { ana } = await fillVisibility();
+
+      expect(
+        await titles(ana.id, { visibility: "public", type: "movie" }),
+      ).toEqual(["Pública peli"]);
+      expect(
+        await titles(ana.id, { visibility: "private", q: "peli" }),
+      ).toEqual(["Privada peli"]);
+      const library = await listLibrary(
+        db,
+        ana.id,
+        query({ visibility: "public" }),
+        "es",
+      );
+      expect(library.counts).toMatchObject({ all: 2, anime: 1, movie: 1 });
+      expect(library.sections.map((section) => section.total)).toEqual([
+        1, 0, 0, 0, 1,
+      ]);
+    });
+
+    it("gives the same totals and rows, so the numbers agree", async () => {
+      const { ana } = await fillVisibility();
+
+      for (const visibility of ["public", "friends", "private"]) {
+        const library = await listLibrary(
+          db,
+          ana.id,
+          query({ visibility }),
+          "es",
+        );
+        const rows = flat(library).length;
+        expect(rows).toBe(library.counts.all);
+        expect(library.sections.reduce((sum, s) => sum + s.total, 0)).toBe(
+          rows,
+        );
+      }
+    });
+
+    it("never shows the entries of another person, whatever their level", async () => {
+      const { ids } = await fillVisibility();
+      const beto = await newUser();
+      const shared = ids["Pública anime"] as string;
+      await addEntry(db, beto.id, shared);
+      await saveEntry(db, beto.id, shared, {
+        ...completed,
+        visibility: "private",
+      });
+
+      expect(await titles(beto.id, { visibility: "public" })).toEqual([]);
+      expect(await titles(beto.id, { visibility: "private" })).toEqual([
+        "Pública anime",
+      ]);
+    });
+  });
+
   it("sorts by score, by year and by title inside each section, the ones without a value last", async () => {
     const ana = await newUser();
     const rows = [

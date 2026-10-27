@@ -168,6 +168,7 @@ export const libraryQuerySchema = z
       .optional()
       .catch(undefined),
     view: z.enum(libraryViews).optional().catch(undefined),
+    visibility: z.enum(visibilityLevels).optional().catch(undefined),
     in_progress_page: pageParam,
     planned_page: pageParam,
     paused_page: pageParam,

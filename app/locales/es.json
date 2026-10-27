@@ -453,12 +453,19 @@
     "filters": {
       "label": "Buscar y filtrar la biblioteca",
       "search": "Buscar por título",
+      "visibility": "Visibilidad",
       "year": "Año",
       "minScore": "Puntuación mínima",
       "sort": "Ordenar por",
       "any": "Todos",
       "apply": "Aplicar",
       "clear": "Quitar filtros"
+    },
+    "visibility": {
+      "any": "Todas",
+      "public": "Pública",
+      "friends": "Amigos",
+      "private": "Privada"
     },
     "sort": {
       "recent": "Recientes",

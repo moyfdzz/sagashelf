@@ -53,6 +53,7 @@ const row = (
   imageUrl: null,
   poster: "/img/tmdb/w185/a.jpg",
   status,
+  visibility: "private",
   progress: 0,
   totalEpisodes: 0,
   score: null,
@@ -445,6 +446,97 @@ describe("the score of an entry", () => {
     expect(rated).toContain("Puntuación: 8 de 10");
     expect(unrated).not.toContain("★");
     expect(unrated).not.toContain("Sin puntuar");
+  });
+});
+
+describe("the visibility", () => {
+  const withLevel = (view: LibraryView, visibility: string) =>
+    props({
+      view,
+      sections: sectionsOf({
+        completed: [row("a", "Dune", "completed", { visibility })],
+      }),
+    });
+
+  it("has a select with the levels, that keeps what the address says", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          params: { visibility: "friends" },
+          sections: threeEntries(),
+        })}
+      />,
+    );
+
+    expect(html).toContain('id="visibility"');
+    expect(html).toContain("Visibilidad");
+    expect(html).toContain(
+      '<option value="friends" selected="">Amigos</option>',
+    );
+    expect(html).toContain('<option value="public">Pública</option>');
+    expect(html).toContain('<option value="private">Privada</option>');
+    expect(html).toContain("Quitar filtros");
+  });
+
+  it("is kept in the links of the tabs, and dropped by clearing the filters", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          params: { visibility: "public" },
+          sections: threeEntries(),
+        })}
+      />,
+    );
+
+    expect(html).toContain('href="/library?type=movie&amp;visibility=public"');
+    expect(html).toContain('href="/library"');
+  });
+
+  it("is a label on the card of an entry that is not private, in the three views", async () => {
+    for (const view of ["covers", "titles", "grid"] as const) {
+      const pub = await render(
+        "es",
+        <Library {...withLevel(view, "public")} />,
+      );
+      const friends = await render(
+        "en",
+        <Library {...withLevel(view, "friends")} />,
+      );
+
+      expect(pub).toContain("Pública</span>");
+      expect(friends).toContain("Friends</span>");
+    }
+  });
+
+  it("shows no label on a private entry", async () => {
+    for (const view of ["covers", "titles", "grid"] as const) {
+      const html = await render(
+        "es",
+        <Library {...withLevel(view, "private")} />,
+      );
+
+      expect(html).not.toContain("Privada</span>");
+      expect(html).not.toContain("Pública</span>");
+      expect(html).not.toContain("Amigos</span>");
+    }
+  });
+
+  it("counts as a filter, so an empty answer offers to clear it", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          params: { visibility: "friends" },
+          counts: { all: 0, anime: 0, movie: 0, series: 0, book: 0, manga: 0 },
+          sections: sectionsOf({}),
+        })}
+      />,
+    );
+
+    expect(html).toContain("Ningún título coincide con tu búsqueda.");
+    expect(html).toContain("Quitar filtros");
   });
 });
 

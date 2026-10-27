@@ -11,6 +11,7 @@ import {
   type LibraryQuery,
   type LibraryStatus,
   type LibraryType,
+  type Visibility,
 } from "../library/schema";
 import { maxViewings } from "./viewings";
 
@@ -200,6 +201,7 @@ export type LibraryRow = {
   progress: number;
   totalEpisodes: number;
   score: number | null;
+  visibility: Visibility;
   /** The earlier viewings, and the current run if it is completed. */
   timesWatched: number;
 };
@@ -248,6 +250,9 @@ function filtersOf(
   if (query.year) parts.push(eq(mediaItems.year, query.year));
   // "Score" filters by a minimum: 8 shows everything rated 8 or higher.
   if (query.score) parts.push(sql`${libraryEntries.score} >= ${query.score}`);
+  if (query.visibility) {
+    parts.push(eq(libraryEntries.visibility, query.visibility));
+  }
   if (query.q) parts.push(matchesSearch(query.q));
   return and(...parts) ?? sql`true`;
 }
@@ -330,6 +335,7 @@ export async function listLibrary(
                ${mediaItems.type}::text AS type, ${mediaItems.year} AS year,
                ${mediaItems.imageUrl} AS image_url, ${libraryEntries.status}::text AS status,
                ${libraryEntries.progress} AS progress, ${libraryEntries.score} AS score,
+               ${libraryEntries.visibility}::text AS visibility,
                (
                  SELECT count(*)::int FROM library_viewings v WHERE v.entry_id = ${libraryEntries.id}
                ) + (CASE WHEN ${libraryEntries.status} = 'completed' THEN 1 ELSE 0 END)
@@ -363,6 +369,7 @@ export async function listLibrary(
         status: status as LibraryStatus,
         progress: Number(row.progress),
         score: row.score === null ? null : Number(row.score),
+        visibility: String(row.visibility) as Visibility,
         timesWatched: Number(row.times_watched),
         totalEpisodes: Number(row.total_episodes),
       });
