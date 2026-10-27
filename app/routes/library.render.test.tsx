@@ -101,6 +101,18 @@ describe("the entry page", () => {
     expect(html).not.toContain("Volver a verlo");
   });
 
+  it("has no maxlength on the notes, and no count until a script can update it", async () => {
+    const html = await render("es", <LibraryEntry {...entryProps()} />);
+
+    const notes = /<textarea[^>]*id="notes"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(notes).toBeTruthy();
+    expect(notes).not.toContain("maxLength");
+    expect(notes).not.toContain("maxlength");
+    // The hint stays; the count is drawn after the page has loaded.
+    expect(html).toContain("Hasta 2000 caracteres.");
+    expect(html).not.toContain('id="notes-count"');
+  });
+
   it("lets the finish date be set only while the title is completed", async () => {
     const open = await render("es", <LibraryEntry {...entryProps()} />);
     const done = await render(

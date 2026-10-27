@@ -724,6 +724,46 @@ describe("the notes", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 
+  it("hang from the icon, below it, and are never wider than the screen", async () => {
+    const html = await render(
+      "es",
+      <Library {...withNotes("covers", short)} />,
+    );
+
+    const panel = /<div role="group"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(panel).toContain("absolute");
+    expect(panel).toContain("top-full");
+    expect(panel).toContain("left-0");
+    expect(panel).toContain("w-[min(20rem,calc(100vw-2rem))]");
+    expect(panel).not.toContain("fixed");
+    // The details is what the panel hangs from.
+    expect(html).toMatch(/<details[^>]*relative[^>]*>/);
+  });
+
+  it("do not set a position in the markup, which the strict policy forbids", async () => {
+    const html = await render("es", <Library {...withNotes("covers", long)} />);
+
+    expect(html).not.toContain("style=");
+  });
+
+  it("show the whole note in a dialog of a fixed size, where only the text scrolls", async () => {
+    const html = await render("es", <Library {...withNotes("covers", long)} />);
+
+    const dialog = /<dialog[^>]*>/.exec(html)?.[0] ?? "";
+    expect(dialog).toContain("h-[min(32rem,calc(100vh-2rem))]");
+    expect(dialog).toContain("w-[min(36rem,calc(100vw-2rem))]");
+    // A closed dialog stays hidden: it is a flex box only while it is open.
+    expect(dialog).toContain("open:flex");
+    expect(dialog).not.toMatch(/[ "]flex[ "]/);
+    // The heading and the buttons stay in place; the text is the box that scrolls.
+    const body =
+      /<div class="[^"]*overflow-y-auto[^"]*">.*?<\/div>/s.exec(html)?.[0] ??
+      "";
+    expect(body).toContain("flex-1");
+    expect(body).toContain("Z y mucho más");
+    expect(html).not.toMatch(/<dialog[^>]*overflow-y-auto/);
+  });
+
   it("do not open on hover", async () => {
     const html = await render(
       "es",

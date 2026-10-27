@@ -418,6 +418,12 @@
       "openEntry": "Open the entry",
       "close": "Close"
     },
+    "counter": {
+      "value": "{{count}}/{{max}}",
+      "full": "You reached the limit of {{max}} characters.",
+      "over_one": "({{count}} character over)",
+      "over_other": "({{count}} characters over)"
+    },
     "badge": "({{count}})",
     "count_one": "{{count}} title",
     "count_other": "{{count}} titles",
