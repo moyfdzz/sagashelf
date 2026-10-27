@@ -506,7 +506,12 @@ export default function ProfileSettings({
               />
             </div>
             <label className="flex items-center gap-2">
-              <input type="checkbox" name="understood" required />
+              <input
+                type="checkbox"
+                name="understood"
+                required
+                className="shrink-0"
+              />
               {t("settings.delete.understood")}
             </label>
             <button

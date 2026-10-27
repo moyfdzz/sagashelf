@@ -109,7 +109,14 @@ describe("the import page", () => {
       />,
     );
 
-    const box = /<input[^>]*name="keepVisibility"[^>]*>/.exec(html)?.[0] ?? "";
+    const boxOf = (name: string) =>
+      new RegExp(`<input[^>]*name="${name}"[^>]*>`).exec(html)?.[0] ?? "";
+    // Both boxes have the same size and do not shrink next to a long hint.
+    for (const name of ["replace", "keepVisibility"]) {
+      expect(boxOf(name)).toContain("h-5 w-5 shrink-0");
+    }
+
+    const box = boxOf("keepVisibility");
     expect(box).toContain('type="checkbox"');
     expect(box).not.toContain("checked");
     expect(html).toContain("Keep the visibility stored in the file");
