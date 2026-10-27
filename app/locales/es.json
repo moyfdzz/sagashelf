@@ -410,6 +410,14 @@
   "library": {
     "title": "Mi biblioteca",
     "description": "Los títulos que sigues, con tu estado, progreso y puntuación.",
+    "notes": {
+      "button": "Ver las notas de {{title}}",
+      "preview": "Adelanto de las notas",
+      "full": "Ver nota completa",
+      "dialogTitle": "Notas de {{title}}",
+      "openEntry": "Abrir la entrada",
+      "close": "Cerrar"
+    },
     "badge": "({{count}})",
     "count_one": "{{count}} título",
     "count_other": "{{count}} títulos",

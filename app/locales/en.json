@@ -410,6 +410,14 @@
   "library": {
     "title": "My library",
     "description": "The titles you follow, with your status, progress and score.",
+    "notes": {
+      "button": "See the notes of {{title}}",
+      "preview": "Preview of the notes",
+      "full": "See the whole note",
+      "dialogTitle": "Notes of {{title}}",
+      "openEntry": "Open the entry",
+      "close": "Close"
+    },
     "badge": "({{count}})",
     "count_one": "{{count}} title",
     "count_other": "{{count}} titles",

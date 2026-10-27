@@ -54,6 +54,7 @@ const row = (
   poster: "/img/tmdb/w185/a.jpg",
   status,
   visibility: "private",
+  notes: null,
   progress: 0,
   totalEpisodes: 0,
   score: null,
@@ -619,6 +620,118 @@ describe("the controls", () => {
     );
 
     expect(tagOf(html, "Matrix")).toContain("text-accent underline");
+  });
+});
+
+describe("the notes", () => {
+  const short = "Muy buena, la vería otra vez.";
+  // Longer than the preview: the 201st character is "Z", so it only shows in the whole note.
+  const long = `${"a".repeat(200)}Z y mucho más\nsegunda línea`;
+  const withNotes = (view: LibraryView, notes: string | null) =>
+    props({
+      view,
+      sections: sectionsOf({
+        completed: [row("a", "Dune", "completed", { notes })],
+      }),
+    });
+
+  it("show an icon only on a card that has notes, in the three views", async () => {
+    for (const view of ["covers", "titles", "grid"] as const) {
+      const without = await render(
+        "es",
+        <Library {...withNotes(view, null)} />,
+      );
+      const empty = await render("es", <Library {...withNotes(view, "")} />);
+      const withText = await render(
+        "es",
+        <Library {...withNotes(view, short)} />,
+      );
+
+      expect(without).not.toContain("Ver las notas de");
+      expect(empty).not.toContain("Ver las notas de");
+      expect(withText).toContain('aria-label="Ver las notas de Dune"');
+    }
+  });
+
+  it("name the icon in English too", async () => {
+    const html = await render(
+      "en",
+      <Library {...withNotes("covers", short)} />,
+    );
+
+    expect(html).toContain('aria-label="See the notes of Dune"');
+    expect(html).toContain("Preview of the notes");
+  });
+
+  it("show a short note whole in the panel, with no button for more and no dialog", async () => {
+    const html = await render(
+      "es",
+      <Library {...withNotes("covers", short)} />,
+    );
+
+    expect(html).toContain(short);
+    expect(html).not.toContain("Ver nota completa");
+    expect(html).not.toContain("<dialog");
+  });
+
+  it("cut a long note in the panel, and keep the whole of it in a dialog", async () => {
+    const html = await render("es", <Library {...withNotes("covers", long)} />);
+
+    const panel = /<div role="group"[^>]*>.*?<\/div>/s.exec(html)?.[0] ?? "";
+    expect(panel).toContain(`${"a".repeat(200)}…`);
+    expect(panel).not.toContain("Z y mucho más");
+    expect(panel).toContain("Ver nota completa");
+
+    const dialog = /<dialog[^>]*>.*?<\/dialog>/s.exec(html)?.[0] ?? "";
+    expect(dialog).toContain("Z y mucho más");
+    expect(dialog).toContain("segunda línea");
+    expect(dialog).toContain("Notas de Dune");
+    expect(dialog).toContain("whitespace-pre-wrap");
+    expect(dialog).toContain('href="/library/a"');
+    // A form with method dialog closes it with no script.
+    expect(dialog).toContain('method="dialog"');
+    expect(dialog).toContain("Cerrar");
+  });
+
+  it("label the dialog with its heading", async () => {
+    const html = await render("es", <Library {...withNotes("grid", long)} />);
+
+    const labelled = /<dialog[^>]*aria-labelledby="([^"]+)"/.exec(html)?.[1];
+    expect(labelled).toBeTruthy();
+    expect(html).toContain(`id="${labelled}"`);
+  });
+
+  it("open with the native details element, so they work without a script", async () => {
+    const html = await render(
+      "es",
+      <Library {...withNotes("titles", short)} />,
+    );
+
+    const details = html.match(/<details[^>]*>/g) ?? [];
+    // The five sections, and the one of the notes, which starts closed.
+    expect(details).toHaveLength(6);
+    expect(details[details.length - 1]).not.toContain(" open");
+    expect(html).toMatch(/<summary[^>]*aria-label="Ver las notas de Dune"/);
+  });
+
+  it("write the notes as text, never as markup", async () => {
+    const html = await render(
+      "es",
+      <Library {...withNotes("covers", '<script>alert("x")</script>')} />,
+    );
+
+    expect(html).not.toContain("<script>alert");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("do not open on hover", async () => {
+    const html = await render(
+      "es",
+      <Library {...withNotes("covers", short)} />,
+    );
+
+    expect(html).not.toContain("onmouseover");
+    expect(html).not.toContain("onmouseenter");
   });
 });
 

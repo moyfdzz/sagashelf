@@ -597,6 +597,38 @@ describe("listLibrary", () => {
     });
   });
 
+  describe("the notes", () => {
+    it("come with each row, whole, and are empty when the person wrote none", async () => {
+      const ana = await newUser();
+      const withNote = await addMedia("Con nota");
+      const without = await addMedia("Sin nota");
+      const longest = "ñ".repeat(2000);
+      await addEntry(db, ana.id, withNote);
+      await addEntry(db, ana.id, without);
+      await saveEntry(db, ana.id, withNote, { ...completed, notes: longest });
+      await saveEntry(db, ana.id, without, { ...completed, notes: null });
+
+      const rows = flat(await listLibrary(db, ana.id, query(), "es"));
+
+      expect(rows.find((row) => row.title === "Con nota")?.notes).toBe(longest);
+      expect(rows.find((row) => row.title === "Sin nota")?.notes).toBeNull();
+    });
+
+    it("never come from the entry of another person", async () => {
+      const ana = await newUser();
+      const beto = await newUser();
+      const shared = await addMedia("Compartido");
+      await addEntry(db, ana.id, shared);
+      await addEntry(db, beto.id, shared);
+      await saveEntry(db, ana.id, shared, { ...completed, notes: "de Ana" });
+      await saveEntry(db, beto.id, shared, { ...completed, notes: "de Beto" });
+
+      const rows = flat(await listLibrary(db, beto.id, query(), "es"));
+
+      expect(rows.map((row) => row.notes)).toEqual(["de Beto"]);
+    });
+  });
+
   it("sorts by score, by year and by title inside each section, the ones without a value last", async () => {
     const ana = await newUser();
     const rows = [
