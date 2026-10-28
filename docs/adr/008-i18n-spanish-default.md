@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Done (SAG-8). The profile setting and the settings page are planned.
+- **Implementation:** Done (SAG-8). The profile language is set in the settings page (SAG-12); titles and synopses are kept per language (SAG-47, ADR-016).
 - **Tickets:** SAG-8, SAG-12, SAG-31
 
 ## Context
