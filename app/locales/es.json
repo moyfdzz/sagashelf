@@ -74,7 +74,8 @@
     "episode": "Episodio {{number}}",
     "viewOn": {
       "tmdb": "Ver en TMDB",
-      "openLibrary": "Ver en Open Library"
+      "openLibrary": "Ver en Open Library",
+      "mangadex": "Ver en MangaDex"
     },
     "by": "de {{names}}",
     "sources": "Los datos vienen de {{source}}. Más en <credits>Créditos</credits>.",
@@ -303,12 +304,15 @@
       "intro": "SagaShelf todavía no usa estas fuentes. Cuando lo haga, se mostrarán con este crédito:",
       "tvmaze": "Horarios de episodios de <site>TVmaze</site>, con licencia CC BY-SA.",
       "wikidata": "Relaciones entre títulos de <site>Wikidata</site> (Powered by Wikidata), de dominio público (CC0).",
-      "googleBooks": "Libros de <site>Google Books</site>, solo para mostrar y sin guardarse.",
-      "mangadex": "Datos de manga de <site>MangaDex</site>, solo metadatos: SagaShelf no muestra capítulos."
+      "googleBooks": "Libros de <site>Google Books</site>, solo para mostrar y sin guardarse."
     },
     "openLibrary": {
       "title": "Open Library",
       "body": "Los datos de libros (títulos, autores, años y descripciones) y sus portadas vienen de <site>Open Library</site>, un proyecto del Internet Archive. Las portadas se muestran a través de SagaShelf y no se guardan."
+    },
+    "mangadex": {
+      "title": "MangaDex",
+      "body": "Los datos de manga (títulos, autores, estado y sinopsis) y sus portadas vienen de <site>MangaDex</site>. Solo se usan metadatos: SagaShelf no muestra capítulos, ni tiene anuncios ni funciones de pago. Las portadas se muestran a través de SagaShelf y no se guardan."
     },
     "nonCommercial": {
       "title": "Proyecto sin fines de lucro",

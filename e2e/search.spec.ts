@@ -17,6 +17,7 @@ test("the search page asks for a term and has the type tabs", async ({
   }
   // Books and manga come with their providers, not before.
   await expect(tabs.getByRole("link", { name: "Libros" })).toHaveCount(0);
+  await expect(tabs.getByRole("link", { name: "Manga" })).toHaveCount(0);
 });
 
 test("a search works without JavaScript: the form sends q and the type", async ({
@@ -70,8 +71,8 @@ test("a query that is too long is refused with a message", async ({ page }) => {
 });
 
 test("a type that is not ours means all of them", async ({ page }) => {
-  // Manga is not searched yet, so its type is not one of ours.
-  await page.goto("/search?q=dune&type=manga");
+  // A custom entry is private and never searched, so its type is not one of ours.
+  await page.goto("/search?q=dune&type=custom");
 
   await expect(
     page

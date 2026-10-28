@@ -62,6 +62,16 @@ for (const [locale, key] of [
       }
     });
 
+    test("the credits page credits MangaDex with a link back", async ({
+      page,
+    }) => {
+      await page.goto("/credits");
+
+      await expect(
+        page.getByRole("main").getByRole("link", { name: "MangaDex" }),
+      ).toHaveAttribute("href", "https://mangadex.org/");
+    });
+
     test("the credits page credits Open Library with a link back", async ({
       page,
     }) => {

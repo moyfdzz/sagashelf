@@ -147,6 +147,48 @@ describe("the detail page loader", () => {
     });
   });
 
+  it("shows a manga with its authors, its cover through the proxy and a link to MangaDex", async () => {
+    const mangaId = "00000000-0000-4000-8000-000000000001";
+    const cover = "11111111-2222-4333-8444-555555555555.jpg";
+    mocks.getMediaDetail.mockResolvedValue(
+      detail({
+        type: "manga",
+        title: "Berserk",
+        titles: { es: "Berserk", en: "Berserk" },
+        originalTitle: null,
+        year: 1989,
+        creators: ["Miura Kentarou"],
+        synopsis: { es: "Guts caza demonios.", en: "Guts hunts demons." },
+        imageUrl: `https://uploads.mangadex.org/covers/${mangaId}/${cover}`,
+        status: "ongoing",
+        provider: "mangadex",
+        externalId: mangaId,
+      }),
+    );
+
+    const result = (await load("manga", `berserk-${id}`)) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result).toMatchObject({
+      type: "manga",
+      creators: ["Miura Kentarou"],
+      poster: `/img/mangadex/w342/${mangaId}_${cover}`,
+      synopsis: "Guts caza demonios.",
+      synopsisLocale: "es",
+      source: {
+        name: "mangadex",
+        label: "MangaDex",
+        url: `https://mangadex.org/title/${mangaId}`,
+      },
+    });
+    expect(result.jsonLd).toMatchObject({
+      "@type": "Book",
+      author: [{ "@type": "Person", name: "Miura Kentarou" }],
+    });
+  });
+
   it("offers a visitor the way to sign in and come back to the title", async () => {
     const result = await load("movie", `matrix-${id}`);
 

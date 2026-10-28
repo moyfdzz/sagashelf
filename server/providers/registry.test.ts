@@ -25,6 +25,29 @@ describe("buildProviders", () => {
     expect(second[0]).toBe(first[0]);
   });
 
+  it("has MangaDex only when it is switched on, with no key, and reuses it", () => {
+    const first = buildProviders({ mangadexEnabled: true });
+    const second = buildProviders({ mangadexEnabled: true });
+
+    expect(first.map((provider) => provider.id)).toEqual(["mangadex"]);
+    expect(second[0]).toBe(first[0]);
+    expect(buildProviders({ mangadexEnabled: false })).toEqual([]);
+  });
+
+  it("has all three in order when everything is on", () => {
+    const providers = buildProviders({
+      tmdbReadAccessToken: "demo-token",
+      openLibraryEnabled: true,
+      mangadexEnabled: true,
+    });
+
+    expect(providers.map((provider) => provider.id)).toEqual([
+      "tmdb",
+      "open_library",
+      "mangadex",
+    ]);
+  });
+
   it("has both, TMDB first", () => {
     const providers = buildProviders({
       tmdbReadAccessToken: "demo-token",

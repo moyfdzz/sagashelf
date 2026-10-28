@@ -37,6 +37,13 @@ export type HttpClientOptions = {
   /** Failures in a row that open the circuit, and how long it stays open. */
   failureThreshold?: number;
   openMs?: number;
+  /**
+   * Statuses that open the circuit at once and are never retried, for a provider that bans an
+   * address that keeps asking after a 429 or a 403 (MangaDex). The circuit stays open for
+   * `stopMs`, then one call tests it.
+   */
+  stopOnStatus?: readonly number[];
+  stopMs?: number;
   // Injectable so the tests need neither the network nor real time.
   fetch?: typeof fetch;
   now?: () => number;
@@ -81,6 +88,8 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     maxWaitMs = 1000,
     failureThreshold = 5,
     openMs = 30_000,
+    stopOnStatus = [],
+    stopMs = 60_000,
     fetch: fetchImpl = fetch,
     now = Date.now,
     sleep = defaultSleep,
@@ -191,7 +200,18 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
             error instanceof ProviderError
               ? error
               : new ProviderError(provider, "network");
-          if (callOptions.signal?.aborted || !isTransient(lastError)) break;
+          if (callOptions.signal?.aborted) break;
+          if (
+            lastError.kind === "http" &&
+            stopOnStatus.includes(lastError.status ?? 0)
+          ) {
+            // Asking again could get the address banned: open the circuit and say no more.
+            failures = failureThreshold;
+            openUntil = now() + stopMs;
+            probing = false;
+            throw lastError;
+          }
+          if (!isTransient(lastError)) break;
         }
       }
       const error = lastError ?? new ProviderError(provider, "network");

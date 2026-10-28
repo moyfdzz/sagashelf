@@ -35,6 +35,32 @@ const openGraphType = {
   manga: "book",
 } as const;
 
+/** Where the title is described: the key of its link text, the name to credit, and the page. */
+function sourceOf(provider: string, externalId: string) {
+  switch (provider) {
+    case "tmdb":
+      return {
+        name: "tmdb" as const,
+        label: "TMDB",
+        url: `https://www.themoviedb.org/${externalId}`,
+      };
+    case "open_library":
+      return {
+        name: "openLibrary" as const,
+        label: "Open Library",
+        url: `https://openlibrary.org/works/${externalId}`,
+      };
+    case "mangadex":
+      return {
+        name: "mangadex" as const,
+        label: "MangaDex",
+        url: `https://mangadex.org/title/${externalId}`,
+      };
+    default:
+      return null;
+  }
+}
+
 export async function loader(args: Route.LoaderArgs) {
   const { params, request, context } = args;
   const id = idFromSlug(params.slug);
@@ -118,18 +144,7 @@ export async function loader(args: Route.LoaderArgs) {
     description,
     poster,
     seasons: detail.seasons,
-    source:
-      detail.provider === "tmdb"
-        ? {
-            name: "tmdb" as const,
-            url: `https://www.themoviedb.org/${detail.externalId}`,
-          }
-        : detail.provider === "open_library"
-          ? {
-              name: "openLibrary" as const,
-              url: `https://openlibrary.org/works/${detail.externalId}`,
-            }
-          : null,
+    source: sourceOf(detail.provider, detail.externalId),
     canonicalUrl,
     shareImageUrl,
     jsonLd: buildJsonLd({
@@ -336,8 +351,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
         <Trans
           i18nKey="media.sources"
           values={{
-            source:
-              item.source?.name === "openLibrary" ? "Open Library" : "TMDB",
+            source: item.source?.label ?? "TMDB",
           }}
           components={{
             credits: <Link to="/credits" className="text-accent underline" />,

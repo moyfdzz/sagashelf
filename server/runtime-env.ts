@@ -83,12 +83,14 @@ export function getClerkKeys(): ClerkKeys | null {
   return clerkKeysFromEnv(env as unknown as Record<string, unknown>);
 }
 
-/** The data providers this deployment can use: TMDB with its secret, Open Library when enabled. */
+/** The data providers this deployment can use: TMDB with its secret, Open Library and MangaDex when enabled. */
 export function getMediaProviders() {
-  const { TMDB_READ_ACCESS_TOKEN, OPEN_LIBRARY_ENABLED } = getEnv();
+  const { TMDB_READ_ACCESS_TOKEN, OPEN_LIBRARY_ENABLED, MANGADEX_ENABLED } =
+    getEnv();
   return buildProviders({
     tmdbReadAccessToken: TMDB_READ_ACCESS_TOKEN,
     openLibraryEnabled: OPEN_LIBRARY_ENABLED === "true",
+    mangadexEnabled: MANGADEX_ENABLED === "true",
   });
 }
 

@@ -39,6 +39,18 @@ describe("parseEnv", () => {
     expect(message).not.toContain(bad);
   });
 
+  it("accepts MANGADEX_ENABLED as true or false and nothing else", () => {
+    expect(parseEnv({ APP_ENV: "preview", MANGADEX_ENABLED: "false" })).toEqual(
+      {
+        APP_ENV: "preview",
+        MANGADEX_ENABLED: "false",
+      },
+    );
+    expect(() =>
+      parseEnv({ APP_ENV: "preview", MANGADEX_ENABLED: "1" }),
+    ).toThrow(/MANGADEX_ENABLED/);
+  });
+
   it("accepts OPEN_LIBRARY_ENABLED as true or false and nothing else", () => {
     expect(
       parseEnv({ APP_ENV: "preview", OPEN_LIBRARY_ENABLED: "true" }),

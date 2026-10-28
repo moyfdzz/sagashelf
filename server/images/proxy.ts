@@ -1,4 +1,6 @@
-import { isAllowedRedirect, upstreamUrl } from "./sources";
+import { providerUserAgent } from "../providers/http";
+import { isRemoved } from "../providers/removed";
+import { imageSourceOf, isAllowedRedirect, upstreamUrl } from "./sources";
 
 /** A poster is a few hundred kilobytes at most; anything bigger is not what we asked for. */
 export const maxImageBytes = 2 * 1024 * 1024;
@@ -9,6 +11,29 @@ export const imageCacheSeconds = 24 * 60 * 60;
 const upstreamTimeoutMs = 3000;
 /** An Open Library cover needs two redirects; a third is the most we follow. */
 const maxRedirects = 3;
+
+/** The longest a cover waits for its turn at a provider with a limit; after that it is asked to come back. */
+const maxSpacingWaitMs = 3000;
+
+/** When each provider with a limit may be called next, in this isolate. */
+const sharedSpacing = new Map<string, number>();
+
+/**
+ * Takes the next free turn of a provider that allows `perSecond` calls a second, and says how long
+ * to wait for it, or null when the wait would be too long (nothing is taken then). A page of
+ * results asks for 20 covers at once; this spaces the calls instead of getting the address banned.
+ */
+function takeTurn(
+  spacing: Map<string, number>,
+  provider: string,
+  perSecond: number,
+  now: number,
+): number | null {
+  const start = Math.max(now, spacing.get(provider) ?? 0);
+  if (start - now > maxSpacingWaitMs) return null;
+  spacing.set(provider, start + 1000 / perSecond);
+  return start - now;
+}
 
 /** Where a redirect leads, when this provider may send us there. */
 function nextHop(provider: string, from: string, answer: Response) {
@@ -27,6 +52,12 @@ export type ImageProxyDeps = {
   /** Counts one request against the limit and says whether it may go on. */
   allow: () => Promise<boolean>;
   fetch?: typeof fetch;
+  // Injectable so the tests need neither real time nor the module's own state.
+  now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+  spacing?: Map<string, number>;
+  /** The titles to leave out; the real list unless a test passes its own. */
+  removed?: ReadonlySet<string>;
 };
 
 function keyFor(path: string): Request {
@@ -55,6 +86,13 @@ export async function serveImage(
   const upstream = upstreamUrl(provider, size, file);
   if (!upstream) return failure(404);
 
+  const source = imageSourceOf(provider);
+  // A title that was asked to be removed shows no cover, even one already in the cache.
+  const titleId = source?.externalIdOf?.(file);
+  if (titleId && isRemoved(provider, titleId, deps.removed)) {
+    return failure(404);
+  }
+
   const key = keyFor(`/${provider}/${size}/${file}`);
   try {
     const hit = await deps.cache?.match(key);
@@ -73,6 +111,26 @@ export async function serveImage(
     });
   }
 
+  if (source?.maxPerSecond) {
+    const wait = takeTurn(
+      deps.spacing ?? sharedSpacing,
+      provider,
+      source.maxPerSecond,
+      (deps.now ?? Date.now)(),
+    );
+    if (wait === null) {
+      return new Response(null, {
+        status: 429,
+        headers: { "Retry-After": "5", "Cache-Control": "no-store" },
+      });
+    }
+    if (wait > 0) {
+      await (deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(
+        wait,
+      );
+    }
+  }
+
   let answer: Response;
   try {
     const signal = AbortSignal.timeout(upstreamTimeoutMs);
@@ -83,6 +141,9 @@ export async function serveImage(
         // here: it is followed below, and only to a host this provider is allowed to use.
         redirect: "manual",
         signal,
+        ...(source?.sendUserAgent
+          ? { headers: { "User-Agent": providerUserAgent } }
+          : {}),
       });
       if (answer.status < 300 || answer.status >= 400) break;
       const next = nextHop(provider, target, answer);

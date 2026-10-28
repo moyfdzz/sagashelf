@@ -54,6 +54,14 @@ describe("the search page loader", () => {
     expect(mocks.limit).not.toHaveBeenCalled();
   });
 
+  it("offers a tab for manga only when a provider answers them", async () => {
+    mocks.providers.mockReturnValue([{ capabilities: { types: ["manga"] } }]);
+
+    const result = await load("?q=berserk");
+
+    expect(result.tabs).toEqual(["anime", "movie", "series", "manga"]);
+  });
+
   it("offers a tab for books only when a provider answers them", async () => {
     const without = await load("?q=dune");
     mocks.providers.mockReturnValue([{ capabilities: { types: ["book"] } }]);
@@ -143,7 +151,7 @@ describe("the search page loader", () => {
   });
 
   it("treats a type that is not ours as all of them", async () => {
-    await load("?q=dune&type=manga");
+    await load("?q=dune&type=custom");
     await load("?q=dune&type=%3Cscript%3E");
 
     expect(mocks.runSearch.mock.calls.map((call) => call[1].type)).toEqual([

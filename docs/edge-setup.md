@@ -142,3 +142,14 @@ Books come from Open Library, which needs no key ([ADR-021](adr/021-books-open-l
 - [ ] Previews Base: leave it unset, unless a preview is made to try books (then also in that preview's own settings, section 9).
 - [ ] Check after the deploy: `/search?q=dune&type=book` shows books with covers, a book opens, and the covers load from `/img/open_library/...` (no request goes to `covers.openlibrary.org` from the browser).
 - [ ] Migration `0009_media_items_creators` (a nullable column) applied in production by the owner **before** the merge, with the steps of the handoff (direct Neon connection, `npm.cmd run db:migrate`, then remove `DATABASE_URL`). Check with `SELECT column_name FROM information_schema.columns WHERE table_name = 'media_items' AND column_name = 'creators'`.
+
+## 12. MangaDex (SAG-66)
+
+Manga comes from MangaDex, which needs no key ([ADR-022](adr/022-manga-mangadex.md)). Like Open Library, it is switched on by a plain variable, `MANGADEX_ENABLED`, so CI and previews never call the real service.
+
+- [ ] Local value in `.dev.vars`: `MANGADEX_ENABLED=true` (name in `.env.example`).
+- [ ] **Production** variable `MANGADEX_ENABLED` = `true`, as plain text, in the Worker's Settings, Variables and Secrets, **after** the code is deployed (before that the code does not know the variable). Not in `wrangler.jsonc` for the same reason as section 11. No migration is needed.
+- [ ] Previews Base: leave it unset.
+- [ ] Check after the deploy: `/search?q=one+piece&type=manga` shows manga with covers and authors (the covers appear a few at a time, 4 a second), a manga opens with its synopsis and the link "Ver en MangaDex", and the covers load from `/img/mangadex/...`.
+- [ ] Watch for a few days: the search `failed` list or the log for `mangadex` with `429` or `403`. The Worker shares its outgoing address with others, so MangaDex may limit it; the circuit then opens for a minute and the rest of the search keeps working (ADR-022). If it happens often, tell the owner before changing anything.
+- [ ] Removal requests: nothing to do until one arrives. The procedure is in ADR-022 (a list in `server/providers/removed.ts`, a deploy, and deleting the saved row after the owner decides).

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { providerUserAgent } from "../providers/http";
 import { maxImageBytes, serveImage } from "./proxy";
 
 function fakeCache() {
@@ -279,5 +280,123 @@ describe("serveImage with redirects (Open Library covers)", () => {
     expect(looped.status).toBe(502);
     expect(loop).toHaveBeenCalledTimes(4);
     expect(empty.status).toBe(502);
+  });
+});
+
+describe("serveImage for MangaDex covers", () => {
+  const manga = "b00acc54-2bf1-440e-8f33-da87227d82d6";
+  const file = `${manga}_fac369b9-c8f3-4fa2-b9da-f2fab0a9ca35.png`;
+
+  it("sends the User-Agent, no cookies, and asks for the thumbnail", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => jpeg("cover"));
+
+    const response = await serveImage(
+      { ...deps({ fetch: fetcher }), spacing: new Map() },
+      "mangadex",
+      "w185",
+      file,
+    );
+
+    expect(response.status).toBe(200);
+    const [url, init] = fetcher.mock.calls[0] ?? [];
+    expect(String(url)).toBe(
+      `https://uploads.mangadex.org/covers/${manga}/fac369b9-c8f3-4fa2-b9da-f2fab0a9ca35.png.256.jpg`,
+    );
+    expect(init?.headers).toEqual({ "User-Agent": providerUserAgent });
+    expect(init?.redirect).toBe("manual");
+  });
+
+  it("does not send a User-Agent to a provider that did not ask for one", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => jpeg());
+
+    await serveImage(deps({ fetch: fetcher }), "tmdb", "w342", "a.jpg");
+
+    expect(fetcher.mock.calls[0]?.[1]?.headers).toBeUndefined();
+  });
+
+  it("spaces the calls to stay under the limit of the provider", async () => {
+    const sleeps: number[] = [];
+    const common = {
+      ...deps({ fetch: async () => jpeg("cover") }),
+      spacing: new Map<string, number>(),
+      now: () => 10_000,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+      },
+    };
+
+    for (let i = 0; i < 4; i += 1) {
+      await serveImage(common, "mangadex", "w185", file);
+    }
+
+    // 4 calls a second: a quarter of a second between turns, the first one at once.
+    expect(sleeps).toEqual([250, 500, 750]);
+  });
+
+  it("asks to come back when the wait would be too long, and calls nobody", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => jpeg());
+    const spacing = new Map([["mangadex", 10_000 + 3_500]]);
+
+    const response = await serveImage(
+      { ...deps({ fetch: fetcher }), spacing, now: () => 10_000 },
+      "mangadex",
+      "w185",
+      file,
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("5");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("serves from the cache without taking a turn", async () => {
+    const { cache } = fakeCache();
+    const spacing = new Map<string, number>();
+    const first = deps({ cache, fetch: async () => jpeg("cover") });
+
+    await serveImage({ ...first, spacing }, "mangadex", "w185", file);
+    const turnsAfterFirst = spacing.get("mangadex");
+    await serveImage({ ...first, spacing }, "mangadex", "w185", file);
+
+    expect(spacing.get("mangadex")).toBe(turnsAfterFirst);
+  });
+
+  it("does not serve the cover of a removed title, even one in the cache", async () => {
+    const { cache, store } = fakeCache();
+    const fetcher = vi.fn<typeof fetch>(async () => jpeg("cover"));
+    const common = { ...deps({ cache, fetch: fetcher }), spacing: new Map() };
+    await serveImage(common, "mangadex", "w185", file);
+    expect(store.size).toBe(1);
+
+    const response = await serveImage(
+      { ...common, removed: new Set([`mangadex:${manga}`]) },
+      "mangadex",
+      "w185",
+      file,
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not follow a redirect, which MangaDex does not use", async () => {
+    const fetcher = vi.fn<typeof fetch>(
+      async () =>
+        new Response(null, {
+          status: 302,
+          headers: { Location: "https://archive.org/a.jpg" },
+        }),
+    );
+
+    const response = await serveImage(
+      { ...deps({ fetch: fetcher }), spacing: new Map() },
+      "mangadex",
+      "w185",
+      file,
+    );
+
+    expect(response.status).toBe(502);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

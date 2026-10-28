@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { imageSrc, isAllowedRedirect, upstreamUrl } from "./sources";
+import {
+  imageSourceOf,
+  imageSrc,
+  isAllowedRedirect,
+  upstreamUrl,
+} from "./sources";
 
 describe("upstreamUrl", () => {
   it("builds the address of a TMDB image from the host written in the code", () => {
@@ -123,5 +128,73 @@ describe("isAllowedRedirect", () => {
 
     expect(isAllowedRedirect("tmdb", url)).toBe(false);
     expect(isAllowedRedirect("constructor", url)).toBe(false);
+  });
+});
+
+describe("MangaDex covers", () => {
+  const manga = "b00acc54-2bf1-440e-8f33-da87227d82d6";
+  const cover = "fac369b9-c8f3-4fa2-b9da-f2fab0a9ca35.png";
+
+  it.each([
+    ["w92", "256"],
+    ["w185", "256"],
+    ["w342", "512"],
+    ["w780", "512"],
+  ])("asks for the thumbnail that fits %s", (size, pixels) => {
+    expect(upstreamUrl("mangadex", size, `${manga}_${cover}`)).toBe(
+      `https://uploads.mangadex.org/covers/${manga}/${cover}.${pixels}.jpg`,
+    );
+  });
+
+  it.each([
+    ["a file with no manga id", cover],
+    ["a manga id that is not a uuid", `1234_${cover}`],
+    ["a cover that is not a uuid", `${manga}_cover.png`],
+    ["a path in the cover", `${manga}_../${cover}`],
+    ["another extension", `${manga}_fac369b9-c8f3-4fa2-b9da-f2fab0a9ca35.svg`],
+    ["a query", `${manga}_${cover}?x=1`],
+  ])("refuses %s", (_name, file) => {
+    expect(upstreamUrl("mangadex", "w342", file)).toBeNull();
+  });
+
+  it("turns a stored cover address into one of our own", () => {
+    expect(
+      imageSrc(`https://uploads.mangadex.org/covers/${manga}/${cover}`, "w185"),
+    ).toBe(`/img/mangadex/w185/${manga}_${cover}`);
+  });
+
+  it.each([
+    ["another host", `https://evil.example/covers/${manga}/${cover}`],
+    ["the API host", `https://api.mangadex.org/covers/${manga}/${cover}`],
+    [
+      "a thumbnail address",
+      `https://uploads.mangadex.org/covers/${manga}/${cover}.256.jpg`,
+    ],
+    ["another path", `https://uploads.mangadex.org/other/${manga}/${cover}`],
+  ])("gives no image for %s", (_name, imageUrl) => {
+    expect(imageSrc(imageUrl, "w185")).toBeNull();
+  });
+
+  it("tells the proxy to send a User-Agent, to space the calls and which title a file is of", () => {
+    const source = imageSourceOf("mangadex");
+
+    expect(source?.sendUserAgent).toBe(true);
+    expect(source?.maxPerSecond).toBe(4);
+    expect(source?.externalIdOf?.(`${manga}_${cover}`)).toBe(manga);
+    expect(imageSourceOf("tmdb")?.sendUserAgent).toBeUndefined();
+    expect(imageSourceOf("constructor")).toBeNull();
+  });
+});
+
+describe("the MangaDex cover pattern", () => {
+  it("only accepts a real dot before the extension", () => {
+    const manga = "b00acc54-2bf1-440e-8f33-da87227d82d6";
+    const cover = "fac369b9-c8f3-4fa2-b9da-f2fab0a9ca35";
+
+    expect(
+      upstreamUrl("mangadex", "w342", `${manga}_${cover}.png`),
+    ).not.toBeNull();
+    expect(upstreamUrl("mangadex", "w342", `${manga}_${cover}xpng`)).toBeNull();
+    expect(upstreamUrl("mangadex", "w342", `${manga}_${cover}-png`)).toBeNull();
   });
 });
