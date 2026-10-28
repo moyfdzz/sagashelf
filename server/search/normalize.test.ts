@@ -30,7 +30,7 @@ describe("normalizeQuery", () => {
 describe("searchTypeSchema", () => {
   it("accepts the types we search and nothing else", () => {
     expect(searchTypeSchema.safeParse("anime").success).toBe(true);
-    for (const bad of ["manga", "custom", "", "ANIME", null]) {
+    for (const bad of ["custom", "", "ANIME", null]) {
       expect(searchTypeSchema.safeParse(bad).success).toBe(false);
     }
   });
@@ -41,6 +41,7 @@ describe("searchTypeSchema", () => {
       "movie",
       "series",
       "book",
+      "manga",
     ]);
     expect(mediaKindsOf("movie")).toEqual(["movie"]);
   });

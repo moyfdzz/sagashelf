@@ -74,7 +74,8 @@
     "episode": "Episode {{number}}",
     "viewOn": {
       "tmdb": "View on TMDB",
-      "openLibrary": "View on Open Library"
+      "openLibrary": "View on Open Library",
+      "mangadex": "View on MangaDex"
     },
     "by": "by {{names}}",
     "sources": "The data comes from {{source}}. More in <credits>Credits</credits>.",
@@ -303,12 +304,15 @@
       "intro": "SagaShelf does not use these sources yet. When it does, they will be shown with this credit:",
       "tvmaze": "Episode schedules from <site>TVmaze</site>, licensed CC BY-SA.",
       "wikidata": "Relations between titles from <site>Wikidata</site> (Powered by Wikidata), public domain (CC0).",
-      "googleBooks": "Books from <site>Google Books</site>, for display only and never stored.",
-      "mangadex": "Manga data from <site>MangaDex</site>, metadata only: SagaShelf does not show chapters."
+      "googleBooks": "Books from <site>Google Books</site>, for display only and never stored."
     },
     "openLibrary": {
       "title": "Open Library",
       "body": "Book data (titles, authors, years and descriptions) and covers come from <site>Open Library</site>, a project of the Internet Archive. Covers are shown through SagaShelf and are not stored."
+    },
+    "mangadex": {
+      "title": "MangaDex",
+      "body": "Manga data (titles, authors, status and synopses) and covers come from <site>MangaDex</site>. Only metadata is used: SagaShelf shows no chapters, has no ads and no paid features. Covers are shown through SagaShelf and are not stored."
     },
     "nonCommercial": {
       "title": "A non-profit project",

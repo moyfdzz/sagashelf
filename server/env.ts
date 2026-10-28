@@ -34,6 +34,8 @@ const envSchema = z.object({
   // Switches Open Library on (SAG-14). It needs no key, so this is a plain variable, not a secret.
   // Left unset in CI and in previews, so no test reaches the real service.
   OPEN_LIBRARY_ENABLED: z.enum(["true", "false"]).optional(),
+  // The same for MangaDex (SAG-66): no key, a plain variable, unset in CI and in previews.
+  MANGADEX_ENABLED: z.enum(["true", "false"]).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

@@ -1,6 +1,6 @@
 import type { ProviderId } from "../providers/types";
 
-type ImageSource = {
+export type ImageSource = {
   host: string;
   /** The widths the proxy serves. Anything else is refused, so a caller cannot ask for more. */
   sizes: readonly string[];
@@ -16,7 +16,17 @@ type ImageSource = {
    * archive.org) lists exactly that domain.
    */
   redirectHosts?: RegExp;
+  /** Send the shared `User-Agent` with the call. MangaDex answers 400 without one. */
+  sendUserAgent?: boolean;
+  /** The most calls per second to this provider: the proxy spaces them out. */
+  maxPerSecond?: number;
+  /** The id of the title an image belongs to, so the list of removed titles can stop it. */
+  externalIdOf?(file: string): string | null;
 };
+
+const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+// `[.]` and not an escaped dot: inside a template literal `\.` is just `.`.
+const coverFile = `${uuid}[.](?:jpg|jpeg|png|webp|gif)`;
 
 /**
  * The only hosts the image proxy calls. The host is written here, never taken from the request,
@@ -47,12 +57,40 @@ export const imageSources = {
     // A cover answers with a redirect to archive.org, and that one to a server of its own.
     redirectHosts: /^(?:[a-z0-9-]+\.)*archive\.org$/,
   },
+  // A cover is /covers/<manga id>/<file>, and the thumbnails add .256.jpg or .512.jpg to the file
+  // name (also for a PNG: checked on 2026-10-28). The proxy file is "<manga id>_<file>". A hotlinked
+  // image gets a different one and MangaDex says to proxy its images; it answers 400 to a call with
+  // no User-Agent, and its limit is about 5 calls per second (terms read 2026-10-28).
+  mangadex: {
+    host: "uploads.mangadex.org",
+    sizes: ["w92", "w185", "w342", "w500", "w780"],
+    file: new RegExp(`^${uuid}_${coverFile}$`),
+    path: (size, file) => {
+      const [manga, cover] = file.split("_");
+      const thumbnail = size === "w92" || size === "w185" ? 256 : 512;
+      return `/covers/${manga}/${cover}.${thumbnail}.jpg`;
+    },
+    fileFromStored: (pathname) => {
+      const match = new RegExp(`^/covers/(${uuid})/(${coverFile})$`).exec(
+        pathname,
+      );
+      return match ? `${match[1]}_${match[2]}` : null;
+    },
+    sendUserAgent: true,
+    maxPerSecond: 4,
+    externalIdOf: (file) => file.split("_")[0] ?? null,
+  },
 } as const satisfies Partial<Record<ProviderId, ImageSource>>;
 
 export type ImageProvider = keyof typeof imageSources;
 
 export function isImageProvider(value: string): value is ImageProvider {
   return Object.hasOwn(imageSources, value);
+}
+
+/** What the proxy needs to know about a provider besides its address, or null. */
+export function imageSourceOf(provider: string): ImageSource | null {
+  return isImageProvider(provider) ? imageSources[provider] : null;
 }
 
 /** The address at the provider for one image, or null when the request is not one we serve. */

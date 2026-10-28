@@ -294,3 +294,62 @@ describe("circuit breaker", () => {
     expect(error.kind).toBe("http");
   });
 });
+
+describe("stopOnStatus (a provider that bans an address that keeps asking)", () => {
+  it("never retries those statuses and opens the circuit at once", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => status(429));
+    const { client } = setup(fetchImpl, { stopOnStatus: [429, 403] });
+
+    const first = await failureOf(client.getJson("https://x.test/a"));
+    const second = await failureOf(client.getJson("https://x.test/a"));
+
+    expect(first.status).toBe(429);
+    // One call, not three: no retry; and the second call is not even sent.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(second.kind).toBe("circuit_open");
+  });
+
+  it("does the same with a 403", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => status(403));
+    const { client } = setup(fetchImpl, { stopOnStatus: [429, 403] });
+
+    await failureOf(client.getJson("https://x.test/a"));
+    const again = await failureOf(client.getJson("https://x.test/a"));
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(again.kind).toBe("circuit_open");
+  });
+
+  it("tests the provider again after the pause, and closes the circuit when it answers", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(status(429))
+      .mockImplementation(async () => ok({ back: true }));
+    const { client, advance } = setup(fetchImpl, {
+      stopOnStatus: [429],
+      stopMs: 60_000,
+    });
+
+    await failureOf(client.getJson("https://x.test/a"));
+    advance(59_000);
+    expect((await failureOf(client.getJson("https://x.test/a"))).kind).toBe(
+      "circuit_open",
+    );
+    advance(2_000);
+
+    expect(await client.getJson("https://x.test/a")).toEqual({ back: true });
+    expect(await client.getJson("https://x.test/a")).toEqual({ back: true });
+  });
+
+  it("leaves a client without the option as it was: a 429 is retried", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(status(429))
+      .mockResolvedValueOnce(ok());
+    const { client } = setup(fetchImpl);
+
+    await client.getJson("https://x.test/a");
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});

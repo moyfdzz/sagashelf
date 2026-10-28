@@ -31,10 +31,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     : undefined;
   const title = t("search.title");
   const providers = getMediaProviders();
-  // Books get a tab only when a provider can answer them; the others are always there.
+  // Books and manga get a tab only when a provider can answer them; the others are always there.
   const tabs = searchTypes.filter(
     (kind) =>
-      kind !== "book" ||
+      (kind !== "book" && kind !== "manga") ||
       providers.some((provider) => provider.capabilities.types.includes(kind)),
   );
 

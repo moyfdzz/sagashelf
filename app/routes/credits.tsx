@@ -68,6 +68,16 @@ export default function Credits() {
           />
         </p>
       </LegalSection>
+      <LegalSection title={t("credits.mangadex.title")}>
+        <p>
+          <Trans
+            i18nKey="credits.mangadex.body"
+            components={{
+              site: <SourceLink href="https://mangadex.org/" />,
+            }}
+          />
+        </p>
+      </LegalSection>
       <LegalSection title={t("credits.soon.title")}>
         <p>{t("credits.soon.intro")}</p>
         <LegalList
@@ -91,13 +101,6 @@ export default function Credits() {
               i18nKey="credits.soon.googleBooks"
               components={{
                 site: <SourceLink href="https://books.google.com/" />,
-              }}
-            />,
-            <Trans
-              key="mangadex"
-              i18nKey="credits.soon.mangadex"
-              components={{
-                site: <SourceLink href="https://mangadex.org/" />,
               }}
             />,
           ]}
