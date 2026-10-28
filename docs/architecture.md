@@ -201,6 +201,13 @@ These are Cloudflare Workers Free plan limits read on 2026-10-20 (see [ADR-001](
 - 50 subrequests per invocation, and Cache API calls count toward it
 - 5 Cron Triggers per account, and `waitUntil()` work can run for up to 30 seconds after the response
 
+## Two things to know when writing end-to-end tests
+
+Found while stabilizing the flaky tests (SAG-53, 2026-10-27). The e2e tests run the production build on Miniflare, the local copy of the Workers runtime.
+
+- **The local rate limiter counts in windows fixed to the clock.** Miniflare resets the count at every minute (it was read in `miniflare/dist/src/workers/ratelimit/ratelimit-object.worker.js`), unlike the edge, which is only eventually consistent. A burst can fall in two windows, so a test of a limit of N must send `2N + 1` requests: in at most two windows, one of them gets more than N. A burst of `1.5N` passed or failed depending on the second of the minute in which it ran.
+- **An answer given before the body of a POST is read breaks the connection to Miniflare.** The next requests answer 500 (`TypeError: fetch failed`). The CI has no Clerk keys, so every POST to an account route is refused before its body is read. `requireUser` now calls `drainBody` (`server/http/body.ts`) before it refuses; an action that answers early for another reason (an `Origin` that does not match, a rate limit, a body too big) must read the body first, as `answerWithoutReading` does in several routes. On the edge this has no effect, so it was invisible in production.
+
 ## Folder map
 
 | Path                            | What lives there                                                                          |

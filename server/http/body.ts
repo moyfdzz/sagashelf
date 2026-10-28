@@ -66,3 +66,33 @@ export async function readForm(
     throw data({ error: "invalid_request" }, { status: 400 });
   }
 }
+
+/**
+ * Reads and throws away what is left of the body of a request, so that an answer given before the
+ * body was read (a refusal, a redirect to sign in) does not leave it half sent on the connection.
+ * With Miniflare, which runs the app in development, in the tests and in the preview, an unread
+ * body breaks the connection and the next requests answer 500 ("fetch failed"). Only GET and HEAD
+ * have no body to wait for. It stops after `maxBytes` and drops the rest. It never throws.
+ */
+export async function drainBody(
+  request: Request,
+  maxBytes = 1024 * 1024,
+): Promise<void> {
+  if (request.method === "GET" || request.method === "HEAD") return;
+  if (!request.body || request.bodyUsed) return;
+  try {
+    const reader = request.body.getReader();
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        return;
+      }
+    }
+  } catch {
+    // A locked or broken stream has nothing left to wait for.
+  }
+}

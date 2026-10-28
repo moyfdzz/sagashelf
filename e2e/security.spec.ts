@@ -152,7 +152,12 @@ test.describe("rate limiting", () => {
     const caller = `burst-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const statuses: number[] = [];
 
-    for (let i = 0; i < 45; i += 1) {
+    // The limit is 30 a minute (WRITE_LIMITER in wrangler.jsonc), and the local limiter counts in
+    // windows fixed to the clock: the count starts again at every minute. A burst can fall in two
+    // windows, so 45 requests could split 20 and 25 and never pass 30. Twice the limit plus one
+    // cannot: in at most two windows, one of them gets at least 31 (SAG-53).
+    const writeLimit = 30;
+    for (let i = 0; i < writeLimit * 2 + 1; i += 1) {
       const response = await request.post("/api/locale", {
         form: { locale: "es", redirectTo: "/" },
         headers: { Origin: baseURL ?? "", "CF-Connecting-IP": caller },

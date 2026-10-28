@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readBody, readForm, readText } from "./body";
+import { drainBody, readBody, readForm, readText } from "./body";
 
 const post = (
   body: BodyInit | ReadableStream<Uint8Array>,
@@ -150,5 +150,53 @@ describe("readForm", () => {
         ),
       ),
     ).toBe(400);
+  });
+});
+
+describe("drainBody", () => {
+  it("reads a body to the end, so the answer does not leave it half sent", async () => {
+    let pulled = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        if (pulled > 3) controller.close();
+        else controller.enqueue(new TextEncoder().encode("abc"));
+      },
+    });
+    const request = post(stream);
+
+    await drainBody(request);
+
+    expect(pulled).toBe(4);
+  });
+
+  it("stops at the limit and drops the rest of a body that is too big", async () => {
+    const { stream, wasCancelled } = chunked("aaaa", "bbbb", "cccc", "dddd");
+
+    await drainBody(post(stream), 6);
+
+    expect(wasCancelled()).toBe(true);
+  });
+
+  it("does not touch a request that has no body to wait for", async () => {
+    await expect(
+      drainBody(new Request("https://sagashelf.app/x")),
+    ).resolves.toBeUndefined();
+    await expect(
+      drainBody(new Request("https://sagashelf.app/x", { method: "HEAD" })),
+    ).resolves.toBeUndefined();
+    await expect(
+      drainBody(new Request("https://sagashelf.app/x", { method: "POST" })),
+    ).resolves.toBeUndefined();
+  });
+
+  it("never throws, whatever state the body is in", async () => {
+    const used = post("hola");
+    await used.text();
+    const locked = post("hola");
+    locked.body?.getReader();
+
+    await expect(drainBody(used)).resolves.toBeUndefined();
+    await expect(drainBody(locked)).resolves.toBeUndefined();
   });
 });

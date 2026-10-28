@@ -5,6 +5,7 @@ import { data, redirectDocument, type LoaderFunctionArgs } from "react-router";
 
 import { authorize, type Role, type SessionUser } from "./authorize";
 import { signInPath } from "./sign-in-url";
+import { drainBody } from "../http/body";
 import { getClerkKeys, getDb } from "../runtime-env";
 import { users } from "../db/schema";
 
@@ -35,6 +36,7 @@ async function hasVerifiedGoogle(clerkId: string): Promise<boolean> {
 async function guard(args: LoaderFunctionArgs, role?: Role) {
   if (!getClerkKeys()) {
     // A deployment without Clerk keys must never let anyone in.
+    await drainBody(args.request);
     throw data({ error: "auth_not_configured" }, { status: 503 });
   }
 
@@ -46,9 +48,11 @@ async function guard(args: LoaderFunctionArgs, role?: Role) {
     // A whole new page, not a move inside this one: the sign-in page has its own, wider CSP,
     // which only a new document gets. From a form sent in the background, a move inside the
     // page would leave a blank screen.
+    await drainBody(args.request);
     throw redirectDocument(signInPath(args.request.url));
   }
   // Same answer for "no account" and "wrong role": it does not tell which one failed.
+  await drainBody(args.request);
   throw data({ error: "forbidden" }, { status: 403 });
 }
 
