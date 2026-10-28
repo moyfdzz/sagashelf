@@ -23,7 +23,7 @@ The search (SAG-15) finds titles but a result opens nothing and shows no poster,
 
 **The page** is rendered on the server: poster, title and original title, year, kind and status, synopsis, seasons with their episodes (in `<details>`), a link to the source and a link to the credits. The synopsis is shown in the visitor's language, or in the other one when that is all we hold (with a `lang` attribute). The meta tags carry the canonical link, Open Graph (`og:type` by kind, `og:image` through the proxy at `w500`) and a `twitter:card`. JSON-LD (`Movie`, `TVSeries` or `Book`) goes in as a `script:ld+json` meta entry; it is a data block, not executable, so the CSP needs no change. The `Movie`/`TVSeries` choice for anime comes from the source id (`movie/…` or `tv/…`).
 
-**Refreshing.** When a title is older than 150 days (30 days before the 6 months TMDB allows), or has no synopsis in the visitor's language and is more than a day old, the loader asks the provider again with `waitUntil`, after answering. The visitor sees what we hold; the next visit sees the fresh data. A failure is logged as `media.refresh_failed` and tried again on a later visit. This is not a cron job: a title nobody opens is not refreshed, and the cron handler (and the removal of provider data that could not be refreshed) is still to do.
+**Refreshing.** When a title is older than 150 days (30 days before the 6 months TMDB allows), or has no synopsis in the visitor's language and is more than a day old, the loader asks the provider again with `waitUntil`, after answering. The visitor sees what we hold; the next visit sees the fresh data. A failure is logged as `media.refresh_failed` and tried again on a later visit. Refreshing on a visit does not reach a title nobody opens; the cron job of SAG-54 ([ADR-007](007-background-work-cron-and-outbox.md)) does. Removing the provider data of a title that could not be refreshed is still to do.
 
 **The image proxy** is `/img/:provider/:size/:file`, served from our own origin, so the CSP does not change and no browser talks to a provider.
 
@@ -42,7 +42,7 @@ The search (SAG-15) finds titles but a result opens nothing and shows no poster,
 - **Link a search result straight to the canonical page.** It needs our id, which a new title does not have yet. Opening through `/media/open` keeps the canonical address as the only one that is indexed.
 - **Let the browser load posters from `image.tmdb.org`** by adding the host to `img-src`. Simpler, but the provider then sees every visitor (their IP and what they look at), which ADR-016 forbids.
 - **No edge cache for images.** Zero risk about "hosting", but every poster would cost a call to TMDB on every visit and load. A one-day cache was chosen; the owner decided it on 2026-10-25.
-- **Refresh with a cron job only.** The cron handler is empty today, and refreshing on open is simple and covers the titles people look at.
+- **Refresh with a cron job only.** Refreshing on open is simple and covers the titles people look at; the cron job (SAG-54) covers the rest.
 
 ## Consequences
 
@@ -55,7 +55,7 @@ The search (SAG-15) finds titles but a result opens nothing and shows no poster,
 **Costs and risks**
 
 - The first visit to a new title waits for TMDB (one call for a movie, up to three for a long series) before it is redirected.
-- Nobody refreshes a title nobody opens, so a row can pass 180 days. Until the cron job exists, a stale row is not removed either.
+- A stale row that cannot be refreshed is not removed: the cron job (SAG-54) only logs it.
 - ~~The title in the row is that of the last language that saved it, so the title of a page can change with the language of the last person to refresh it.~~ Superseded by the amendment below (SAG-47): the title is kept per language.
 - The pages and the proxy were tried against the real TMDB only for the poster and the search. The saving path (`/media/open` and the page) was covered by unit and integration tests and not run against a real database from the app, because the Worker's database client talks to Neon over HTTPS and the local Postgres is not reachable that way. It must be tried on a preview.
 
@@ -74,7 +74,7 @@ A movie first opened in Spanish showed its Spanish title and synopsis to a visit
 
 - **Lighthouse budgets for a detail page** were not set: Lighthouse is informational in CI, so numbers would only be documentation. A page is one image (about 25 KB at `w342`) and a short list; measure it on the preview.
 - **Whether a one-day edge copy of an image is "hosting"** for TMDB (see above).
-- **The cron job** that refreshes titles older than 150 days and removes the provider data of one that cannot be refreshed before 180 days.
+- **Removing the provider data** of a title that cannot be refreshed before 180 days. The cron job that refreshes titles exists (SAG-54); this part does not.
 
 ## References
 

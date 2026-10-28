@@ -17,7 +17,7 @@ flowchart LR
     subgraph worker["Worker: sagashelf"]
       ssr["Server-rendered pages and resource routes<br/>app/routes"]
       srv["server/: env, database, providers, services"]
-      cron["scheduled handler<br/>Cron, every minute"]
+      cron["scheduled handler<br/>Cron, every 6 hours"]
     end
   end
 
@@ -43,7 +43,7 @@ flowchart LR
   class edge,neon,clerk,providers,discord planned
 ```
 
-Today the Worker serves the home page, the 404 and error pages, `/api/health` and `/api/locale`, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module. The `scheduled` handler exists and does nothing yet.
+Today the Worker serves the home page, the 404 and error pages, `/api/health` and `/api/locale`, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54); the outbox that would need it every minute is still planned.
 
 ## 2. Life of a request
 

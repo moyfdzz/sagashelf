@@ -1,7 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { findStaleMedia, saveMedia, saveParts } from "../server/db/media-store";
+import {
+  findMediaToRefresh,
+  findStaleMedia,
+  markRefreshAttempt,
+  saveMedia,
+  saveParts,
+} from "../server/db/media-store";
 import { mediaExternalIds, mediaItems, mediaParts } from "../server/db/schema";
 import type { NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
@@ -217,6 +223,27 @@ describe("saveMedia", () => {
     });
   });
 
+  it("keeps the year, the poster and the status when a refresh sends none of them (SAG-54)", async () => {
+    const id = await saveMedia(db, titan);
+
+    await saveMedia(db, {
+      ...titan,
+      year: null,
+      imageUrl: null,
+      status: "unknown",
+    });
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item).toMatchObject({
+      year: 2013,
+      imageUrl: "https://image.tmdb.org/t/p/w500/aot.jpg",
+      status: "finished",
+    });
+  });
+
   it("is refused by the table when the year is out of range", async () => {
     await expect(saveMedia(db, { ...titan, year: 12 })).rejects.toThrow();
     expect(await db.select().from(mediaItems)).toHaveLength(0);
@@ -341,5 +368,102 @@ describe("findStaleMedia", () => {
     );
 
     expect(await findStaleMedia(db)).toEqual([]);
+  });
+});
+
+describe("findMediaToRefresh and markRefreshAttempt", () => {
+  const complete = {
+    ...titan,
+    synopsis: { es: "Sinopsis", en: "Synopsis" },
+  };
+
+  /** A title held in both languages, with a synopsis in each. */
+  async function saveComplete(externalId: string) {
+    const media = {
+      ...complete,
+      externalId: { provider: "tmdb" as const, id: externalId },
+    };
+    await saveMedia(db, media, "es");
+    return saveMedia(db, media, "en");
+  }
+
+  /** Moves the last attempt back, so the title is not waiting out its retry window. */
+  const makeAttemptOld = (mediaId: string) =>
+    db.execute(
+      sql`UPDATE media_external_ids SET updated_at = now() - interval '3 days' WHERE media_id = ${mediaId}`,
+    );
+
+  it("lists what is stale first, oldest first, then what lacks a language", async () => {
+    const fresh = await saveComplete("tv/1");
+    const stale = await saveComplete("tv/2");
+    const older = await saveComplete("tv/3");
+    const oneLanguage = await saveMedia(
+      db,
+      { ...titan, externalId: { provider: "tmdb", id: "tv/4" } },
+      "es",
+    );
+    for (const id of [fresh, stale, older, oneLanguage])
+      await makeAttemptOld(id);
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '160 days' WHERE id = ${stale}`,
+    );
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '170 days' WHERE id = ${older}`,
+    );
+
+    const found = await findMediaToRefresh(db, 10);
+
+    expect(found.map((item) => item.mediaId)).toEqual([
+      older,
+      stale,
+      oneLanguage,
+    ]);
+    expect(found[0]).toEqual({
+      mediaId: older,
+      provider: "tmdb",
+      externalId: "tv/3",
+    });
+  });
+
+  it("respects the limit and leaves out the titles people made themselves", async () => {
+    const one = await saveComplete("tv/1");
+    const two = await saveComplete("tv/2");
+    for (const id of [one, two]) {
+      await makeAttemptOld(id);
+      await db.execute(
+        sql`UPDATE media_items SET fetched_at = now() - interval '160 days' WHERE id = ${id}`,
+      );
+    }
+    await db.insert(mediaItems).values({ type: "custom", title: "My own" });
+
+    expect(await findMediaToRefresh(db, 1)).toHaveLength(1);
+    expect(await findMediaToRefresh(db, 10)).toHaveLength(2);
+  });
+
+  it("leaves a title out for a day after an attempt, so a failing one does not block the rest", async () => {
+    const failing = await saveComplete("tv/1");
+    const other = await saveComplete("tv/2");
+    for (const id of [failing, other]) {
+      await makeAttemptOld(id);
+      await db.execute(
+        sql`UPDATE media_items SET fetched_at = now() - interval '160 days' WHERE id = ${id}`,
+      );
+    }
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '175 days' WHERE id = ${failing}`,
+    );
+    expect((await findMediaToRefresh(db, 1))[0]?.mediaId).toBe(failing);
+
+    await markRefreshAttempt(db, failing);
+
+    expect((await findMediaToRefresh(db, 1))[0]?.mediaId).toBe(other);
+    await makeAttemptOld(failing);
+    expect((await findMediaToRefresh(db, 1))[0]?.mediaId).toBe(failing);
+  });
+
+  it("has nothing to do when every title is fresh and complete", async () => {
+    await makeAttemptOld(await saveComplete("tv/1"));
+
+    expect(await findMediaToRefresh(db, 10)).toEqual([]);
   });
 });
