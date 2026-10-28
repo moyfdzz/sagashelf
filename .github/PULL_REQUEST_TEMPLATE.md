@@ -22,6 +22,10 @@ Ticket: SAG-
 
 Not run, and why:
 
+## README
+
+- [ ] This PR changes nothing that `README.md` describes (features, stack, commands), or I updated it here.
+
 ## Notes for the reviewer
 
 <!-- Decisions, trade-offs, risks, follow-ups, or where to look first. -->

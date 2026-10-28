@@ -1,25 +1,34 @@
 # SagaShelf
 
-**[sagashelf.app](https://sagashelf.app)** · Status: **rebuilding**
+**[sagashelf.app](https://sagashelf.app)** · Status: **live, in active development**
 
 SagaShelf is a personal, non-commercial portfolio project: a web app to search, track and share anime, movies, series, books and manga. Its signature feature is **sagas**: one page per story across every format (for example, Dune as books and films, or Attack on Titan as manga, anime and films) with your progress in each.
 
-## Planned features
+## What works today
 
-- Search and library for anime, movies, series, books and manga
+- Search for movies, series and anime, with a page for each title (synopsis, seasons and episodes, credits). Data comes from TMDB.
+- A personal library: statuses, progress, scores, private notes, and a history of the times you watched a title. It has tabs by type, search, filters, sort and list or grid views.
+- Accounts with Clerk (email or Google), a profile with a privacy level, and a username you can change.
+- Your data is yours: download a copy of it, restore your library from that copy, or delete your account and everything in it.
+- Spanish (default) and English, light and dark mode, responsive on phone, tablet and desktop.
+
+## Planned
+
 - Sagas that group every format of a story, with per-user progress
+- Books and manga (Open Library, MangaDex), and more sources for series and anime
 - Social layer: follow, friends (mutual follows), block, public/friends/private profiles
 - Custom entries for titles missing from the catalog
-- Trending pages, an admin dashboard, and incoming/outgoing webhooks
-- Spanish (default) and English, responsive on phone, tablet and desktop
+- Trending pages, statistics, an admin dashboard, and incoming/outgoing webhooks
 
-## Tech stack (target)
+The design behind each of them is in the [decision records](docs/adr/README.md).
+
+## Tech stack
 
 - TypeScript (strict), React Router v8 (framework mode, SSR), Tailwind CSS, Zod
-- Cloudflare Workers
-- Postgres on Neon with Drizzle (planned)
-- Clerk for accounts (planned; passwords are never stored by this app)
-- Vitest, Playwright, GitHub Actions
+- Cloudflare Workers, with a Cron Trigger that keeps the provider data fresh
+- Postgres on Neon with Drizzle
+- Clerk for accounts (passwords are never stored by this app)
+- Vitest, Playwright and GitHub Actions
 
 ## Getting started
 
@@ -32,12 +41,13 @@ npm run dev        # http://localhost:5173
 
 Other scripts: `npm run lint`, `npm run format`, `npm run typecheck`, `npm run test`, `npm run test:coverage`, `npm run test:e2e` (run `npx playwright install chromium` once), `npm run build`, and `npm run check` to run everything before a commit.
 
-Commits follow Conventional Commits with the ticket as scope, for example `feat(SAG-12): add saga page`. Git hooks check staged files and the commit message.
+Commits follow Conventional Commits with the ticket as scope, for example `feat(SAG-12): add saga page`. Git hooks check staged files and the commit message. Every pull request runs the quality checks, the database tests, the end-to-end tests and the security scans in GitHub Actions.
 
 ## Documentation
 
 - [Architecture overview](docs/architecture.md) with diagrams of the system, a request, search, webhooks, the data model and delivery
 - [Decision records](docs/adr/README.md): why each major choice was made, what else was considered, and what it costs
+- [Edge setup](docs/edge-setup.md): the Cloudflare and Clerk settings that live in dashboards and not in the code
 
 ## Database (local)
 

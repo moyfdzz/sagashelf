@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20 (refined 2026-10-21 in SAG-10, see "Changes made in SAG-10")
-- **Implementation:** Partial (sessions, guards and the sign-in and sign-up pages are built in SAG-10, the webhook in SAG-11; account settings and the full erasure are SAG-12)
+- **Implementation:** Done (sessions, guards and the sign-in and sign-up pages in SAG-10, the webhook in SAG-11, account settings and the full erasure in SAG-12). Open: no administrator exists and no route uses `requireRole` yet; how to protect one is the owner's decision (see `docs/edge-setup.md`, section 8).
 - **Tickets:** SAG-10, SAG-11, SAG-12, SAG-29
 
 ## Context

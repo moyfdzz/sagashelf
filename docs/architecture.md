@@ -21,9 +21,9 @@ flowchart LR
     end
   end
 
-  neon[("Neon Postgres<br/>planned, SAG-9")]
-  clerk["Clerk accounts<br/>sessions (SAG-10) and user webhook (SAG-11) built"]
-  providers["Data providers<br/>TMDB, TVmaze, Wikidata,<br/>Open Library, Google Books, MangaDex<br/>planned, SAG-13 to SAG-16"]
+  neon[("Neon Postgres<br/>Drizzle, SAG-9")]
+  clerk["Clerk accounts<br/>sessions (SAG-10), user webhook (SAG-11)"]
+  providers["Data providers<br/>TMDB built (SAG-13)<br/>TVmaze, Wikidata, Open Library,<br/>Google Books, MangaDex planned (SAG-14, SAG-16)"]
   discord["Discord webhooks<br/>planned, SAG-27"]
   gh["GitHub<br/>repository, Actions, ruleset"]
 
@@ -39,11 +39,11 @@ flowchart LR
 
   classDef built fill:#d1fae5,stroke:#047857,color:#064e3b
   classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:4 3,color:#374151
-  class user,ssr,srv,cron,gh built
-  class edge,neon,clerk,providers,discord planned
+  class user,edge,ssr,srv,cron,neon,clerk,gh built
+  class providers,discord planned
 ```
 
-Today the Worker serves the home page, the 404 and error pages, `/api/health` and `/api/locale`, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54); the outbox that would need it every minute is still planned.
+The Worker serves the pages (search, title pages, the library, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB is the only data provider built; the others are planned. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54); the outbox that would need it every minute is still planned.
 
 ## 2. Life of a request
 
@@ -70,7 +70,7 @@ sequenceDiagram
 
 See [ADR-008](adr/008-i18n-spanish-default.md) for the language rules and [ADR-006](adr/006-security-model.md) for the checks applied to every state-changing route.
 
-## 3. Search pipeline (planned)
+## 3. Search pipeline (built for TMDB, see [ADR-004](adr/004-search-strategy.md))
 
 ```mermaid
 flowchart TD
@@ -86,8 +86,8 @@ flowchart TD
   merge --> keep["Persist only items a user opens or adds,<br/>within each provider's terms"]
   keep -.-> l
 
-  classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:4 3,color:#374151
-  class q,n,l,enough,ans,cache,fan,merge,part,keep planned
+  classDef built fill:#d1fae5,stroke:#047857,color:#064e3b
+  class q,n,l,enough,ans,cache,fan,merge,part,keep built
 ```
 
 Providers by type: movies, series and anime use TMDB. Books use Open Library with Google Books as a fallback. Manga uses MangaDex plus the book providers. Details and the constraints that come from each provider's terms are in [ADR-004](adr/004-search-strategy.md) and [ADR-005](adr/005-providers-and-licensing.md).
@@ -189,7 +189,7 @@ See [ADR-010](adr/010-ci-cd-and-repository-rules.md).
 | ----------- | -------------------------------------- | ------------- | ---------------------------------------------------------- |
 | Local       | `npm run dev`, <http://localhost:5173> | `production`* | Create `.dev.vars` with `APP_ENV=development` to change it |
 | Preview     | One URL per branch from Workers Builds | `preview`     | Publicly reachable for now                                 |
-| Production  | `sagashelf.moyfdzz.workers.dev`        | `production`  | A custom domain is planned (SAG-7)                         |
+| Production  | <https://sagashelf.app>                | `production`  | `www` redirects to the apex domain (SAG-7)                 |
 
 \* The default value comes from `wrangler.jsonc`. Nothing reads `APP_ENV` yet.
 
