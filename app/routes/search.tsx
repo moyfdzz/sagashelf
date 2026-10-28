@@ -30,12 +30,20 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     ? typeResult.data
     : undefined;
   const title = t("search.title");
+  const providers = getMediaProviders();
+  // Books get a tab only when a provider can answer them; the others are always there.
+  const tabs = searchTypes.filter(
+    (kind) =>
+      kind !== "book" ||
+      providers.some((provider) => provider.capabilities.types.includes(kind)),
+  );
 
   if ([...q].length > queryMaxLength) {
     return {
       title,
       q: [...q].slice(0, queryMaxLength).join(""),
       type,
+      tabs,
       status: "too_long" as const,
       results: [],
       failed: [],
@@ -46,6 +54,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       title,
       q,
       type,
+      tabs,
       status: "idle" as const,
       results: [],
       failed: [],
@@ -60,7 +69,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     {
       searchLocal: async (normalized, kind, language) =>
         searchLocal(await getDb(), normalized, kind, language),
-      providers: getMediaProviders(),
+      providers,
       cache: getSearchCache(),
     },
     { query: q, type, locale: getLocale(context) === "en" ? "en" : "es" },
@@ -70,6 +79,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     title,
     q,
     type,
+    tabs,
     status: "done" as const,
     // A title we hold opens at once; one that only a provider knows is saved when it is opened.
     results: response.results.map((result) => ({
@@ -111,7 +121,7 @@ function tabHref(q: string, type: SearchType | undefined) {
 export default function Search({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { q, type, status, results, failed } = loaderData;
-  const tabs: (SearchType | undefined)[] = [undefined, ...searchTypes];
+  const tabs: (SearchType | undefined)[] = [undefined, ...loaderData.tabs];
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
@@ -204,6 +214,11 @@ export default function Search({ loaderData }: Route.ComponentProps) {
                 {result.originalTitle ? (
                   <p className="text-fg-muted text-sm">
                     {result.originalTitle}
+                  </p>
+                ) : null}
+                {result.creators?.length ? (
+                  <p className="text-fg-muted text-sm">
+                    {t("search.by", { names: result.creators.join(", ") })}
                   </p>
                 ) : null}
                 <p className="text-fg-muted mt-1 text-sm font-semibold">

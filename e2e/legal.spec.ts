@@ -62,6 +62,16 @@ for (const [locale, key] of [
       }
     });
 
+    test("the credits page credits Open Library with a link back", async ({
+      page,
+    }) => {
+      await page.goto("/credits");
+
+      await expect(
+        page.getByRole("main").getByRole("link", { name: "Open Library" }),
+      ).toHaveAttribute("href", "https://openlibrary.org/");
+    });
+
     test("the credits page shows the TMDB logo, its notice and the cookies link", async ({
       page,
     }) => {

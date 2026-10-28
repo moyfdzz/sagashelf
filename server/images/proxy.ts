@@ -1,4 +1,4 @@
-import { upstreamUrl } from "./sources";
+import { isAllowedRedirect, upstreamUrl } from "./sources";
 
 /** A poster is a few hundred kilobytes at most; anything bigger is not what we asked for. */
 export const maxImageBytes = 2 * 1024 * 1024;
@@ -7,6 +7,20 @@ const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 /** A day in the browser and in the edge cache, far inside the 6 months TMDB allows (ADR-017). */
 export const imageCacheSeconds = 24 * 60 * 60;
 const upstreamTimeoutMs = 3000;
+/** An Open Library cover needs two redirects; a third is the most we follow. */
+const maxRedirects = 3;
+
+/** Where a redirect leads, when this provider may send us there. */
+function nextHop(provider: string, from: string, answer: Response) {
+  const location = answer.headers.get("Location");
+  if (!location) return null;
+  try {
+    const next = new URL(location, from);
+    return isAllowedRedirect(provider, next) ? next.href : null;
+  } catch {
+    return null;
+  }
+}
 
 export type ImageProxyDeps = {
   cache: Cache | null;
@@ -61,12 +75,20 @@ export async function serveImage(
 
   let answer: Response;
   try {
-    answer = await (deps.fetch ?? fetch)(upstream, {
-      // A Worker sends no cookies or referrer of its own. A redirect is not followed (a 3xx
-      // answer is refused below), so the provider cannot send us to another host.
-      redirect: "manual",
-      signal: AbortSignal.timeout(upstreamTimeoutMs),
-    });
+    const signal = AbortSignal.timeout(upstreamTimeoutMs);
+    let target = upstream;
+    for (let hops = 0; ; hops += 1) {
+      answer = await (deps.fetch ?? fetch)(target, {
+        // A Worker sends no cookies or referrer of its own. The runtime never follows a redirect
+        // here: it is followed below, and only to a host this provider is allowed to use.
+        redirect: "manual",
+        signal,
+      });
+      if (answer.status < 300 || answer.status >= 400) break;
+      const next = nextHop(provider, target, answer);
+      if (!next || hops >= maxRedirects) return failure(502);
+      target = next;
+    }
   } catch {
     return failure(502);
   }

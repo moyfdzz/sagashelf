@@ -30,13 +30,18 @@ describe("normalizeQuery", () => {
 describe("searchTypeSchema", () => {
   it("accepts the types we search and nothing else", () => {
     expect(searchTypeSchema.safeParse("anime").success).toBe(true);
-    for (const bad of ["book", "manga", "custom", "", "ANIME", null]) {
+    for (const bad of ["manga", "custom", "", "ANIME", null]) {
       expect(searchTypeSchema.safeParse(bad).success).toBe(false);
     }
   });
 
   it("lists every type when none is chosen", () => {
-    expect(mediaKindsOf(undefined)).toEqual(["anime", "movie", "series"]);
+    expect(mediaKindsOf(undefined)).toEqual([
+      "anime",
+      "movie",
+      "series",
+      "book",
+    ]);
     expect(mediaKindsOf("movie")).toEqual(["movie"]);
   });
 });

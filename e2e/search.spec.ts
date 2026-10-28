@@ -70,8 +70,8 @@ test("a query that is too long is refused with a message", async ({ page }) => {
 });
 
 test("a type that is not ours means all of them", async ({ page }) => {
-  // Books are not searched yet, so their type is not one of ours.
-  await page.goto("/search?q=dune&type=book");
+  // Manga is not searched yet, so its type is not one of ours.
+  await page.goto("/search?q=dune&type=manga");
 
   await expect(
     page

@@ -32,6 +32,7 @@ function hit(overrides: Partial<LocalHit> = {}): LocalHit {
     title: "Dune",
     originalTitle: null,
     year: 2021,
+    creators: [],
     synopsis: {},
     imageUrl: null,
     popularity: 5,

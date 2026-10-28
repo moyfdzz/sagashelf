@@ -8,6 +8,7 @@ export type JsonLdInput = {
   originalTitle: string | null;
   description: string | null;
   year: number | null;
+  creators?: string[];
   /** Absolute addresses. */
   url: string;
   image: string | null;
@@ -34,6 +35,14 @@ export function buildJsonLd(input: JsonLdInput): Record<string, unknown> {
     ...(input.description ? { description: input.description } : {}),
     ...(input.image ? { image: input.image } : {}),
     ...(input.year ? { datePublished: String(input.year) } : {}),
+    ...(type === "Book" && input.creators?.length
+      ? {
+          author: input.creators.map((name) => ({
+            "@type": "Person",
+            name,
+          })),
+        }
+      : {}),
     ...(type === "TVSeries" && input.seasonCount > 0
       ? { numberOfSeasons: input.seasonCount }
       : {}),

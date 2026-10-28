@@ -110,6 +110,7 @@ export async function loader(args: Route.LoaderArgs) {
     title,
     pageTitle: t("app.pageTitle", { title }),
     originalTitle: detail.originalTitle,
+    creators: detail.creators,
     year: detail.year,
     status: detail.status,
     synopsis,
@@ -117,10 +118,18 @@ export async function loader(args: Route.LoaderArgs) {
     description,
     poster,
     seasons: detail.seasons,
-    sourceUrl:
+    source:
       detail.provider === "tmdb"
-        ? `https://www.themoviedb.org/${detail.externalId}`
-        : null,
+        ? {
+            name: "tmdb" as const,
+            url: `https://www.themoviedb.org/${detail.externalId}`,
+          }
+        : detail.provider === "open_library"
+          ? {
+              name: "openLibrary" as const,
+              url: `https://openlibrary.org/works/${detail.externalId}`,
+            }
+          : null,
     canonicalUrl,
     shareImageUrl,
     jsonLd: buildJsonLd({
@@ -130,6 +139,7 @@ export async function loader(args: Route.LoaderArgs) {
       originalTitle: detail.originalTitle,
       description,
       year: detail.year,
+      creators: detail.creators,
       url: canonicalUrl,
       image: shareImageUrl,
       seasonCount: detail.seasons.filter((season) => season.number > 0).length,
@@ -203,11 +213,18 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
               {t("media.originalTitle", { title: item.originalTitle })}
             </p>
           ) : null}
+          {item.creators.length > 0 ? (
+            <p className="mt-2">
+              {t("media.by", { names: item.creators.join(", ") })}
+            </p>
+          ) : null}
           <p className="text-fg-muted mt-2 font-semibold">
-            {t("media.summary", {
-              kind: t(`media.kinds.${item.type}`),
-              status: t(`media.status.${item.status}`),
-            })}
+            {item.status === "unknown"
+              ? t(`media.kinds.${item.type}`)
+              : t("media.summary", {
+                  kind: t(`media.kinds.${item.type}`),
+                  status: t(`media.status.${item.status}`),
+                })}
           </p>
 
           <h2 className="mt-6 text-xl font-semibold">{t("media.synopsis")}</h2>
@@ -219,14 +236,14 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
             <p className="text-fg-muted mt-2">{t("media.noSynopsis")}</p>
           )}
 
-          {item.sourceUrl ? (
+          {item.source ? (
             <p className="mt-4">
               <a
-                href={item.sourceUrl}
+                href={item.source.url}
                 rel="noreferrer"
                 className="text-accent underline"
               >
-                {t("media.viewOnTmdb")}
+                {t(`media.viewOn.${item.source.name}`)}
               </a>
             </p>
           ) : null}
@@ -318,6 +335,10 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
       <p className="text-fg-muted mt-10 text-sm">
         <Trans
           i18nKey="media.sources"
+          values={{
+            source:
+              item.source?.name === "openLibrary" ? "Open Library" : "TMDB",
+          }}
           components={{
             credits: <Link to="/credits" className="text-accent underline" />,
           }}

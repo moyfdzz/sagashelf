@@ -45,6 +45,9 @@ export const mediaItems = pgTable(
       .$type<LocalizedText>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    // The authors, in the order the source lists them (SAG-14). Null when the source has none;
+    // a refresh that brings none never erases the ones we hold.
+    creators: jsonb("creators").$type<string[]>(),
     imageUrl: text("image_url"),
     status: mediaStatus("status").notNull().default("unknown"),
     popularity: real("popularity").notNull().default(0),

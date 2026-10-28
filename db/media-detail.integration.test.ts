@@ -32,6 +32,21 @@ const titan: NormalizedMedia = {
 };
 
 describe("getMediaDetail", () => {
+  it("reads the authors of a book, and an empty list for a title with none", async () => {
+    const book = await saveMedia(db, {
+      ...titan,
+      type: "book",
+      creators: ["Frank Herbert"],
+      externalId: { provider: "open_library", id: "OL893414W" },
+    });
+    const anime = await saveMedia(db, titan);
+
+    expect((await getMediaDetail(db, book))?.creators).toEqual([
+      "Frank Herbert",
+    ]);
+    expect((await getMediaDetail(db, anime))?.creators).toEqual([]);
+  });
+
   it("reads a title with its source id and its seasons and episodes in order", async () => {
     const id = await saveMedia(db, titan);
     await saveParts(db, id, [

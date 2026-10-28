@@ -244,6 +244,42 @@ describe("saveMedia", () => {
     });
   });
 
+  it("stores the authors, keeps them when a refresh sends none and replaces them when it sends others (SAG-14)", async () => {
+    const book: NormalizedMedia = {
+      ...titan,
+      type: "book",
+      title: "Dune",
+      creators: ["Frank Herbert"],
+      externalId: { provider: "open_library", id: "OL893414W" },
+    };
+    const id = await saveMedia(db, book);
+    const read = async () =>
+      (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
+        ?.creators;
+    expect(await read()).toEqual(["Frank Herbert"]);
+
+    await saveMedia(db, { ...book, creators: undefined });
+    expect(await read()).toEqual(["Frank Herbert"]);
+    await saveMedia(db, { ...book, creators: [] });
+    expect(await read()).toEqual(["Frank Herbert"]);
+
+    await saveMedia(db, {
+      ...book,
+      creators: ["Frank Herbert", "Brian Herbert"],
+    });
+    expect(await read()).toEqual(["Frank Herbert", "Brian Herbert"]);
+  });
+
+  it("stores no authors for a title whose source lists none", async () => {
+    const id = await saveMedia(db, titan);
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item?.creators).toBeNull();
+  });
+
   it("is refused by the table when the year is out of range", async () => {
     await expect(saveMedia(db, { ...titan, year: 12 })).rejects.toThrow();
     expect(await db.select().from(mediaItems)).toHaveLength(0);

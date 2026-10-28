@@ -41,7 +41,8 @@
     "count_one": "{{count}} result",
     "count_other": "{{count}} results",
     "partial": "Some sources did not answer in time, so a result may be missing. Try again in a moment.",
-    "year": "({{year}})"
+    "year": "({{year}})",
+    "by": "by {{names}}"
   },
   "media": {
     "kinds": {
@@ -71,8 +72,12 @@
     "seasons": "Seasons",
     "season": "Season {{number}}",
     "episode": "Episode {{number}}",
-    "viewOnTmdb": "View on TMDB",
-    "sources": "The data comes from TMDB. More in <credits>Credits</credits>.",
+    "viewOn": {
+      "tmdb": "View on TMDB",
+      "openLibrary": "View on Open Library"
+    },
+    "by": "by {{names}}",
+    "sources": "The data comes from {{source}}. More in <credits>Credits</credits>.",
     "library": {
       "add": "Add to my library",
       "inLibrary": "In your library: {{status}}",
@@ -298,9 +303,12 @@
       "intro": "SagaShelf does not use these sources yet. When it does, they will be shown with this credit:",
       "tvmaze": "Episode schedules from <site>TVmaze</site>, licensed CC BY-SA.",
       "wikidata": "Relations between titles from <site>Wikidata</site> (Powered by Wikidata), public domain (CC0).",
-      "openLibrary": "Books from <site>Open Library</site>.",
       "googleBooks": "Books from <site>Google Books</site>, for display only and never stored.",
       "mangadex": "Manga data from <site>MangaDex</site>, metadata only: SagaShelf does not show chapters."
+    },
+    "openLibrary": {
+      "title": "Open Library",
+      "body": "Book data (titles, authors, years and descriptions) and covers come from <site>Open Library</site>, a project of the Internet Archive. Covers are shown through SagaShelf and are not stored."
     },
     "nonCommercial": {
       "title": "A non-profit project",

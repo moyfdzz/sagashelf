@@ -4,28 +4,29 @@ An ADR records one significant decision: what was decided, why, what else was co
 
 ## Index
 
-| ADR                                              | Decision                                                                               | Status   | Implementation                        |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------- | -------- | ------------------------------------- |
-| [001](001-runtime-react-router-on-workers.md)    | React Router v8 (framework mode, SSR) on Cloudflare Workers                            | Accepted | Done (SAG-3)                          |
-| [002](002-data-postgres-neon-drizzle.md)         | Postgres on Neon with Drizzle                                                          | Accepted | Done (SAG-9)                          |
-| [003](003-auth-clerk.md)                         | Clerk for accounts, local `users` mirror                                               | Accepted | Done (SAG-10, SAG-11, SAG-12)         |
-| [004](004-search-strategy.md)                    | Search: local first, parallel typed fan-out, fallback chains, caching                  | Accepted | Partial (SAG-15)                      |
-| [005](005-providers-and-licensing.md)            | Data providers, their terms, and the ones we do not use                                | Accepted | Partial (SAG-13, 17, 31; 14, 16 next) |
-| [006](006-security-model.md)                     | Threat model, controls and where they live                                             | Accepted | Partial (see the ADR)                 |
-| [007](007-background-work-cron-and-outbox.md)    | One Cron Trigger handler plus a transactional outbox                                   | Accepted | Partly done (SAG-54); outbox planned  |
-| [008](008-i18n-spanish-default.md)               | Spanish by default, English selectable                                                 | Accepted | Done (SAG-8)                          |
-| [009](009-analytics-cookieless.md)               | Cookieless first-party analytics with daily rollups                                    | Accepted | Planned (SAG-24)                      |
-| [010](010-ci-cd-and-repository-rules.md)         | CI, security scans, previews and the `main` ruleset                                    | Accepted | Done (SAG-5)                          |
-| [011](011-edge-security-and-domain.md)           | Domain, security headers, CSP with nonces, rate limiting and crawler policy            | Accepted | Partial (SAG-7, plus dashboard steps) |
-| [012](012-neon-over-supabase.md)                 | Neon for the database, compared with Supabase on the Free plan                         | Accepted | Done (SAG-9)                          |
-| [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback | Accepted | Done (SAG-12)                         |
-| [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)     | Accepted | Done (SAG-12)                         |
-| [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                               | Accepted | Done (SAG-37)                         |
-| [016](016-provider-layer-and-tmdb.md)            | The provider layer and TMDB: the interface, the HTTP client and the 6-month cache rule | Accepted | Done (SAG-13)                         |
-| [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                     | Accepted | Done (SAG-17)                         |
-| [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry          | Accepted | Partial (SAG-18)                      |
-| [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)    | Accepted | Done (SAG-48)                         |
-| [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                  | Accepted | Partial (SAG-41)                      |
+| ADR                                              | Decision                                                                                  | Status   | Implementation                        |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------- | -------- | ------------------------------------- |
+| [001](001-runtime-react-router-on-workers.md)    | React Router v8 (framework mode, SSR) on Cloudflare Workers                               | Accepted | Done (SAG-3)                          |
+| [002](002-data-postgres-neon-drizzle.md)         | Postgres on Neon with Drizzle                                                             | Accepted | Done (SAG-9)                          |
+| [003](003-auth-clerk.md)                         | Clerk for accounts, local `users` mirror                                                  | Accepted | Done (SAG-10, SAG-11, SAG-12)         |
+| [004](004-search-strategy.md)                    | Search: local first, parallel typed fan-out, fallback chains, caching                     | Accepted | Partial (SAG-15)                      |
+| [005](005-providers-and-licensing.md)            | Data providers, their terms, and the ones we do not use                                   | Accepted | Partial (SAG-13, 17, 31; 14, 16 next) |
+| [006](006-security-model.md)                     | Threat model, controls and where they live                                                | Accepted | Partial (see the ADR)                 |
+| [007](007-background-work-cron-and-outbox.md)    | One Cron Trigger handler plus a transactional outbox                                      | Accepted | Partly done (SAG-54); outbox planned  |
+| [008](008-i18n-spanish-default.md)               | Spanish by default, English selectable                                                    | Accepted | Done (SAG-8)                          |
+| [009](009-analytics-cookieless.md)               | Cookieless first-party analytics with daily rollups                                       | Accepted | Planned (SAG-24)                      |
+| [010](010-ci-cd-and-repository-rules.md)         | CI, security scans, previews and the `main` ruleset                                       | Accepted | Done (SAG-5)                          |
+| [011](011-edge-security-and-domain.md)           | Domain, security headers, CSP with nonces, rate limiting and crawler policy               | Accepted | Partial (SAG-7, plus dashboard steps) |
+| [012](012-neon-over-supabase.md)                 | Neon for the database, compared with Supabase on the Free plan                            | Accepted | Done (SAG-9)                          |
+| [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback    | Accepted | Done (SAG-12)                         |
+| [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)        | Accepted | Done (SAG-12)                         |
+| [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                                  | Accepted | Done (SAG-37)                         |
+| [016](016-provider-layer-and-tmdb.md)            | The provider layer and TMDB: the interface, the HTTP client and the 6-month cache rule    | Accepted | Done (SAG-13)                         |
+| [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                        | Accepted | Done (SAG-17)                         |
+| [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry             | Accepted | Partial (SAG-18)                      |
+| [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)       | Accepted | Done (SAG-48)                         |
+| [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
+| [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 
 "Accepted" means the decision is made. "Planned" means it is not built yet, so the ADR describes the intended design and may be refined by its ticket without a new ADR as long as the decision itself does not change.
 

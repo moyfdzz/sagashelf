@@ -43,6 +43,7 @@ function localToResult(hit: LocalHit, locale: Locale): SearchResult {
       title: hit.title,
       originalTitle: hit.originalTitle,
       year: hit.year,
+      creators: hit.creators,
       synopsis: hit.synopsis,
       imageUrl: hit.imageUrl,
       status: "unknown",

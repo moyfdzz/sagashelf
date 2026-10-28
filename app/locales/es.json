@@ -41,7 +41,8 @@
     "count_one": "{{count}} resultado",
     "count_other": "{{count}} resultados",
     "partial": "Algunas fuentes no respondieron a tiempo, así que puede faltar algún resultado. Inténtalo de nuevo en un momento.",
-    "year": "({{year}})"
+    "year": "({{year}})",
+    "by": "de {{names}}"
   },
   "media": {
     "kinds": {
@@ -71,8 +72,12 @@
     "seasons": "Temporadas",
     "season": "Temporada {{number}}",
     "episode": "Episodio {{number}}",
-    "viewOnTmdb": "Ver en TMDB",
-    "sources": "Los datos vienen de TMDB. Más en <credits>Créditos</credits>.",
+    "viewOn": {
+      "tmdb": "Ver en TMDB",
+      "openLibrary": "Ver en Open Library"
+    },
+    "by": "de {{names}}",
+    "sources": "Los datos vienen de {{source}}. Más en <credits>Créditos</credits>.",
     "library": {
       "add": "Añadir a mi biblioteca",
       "inLibrary": "En tu biblioteca: {{status}}",
@@ -298,9 +303,12 @@
       "intro": "SagaShelf todavía no usa estas fuentes. Cuando lo haga, se mostrarán con este crédito:",
       "tvmaze": "Horarios de episodios de <site>TVmaze</site>, con licencia CC BY-SA.",
       "wikidata": "Relaciones entre títulos de <site>Wikidata</site> (Powered by Wikidata), de dominio público (CC0).",
-      "openLibrary": "Libros de <site>Open Library</site>.",
       "googleBooks": "Libros de <site>Google Books</site>, solo para mostrar y sin guardarse.",
       "mangadex": "Datos de manga de <site>MangaDex</site>, solo metadatos: SagaShelf no muestra capítulos."
+    },
+    "openLibrary": {
+      "title": "Open Library",
+      "body": "Los datos de libros (títulos, autores, años y descripciones) y sus portadas vienen de <site>Open Library</site>, un proyecto del Internet Archive. Las portadas se muestran a través de SagaShelf y no se guardan."
     },
     "nonCommercial": {
       "title": "Proyecto sin fines de lucro",

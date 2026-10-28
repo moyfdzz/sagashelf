@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
   getDb: vi.fn(),
   searchLocal: vi.fn(),
+  providers: vi.fn<() => { capabilities: { types: string[] } }[]>(),
 }));
 
 vi.mock("~server/search/pipeline", () => ({ runSearch: mocks.runSearch }));
@@ -16,7 +17,7 @@ vi.mock("~server/db/search-local", () => ({
 }));
 vi.mock("~server/runtime-env", () => ({
   getDb: mocks.getDb,
-  getMediaProviders: () => [],
+  getMediaProviders: () => mocks.providers(),
   getSearchCache: () => ({ get: async () => null, put: async () => undefined }),
   getSearchLimiter: () => ({ limit: mocks.limit }),
 }));
@@ -34,6 +35,7 @@ beforeEach(() => {
   mocks.limit.mockReset().mockResolvedValue({ success: true });
   mocks.getDb.mockReset().mockResolvedValue({ fake: "database" });
   mocks.searchLocal.mockReset().mockResolvedValue([]);
+  mocks.providers.mockReset().mockReturnValue([]);
 });
 
 const load = (query: string) =>
@@ -50,6 +52,18 @@ describe("the search page loader", () => {
     expect(mocks.runSearch).not.toHaveBeenCalled();
     // The empty page does not count against the limit either.
     expect(mocks.limit).not.toHaveBeenCalled();
+  });
+
+  it("offers a tab for books only when a provider answers them", async () => {
+    const without = await load("?q=dune");
+    mocks.providers.mockReturnValue([{ capabilities: { types: ["book"] } }]);
+    const withBooks = await load("?q=dune");
+    const idle = await load("");
+
+    expect(without.tabs).toEqual(["anime", "movie", "series"]);
+    expect(withBooks.tabs).toEqual(["anime", "movie", "series", "book"]);
+    // The empty page has the tabs too.
+    expect(idle.tabs).toEqual(["anime", "movie", "series", "book"]);
   });
 
   it("does not search for a single letter", async () => {
@@ -129,7 +143,7 @@ describe("the search page loader", () => {
   });
 
   it("treats a type that is not ours as all of them", async () => {
-    await load("?q=dune&type=book");
+    await load("?q=dune&type=manga");
     await load("?q=dune&type=%3Cscript%3E");
 
     expect(mocks.runSearch.mock.calls.map((call) => call[1].type)).toEqual([
