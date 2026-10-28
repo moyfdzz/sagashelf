@@ -1,6 +1,7 @@
 import { createRequestHandler } from "react-router";
 
 import { apexRedirectUrl } from "~server/host";
+import { runScheduledJobs } from "~server/jobs/scheduled";
 import { applySecurityHeaders } from "~server/security-headers";
 
 const requestHandler = createRequestHandler(
@@ -18,6 +19,8 @@ export default {
     // Every response the Worker produces carries the security headers.
     return applySecurityHeaders(response);
   },
-  // Cron jobs are added with their own tickets; the trigger lives in wrangler.jsonc.
-  async scheduled() {},
+  // The trigger lives in wrangler.jsonc. Each job is a small function in server/jobs (ADR-007).
+  async scheduled(_controller, _env, ctx) {
+    ctx.waitUntil(runScheduledJobs());
+  },
 } satisfies ExportedHandler<Env>;

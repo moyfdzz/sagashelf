@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Planned (SAG-27, SAG-24, SAG-28). The empty `scheduled` handler already exists in `workers/app.ts`.
-- **Tickets:** SAG-27, SAG-24, SAG-28
+- **Implementation:** The handler and the first job (refreshing titles, SAG-54) are done. The outbox, the alert checks and the rollups are planned (SAG-27, SAG-24, SAG-28).
+- **Tickets:** SAG-54, SAG-27, SAG-24, SAG-28
 
 ## Context
 
@@ -40,6 +40,20 @@ Some work must happen outside a request: delivering webhooks to Discord with ret
 ## Open questions
 
 - Whether the 10 ms CPU limit is enough for the rollup job (SAG-24). It may need to be split into small steps across several runs.
+
+## Amendment (2026-10-28, SAG-54): the first job, refreshing titles, and its schedule
+
+The `scheduled` handler now calls `runScheduledJobs` (`server/jobs/scheduled.ts`), which runs the jobs one after another and logs a failure by name without throwing. The first job is `refreshStaleMedia` (`server/jobs/refresh-stale-media.ts`).
+
+- **Schedule: `0 */6 * * *`** (every 6 hours, in UTC), declared in `triggers.crons` of `wrangler.jsonc`. One trigger of the 5 the Free plan allows. The decision above says the handler runs every minute because the outbox needs it; that part is still planned. Refreshing titles does not need it, and every run wakes the Neon compute (it sleeps after 5 minutes, ADR-002), so the trigger is as rare as the job allows. When the outbox arrives it changes the expression and this job keeps its own cadence by checking the time of the run.
+- **Batch: 5 titles per run**, so up to 20 a day. A title costs at most: 2 provider calls for the details (Spanish and English), 2 saves, 2 or 3 calls for the seasons of a series (20 seasons per call, ADR-016), 1 to save them and 1 to note a failure, about 8 subrequests. Five titles and the list query stay near 41 of the 50 the Free plan allows per invocation (ADR-001); a series with more than 20 seasons adds one call per 20.
+- **Which titles:** the ones whose `fetched_at` is older than 150 days, oldest first, and then the ones with no title or synopsis in Spanish or in English (it fills the language a title was never asked for, SAG-47). The titles people made themselves (`custom`) are left out.
+- **Both languages, all or nothing.** Each title is asked for in both languages and saved only when both answers arrive, so a failure leaves it as it was. English is saved first, so the `title` column ends in Spanish, the default.
+- **A failure does not stop the batch, and does not block the queue.** A title the provider fails on, or no longer knows, is noted by touching `updated_at` of its external id (`saveMedia` touches it on a success), and it is left out for 24 hours. Without this, the five oldest failing titles would take every run. No new column was needed.
+- **Nothing is erased with a null.** `saveMedia` keeps the stored year, poster and status when the source sends none (`unknown` for the status), as it already did with the original title (SAG-50) and the synopsis. A title that lost its original title is repaired when a refresh in the other language brings it; the job does not select titles for that reason alone, because many titles have none on purpose (the source sends none when it equals the title).
+- **The 180 days.** TMDB's terms (<https://www.themoviedb.org/api-terms-of-use>, read 2026-10-25, ADR-016) forbid keeping information from TMDB longer than 6 months. 6 months is about 183 days; the code uses 180 (`providerDataMaxAgeDays`) and refreshes at 150, which leaves 30 days to retry a title that fails.
+- **Not done:** removing the provider data of a title that could not be refreshed before the limit (ADR-017 lists it). It is a decision about licenses and about what the pages show, and it has its own ticket. A title that fails every day for 150 days is only logged (`media.refresh_failed`, `media.refresh_missing`).
+- **Measure it.** The CPU limit of a Cron Trigger on the Free plan is 10 ms (read 2026-10-20). Waiting for the network does not count, but parsing the answers and saving does. The first real runs must be read in Observability (`media.refresh_batch` shows what a run did); if a run is cut short, lower the batch.
 
 ## References
 

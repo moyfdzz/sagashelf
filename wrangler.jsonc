@@ -80,6 +80,11 @@
       },
     ],
   },
+  // One Cron Trigger runs the `scheduled` handler, which dispatches the jobs in server/jobs
+  // (ADR-007). Every 6 hours, UTC: it refreshes the titles close to TMDB's 6 months (SAG-54).
+  "triggers": {
+    "crons": ["0 */6 * * *"],
+  },
   "observability": {
     "enabled": true,
   },

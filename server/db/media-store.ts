@@ -59,10 +59,13 @@ export async function saveMedia(
         -- The source says null when the original title is the one of the language asked, so a
         -- null never erases the original title a visit in another language left.
         original_title = coalesce(${media.originalTitle}::text, original_title),
-        year = ${media.year},
+        -- A year, a poster or a status the source does not send this time never erases the one
+        -- we hold (SAG-54).
+        year = coalesce(${media.year}::int, year),
         synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
-        image_url = ${media.imageUrl},
-        status = ${media.status}::media_status,
+        image_url = coalesce(${media.imageUrl}::text, image_url),
+        status = CASE WHEN ${media.status} = 'unknown' THEN status
+                      ELSE ${media.status}::media_status END,
         popularity = ${media.popularity},
         fetched_at = now(),
         updated_at = now()
@@ -147,4 +150,48 @@ export async function findStaleMedia(
     provider: String(row.provider),
     externalId: String(row.external_id),
   }));
+}
+
+/**
+ * The titles the scheduled job should ask the provider about (SAG-54): the ones older than
+ * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, each group
+ * oldest first. A title attempted in the last `retryAfterHours` is left out, so one the provider
+ * keeps failing on cannot take the whole batch every run. The last attempt is the `updated_at`
+ * of its external id: `saveMedia` sets it on a success and `markRefreshAttempt` on a failure.
+ */
+export async function findMediaToRefresh(
+  db: SqlExecutor,
+  limit: number,
+  maxAgeDays: number = providerDataMaxAgeDays - 30,
+  retryAfterHours = 24,
+): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
+  const { rows } = await db.execute(sql`
+    SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
+    FROM media_items m
+    JOIN media_external_ids e ON e.media_id = m.id
+    WHERE m.type <> 'custom'
+      AND e.updated_at < now() - make_interval(hours => ${retryAfterHours})
+      AND (
+        m.fetched_at < now() - make_interval(days => ${maxAgeDays})
+        OR NOT jsonb_exists(m.synopsis, 'es') OR NOT jsonb_exists(m.synopsis, 'en')
+        OR coalesce(m.titles->>'es', '') = '' OR coalesce(m.titles->>'en', '') = ''
+      )
+    ORDER BY (m.fetched_at < now() - make_interval(days => ${maxAgeDays})) DESC, m.fetched_at
+    LIMIT ${limit}
+  `);
+  return rows.map((row) => ({
+    mediaId: String(row.media_id),
+    provider: String(row.provider),
+    externalId: String(row.external_id),
+  }));
+}
+
+/** Notes that the provider was asked about a title and gave nothing, so it waits its turn again. */
+export async function markRefreshAttempt(
+  db: SqlExecutor,
+  mediaId: string,
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE media_external_ids SET updated_at = now() WHERE media_id = ${mediaId}::uuid
+  `);
 }
