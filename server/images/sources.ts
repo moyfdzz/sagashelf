@@ -2,11 +2,20 @@ import type { ProviderId } from "../providers/types";
 
 type ImageSource = {
   host: string;
-  basePath: string;
   /** The widths the proxy serves. Anything else is refused, so a caller cannot ask for more. */
   sizes: readonly string[];
   /** What a file name may look like. Nothing that could add a path or a query. */
   file: RegExp;
+  /** The path at the provider of one image, for a size and a file that passed the checks above. */
+  path(size: string, file: string): string;
+  /** The file name of an address we stored, from its path, or null when it is not an image of ours. */
+  fileFromStored(pathname: string): string | null;
+  /**
+   * The hosts a redirect from this provider may lead to. Without it a redirect is refused. A
+   * provider that serves its images from a storage of another host (Open Library covers come from
+   * archive.org) lists exactly that domain.
+   */
+  redirectHosts?: RegExp;
 };
 
 /**
@@ -17,9 +26,26 @@ type ImageSource = {
 export const imageSources = {
   tmdb: {
     host: "image.tmdb.org",
-    basePath: "/t/p",
     sizes: ["w92", "w185", "w342", "w500", "w780"],
     file: /^[A-Za-z0-9_-]{1,64}\.(?:jpg|png)$/,
+    path: (size, file) => `/t/p/${size}/${file}`,
+    fileFromStored: (pathname) =>
+      /^\/t\/p\/(?:w[0-9]+|original)\/([^/]+)$/.exec(pathname)?.[1] ?? null,
+  },
+  // Covers by cover id are the ones without a rate limit. The file is the id, and the size letter
+  // is chosen here: S is 50 px wide, M 180 and L 500 or more. Terms read 2026-10-28.
+  open_library: {
+    host: "covers.openlibrary.org",
+    sizes: ["w92", "w185", "w342", "w500", "w780"],
+    file: /^[0-9]{1,12}\.jpg$/,
+    path: (size, file) =>
+      `/b/id/${file.replace(".jpg", "")}-${size === "w92" ? "S" : size === "w185" ? "M" : "L"}.jpg`,
+    fileFromStored: (pathname) => {
+      const id = /^\/b\/id\/([0-9]{1,12})-[SML]\.jpg$/.exec(pathname)?.[1];
+      return id ? `${id}.jpg` : null;
+    },
+    // A cover answers with a redirect to archive.org, and that one to a server of its own.
+    redirectHosts: /^(?:[a-z0-9-]+\.)*archive\.org$/,
   },
 } as const satisfies Partial<Record<ProviderId, ImageSource>>;
 
@@ -38,7 +64,19 @@ export function upstreamUrl(
   if (!isImageProvider(provider)) return null;
   const source: ImageSource = imageSources[provider];
   if (!source.sizes.includes(size) || !source.file.test(file)) return null;
-  return `https://${source.host}${source.basePath}/${size}/${file}`;
+  return `https://${source.host}${source.path(size, file)}`;
+}
+
+/** Whether a redirect from this provider's image may go to `url`: https, and a host on its list. */
+export function isAllowedRedirect(provider: string, url: URL): boolean {
+  if (!isImageProvider(provider)) return false;
+  const source: ImageSource = imageSources[provider];
+  return (
+    url.protocol === "https:" &&
+    url.port === "" &&
+    url.username === "" &&
+    (source.redirectHosts?.test(url.hostname) ?? false)
+  );
 }
 
 /**
@@ -59,10 +97,7 @@ export function imageSrc(
   }
   for (const [provider, source] of Object.entries(imageSources)) {
     if (url.protocol !== "https:" || url.host !== source.host) continue;
-    const match = new RegExp(
-      `^${source.basePath}/(?:w[0-9]+|original)/([^/]+)$`,
-    ).exec(url.pathname);
-    const file = match?.[1];
+    const file = source.fileFromStored(url.pathname);
     if (file && upstreamUrl(provider, size, file)) {
       return `/img/${provider}/${size}/${file}`;
     }

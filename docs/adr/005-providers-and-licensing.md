@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)) and the credits page is live (SAG-31); the title pages and the image proxy are live (SAG-17, [ADR-017](017-media-pages-and-image-proxy.md)); SAG-14 and SAG-16 are planned
-- **Tickets:** SAG-13, SAG-14, SAG-16, SAG-17, SAG-31, SAG-33
+- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)) and the credits page is live (SAG-31); the title pages and the image proxy are live (SAG-17, [ADR-017](017-media-pages-and-image-proxy.md)); Open Library is built (SAG-14, [ADR-021](021-books-open-library.md)); MangaDex (SAG-66), Google Books (SAG-67) and SAG-16 are planned
+- **Tickets:** SAG-13, SAG-14, SAG-66, SAG-67, SAG-68, SAG-16, SAG-17, SAG-31, SAG-33
 
 ## Context
 
@@ -58,7 +58,7 @@ A credits page (SAG-31) lists every source with its required wording: the TMDB l
 ## Open questions
 
 - **The TMDB terms page was not readable on 2026-10-20.** It was read on 2026-10-25: caching is limited to 6 months, and the rest is in [ADR-016](016-provider-layer-and-tmdb.md).
-- The numeric Google Books quota, the Open Library attribution rule, and the exact MangaDex cover and image rules were not stated on the pages read.
+- The numeric Google Books quota and the exact MangaDex cover and image rules were not stated on the pages read. The Open Library pages read on 2026-10-28 state no attribution or storage rule, only a courtesy link for covers and the request to cache and not to bulk download (ADR-021).
 - **Cloudflare's Free plan and commercial use** is not addressed in its public terms (ADR-001). Another reason to keep the project non-commercial.
 
 ## References (all read 2026-10-20)

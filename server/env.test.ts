@@ -39,6 +39,15 @@ describe("parseEnv", () => {
     expect(message).not.toContain(bad);
   });
 
+  it("accepts OPEN_LIBRARY_ENABLED as true or false and nothing else", () => {
+    expect(
+      parseEnv({ APP_ENV: "preview", OPEN_LIBRARY_ENABLED: "true" }),
+    ).toEqual({ APP_ENV: "preview", OPEN_LIBRARY_ENABLED: "true" });
+    expect(() =>
+      parseEnv({ APP_ENV: "preview", OPEN_LIBRARY_ENABLED: "yes" }),
+    ).toThrow(/OPEN_LIBRARY_ENABLED/);
+  });
+
   it("accepts the optional TMDB token and rejects an empty one", () => {
     expect(
       parseEnv({ APP_ENV: "preview", TMDB_READ_ACCESS_TOKEN: "set" }),

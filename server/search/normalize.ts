@@ -6,7 +6,7 @@ export const queryMinLength = 2;
 export const queryMaxLength = 100;
 
 /** The kinds the search offers today. Books and manga join when their providers exist (SAG-14). */
-export const searchTypes = ["anime", "movie", "series"] as const;
+export const searchTypes = ["anime", "movie", "series", "book"] as const;
 export type SearchType = (typeof searchTypes)[number];
 
 // The kinds a provider-less search can still be asked for, for the database part.

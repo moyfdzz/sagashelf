@@ -47,6 +47,7 @@ function detail(overrides: Partial<MediaDetail> = {}): MediaDetail {
     titles: { es: "Matrix", en: "The Matrix" },
     originalTitle: "The Matrix",
     year: 1999,
+    creators: [],
     synopsis: { es: "Un programador descubre la verdad." },
     imageUrl: "https://image.tmdb.org/t/p/w500/matrix.jpg",
     status: "finished",
@@ -98,9 +99,52 @@ describe("the detail page loader", () => {
       poster: "/img/tmdb/w342/matrix.jpg",
       shareImageUrl: "https://sagashelf.app/img/tmdb/w500/matrix.jpg",
       canonicalUrl: `https://sagashelf.app/media/movie/matrix-${id}`,
-      sourceUrl: "https://www.themoviedb.org/movie/603",
+      source: {
+        name: "tmdb",
+        url: "https://www.themoviedb.org/movie/603",
+      },
     });
     expect(result.jsonLd).toMatchObject({ "@type": "Movie", name: "Matrix" });
+  });
+
+  it("shows a book with its authors, its cover through the proxy and a link to Open Library", async () => {
+    mocks.getMediaDetail.mockResolvedValue(
+      detail({
+        type: "book",
+        title: "Dune",
+        titles: { es: "Dune", en: "Dune" },
+        originalTitle: null,
+        year: 1965,
+        creators: ["Frank Herbert"],
+        synopsis: { en: "Set on the desert planet Arrakis." },
+        imageUrl: "https://covers.openlibrary.org/b/id/11481354-L.jpg",
+        status: "unknown",
+        provider: "open_library",
+        externalId: "OL893414W",
+      }),
+    );
+
+    const result = (await load("book", `dune-${id}`)) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result).toMatchObject({
+      type: "book",
+      creators: ["Frank Herbert"],
+      poster: "/img/open_library/w342/11481354.jpg",
+      // Open Library writes one text, in English: a Spanish visit falls back to it.
+      synopsis: "Set on the desert planet Arrakis.",
+      synopsisLocale: "en",
+      source: {
+        name: "openLibrary",
+        url: "https://openlibrary.org/works/OL893414W",
+      },
+    });
+    expect(result.jsonLd).toMatchObject({
+      "@type": "Book",
+      author: [{ "@type": "Person", name: "Frank Herbert" }],
+    });
   });
 
   it("offers a visitor the way to sign in and come back to the title", async () => {

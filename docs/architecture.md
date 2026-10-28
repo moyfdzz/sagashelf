@@ -23,7 +23,7 @@ flowchart LR
 
   neon[("Neon Postgres<br/>Drizzle, SAG-9")]
   clerk["Clerk accounts<br/>sessions (SAG-10), user webhook (SAG-11)"]
-  providers["Data providers<br/>TMDB built (SAG-13)<br/>TVmaze, Wikidata, Open Library,<br/>Google Books, MangaDex planned (SAG-14, SAG-16)"]
+  providers["Data providers<br/>TMDB (SAG-13) and Open Library (SAG-14) built<br/>TVmaze, Wikidata, Google Books,<br/>MangaDex planned (SAG-16, 66, 67)"]
   discord["Discord webhooks<br/>planned, SAG-27"]
   gh["GitHub<br/>repository, Actions, ruleset"]
 
@@ -43,7 +43,7 @@ flowchart LR
   class providers,discord planned
 ```
 
-The Worker serves the pages (search, title pages, the library, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB is the only data provider built; the others are planned. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54); the outbox that would need it every minute is still planned.
+The Worker serves the pages (search, title pages, the library, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime) and Open Library (books, switched on by a variable) are the data providers built; the others are planned. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54); the outbox that would need it every minute is still planned.
 
 ## 2. Life of a request
 

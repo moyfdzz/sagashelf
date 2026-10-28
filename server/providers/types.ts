@@ -19,8 +19,13 @@ export type NormalizedMedia = {
   title: string;
   originalTitle: string | null;
   year: number | null;
-  /** Only the language that was asked for is filled. */
+  /**
+   * Usually only the language that was asked for is filled. A source that has one text in a single
+   * language (Open Library) fills that language whatever was asked.
+   */
   synopsis: LocalizedText;
+  /** Authors, in the order the source lists them. Left out when the source has none. */
+  creators?: string[];
   imageUrl: string | null;
   status: MediaStatus;
   popularity: number;

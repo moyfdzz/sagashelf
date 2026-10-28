@@ -27,6 +27,7 @@ const dune: SearchResult = {
   title: "Dune",
   originalTitle: null,
   year: 2021,
+  creators: [],
   synopsis: null,
   imageUrl: null,
   popularity: 1,

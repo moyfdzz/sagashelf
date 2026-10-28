@@ -55,6 +55,7 @@ const props = (results: Record<string, unknown>[]) =>
       title: "Buscar",
       q: "inter",
       type: undefined,
+      tabs: ["anime", "movie", "series"],
       status: "done",
       results,
       failed: [],
@@ -70,6 +71,20 @@ describe("the links of the search results", () => {
     const link = /<a [^>]*href="\/media\/open[^"]*"[^>]*>/.exec(html)?.[0];
     expect(link).toBeDefined();
     expect(link).not.toContain("data-discover");
+  });
+
+  it("shows the authors of a book, and nothing when there are none", async () => {
+    const withAuthors = await render(
+      <Search
+        {...props([result({ creators: ["Frank Herbert", "Brian Herbert"] })])}
+      />,
+    );
+    const without = await render(
+      <Search {...props([result({ creators: [] })])} />,
+    );
+
+    expect(withAuthors).toContain("Frank Herbert, Brian Herbert");
+    expect(without).not.toContain("Frank Herbert");
   });
 
   it("opens a title we already hold with a move inside the page", async () => {

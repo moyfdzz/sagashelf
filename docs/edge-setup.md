@@ -132,3 +132,13 @@ The endpoint is `POST /webhooks/clerk`. How it works is in [ADR-003](adr/003-aut
 - [ ] Local value in `.dev.vars`: `TMDB_READ_ACCESS_TOKEN` (name in `.env.example`).
 - [ ] Workers secret `TMDB_READ_ACCESS_TOKEN`, with `wrangler secret put TMDB_READ_ACCESS_TOKEN` for Production, and in Previews Base. For a branch that already has a preview, also in that preview's own settings (see section 9). Without it no provider exists and the search answers from the database.
 - [ ] The TMDB logo and notice on the credits page (SAG-31). Terms read 2026-10-25; non-commercial use only; data kept at most 6 months (ADR-016).
+
+## 11. Open Library (SAG-14)
+
+Books come from Open Library, which needs no key ([ADR-021](adr/021-books-open-library.md)). The adapter is switched on by a plain variable, `OPEN_LIBRARY_ENABLED`, so CI and previews never call the real service.
+
+- [ ] Local value in `.dev.vars`: `OPEN_LIBRARY_ENABLED=true` (name in `.env.example`).
+- [ ] **Production** variable `OPEN_LIBRARY_ENABLED` = `true`, as plain text (it is not a secret), in the Worker's Settings, Variables and Secrets. Do it **after** the migration `0009` is applied and the code is deployed: before that the code does not know the variable. It is not in `wrangler.jsonc` on purpose: the end-to-end tests in CI run on the production build, which would read it from there. A variable added by hand in the dashboard makes Cloudflare say that the dashboard and the file differ (section 8); that is expected for this one.
+- [ ] Previews Base: leave it unset, unless a preview is made to try books (then also in that preview's own settings, section 9).
+- [ ] Check after the deploy: `/search?q=dune&type=book` shows books with covers, a book opens, and the covers load from `/img/open_library/...` (no request goes to `covers.openlibrary.org` from the browser).
+- [ ] Migration `0009_media_items_creators` (a nullable column) applied in production by the owner **before** the merge, with the steps of the handoff (direct Neon connection, `npm.cmd run db:migrate`, then remove `DATABASE_URL`). Check with `SELECT column_name FROM information_schema.columns WHERE table_name = 'media_items' AND column_name = 'creators'`.

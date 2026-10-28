@@ -16,6 +16,8 @@ export type SearchResult = {
   title: string;
   originalTitle: string | null;
   year: number | null;
+  /** The authors, when the source lists them. */
+  creators: string[];
   /** The synopsis in the language that was asked for, when there is one. */
   synopsis: string | null;
   /** The provider's address of the poster. The page shows it through the image proxy. */
@@ -43,6 +45,7 @@ export function toResult(
     title: item.title,
     originalTitle: item.originalTitle,
     year: item.year,
+    creators: item.creators ?? [],
     // An empty text means the source has none in this language.
     synopsis: item.synopsis[locale] || null,
     imageUrl: item.imageUrl,

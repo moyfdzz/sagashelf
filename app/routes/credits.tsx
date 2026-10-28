@@ -58,6 +58,16 @@ export default function Credits() {
         ) : null}
         <p>{t("credits.tmdb.body")}</p>
       </LegalSection>
+      <LegalSection title={t("credits.openLibrary.title")}>
+        <p>
+          <Trans
+            i18nKey="credits.openLibrary.body"
+            components={{
+              site: <SourceLink href="https://openlibrary.org/" />,
+            }}
+          />
+        </p>
+      </LegalSection>
       <LegalSection title={t("credits.soon.title")}>
         <p>{t("credits.soon.intro")}</p>
         <LegalList
@@ -74,13 +84,6 @@ export default function Credits() {
               i18nKey="credits.soon.wikidata"
               components={{
                 site: <SourceLink href="https://www.wikidata.org/" />,
-              }}
-            />,
-            <Trans
-              key="openLibrary"
-              i18nKey="credits.soon.openLibrary"
-              components={{
-                site: <SourceLink href="https://openlibrary.org/" />,
               }}
             />,
             <Trans

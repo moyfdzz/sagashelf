@@ -88,6 +88,43 @@ describe("buildJsonLd", () => {
   });
 });
 
+describe("the authors of a book", () => {
+  it("lists them as people, and only for a book", () => {
+    const book = buildJsonLd({
+      ...base,
+      type: "book",
+      externalId: "OL893414W",
+      title: "Dune",
+      creators: ["Frank Herbert", "Brian Herbert"],
+    });
+    const movie = buildJsonLd({
+      ...base,
+      type: "movie",
+      externalId: "movie/603",
+      title: "Matrix",
+      creators: ["Someone"],
+    });
+
+    expect(book.author).toEqual([
+      { "@type": "Person", name: "Frank Herbert" },
+      { "@type": "Person", name: "Brian Herbert" },
+    ]);
+    expect(movie).not.toHaveProperty("author");
+  });
+
+  it("leaves the field out when there are no authors", () => {
+    expect(
+      buildJsonLd({
+        ...base,
+        type: "book",
+        externalId: "OL1W",
+        title: "A book",
+        creators: [],
+      }),
+    ).not.toHaveProperty("author");
+  });
+});
+
 describe("shortDescription", () => {
   it("gives nothing for nothing", () => {
     expect(shortDescription(null)).toBeNull();

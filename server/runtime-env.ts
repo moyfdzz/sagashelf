@@ -83,10 +83,12 @@ export function getClerkKeys(): ClerkKeys | null {
   return clerkKeysFromEnv(env as unknown as Record<string, unknown>);
 }
 
-/** The data providers this deployment has a secret for (none in a preview without keys). */
+/** The data providers this deployment can use: TMDB with its secret, Open Library when enabled. */
 export function getMediaProviders() {
+  const { TMDB_READ_ACCESS_TOKEN, OPEN_LIBRARY_ENABLED } = getEnv();
   return buildProviders({
-    tmdbReadAccessToken: getEnv().TMDB_READ_ACCESS_TOKEN,
+    tmdbReadAccessToken: TMDB_READ_ACCESS_TOKEN,
+    openLibraryEnabled: OPEN_LIBRARY_ENABLED === "true",
   });
 }
 

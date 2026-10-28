@@ -201,3 +201,83 @@ describe("serveImage", () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe("serveImage with redirects (Open Library covers)", () => {
+  const redirect = (location: string) =>
+    new Response(null, { status: 302, headers: { Location: location } });
+
+  it("follows the cover to archive.org and to its server, and serves the image", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        redirect("https://archive.org/download/m_covers_0011/a.zip/1-M.jpg"),
+      )
+      .mockResolvedValueOnce(
+        redirect("https://ia801604.us.archive.org/view_archive.php?file=1.jpg"),
+      )
+      .mockResolvedValueOnce(jpeg("cover"));
+
+    const response = await serveImage(
+      deps({ fetch: fetcher }),
+      "open_library",
+      "w185",
+      "11481354.jpg",
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("cover");
+    expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual([
+      "https://covers.openlibrary.org/b/id/11481354-M.jpg",
+      "https://archive.org/download/m_covers_0011/a.zip/1-M.jpg",
+      "https://ia801604.us.archive.org/view_archive.php?file=1.jpg",
+    ]);
+    // The runtime must not follow it by itself.
+    expect(
+      fetcher.mock.calls.every(([, init]) => init?.redirect === "manual"),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["a host that is not archive.org", "https://evil.example/a.jpg"],
+    ["plain http", "http://archive.org/a.jpg"],
+    ["a private address", "https://127.0.0.1/a.jpg"],
+  ])("refuses a redirect to %s", async (_name, location) => {
+    const fetcher = vi.fn<typeof fetch>(async () => redirect(location));
+
+    const response = await serveImage(
+      deps({ fetch: fetcher }),
+      "open_library",
+      "w185",
+      "11481354.jpg",
+    );
+
+    expect(response.status).toBe(502);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after three redirects, and on a redirect with no address", async () => {
+    const loop = vi.fn<typeof fetch>(async () =>
+      redirect("https://archive.org/again.jpg"),
+    );
+    const noAddress = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 302 }),
+    );
+
+    const looped = await serveImage(
+      deps({ fetch: loop }),
+      "open_library",
+      "w185",
+      "1.jpg",
+    );
+    const empty = await serveImage(
+      deps({ fetch: noAddress }),
+      "open_library",
+      "w185",
+      "1.jpg",
+    );
+
+    expect(looped.status).toBe(502);
+    expect(loop).toHaveBeenCalledTimes(4);
+    expect(empty.status).toBe(502);
+  });
+});

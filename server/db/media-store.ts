@@ -31,6 +31,10 @@ export async function saveMedia(
   const titles = JSON.stringify({ [locale]: media.title });
   const synopsis = JSON.stringify(media.synopsis);
   const noSynopsis = JSON.stringify({ [locale]: "" });
+  // Null says "the source sent no authors", which never replaces the ones we hold.
+  const creators = media.creators?.length
+    ? JSON.stringify(media.creators)
+    : null;
   const { rows } = await db.execute(sql`
     WITH fresh AS (SELECT uuidv7() AS id),
     claimed AS (
@@ -41,9 +45,10 @@ export async function saveMedia(
     ),
     created AS (
       INSERT INTO media_items
-        (id, type, title, titles, original_title, year, synopsis, image_url, status, popularity)
+        (id, type, title, titles, original_title, year, creators, synopsis, image_url, status,
+         popularity)
       SELECT media_id, ${media.type}::media_type, ${media.title}, ${titles}::jsonb,
-             ${media.originalTitle}, ${media.year},
+             ${media.originalTitle}, ${media.year}, ${creators}::jsonb,
              ${noSynopsis}::jsonb || ${synopsis}::jsonb, ${media.imageUrl},
              ${media.status}::media_status, ${media.popularity}
       FROM claimed WHERE inserted
@@ -62,6 +67,7 @@ export async function saveMedia(
         -- A year, a poster or a status the source does not send this time never erases the one
         -- we hold (SAG-54).
         year = coalesce(${media.year}::int, year),
+        creators = coalesce(${creators}::jsonb, creators),
         synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
         image_url = coalesce(${media.imageUrl}::text, image_url),
         status = CASE WHEN ${media.status} = 'unknown' THEN status

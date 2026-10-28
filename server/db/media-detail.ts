@@ -26,6 +26,7 @@ export type MediaDetail = {
   titles: LocalizedText;
   originalTitle: string | null;
   year: number | null;
+  creators: string[];
   synopsis: LocalizedText;
   imageUrl: string | null;
   status: MediaStatus;
@@ -52,7 +53,7 @@ export async function getMediaDetail(
   id: string,
 ): Promise<MediaDetail | null> {
   const { rows } = await db.execute(sql`
-    SELECT m.id, m.type::text AS type, m.title, m.titles, m.original_title, m.year, m.synopsis,
+    SELECT m.id, m.type::text AS type, m.title, m.titles, m.original_title, m.year, m.creators, m.synopsis,
            m.image_url, m.status::text AS status, m.fetched_at,
            e.provider::text AS provider, e.external_id,
            COALESCE((
@@ -100,6 +101,7 @@ export async function getMediaDetail(
     titles: (row.titles as LocalizedText | null) ?? {},
     originalTitle: (row.original_title as string | null) ?? null,
     year: (row.year as number | null) ?? null,
+    creators: (row.creators as string[] | null) ?? [],
     synopsis: (row.synopsis as LocalizedText) ?? {},
     imageUrl: (row.image_url as string | null) ?? null,
     status: row.status as MediaStatus,

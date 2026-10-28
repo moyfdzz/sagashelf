@@ -45,6 +45,24 @@ const find = (
 ) => searchLocal(db, normalizeQuery(query), type, "es", limit);
 
 describe("searchLocal", () => {
+  it("brings the authors of a book, and an empty list for a title with none", async () => {
+    await add("Dune", {
+      type: "book",
+      creators: ["Frank Herbert"],
+      externalId: { provider: "open_library", id: "OL893414W" },
+    });
+    await add("Dune Movie");
+
+    const hits = await find("dune");
+
+    expect(hits.find((hit) => hit.title === "Dune")?.creators).toEqual([
+      "Frank Herbert",
+    ]);
+    expect(hits.find((hit) => hit.title === "Dune Movie")?.creators).toEqual(
+      [],
+    );
+  });
+
   it("brings the title in the language of the visitor, and the stored one when it has none", async () => {
     await add("Interestelar", { originalTitle: "Interstellar" });
     await db.execute(

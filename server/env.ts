@@ -31,6 +31,9 @@ const envSchema = z.object({
   // The TMDB "API Read Access Token" (SAG-13), a Workers secret. Optional so previews and tests
   // start without it; with none, no provider is used and the search answers from the database.
   TMDB_READ_ACCESS_TOKEN: z.string().min(1).optional(),
+  // Switches Open Library on (SAG-14). It needs no key, so this is a plain variable, not a secret.
+  // Left unset in CI and in previews, so no test reaches the real service.
+  OPEN_LIBRARY_ENABLED: z.enum(["true", "false"]).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
