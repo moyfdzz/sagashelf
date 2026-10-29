@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyRewatch,
+  applyStep,
   timesWatched,
   applySave,
   locateProgress,
@@ -434,6 +435,86 @@ describe("applySave for a book or a manga", () => {
     expect(result).toMatchObject({
       ok: true,
       next: { progress: 0, progressUnit: "pages", progressTotal: 320 },
+    });
+  });
+});
+
+describe("applyStep", () => {
+  const context = { totalEpisodes: 24, type: "series", today };
+  const step = (current: EntryState, overrides = context) => {
+    const result = applyStep(current, overrides);
+    if (!result.ok) throw new Error(`unexpected rule error: ${result.error}`);
+    return result.next;
+  };
+  const watching: EntryState = {
+    ...planned,
+    status: "in_progress",
+    progress: 3,
+    startedAt: "2026-01-01",
+  };
+
+  it("adds one episode and changes nothing else", () => {
+    expect(step(watching)).toEqual({ ...watching, progress: 4 });
+  });
+
+  it("starts a planned title: in progress, with the start date of today", () => {
+    expect(step(planned)).toMatchObject({
+      status: "in_progress",
+      progress: 1,
+      startedAt: today,
+    });
+  });
+
+  it("completes the title at the last episode, with the finish date of today", () => {
+    expect(step({ ...watching, progress: 23 })).toMatchObject({
+      status: "completed",
+      progress: 24,
+      finishedAt: today,
+    });
+  });
+
+  it("does not complete a paused or dropped title that reaches the end", () => {
+    for (const status of ["paused", "dropped"] as const) {
+      expect(step({ ...watching, status, progress: 23 }).status).toBe(status);
+    }
+  });
+
+  it("refuses to go past the end", () => {
+    expect(applyStep({ ...watching, progress: 24 }, context)).toEqual({
+      ok: false,
+      error: "progress_too_high",
+    });
+  });
+
+  it("counts the pages of a book against the total the person typed", () => {
+    const reading: EntryState = {
+      ...watching,
+      progress: 319,
+      progressUnit: "pages",
+      progressTotal: 320,
+    };
+
+    expect(
+      step(reading, { ...context, totalEpisodes: 0, type: "book" }),
+    ).toMatchObject({
+      status: "completed",
+      progress: 320,
+      progressUnit: "pages",
+    });
+  });
+
+  it("never completes a book that has no total", () => {
+    const reading: EntryState = {
+      ...watching,
+      progress: 40,
+      progressUnit: "chapters",
+    };
+
+    expect(
+      step(reading, { ...context, totalEpisodes: 0, type: "manga" }),
+    ).toMatchObject({
+      status: "in_progress",
+      progress: 41,
     });
   });
 });

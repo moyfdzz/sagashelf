@@ -801,6 +801,215 @@ describe("the notes", () => {
   });
 });
 
+/** The page while a "+1" of the row `mediaId` is on its way to the server and has not been answered. */
+async function renderStepping(
+  mediaId: string,
+  element: ReactNode,
+): Promise<string> {
+  const i18n = createInstance();
+  await i18n.use(initReactI18next).init({
+    resources,
+    lng: "es",
+    fallbackLng: "es",
+    interpolation: { escapeValue: false },
+  });
+  const router = createMemoryRouter(
+    [
+      { path: "/", element },
+      {
+        id: "step",
+        path: "/library/:mediaId/step",
+        action: () => new Promise(() => undefined),
+      },
+    ],
+    { initialEntries: ["/"] },
+  );
+  void router.fetch(
+    "step-" + mediaId,
+    "step",
+    "/library/" + mediaId + "/step",
+    { formMethod: "post", formData: new FormData() },
+  );
+  return renderToString(
+    <I18nextProvider i18n={i18n}>
+      <RouterProvider router={router} />
+    </I18nextProvider>,
+  );
+}
+
+describe("the quick +1 while it is being saved", () => {
+  const library = (progress: number) => (
+    <Library
+      {...props({
+        view: "covers",
+        sections: sectionsOf({
+          in_progress: [
+            row("a", "Dune", "in_progress", { progress, totalEpisodes: 12 }),
+            row("b", "Bleach", "in_progress", {
+              progress: 5,
+              totalEpisodes: 12,
+            }),
+          ],
+        }),
+      })}
+    />
+  );
+
+  it("shows one more at once, in the words and in the bar, only for the row that was pressed", async () => {
+    const html = await renderStepping("a", library(3));
+
+    expect(html).toContain("4 de 12 episodios");
+    expect(html).toContain('value="4"');
+    // The other row has not been touched.
+    expect(html).toContain("5 de 12 episodios");
+    expect(html).not.toContain("3 de 12 episodios");
+  });
+
+  it("disables the button of the row until the server answers", async () => {
+    const html = await renderStepping("a", library(3));
+
+    const buttons =
+      html.match(/<button[^>]*aria-label="\+1[^"]*"[^>]*>/g) ?? [];
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toContain("Dune");
+    expect(buttons[0]).toContain('disabled=""');
+    expect(buttons[1]).not.toContain('disabled=""');
+  });
+
+  it("takes the button away when the step reaches the end", async () => {
+    const html = await renderStepping("a", library(11));
+
+    expect(html).toContain("12 de 12 episodios");
+    expect(html).not.toContain('aria-label="+1 episodio: Dune"');
+    expect(html).toContain('aria-label="+1 episodio: Bleach"');
+  });
+
+  it("goes back to the number the server holds when nothing is on its way", async () => {
+    const html = await render("es", library(3));
+
+    expect(html).toContain("3 de 12 episodios");
+    expect(html).not.toContain("4 de 12 episodios");
+  });
+});
+
+describe("the quick +1", () => {
+  const one = (
+    view: LibraryView,
+    overrides: Record<string, unknown>,
+    status: LibraryStatus = "in_progress",
+  ) =>
+    props({
+      view,
+      sections: sectionsOf({
+        [status]: [row("a", "Dune", status, overrides)],
+      }),
+    });
+  const form = (html: string) =>
+    /<form[^>]*action="\/library\/[^"]*\/step"[^>]*>[\s\S]*?<\/form>/.exec(
+      html,
+    )?.[0] ?? "";
+
+  it("is a plain form that posts to the step of the entry, so it works without JavaScript", async () => {
+    const html = await render(
+      "es",
+      <Library {...one("covers", { progress: 3, totalEpisodes: 12 })} />,
+    );
+
+    const step = form(html);
+    expect(step).toContain('method="post"');
+    expect(step).toContain('action="/library/a/step"');
+    expect(step).toContain('type="submit"');
+    expect(step).toContain(">+1<");
+    expect(step).toContain('aria-label="+1 episodio: Dune"');
+    expect(step).not.toContain("style=");
+  });
+
+  it("is in the covers and in the grid, and not in the list of titles", async () => {
+    const covers = await render(
+      "es",
+      <Library {...one("covers", { progress: 3, totalEpisodes: 12 })} />,
+    );
+    const grid = await render(
+      "es",
+      <Library {...one("grid", { progress: 3, totalEpisodes: 12 })} />,
+    );
+    const titles = await render(
+      "es",
+      <Library {...one("titles", { progress: 3, totalEpisodes: 12 })} />,
+    );
+
+    expect(form(covers)).not.toBe("");
+    expect(form(grid)).not.toBe("");
+    expect(form(titles)).toBe("");
+  });
+
+  it("names what it adds: pages, chapters or volumes, in both languages", async () => {
+    const labelOf = async (locale: "es" | "en", unit: string) =>
+      form(
+        await render(
+          locale,
+          <Library
+            {...one("covers", {
+              type: "book",
+              progress: 3,
+              progressUnit: unit,
+              progressTotal: null,
+            })}
+          />,
+        ),
+      );
+
+    expect(await labelOf("es", "pages")).toContain(
+      'aria-label="+1 página: Dune"',
+    );
+    expect(await labelOf("es", "chapters")).toContain(
+      'aria-label="+1 capítulo: Dune"',
+    );
+    expect(await labelOf("es", "volumes")).toContain(
+      'aria-label="+1 tomo: Dune"',
+    );
+    expect(await labelOf("en", "pages")).toContain(
+      'aria-label="+1 page: Dune"',
+    );
+  });
+
+  it("is there for a book that was never started and has no total", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...one(
+          "covers",
+          { type: "book", progress: 0, progressUnit: "pages" },
+          "planned",
+        )}
+      />,
+    );
+
+    expect(form(html)).not.toBe("");
+  });
+
+  it("is not there for a title at its end, a completed one, or one with nothing to count", async () => {
+    const end = await render(
+      "es",
+      <Library {...one("covers", { progress: 12, totalEpisodes: 12 })} />,
+    );
+    const done = await render(
+      "es",
+      <Library
+        {...one("covers", { progress: 12, totalEpisodes: 12 }, "completed")}
+      />,
+    );
+    const movie = await render(
+      "es",
+      <Library {...one("covers", { progress: 0, totalEpisodes: 0 })} />,
+    );
+
+    expect(form(end)).toBe("");
+    expect(form(done)).toBe("");
+    expect(form(movie)).toBe("");
+  });
+});
+
 describe("the progress bar", () => {
   const withEpisodes = (view: LibraryView, totalEpisodes: number) =>
     props({

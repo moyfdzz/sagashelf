@@ -93,6 +93,17 @@ Open Library and MangaDex give no parts, so a book or a manga has no total in th
 - **Export and import**: the JSON entries and the CSV carry `progressUnit` and `progressTotal`. `schemaVersion` stays 1: the change only adds fields, and a file from before it still imports (a book then reads as pages with no total).
 - **Wording** (SAG-76): the words about watching a title again (the card, the history and the "watch it again" button) say "read" for a book or a manga. They use an i18next context, `read`, chosen by `readingContext` in `app/lib/media.ts`; the other kinds keep "watched". The keys and the data are the same.
 
+## Amendment (2026-10-29, SAG-42): a quick +1 in the library
+
+A person can add one episode, page, chapter or volume from the library page, without opening the entry.
+
+- **Where:** a button "+1" on each row of the covers view and of the grid. The list of titles has no progress, so no button. It is there for a title that counts something (the episodes of the catalog, or the pages, chapters or volumes of a book or a manga), that is not completed and has not reached its end; a book with no total can always go one more (`canStep`).
+- **Rules:** none new. `applyStep` is a save of the whole entry with the progress one higher (`applySave`): the end completes the title unless it is paused or dropped, going past the end is refused, and a planned title becomes in progress with a start date.
+- **Route:** a resource route, `POST /library/<id>/step` (`library.$mediaId.step.ts`), with the protections of the other write endpoints: `Origin`, a body of at most 1 KB, the person of the session, the write limiter (30 a minute, shared with the editor) and a query that has the id of the session. Every refusal is an answer with data, never an error thrown to the page, so a rate limit or a failure cannot replace the library with an error page; the pattern is the one of the username form.
+- **Optimistic:** the button is a `fetcher.Form`. While the step is on its way the row shows one more in the words and in the bar (`useShownRow`, from the fetchers in flight) and the button is off, so no step is lost by pressing twice. When the server answers with an error the fetcher is idle again, the real number comes back and the row says the progress could not be saved. When it answers well, the loader runs again and the row may change section.
+- **Without JavaScript:** the same form posts to the same route. A browser that submits a form asks for a document (`Sec-Fetch-Dest: document`), and then the answer is a redirect to the library, or to the entry when the step was refused, instead of the JSON.
+- **Not done:** quick actions on the title page and on the search results. The search does not know who the person is nor what they hold, and a title it found that is not saved yet has to be saved first; both are their own tickets. The error message of a failed step has no automated test: the tests render on the server, where a finished fetcher keeps no answer.
+
 ## References
 
 - Ticket SAG-18 (Linear)

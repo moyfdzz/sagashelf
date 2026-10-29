@@ -16,6 +16,7 @@ export default [
   route("library", "routes/library.tsx"),
   route("library/add", "routes/library.add.ts"),
   route("library/:mediaId", "routes/library.$mediaId.tsx"),
+  route("library/:mediaId/step", "routes/library.$mediaId.step.ts"),
   route("settings/profile", "routes/settings.profile.tsx"),
   route("settings/export", "routes/settings.export.ts"),
   route("settings/import", "routes/settings.import.tsx"),
