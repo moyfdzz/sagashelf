@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { mswServer } from "../../testing/msw";
 import {
+  duneMessiah,
   openLibraryBase,
   openLibraryHandlers,
   type SeenRequest,
@@ -37,7 +38,12 @@ describe("the Open Library provider (contract)", () => {
 
     const items = await provider.search("dune", { locale: "es" });
 
-    expect(items.map((item) => item.title)).toEqual(["Dune", "Dune Messiah"]);
+    // In Spanish the work with a clean Spanish title gets it; "Dune / Duna" is two languages in
+    // one, so the first keeps its own.
+    expect(items.map((item) => item.title)).toEqual([
+      "Dune",
+      "El messies de Dune",
+    ]);
     expect(items[0]).toMatchObject({
       type: "book",
       year: 1965,
@@ -49,6 +55,135 @@ describe("the Open Library provider (contract)", () => {
     expect(sent?.get("q")).toBe("dune");
     expect(sent?.get("lang")).toBe("es");
     expect(sent?.get("limit")).toBe("20");
+  });
+
+  describe("the title in Spanish", () => {
+    const spanishCall = (seen: SeenRequest[]) =>
+      seen.filter((request) =>
+        request.url.searchParams.get("q")?.endsWith("AND language:spa"),
+      );
+
+    it("gives a search result its Spanish title and keeps the one Open Library gave as the original", async () => {
+      const provider = setup();
+
+      const items = await provider.search("dune", { locale: "es" });
+
+      expect(items[1]).toMatchObject({
+        title: "El messies de Dune",
+        originalTitle: "Dune Messiah",
+        externalId: { provider: "open_library", id: "OL893461W" },
+      });
+      expect(items[0]).toMatchObject({ title: "Dune", originalTitle: null });
+    });
+
+    it("asks for all the Spanish titles of a search in one call, only for the works it shows", async () => {
+      const seen: SeenRequest[] = [];
+      const provider = setup(seen);
+
+      await provider.search("dune", { locale: "es" });
+
+      expect(seen).toHaveLength(2);
+      const [call] = spanishCall(seen);
+      expect(call?.url.searchParams.get("q")).toBe(
+        "(key:/works/OL893414W OR key:/works/OL893461W) AND language:spa",
+      );
+      expect(call?.url.searchParams.get("fields")).toBe(
+        "key,editions,editions.title,editions.language",
+      );
+      expect(call?.url.searchParams.get("limit")).toBe("2");
+    });
+
+    it("does not ask for them when the site is in English", async () => {
+      const seen: SeenRequest[] = [];
+      const provider = setup(seen);
+
+      const items = await provider.search("dune", { locale: "en" });
+
+      expect(spanishCall(seen)).toHaveLength(0);
+      expect(seen).toHaveLength(1);
+      expect(items.map((item) => item.title)).toEqual(["Dune", "Dune Messiah"]);
+    });
+
+    it("keeps the titles Open Library gave when the call for the Spanish ones fails", async () => {
+      mswServer.use(
+        http.get(`${openLibraryBase}/search.json`, ({ request }) => {
+          const q = new URL(request.url).searchParams.get("q") ?? "";
+          return q.endsWith("AND language:spa")
+            ? HttpResponse.json({}, { status: 503 })
+            : HttpResponse.json({ numFound: 1, docs: [duneMessiah] });
+        }),
+      );
+      const provider = createOpenLibraryProviderWithDefaults(fast);
+
+      const items = await provider.search("dune", { locale: "es" });
+
+      expect(items.map((item) => item.title)).toEqual(["Dune Messiah"]);
+    });
+
+    it("gives a book its Spanish title when it is opened, the one most of its editions share", async () => {
+      const seen: SeenRequest[] = [];
+      const provider = setup(seen);
+
+      const book = await provider.getById("OL20036652W", { locale: "es" });
+
+      expect(book).toMatchObject({
+        title: "El jardín de las mariposas",
+        originalTitle: "The Butterfly Garden",
+        creators: ["Dot Hutchison"],
+        synopsis: { en: "A girl escapes from a garden of butterflies." },
+      });
+      expect(seen.map((request) => request.url.pathname)).toEqual([
+        "/works/OL20036652W.json",
+        "/search.json",
+        "/works/OL20036652W/editions.json",
+      ]);
+    });
+
+    it("keeps the English title and asks for nothing more when the site is in English", async () => {
+      const seen: SeenRequest[] = [];
+      const provider = setup(seen);
+
+      const book = await provider.getById("OL20036652W", { locale: "en" });
+
+      expect(book).toMatchObject({
+        title: "The Butterfly Garden",
+        originalTitle: null,
+      });
+      expect(seen).toHaveLength(2);
+    });
+
+    it("keeps the original title when no Spanish edition has a clear title of its own", async () => {
+      const provider = setup();
+
+      const book = await provider.getById("OL893414W", { locale: "es" });
+
+      expect(book).toMatchObject({ title: "Dune", originalTitle: null });
+    });
+
+    it("keeps the book, with its original title, when the editions cannot be read", async () => {
+      mswServer.use(
+        http.get(`${openLibraryBase}/works/OL20036652W/editions.json`, () =>
+          HttpResponse.json({}, { status: 503 }),
+        ),
+      );
+      const provider = createOpenLibraryProviderWithDefaults(fast);
+
+      const book = await provider.getById("OL20036652W", { locale: "es" });
+
+      expect(book).toMatchObject({ title: "The Butterfly Garden" });
+    });
+
+    it("does not ask for the editions of a book with no Spanish edition", async () => {
+      const seen: SeenRequest[] = [];
+      const provider = setup(seen);
+
+      const book = await provider.getById("OL999W", { locale: "es" });
+
+      expect(book?.title).toBe("No search entry");
+      expect(
+        seen.some((request) => request.url.pathname.endsWith("editions.json")),
+      ).toBe(false);
+    });
   });
 
   it("identifies itself with the User-Agent that earns the higher rate", async () => {

@@ -4,8 +4,13 @@ import type { MediaProvider, NormalizedMedia } from "../types";
 import {
   descriptionOf,
   groupWorks,
+  hasSpanishEdition,
   mapWork,
   parseExternalId,
+  pickSpanishTitle,
+  spanishEditionTitles,
+  withSpanishTitle,
+  type OpenLibraryEdition,
   type OpenLibrarySearchDoc,
   type OpenLibraryWork,
 } from "./map";
@@ -17,10 +22,14 @@ const baseUrl = "https://openlibrary.org";
 const requestsPerSecond = 3;
 
 const searchFields =
-  "key,title,author_name,first_publish_year,cover_i,edition_count";
+  "key,title,author_name,first_publish_year,cover_i,edition_count,language";
 const pageSize = 20;
 
 type SearchResponse = { docs?: OpenLibrarySearchDoc[] };
+type EditionsResponse = { entries?: OpenLibraryEdition[] };
+
+// The editions of one work that a page asks for; a work with more has the rest left out.
+const editionsLimit = 100;
 
 /**
  * Open Library through the `MediaProvider` interface: books. It needs no key, so nothing is a
@@ -48,6 +57,44 @@ export function createOpenLibraryProvider(http: HttpClient): MediaProvider {
     return data.docs ?? [];
   }
 
+  /**
+   * The title in Spanish of each work that has a Spanish edition, in one call: the search keeps only
+   * the works with an edition in Spanish and says which one matched. It gives one edition per work,
+   * so a noisy title is dropped and the work keeps its own. This only changes how a title reads, so
+   * a failure leaves the titles Open Library gave.
+   */
+  async function spanishTitles(
+    docs: readonly OpenLibrarySearchDoc[],
+    signal?: AbortSignal,
+  ): Promise<Map<string, string>> {
+    const found = new Map<string, string>();
+    const keys = docs.filter(hasSpanishEdition).map((doc) => doc.key);
+    if (keys.length === 0) return found;
+
+    const params = new URLSearchParams({
+      q: `(${keys.map((key) => `key:${key}`).join(" OR ")}) AND language:spa`,
+      fields: "key,editions,editions.title,editions.language",
+      limit: String(keys.length),
+    });
+    try {
+      const data = await http.getJson<SearchResponse>(
+        `${baseUrl}/search.json?${params}`,
+        { signal },
+      );
+      for (const doc of data.docs ?? []) {
+        const original = docs.find((other) => other.key === doc.key)?.title;
+        const title = pickSpanishTitle(
+          doc.editions?.docs?.map((edition) => edition.title) ?? [],
+          original ?? "",
+        );
+        if (doc.key && title) found.set(doc.key, title);
+      }
+    } catch (error) {
+      if (!(error instanceof ProviderError)) throw error;
+    }
+    return found;
+  }
+
   return {
     id: "open_library",
     capabilities: { types: ["book"], parts: false, trending: false },
@@ -69,14 +116,28 @@ export function createOpenLibraryProvider(http: HttpClient): MediaProvider {
         pageSize,
         signal,
       );
-      return groupWorks(
+      const works = groupWorks(
         docs
           .map((doc) => mapWork(doc))
           .filter((item): item is NormalizedMedia => item !== null),
       );
+      if (locale !== "es") return works;
+
+      const titles = await spanishTitles(
+        docs.filter((doc) =>
+          works.some((work) => `/works/${work.externalId.id}` === doc.key),
+        ),
+        signal,
+      );
+      return works.map((work) =>
+        withSpanishTitle(
+          work,
+          titles.get(`/works/${work.externalId.id}`) ?? null,
+        ),
+      );
     },
 
-    async getById(externalId, { signal }) {
+    async getById(externalId, { locale, signal }) {
       const id = parseExternalId(externalId);
       if (!id) return null;
 
@@ -96,7 +157,7 @@ export function createOpenLibraryProvider(http: HttpClient): MediaProvider {
 
       // The search has what the work lacks (authors, cover, year) in one call.
       const [doc] = await searchDocs(`key:/works/${id}`, null, 1, signal);
-      return mapWork(
+      const book = mapWork(
         doc ?? {
           key: `/works/${id}`,
           title: work.title,
@@ -104,6 +165,28 @@ export function createOpenLibraryProvider(http: HttpClient): MediaProvider {
         },
         descriptionOf(work),
       );
+      if (!book || locale !== "es" || !doc || !hasSpanishEdition(doc)) {
+        return book;
+      }
+
+      // The editions of the work say what it is called in Spanish; the title most of them share wins.
+      try {
+        const editions = await http.getJson<EditionsResponse>(
+          `${baseUrl}/works/${id}/editions.json?limit=${editionsLimit}`,
+          { signal },
+        );
+        return withSpanishTitle(
+          book,
+          pickSpanishTitle(
+            spanishEditionTitles(editions.entries ?? []),
+            book.title,
+          ),
+        );
+      } catch (error) {
+        // Only the title in Spanish is missing; the book itself was read.
+        if (error instanceof ProviderError) return book;
+        throw error;
+      }
     },
 
     async getParts() {

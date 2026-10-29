@@ -23,7 +23,7 @@ export type SearchCache = {
   ): Promise<void>;
 };
 
-// The version in the address changes when the shape of an answer does (v2 added the poster, v3 the authors), so
+// The version in the address changes when the shape of an answer does (v2 added the poster, v3 the authors, v4 the Spanish title of a book), so
 // answers kept in the old shape are not read.
 // The cache is keyed by a made-up address on a host that never exists. The query is encoded
 // into the address, so two queries cannot collide or add parameters to each other.
@@ -37,7 +37,7 @@ function keyFor(
     type: type ?? "all",
     locale,
   });
-  return new Request(`https://search-cache.sagashelf.internal/v3?${params}`);
+  return new Request(`https://search-cache.sagashelf.internal/v4?${params}`);
 }
 
 /**
