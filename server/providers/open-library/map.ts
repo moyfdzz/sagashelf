@@ -9,6 +9,16 @@ export type OpenLibrarySearchDoc = {
   first_publish_year?: number;
   cover_i?: number;
   edition_count?: number;
+  /** Codes of the languages of its editions (`spa`, `eng`). */
+  language?: string[];
+  /** The edition that matched the query; with a language filter, one in that language. */
+  editions?: { docs?: { title?: string; language?: string[] }[] };
+};
+
+/** An edition as `/works/OL893414W/editions.json` sends it. */
+export type OpenLibraryEdition = {
+  title?: string;
+  languages?: { key?: string }[];
 };
 
 /** A work as `/works/OL893414W.json` sends it. */
@@ -23,6 +33,10 @@ export type OpenLibraryWork = {
   /** For a work that was merged into another one. */
   location?: string;
 };
+
+/** Whether the editions of the work include one in Spanish, so it is worth asking for its title. */
+export const hasSpanishEdition = (doc: OpenLibrarySearchDoc) =>
+  doc.language?.includes("spa") ?? false;
 
 export const coverBase = "https://covers.openlibrary.org/b/id";
 
@@ -77,6 +91,69 @@ export function mapWork(
     externalId: { provider: "open_library", id },
   };
 }
+
+// Accents and case do not tell two spellings of one title apart.
+const fold = (text: string) =>
+  text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * The title of the book in Spanish, from the titles of its Spanish editions, or null when there is
+ * no clear one (the original title stays then). Empty titles, the original title itself, and
+ * titles with a slash, parentheses or brackets (two languages in one, an edition note, a
+ * collection) are ignored; the same title written with other capitals counts as one. The most
+ * common title wins, and a tie is no answer. Of the spellings of the winner, the most common
+ * wins, then the first one.
+ */
+export function pickSpanishTitle(
+  candidates: readonly (string | null | undefined)[],
+  original: string,
+): string | null {
+  const groups = new Map<string, string[]>();
+  for (const candidate of candidates) {
+    const title = textOrNull(candidate)?.replace(/\s+/g, " ");
+    if (!title || /[/()[\]]/.test(title) || fold(title) === fold(original)) {
+      continue;
+    }
+    const spellings = groups.get(fold(title)) ?? [];
+    spellings.push(title);
+    groups.set(fold(title), spellings);
+  }
+
+  const ranked = [...groups.values()].sort((a, b) => b.length - a.length);
+  const [best, next] = ranked;
+  if (!best || (next && next.length === best.length)) return null;
+
+  let winner = best[0] as string;
+  let winnerCount = 0;
+  for (const spelling of best) {
+    const count = best.filter((other) => other === spelling).length;
+    if (count > winnerCount) {
+      winner = spelling;
+      winnerCount = count;
+    }
+  }
+  return winner;
+}
+
+/** The titles of the editions that say they are in Spanish. */
+export const spanishEditionTitles = (editions: readonly OpenLibraryEdition[]) =>
+  editions
+    .filter((edition) =>
+      edition.languages?.some((language) => language.key === "/languages/spa"),
+    )
+    .map((edition) => edition.title);
+
+/** The same book with the title in Spanish; the title Open Library gives becomes the original. */
+export const withSpanishTitle = (
+  item: NormalizedMedia,
+  title: string | null,
+): NormalizedMedia =>
+  title ? { ...item, title, originalTitle: item.title } : item;
 
 const sameBook = (item: NormalizedMedia) =>
   `${item.title.toLocaleLowerCase()}|${(item.creators?.[0] ?? "").toLocaleLowerCase()}`;

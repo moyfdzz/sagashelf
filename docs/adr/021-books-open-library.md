@@ -53,6 +53,25 @@ Open Library needs no key. Its rules, read on 2026-10-28 (<https://openlibrary.o
 - **Whether `archive.org` rate limits our proxy.** The cached image is kept one day; watch for `502` in the image route.
 - **The Cache API on previews and production** for the search results of books has not been checked (as in ADR-004).
 
+## Amendment (2026-10-29, SAG-75): the title in Spanish
+
+Open Library names a work with one title, usually the original, so a Spanish page showed "The Butterfly Garden" for a book that has Spanish editions. What was tried on 2026-10-29, with real requests (a few, with the shared `User-Agent`), and what was chosen:
+
+- **The `lang` parameter of the search** does not change the edition that comes back: with and without `lang=es` the `editions` field held the English one. It is still sent, and it is not what gives the Spanish title.
+- **A search limited to the works asked for and to `language:spa`** (`(key:/works/A OR key:/works/B) AND language:spa`, fields `key,editions,editions.title,editions.language`) answers in one call with one Spanish edition per work. `editions.rows` did not return more than one. Some titles are noisy ("Dune / Duna", "El Mesias De Dune/Dune Messiah", "Casa Capitular Dune/ Chafterhouse Dune").
+- **`/works/<id>/editions.json`** lists every edition with its `languages`; for the example work, 3 of 11 are in Spanish ("El Jardín de Las Mariposas" and two "El jardín de las mariposas"). One call per work.
+
+Decision, only when the site is in Spanish (nothing changes in English):
+
+- **A search** makes one more call for all the works of the page that list `spa` in `language` (the field was added to the search). Having one edition per work, a noisy title is dropped and the work keeps its own. If the call fails, the titles Open Library gave are kept.
+- **Opening a work** (and so a refresh by the cron job) makes one more call, to the editions of the work, when its `language` lists `spa`. The title most of the Spanish editions share wins, ignoring capitals. If that call fails, the book is saved with its own title.
+- **The rules** (`pickSpanishTitle`): ignore empty titles, the original title (also with other capitals or accents) and titles with a slash, parentheses or brackets; the same title in other capitals counts as one; the most common wins; a tie is no answer and the original title stays.
+- **What is saved:** the Spanish title goes in the title of the language asked (`titles.es`), and the title Open Library gave goes in `original_title`, so it is shown under the Spanish one in the search. The English title is saved by the visit or the refresh in English, as before. No migration.
+- **Cost:** a search of books in Spanish goes from 1 to 2 provider calls, opening a work from 2 to 3. The cron job asks twice per book (once per language), so it adds at most one call per book in Spanish, 5 per run. All far from the 50 subrequests of a request.
+- The search cache key is now `v4`, so an answer kept before this change (English titles) is not read.
+- The synopsis stays in English with its language mark; a Spanish one needs another source (SAG-67).
+- **Not checked:** the cron job and a real refresh against Open Library. The pick was run on the recorded answers only.
+
 ## References
 
 - Open Library API, <https://openlibrary.org/developers/api> (read 2026-10-28)
