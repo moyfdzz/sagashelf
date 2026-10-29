@@ -100,11 +100,16 @@ export async function loader(args: Route.LoaderArgs) {
     );
   }
 
-  // The words in the address are for people. A wrong or old one goes to the right one.
+  // The words in the address are for people. A wrong or old one goes to the right one. The
+  // address is compared through the params and not `url.pathname`: when a person moves here from
+  // another page, the request is for the data of the page (`<address>.data`), which never equals
+  // the path and would send the browser to the same address again and again.
   const title = pickTitle(detail, locale);
   const url = new URL(request.url);
   const path = mediaPath(detail.type, title, detail.id);
-  if (url.pathname !== path) return redirect(path, 301);
+  if (`/media/${params.type}/${params.slug}` !== path) {
+    return redirect(path, 301);
+  }
 
   const other = locale === "es" ? "en" : "es";
   const synopsisLocale = detail.synopsis[locale] ? locale : other;

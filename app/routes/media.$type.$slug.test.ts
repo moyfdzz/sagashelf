@@ -68,10 +68,16 @@ beforeEach(() => {
   mocks.runInBackground.mockReset();
 });
 
-const load = (type: string, slug: string, origin = "https://sagashelf.app") =>
+// `suffix` is `.data` for a move inside the site, which asks for the data of the page.
+const load = (
+  type: string,
+  slug: string,
+  origin = "https://sagashelf.app",
+  suffix = "",
+) =>
   loader({
     params: { type, slug },
-    request: new Request(`${origin}/media/${type}/${slug}`),
+    request: new Request(`${origin}/media/${type}/${slug}${suffix}`),
     context: {},
   } as unknown as Route.LoaderArgs);
 
@@ -348,6 +354,30 @@ describe("the detail page loader", () => {
       synopsis: "A hacker learns the truth.",
       synopsisLocale: "en",
     });
+  });
+
+  it("does not send a move inside the site to its own address, which looped forever", async () => {
+    const result = await load(
+      "movie",
+      `matrix-${id}`,
+      "https://sagashelf.app",
+      ".data",
+    );
+
+    expect(result).not.toBeInstanceOf(Response);
+    expect(result).toMatchObject({ canonicalUrl: expect.any(String) });
+  });
+
+  it("sends a move inside the site to the canonical address once, when the words are wrong", async () => {
+    const response = (await load(
+      "movie",
+      `old-name-${id}`,
+      "https://sagashelf.app",
+      ".data",
+    )) as Response;
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe(`/media/movie/matrix-${id}`);
   });
 
   it("goes to the canonical address when the words or the type are wrong", async () => {
