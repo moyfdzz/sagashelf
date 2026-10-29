@@ -9,6 +9,7 @@ import {
   saveParts,
 } from "../server/db/media-store";
 import { mediaExternalIds, mediaItems, mediaParts } from "../server/db/schema";
+import { pickTitle } from "../server/db/titles";
 import type { NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
 
@@ -115,6 +116,98 @@ describe("saveMedia", () => {
       en: "Attack on Titan",
     });
     expect(item.title).toBe("Attack on Titan");
+  });
+
+  it("saves the titles a source also knows in another language, with the one asked for winning", async () => {
+    const book = {
+      ...titan,
+      type: "book" as const,
+      title: "El jardín de las mariposas",
+      titles: { en: "The Butterfly Garden", es: "Not this one" },
+    };
+    const id = await saveMedia(db, book, "es");
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.titles).toEqual({
+      es: "El jardín de las mariposas",
+      en: "The Butterfly Garden",
+    });
+    expect(item.title).toBe("El jardín de las mariposas");
+    // Each visitor reads the title of their language, though the book was saved in Spanish.
+    expect(pickTitle(item, "en")).toBe("The Butterfly Garden");
+    expect(pickTitle(item, "es")).toBe("El jardín de las mariposas");
+  });
+
+  it("never erases a title in another language when a later save brings none", async () => {
+    const book = {
+      ...titan,
+      title: "El jardín de las mariposas",
+      titles: { en: "The Butterfly Garden" },
+    };
+    const id = await saveMedia(db, book, "es");
+
+    // A save in Spanish without the extra titles, like a source that did not send them this time.
+    await saveMedia(db, { ...book, titles: undefined }, "es");
+
+    const [item] = await db
+      .select()
+      .from(mediaItems)
+      .where(eq(mediaItems.id, id));
+    expect(item.titles).toEqual({
+      es: "El jardín de las mariposas",
+      en: "The Butterfly Garden",
+    });
+  });
+
+  it("has a one-time statement that gives the books saved before an English title", async () => {
+    const saved = await saveMedia(
+      db,
+      {
+        ...titan,
+        type: "book",
+        title: "El jardín de las mariposas",
+        originalTitle: "The Butterfly Garden",
+        externalId: { provider: "open_library", id: "OL20036652W" },
+      },
+      "es",
+    );
+    const withEnglish = await saveMedia(
+      db,
+      {
+        ...titan,
+        type: "book",
+        title: "Dune",
+        originalTitle: "Dune Messiah",
+        titles: { en: "Dune kept" },
+        externalId: { provider: "open_library", id: "OL893414W" },
+      },
+      "es",
+    );
+    const series = await saveMedia(db, titan, "es");
+
+    // The same text that SAG-78 gives the owner to run once in the Neon SQL Editor.
+    await db.execute(sql`
+      UPDATE media_items
+      SET titles = titles || jsonb_build_object('en', original_title)
+      WHERE type = 'book' AND original_title IS NOT NULL AND coalesce(titles->>'en', '') = ''
+    `);
+
+    const titlesOf = async (id: string) =>
+      (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
+        ?.titles;
+    expect(await titlesOf(saved)).toEqual({
+      es: "El jardín de las mariposas",
+      en: "The Butterfly Garden",
+    });
+    // An English title we hold is kept, and a series (original title in another script) is not touched.
+    expect(await titlesOf(withEnglish)).toEqual({
+      es: "Dune",
+      en: "Dune kept",
+    });
+    expect(await titlesOf(series)).toEqual({ es: "Ataque a los Titanes" });
   });
 
   it("stores an empty synopsis for a language the source has no text in, once", async () => {

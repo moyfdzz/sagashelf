@@ -66,11 +66,20 @@ Decision, only when the site is in Spanish (nothing changes in English):
 - **A search** makes one more call for all the works of the page that list `spa` in `language` (the field was added to the search). Having one edition per work, a noisy title is dropped and the work keeps its own. If the call fails, the titles Open Library gave are kept.
 - **Opening a work** (and so a refresh by the cron job) makes one more call, to the editions of the work, when its `language` lists `spa`. The title most of the Spanish editions share wins, ignoring capitals. If that call fails, the book is saved with its own title.
 - **The rules** (`pickSpanishTitle`): ignore empty titles, the original title (also with other capitals or accents) and titles with a slash, parentheses or brackets; the same title in other capitals counts as one; the most common wins; a tie is no answer and the original title stays.
-- **What is saved:** the Spanish title goes in the title of the language asked (`titles.es`), and the title Open Library gave goes in `original_title`, so it is shown under the Spanish one in the search. The English title is saved by the visit or the refresh in English, as before. No migration.
+- **What is saved:** the Spanish title goes in the title of the language asked (`titles.es`), and the title Open Library gave goes in `original_title`, so it is shown under the Spanish one in the search. Superseded by the amendment of SAG-78 below: the English title is saved too. No migration.
 - **Cost:** a search of books in Spanish goes from 1 to 2 provider calls, opening a work from 2 to 3. The cron job asks twice per book (once per language), so it adds at most one call per book in Spanish, 5 per run. All far from the 50 subrequests of a request.
 - The search cache key is now `v4`, so an answer kept before this change (English titles) is not read.
 - The synopsis stays in English with its language mark; a Spanish one needs another source (SAG-67).
 - **Not checked:** the cron job and a real refresh against Open Library. The pick was run on the recorded answers only.
+
+## Amendment (2026-10-29, SAG-78): the English title is kept too
+
+The SAG-75 note said the English title was saved by the visit or the refresh in English. Until then a visitor with the site in English saw the Spanish title of a book opened in Spanish: the page shows the title of the visitor's language and, when there is none, `media_items.title`, the one saved last. Seen in production on 2026-10-29 with "The Butterfly Garden" (shown as "El jardín de las mariposas" in English).
+
+- `NormalizedMedia` has an optional `titles`, for a source that gives one title and knows what it is in another language. `saveMedia` saves `{ ...titles, [locale]: title }`: the title of the language asked wins, and a title in another language that we hold is never erased (the merge is `titles || new`).
+- When the Open Library adapter replaces the title with the Spanish one, it gives the title it received as the English one (`titles.en`) as well as `original_title`. Open Library does not say the language of a work's title; it is treated as English, like its descriptions.
+- **Books saved before:** a one-time statement, run by the owner in the Neon SQL Editor, copies `original_title` into `titles.en` for books that have one and no English title. A book saved in Spanish after this change already has both. It is tested in `db/media-store.integration.test.ts`.
+- Series and anime are not changed: they ask the provider in the other language on the first visit, and their original title is in another script.
 
 ## References
 

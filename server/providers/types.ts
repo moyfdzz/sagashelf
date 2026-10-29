@@ -17,6 +17,11 @@ export type NormalizedMedia = {
   type: MediaKind;
   /** In the language that was asked for, when the source has it. */
   title: string;
+  /**
+   * The title in other languages, when the source gives one title and knows what it is in another
+   * language. `title` is saved for the language that was asked for, and these are added to it.
+   */
+  titles?: LocalizedText;
   originalTitle: string | null;
   year: number | null;
   /**

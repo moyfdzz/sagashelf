@@ -129,6 +129,8 @@ describe("the Open Library provider (contract)", () => {
       expect(book).toMatchObject({
         title: "El jardín de las mariposas",
         originalTitle: "The Butterfly Garden",
+        // The English title is kept too, for a visitor with the site in English.
+        titles: { en: "The Butterfly Garden" },
         creators: ["Dot Hutchison"],
         synopsis: { en: "A girl escapes from a garden of butterflies." },
       });
@@ -149,6 +151,7 @@ describe("the Open Library provider (contract)", () => {
         title: "The Butterfly Garden",
         originalTitle: null,
       });
+      expect(book?.titles).toBeUndefined();
       expect(seen).toHaveLength(2);
     });
 

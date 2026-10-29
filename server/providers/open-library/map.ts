@@ -148,12 +148,18 @@ export const spanishEditionTitles = (editions: readonly OpenLibraryEdition[]) =>
     )
     .map((edition) => edition.title);
 
-/** The same book with the title in Spanish; the title Open Library gives becomes the original. */
+/**
+ * The same book with the title in Spanish. The title Open Library gives becomes the original, and
+ * is kept as the English one too: it is nearly always English, like its descriptions, and without
+ * it a visitor in English would see the Spanish title until the book is opened in English.
+ */
 export const withSpanishTitle = (
   item: NormalizedMedia,
   title: string | null,
 ): NormalizedMedia =>
-  title ? { ...item, title, originalTitle: item.title } : item;
+  title
+    ? { ...item, title, titles: { en: item.title }, originalTitle: item.title }
+    : item;
 
 const sameBook = (item: NormalizedMedia) =>
   `${item.title.toLocaleLowerCase()}|${(item.creators?.[0] ?? "").toLocaleLowerCase()}`;
