@@ -171,6 +171,57 @@ describe("the entry page loader", () => {
   });
 });
 
+describe("the link back to the library", () => {
+  const backFrom = async (referer: string | null, suffix = "") =>
+    (
+      (await loader({
+        request: new Request(
+          `https://sagashelf.app/library/${mediaId}${suffix}`,
+          { headers: referer === null ? {} : { Referer: referer } },
+        ),
+        params: { mediaId },
+        context: {},
+      } as unknown as Route.LoaderArgs)) as unknown as {
+        backToLibrary: string | null;
+      }
+    ).backToLibrary;
+
+  it("goes back to the library as the person left it", async () => {
+    expect(
+      await backFrom(
+        "https://sagashelf.app/library?type=series&q=titanes&completed_page=2",
+      ),
+    ).toBe("/library?type=series&q=titanes&completed_page=2");
+  });
+
+  it("has none for a bookmark, the search, another site or no Referer", async () => {
+    for (const referer of [
+      null,
+      "https://sagashelf.app/search?q=dune",
+      "https://evil.example/library?type=book",
+    ]) {
+      expect(await backFrom(referer)).toBeNull();
+    }
+  });
+
+  it("never reflects the Referer: only what the library knows, in an address of the library", async () => {
+    expect(
+      await backFrom(
+        "https://sagashelf.app/library?type=book&next=https://evil.example",
+      ),
+    ).toBe("/library?type=book");
+  });
+
+  it("is not worked out again when the loader runs after a save, where the Referer is the entry itself", async () => {
+    expect(
+      await backFrom(`https://sagashelf.app/library/${mediaId}`, ".data"),
+    ).toBeNull();
+    expect(
+      await backFrom("https://sagashelf.app/library?type=book", ".data"),
+    ).toBeNull();
+  });
+});
+
 describe("saving an entry", () => {
   it("saves what the rules decide, for the person of the session", async () => {
     const result = await send({ ...form, progress: "4" });

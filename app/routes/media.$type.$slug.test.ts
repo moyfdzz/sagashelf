@@ -426,6 +426,40 @@ describe("the detail page loader", () => {
     });
   });
 
+  describe("the link back to the entry", () => {
+    const entryId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
+    const backTo = async (referer: string | null) =>
+      ((await loadFrom(referer)) as { backToEntry: string | null }).backToEntry;
+
+    it("goes back to the entry the person came from", async () => {
+      expect(await backTo(`https://sagashelf.app/library/${entryId}`)).toBe(
+        `/library/${entryId}`,
+      );
+    });
+
+    it("has none from the search, the library, a bookmark or another site", async () => {
+      for (const referer of [
+        null,
+        "https://sagashelf.app/search?q=dune",
+        "https://sagashelf.app/library",
+        `https://sagashelf.app/library/${entryId}/step`,
+        "https://sagashelf.app/library/not-an-id",
+        `https://evil.example/library/${entryId}`,
+      ]) {
+        expect(await backTo(referer)).toBeNull();
+      }
+    });
+
+    it("shows one link at most: the one of the search is not there when the visit came from an entry", async () => {
+      const result = (await loadFrom(
+        `https://sagashelf.app/library/${entryId}`,
+      )) as { backToSearch: string | null; backToEntry: string | null };
+
+      expect(result.backToSearch).toBeNull();
+      expect(result.backToEntry).toBe(`/library/${entryId}`);
+    });
+  });
+
   it("goes to the canonical address when the words or the type are wrong", async () => {
     for (const [type, slug] of [
       ["movie", `old-name-${id}`],

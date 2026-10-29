@@ -23,11 +23,8 @@ import {
   libraryViews,
   searchMaxLength,
   visibilityLevels,
-  sectionOrder,
   sortOptions,
-  type LibraryQuery,
   type LibraryStatus,
-  type LibraryType,
   type LibraryView,
   type ProgressUnit,
 } from "~server/library/schema";
@@ -36,6 +33,7 @@ import {
   readViewCookie,
   viewCookieHeader,
 } from "~server/library/view";
+import { libraryPath } from "~server/library/path";
 import { getDb } from "~server/runtime-env";
 
 export async function loader(args: Route.LoaderArgs) {
@@ -89,48 +87,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { title: loaderData?.title },
     { name: "robots", content: "noindex, nofollow" },
   ];
-}
-
-type Change = {
-  /** `null` is the tab with every type. */
-  type?: LibraryType | null;
-  view?: LibraryView;
-  /** Drops the search, the filters and the sort. The tab and the view stay. */
-  clear?: boolean;
-  /** One section goes to another page; the other sections stay where they are. */
-  section?: { status: LibraryStatus; page: number };
-};
-
-/**
- * The address of the library with the search and the filters kept. Changing the tab or the view
- * sends every section back to its first page; changing the page of one section keeps the rest.
- */
-function libraryHref(
-  query: LibraryQuery,
-  pages: Record<LibraryStatus, number>,
-  change: Change = {},
-) {
-  const params = new URLSearchParams();
-  const type = change.type === undefined ? query.type : change.type;
-  if (type) params.set("type", type);
-  if (!change.clear) {
-    if (query.q) params.set("q", query.q);
-    if (query.year) params.set("year", String(query.year));
-    if (query.score) params.set("score", String(query.score));
-    if (query.visibility) params.set("visibility", query.visibility);
-    if (query.sort !== "recent") params.set("sort", query.sort);
-  }
-  const view = change.view ?? query.view;
-  if (view) params.set("view", view);
-  if (change.section) {
-    for (const status of sectionOrder) {
-      const page =
-        status === change.section.status ? change.section.page : pages[status];
-      if (page > 1) params.set(`${status}_page`, String(page));
-    }
-  }
-  const text = params.toString();
-  return text ? `/library?${text}` : "/library";
 }
 
 const inputClass =
@@ -486,7 +442,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
             return (
               <li key={type ?? "all"}>
                 <Link
-                  to={libraryHref(query, pages, { type })}
+                  to={libraryPath(query, pages, { type })}
                   aria-current={active ? "page" : undefined}
                   className={tabClass(active)}
                 >
@@ -603,7 +559,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
           </button>
           {searching || query.sort !== "recent" ? (
             <Link
-              to={libraryHref(query, pages, { clear: true })}
+              to={libraryPath(query, pages, { clear: true })}
               className={secondaryLinkClass}
             >
               {t("library.filters.clear")}
@@ -621,7 +577,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
             {libraryViews.map((option) => (
               <li key={option}>
                 <Link
-                  to={libraryHref(query, pages, { view: option })}
+                  to={libraryPath(query, pages, { view: option })}
                   aria-current={view === option ? "true" : undefined}
                   className={segmentClass(view === option)}
                 >
@@ -645,7 +601,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
           {searching ? (
             <p className="mt-3">
               <Link
-                to={libraryHref(query, pages, { clear: true })}
+                to={libraryPath(query, pages, { clear: true })}
                 className={secondaryLinkClass}
               >
                 {t("library.filters.clear")}
@@ -712,7 +668,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                       >
                         {section.page > 1 ? (
                           <Link
-                            to={libraryHref(query, pages, {
+                            to={libraryPath(query, pages, {
                               section: {
                                 status: section.status,
                                 page: section.page - 1,
@@ -734,7 +690,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
                         </p>
                         {section.page < section.pages ? (
                           <Link
-                            to={libraryHref(query, pages, {
+                            to={libraryPath(query, pages, {
                               section: {
                                 status: section.status,
                                 page: section.page + 1,

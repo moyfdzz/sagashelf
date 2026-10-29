@@ -85,7 +85,8 @@
       "edit": "Edit my entry",
       "signIn": "Sign in to add this title to your library"
     },
-    "backToSearch": "← Back to the results"
+    "backToSearch": "← Back to the results",
+    "backToEntry": "← Back to my entry"
   },
   "errors": {
     "backHome": "Back to home",
