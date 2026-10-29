@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/search";
-import { headers, loader } from "./search";
+import { headers, loader, shouldRevalidate } from "./search";
 
 const mocks = vi.hoisted(() => ({
   runSearch: vi.fn(),
@@ -9,9 +9,17 @@ const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   searchLocal: vi.fn(),
   providers: vi.fn<() => { capabilities: { types: string[] } }[]>(),
+  getOptionalUser: vi.fn(),
+  getEntryStatuses: vi.fn(),
 }));
 
 vi.mock("~server/search/pipeline", () => ({ runSearch: mocks.runSearch }));
+vi.mock("~server/auth/require", () => ({
+  getOptionalUser: mocks.getOptionalUser,
+}));
+vi.mock("~server/db/library", () => ({
+  getEntryStatuses: mocks.getEntryStatuses,
+}));
 vi.mock("~server/db/search-local", () => ({
   searchLocal: mocks.searchLocal,
 }));
@@ -36,6 +44,8 @@ beforeEach(() => {
   mocks.getDb.mockReset().mockResolvedValue({ fake: "database" });
   mocks.searchLocal.mockReset().mockResolvedValue([]);
   mocks.providers.mockReset().mockReturnValue([]);
+  mocks.getOptionalUser.mockReset().mockResolvedValue(null);
+  mocks.getEntryStatuses.mockReset().mockResolvedValue(new Map());
 });
 
 const load = (query: string) =>
@@ -187,5 +197,123 @@ describe("the search page loader", () => {
 describe("the headers of the search page", () => {
   it("are never kept by a shared cache", () => {
     expect(headers()).toEqual({ "Cache-Control": "private, no-store" });
+  });
+});
+
+describe("the search page loader for a person who is signed in", () => {
+  const held = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
+  const other = "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa";
+  const hit = (overrides: Record<string, unknown>) => ({
+    type: "movie",
+    title: "Dune",
+    provider: "tmdb",
+    externalId: "movie/1",
+    imageUrl: null,
+    ...overrides,
+  });
+  const results = () => [
+    hit({ id: held, externalId: "movie/1" }),
+    hit({ id: other, externalId: "movie/2" }),
+    hit({ id: null, externalId: "movie/3" }),
+  ];
+
+  beforeEach(() => {
+    mocks.runSearch.mockResolvedValue({
+      results: results(),
+      failed: [],
+      source: "providers",
+    });
+  });
+
+  it("gives each result we hold the status the person gave it, and none to the others", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    mocks.getEntryStatuses.mockResolvedValue(new Map([[held, "completed"]]));
+
+    const result = (await load("?q=dune")) as {
+      signedIn: boolean;
+      results: { libraryStatus: string | null }[];
+    };
+
+    expect(result.signedIn).toBe(true);
+    expect(result.results.map((entry) => entry.libraryStatus)).toEqual([
+      "completed",
+      null,
+      null,
+    ]);
+  });
+
+  it("asks only for the titles we hold, with the person of the session, in one query", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+
+    await load("?q=dune");
+
+    expect(mocks.getEntryStatuses).toHaveBeenCalledTimes(1);
+    expect(mocks.getEntryStatuses).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      [held, other],
+    );
+  });
+
+  it("does not look at the library when the results are only suggestions for the search box", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+
+    const result = (await load("?q=dune&suggest=1")) as { signedIn: boolean };
+
+    expect(result.signedIn).toBe(false);
+    expect(mocks.getOptionalUser).not.toHaveBeenCalled();
+    expect(mocks.getEntryStatuses).not.toHaveBeenCalled();
+  });
+
+  it("shows a visitor nothing of a library, and asks the database nothing about one", async () => {
+    const result = (await load("?q=dune")) as {
+      signedIn: boolean;
+      results: { libraryStatus: string | null }[];
+    };
+
+    expect(result.signedIn).toBe(false);
+    expect(result.results.every((entry) => entry.libraryStatus === null)).toBe(
+      true,
+    );
+    expect(mocks.getEntryStatuses).not.toHaveBeenCalled();
+  });
+
+  it("does not ask when there is nothing to look up, and never reads the session for an empty page", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    mocks.runSearch.mockResolvedValue({
+      results: [hit({ id: null, externalId: "movie/9" })],
+      failed: [],
+      source: "providers",
+    });
+
+    await load("?q=dune");
+    const empty = (await load("")) as { signedIn: boolean };
+
+    expect(mocks.getEntryStatuses).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      [],
+    );
+    expect(empty.signedIn).toBe(false);
+  });
+});
+
+describe("what the search page asks again after a form", () => {
+  const after = (formAction: string | undefined) =>
+    shouldRevalidate({
+      formAction,
+      defaultShouldRevalidate: true,
+    } as unknown as Parameters<typeof shouldRevalidate>[0]);
+
+  it("does not run the search again when a title is added from a result", () => {
+    expect(after("/library/add")).toBe(false);
+    expect(after("/library/add-external")).toBe(false);
+  });
+
+  it("keeps what the router would do for anything else", () => {
+    expect(after(undefined)).toBe(true);
+    expect(after("/library/abc/step")).toBe(true);
+    expect(after("/library/addx")).toBe(true);
+    expect(after("/api/locale")).toBe(true);
   });
 });

@@ -42,7 +42,11 @@
     "count_other": "{{count}} results",
     "partial": "Some sources did not answer in time, so a result may be missing. Try again in a moment.",
     "year": "({{year}})",
-    "by": "by {{names}}"
+    "by": "by {{names}}",
+    "inLibrary": "In your library: {{status}}",
+    "add": "Add",
+    "addLabel": "Add {{title}} to my library",
+    "addFailed": "It could not be added. Try again."
   },
   "media": {
     "kinds": {

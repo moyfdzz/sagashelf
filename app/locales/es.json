@@ -42,7 +42,11 @@
     "count_other": "{{count}} resultados",
     "partial": "Algunas fuentes no respondieron a tiempo, así que puede faltar algún resultado. Inténtalo de nuevo en un momento.",
     "year": "({{year}})",
-    "by": "de {{names}}"
+    "by": "de {{names}}",
+    "inLibrary": "En tu biblioteca: {{status}}",
+    "add": "Añadir",
+    "addLabel": "Añadir {{title}} a mi biblioteca",
+    "addFailed": "No se pudo añadir. Inténtalo de nuevo."
   },
   "media": {
     "kinds": {

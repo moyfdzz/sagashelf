@@ -84,3 +84,11 @@ These were read on 2026-10-20 (details and sources in ADR-005) and shape step 6 
 - **The Cache API on `sagashelf.app`** (and on `workers.dev`) has not been checked in production. The code works either way; to see whether it caches, search the same term twice and compare the `search.provider` lines in Workers Logs: the second search should write none.
 - **Persisting what a person opens** (step 6) is done by the detail page (SAG-17, ADR-017): a title is saved when it is opened. Adding it to a library is SAG-18.
 - **Load tests** (k6) are left to SAG-30, when there are several providers and real data.
+
+## Amendment (SAG-80, 2026-10-29): adding a result from the search
+
+Step 6 says a title is persisted only when a person opens or adds it. A result of the search now has an "Add" button for a signed-in person, so a title that only a provider knows can be saved by adding it, without opening its page first.
+
+- **Still not a search saving things.** The search itself saves nothing; the person presses a button for one title. `POST /library/add-external` does what `/media/open` does (`importMedia`) and then adds the title as planned, so it costs the same 2 to 6 calls to the provider as opening it, once per press, and counts against the same limits: the limiter of the search for the call to the provider (not for a title we already hold) and the one of the writes.
+- **The page that asks does not save anything else.** A visitor sees no button. The search page reads the session only for a real search, never for the suggestions of the search box (`suggest=1`), and asks the database one question for the titles of the page that we hold.
+- **The search is not run again after adding** (`shouldRevalidate`): the result already shows what changed, and running it again would ask the providers and the database for everything for nothing.
