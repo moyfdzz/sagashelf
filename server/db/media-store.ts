@@ -28,7 +28,8 @@ export async function saveMedia(
   locale: Locale = "es",
 ): Promise<string> {
   const { provider, id } = media.externalId;
-  const titles = JSON.stringify({ [locale]: media.title });
+  // The title of the language asked for wins over one the source also sent for that language.
+  const titles = JSON.stringify({ ...media.titles, [locale]: media.title });
   const synopsis = JSON.stringify(media.synopsis);
   const noSynopsis = JSON.stringify({ [locale]: "" });
   // Null says "the source sent no authors", which never replaces the ones we hold.

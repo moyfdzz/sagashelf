@@ -96,6 +96,7 @@ describe("hasSpanishEdition and withSpanishTitle", () => {
     expect(withSpanishTitle(book, "Duna")).toMatchObject({
       title: "Duna",
       originalTitle: "Dune",
+      titles: { en: "Dune" },
     });
     expect(withSpanishTitle(book, null)).toBe(book);
   });
