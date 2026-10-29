@@ -62,6 +62,28 @@ for (const [locale, key] of [
       }
     });
 
+    test("the privacy policy names the title sources and the library", async ({
+      page,
+    }) => {
+      await page.goto("/privacy");
+
+      const main = page.getByRole("main");
+      await expect(main.getByText("TMDB, Open Library")).toBeVisible();
+      await expect(main.getByText(/Biblioteca:|Library:/)).toBeVisible();
+    });
+
+    test("the terms link to the credits for the title data", async ({
+      page,
+    }) => {
+      await page.goto("/terms");
+
+      await page
+        .getByRole("main")
+        .getByRole("link", { name: /Créditos|Credits/ })
+        .click();
+      await expect(page).toHaveURL(/\/credits$/);
+    });
+
     test("the credits page credits MangaDex with a link back", async ({
       page,
     }) => {

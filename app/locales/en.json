@@ -333,10 +333,12 @@
     },
     "data": {
       "title": "What data we store",
-      "intro": "We store only what is needed for your account to work:",
+      "intro": "We store only what is needed for your account and your library to work:",
       "account": "Account: your email, your username and, if you use a password, a protected version of it. Clerk manages the password and SagaShelf never stores it.",
       "google": "Google sign-in: if you choose it, Google shares your email, name and profile photo with Clerk. We do not access anything else in your Google account.",
       "profile": "Profile: your display name, bio, language, privacy level and the photo you choose.",
+      "library": "Library: for each title you save, its status, your progress, your score, the dates you started and finished it, how many times you have watched it again, your notes and a visibility level (private by default). For now only you can see your library; before anything is shown to other people we will update this policy.",
+      "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
       "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views."
     },
@@ -349,7 +351,8 @@
       "intro": "We use these providers to run the service:",
       "clerk": "Clerk: manages accounts and sign-in.",
       "neon": "Neon: hosts the database where your profile is stored.",
-      "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it from abuse and measures visits and speed with Web Analytics.",
+      "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it against abuse, measures visits and speed with Web Analytics, and keeps a temporary copy of searches and covers for up to one day, not linked to your account.",
+      "titles": "Title data sources (TMDB, Open Library and MangaDex): when you search or open a title, our servers send them the search text or the title's identifier to get its data. They do not receive your name, email, account or cookies. Covers are loaded through our server, so those sources do not see who visits the site.",
       "outro": "These providers may process data outside Mexico, including in the United States. We use them only to run the service."
     },
     "cookies": {
@@ -358,11 +361,11 @@
     },
     "retention": {
       "title": "How long we keep it",
-      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (library, lists and follows), and Clerk deletes your sign-in data. Only an internal record with no personal data stays, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
+      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
     },
     "rights": {
       "title": "Your rights",
-      "body": "In your settings you can download a copy of your data, change your profile and delete your account. For any other request (access, correction or objection to the use of your data, the ARCO rights and their equivalents in other laws) write to {{email}}."
+      "body": "In your settings you can download a copy of your data (including your library), import it back, change your profile and delete your account.. For any other request (access, correction or objection to the use of your data, the ARCO rights and their equivalents in other laws) write to {{email}}."
     },
     "age": {
       "title": "Minors",
@@ -400,7 +403,11 @@
     },
     "content": {
       "title": "Your content",
-      "body": "You are responsible for what you write in your profile (name, bio and photo). You choose who sees it with your privacy level. You keep your rights over your content and allow us to show it in the service according to that choice."
+      "body": "You are responsible for what you write in your profile (name, bio and photo) and in your library (for example, your notes). You choose who sees it; the notes in your library are seen by no one else. You keep your rights over your content and allow us to store it and show it in the service according to that choice. If you import a file, it must contain only your own data."
+    },
+    "titles": {
+      "title": "Title data",
+      "body": "Information about movies, series, anime, books and manga comes from third parties and is not ours (see the <credits>Credits</credits>). It may contain errors or change, and we do not guarantee that it is accurate or complete."
     },
     "suspension": {
       "title": "Suspension",

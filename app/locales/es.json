@@ -333,10 +333,12 @@
     },
     "data": {
       "title": "Qué datos guardamos",
-      "intro": "Guardamos solo lo necesario para que tu cuenta funcione:",
+      "intro": "Guardamos solo lo necesario para que tu cuenta y tu biblioteca funcionen:",
       "account": "Cuenta: tu correo, tu nombre de usuario y, si usas contraseña, una versión protegida de ella. La contraseña la gestiona Clerk y SagaShelf nunca la guarda.",
       "google": "Inicio con Google: si eliges esta opción, Google comparte con Clerk tu correo, tu nombre y tu foto de perfil. No accedemos a nada más de tu cuenta de Google.",
       "profile": "Perfil: el nombre para mostrar, la biografía, el idioma, tu nivel de privacidad y la foto que elijas.",
+      "library": "Biblioteca: por cada título que guardas, su estado, tu progreso, tu puntuación, las fechas en que lo empezaste y lo terminaste, cuántas veces lo has vuelto a ver, tus notas y un nivel de visibilidad (privado de forma predeterminada). Por ahora solo tú ves tu biblioteca; antes de mostrar algo a otras personas actualizaremos esta política.",
+      "viewings": "Historial de visualizaciones: las fechas y las notas de cada vez que viste un título, si decides anotarlas.",
       "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
       "analytics": "Estadísticas de uso: medimos cuántas visitas recibe cada página y qué tan rápido carga con Cloudflare Web Analytics. Según Cloudflare, no usa cookies ni almacenamiento del navegador y no identifica a cada persona: recibe sobre todo tiempos de carga y páginas vistas."
     },
@@ -349,7 +351,8 @@
       "intro": "Usamos estos proveedores para operar el servicio:",
       "clerk": "Clerk: gestiona las cuentas y el inicio de sesión.",
       "neon": "Neon: aloja la base de datos donde se guarda tu perfil.",
-      "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos y mide visitas y velocidad con Web Analytics.",
+      "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos, mide visitas y velocidad con Web Analytics y guarda por hasta un día una copia temporal de las búsquedas y de las portadas, sin relación con tu cuenta.",
+      "titles": "Fuentes de datos de títulos (TMDB, Open Library y MangaDex): cuando buscas o abres un título, nuestros servidores les envían el texto de la búsqueda o el identificador del título para obtener sus datos. No reciben tu nombre, tu correo, tu cuenta ni tus cookies. Las portadas pasan por nuestro servidor, así que esas fuentes no ven quién visita el sitio.",
       "outro": "Estos proveedores pueden procesar datos fuera de México, incluso en Estados Unidos. No los usamos para nada más que operar el servicio."
     },
     "cookies": {
@@ -358,11 +361,11 @@
     },
     "retention": {
       "title": "Cuánto tiempo los conservamos",
-      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (biblioteca, listas y seguimientos), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado, y el proveedor de la base de datos puede conservar copias de respaldo por un periodo corto."
+      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado, y el proveedor de la base de datos puede conservar copias de respaldo por un periodo corto."
     },
     "rights": {
       "title": "Tus derechos",
-      "body": "En tus ajustes puedes descargar una copia de tus datos, cambiar tu perfil y eliminar tu cuenta. Para cualquier otra solicitud (acceso, corrección u oposición al uso de tus datos, los derechos ARCO y sus equivalentes en otras leyes) escribe a {{email}}."
+      "body": "En tus ajustes puedes descargar una copia de tus datos (incluida tu biblioteca), importarla de nuevo, cambiar tu perfil y eliminar tu cuenta. Para cualquier otra solicitud (acceso, corrección u oposición al uso de tus datos, los derechos ARCO y sus equivalentes en otras leyes) escribe a {{email}}."
     },
     "age": {
       "title": "Menores de edad",
@@ -400,7 +403,11 @@
     },
     "content": {
       "title": "Tu contenido",
-      "body": "Eres responsable de lo que escribes en tu perfil (nombre, biografía y foto). Tú eliges quién lo ve con tu nivel de privacidad. Conservas tus derechos sobre tu contenido y nos permites mostrarlo en el servicio según esa elección."
+      "body": "Eres responsable de lo que escribes en tu perfil (nombre, biografía y foto) y en tu biblioteca (por ejemplo, tus notas). Tú eliges quién lo ve; las notas de tu biblioteca no las ve nadie más. Conservas tus derechos sobre tu contenido y nos permites guardarlo y mostrarlo en el servicio según esa elección. Si importas un archivo, debe contener solo datos tuyos."
+    },
+    "titles": {
+      "title": "Datos de los títulos",
+      "body": "La información de películas, series, anime, libros y manga viene de terceros y no es nuestra (consulta los <credits>Créditos</credits>). Puede tener errores o cambiar, y no garantizamos que sea exacta ni completa."
     },
     "suspension": {
       "title": "Suspensión",

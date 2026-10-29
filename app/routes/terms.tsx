@@ -1,4 +1,5 @@
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
 import type { Route } from "./+types/terms";
 import { LegalList, LegalPage, LegalSection } from "~/components/LegalPage";
@@ -46,6 +47,16 @@ export default function Terms() {
       </LegalSection>
       <LegalSection title={t("terms.content.title")}>
         <p>{t("terms.content.body")}</p>
+      </LegalSection>
+      <LegalSection title={t("terms.titles.title")}>
+        <p>
+          <Trans
+            i18nKey="terms.titles.body"
+            components={{
+              credits: <Link to="/credits" className="text-accent underline" />,
+            }}
+          />
+        </p>
       </LegalSection>
       <LegalSection title={t("terms.suspension.title")}>
         <p>{t("terms.suspension.body")}</p>
