@@ -401,6 +401,22 @@ describe("the card of an entry", () => {
     expect(many).toContain("You have watched it 3 times");
     expect(never).not.toContain("Lo has visto");
   });
+
+  it("says read, not watched, for a book and a manga", async () => {
+    const book = await render(
+      "es",
+      <Library {...withRow({ type: "book", timesWatched: 2 })} />,
+    );
+    const manga = await render(
+      "en",
+      <Library {...withRow({ type: "manga", timesWatched: 1 })} />,
+    );
+
+    expect(book).toContain("Lo has leído 2 veces");
+    expect(book).not.toContain("Lo has visto");
+    expect(manga).toContain("You have read it 1 time");
+    expect(manga).not.toContain("watched it");
+  });
 });
 
 describe("the score of an entry", () => {

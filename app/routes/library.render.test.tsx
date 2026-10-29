@@ -177,6 +177,76 @@ describe("the entry page", () => {
     expect(html).toContain('type="hidden" name="progress" value="0"');
   });
 
+  describe("the words about watching again", () => {
+    const completed = (type: string, locale: "es" | "en") =>
+      render(
+        locale,
+        <LibraryEntry
+          {...entryProps({ status: "completed" }, undefined, {
+            totalEpisodes: 0,
+            progressAt: null,
+            timesWatched: 2,
+            media: { ...entryProps().loaderData.media, type },
+          })}
+        />,
+      );
+
+    it.each(["book", "manga"])("say read for a %s", async (type) => {
+      const es = await completed(type, "es");
+      const en = await completed(type, "en");
+
+      expect(es).toContain("Volver a leerlo");
+      expect(es).toContain("Veces que lo has leído");
+      expect(es).toContain("Lo has leído 2 veces.");
+      expect(es).toContain("empieza de nuevo desde el principio");
+      expect(es).not.toMatch(/Volver a verlo|has visto|episodio/);
+      expect(en).toContain("Read it again");
+      expect(en).toContain("Times you have read it");
+      expect(en).toContain("You have read it 2 times.");
+      expect(en).not.toMatch(/Watch it again|watched it|episode/);
+    });
+
+    it.each(["series", "anime", "movie"])(
+      "keep saying watched for %s",
+      async (type) => {
+        const html = await completed(type, "es");
+
+        expect(html).toContain("Volver a verlo");
+        expect(html).toContain("Lo has visto 2 veces.");
+        expect(html).not.toContain("leído");
+      },
+    );
+
+    it("says read in the message after starting a book again, and in its error", async () => {
+      const media = { ...entryProps().loaderData.media, type: "book" };
+      const saved = await render(
+        "es",
+        <LibraryEntry
+          {...entryProps(
+            {},
+            { ok: true, saved: "rewatch", savedAt: 1 },
+            { media },
+          )}
+        />,
+      );
+      const refused = await render(
+        "es",
+        <LibraryEntry
+          {...entryProps(
+            {},
+            { ok: false, errors: { form: "not_completed" } },
+            { media },
+          )}
+        />,
+      );
+
+      expect(saved).toContain("Empezaste de nuevo desde el principio.");
+      expect(refused).toContain(
+        "Solo puedes volver a leer un título completado.",
+      );
+    });
+  });
+
   it("asks for the pages of a book, and for an optional total", async () => {
     const html = await render(
       "es",

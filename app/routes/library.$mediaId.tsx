@@ -8,6 +8,7 @@ import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
 import { useFormatters } from "~/lib/format";
+import { readingContext } from "~/lib/media";
 import { primaryButtonClass, secondaryButtonClass } from "~/lib/ui";
 import { CountedTextarea } from "~/components/CountedTextarea";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -382,7 +383,11 @@ export default function LibraryEntry({
     errors.viewFinishedOn ??
     errors.viewStartedOn ??
     errors.viewNotes;
-  const errorText = (code: ErrorCode) => t(`library.errors.${code}`);
+  const context = readingContext(media.type);
+  const errorText = (code: ErrorCode) =>
+    code === "not_completed"
+      ? t("library.errors.not_completed", { context })
+      : t(`library.errors.${code}`);
 
   const fieldError = (field: Field) =>
     errors[field] ? (
@@ -445,7 +450,7 @@ export default function LibraryEntry({
           {actionData?.ok === true ? (
             <StatusToast key={actionData.savedAt}>
               {actionData.saved === "rewatch"
-                ? t("library.editor.rewatched")
+                ? t("library.editor.rewatched", { context })
                 : actionData.saved === "viewing_add" ||
                     actionData.saved === "viewing_save" ||
                     actionData.saved === "viewing_remove"
@@ -703,10 +708,13 @@ export default function LibraryEntry({
 
         <section className="border-border mt-10 border-t pt-6">
           <h2 className="text-xl font-semibold">
-            {t("library.editor.viewings.title")}
+            {t("library.editor.viewings.title", { context })}
           </h2>
           <p className="text-fg-muted mt-1">
-            {t("library.editor.viewings.count", { count: watchedCount })}
+            {t("library.editor.viewings.count", {
+              count: watchedCount,
+              context,
+            })}
           </p>
           {viewingError ? (
             <p role="alert" className="text-danger-text mt-2 font-semibold">
@@ -880,10 +888,10 @@ export default function LibraryEntry({
             <Form method="post" className="mt-3 space-y-2">
               <input type="hidden" name="intent" value="rewatch" />
               <button type="submit" className={secondaryButtonClass}>
-                {t("library.editor.rewatch")}
+                {t("library.editor.rewatch", { context })}
               </button>
               <p className="text-fg-muted text-sm">
-                {t("library.editor.rewatchHint")}
+                {t("library.editor.rewatchHint", { context })}
               </p>
             </Form>
           ) : null}

@@ -532,7 +532,9 @@
       "progressOf_volumes_one": "{{done}} de {{count}} tomo",
       "progressOf_volumes_other": "{{done}} de {{count}} tomos",
       "progressDone_volumes_one": "{{count}} tomo",
-      "progressDone_volumes_other": "{{count}} tomos"
+      "progressDone_volumes_other": "{{count}} tomos",
+      "watched_read_one": "Lo has leído {{count}} vez",
+      "watched_read_other": "Lo has leído {{count}} veces"
     },
     "editor": {
       "back": "Volver a mi biblioteca",
@@ -580,7 +582,10 @@
           "viewing_add": "Se añadió la vez.",
           "viewing_save": "Se guardó la vez.",
           "viewing_remove": "Se quitó la vez."
-        }
+        },
+        "title_read": "Veces que lo has leído",
+        "count_read_one": "Lo has leído {{count}} vez.",
+        "count_read_other": "Lo has leído {{count}} veces."
       },
       "remove": {
         "summary": "Quitar de mi biblioteca",
@@ -599,7 +604,10 @@
       "progressUnitOptions": {
         "chapters": "Capítulos",
         "volumes": "Tomos"
-      }
+      },
+      "rewatched_read": "Empezaste de nuevo desde el principio.",
+      "rewatch_read": "Volver a leerlo",
+      "rewatchHint_read": "Guarda esta vez en tu historial y empieza de nuevo desde el principio."
     },
     "errors": {
       "summary": "Revisa los campos marcados.",
@@ -609,7 +617,8 @@
       "notes_too_long": "Las notas son demasiado largas.",
       "not_completed": "Solo puedes volver a ver un título completado.",
       "viewings_limit": "Llegaste al máximo de veces que se pueden guardar para este título.",
-      "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
+      "generic": "No pudimos guardar los cambios. Inténtalo de nuevo.",
+      "not_completed_read": "Solo puedes volver a leer un título completado."
     }
   }
 }
