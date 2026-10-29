@@ -308,6 +308,83 @@ describe("the search and the filters", () => {
     expect(html).toContain("Quitar filtros");
   });
 
+  it("offer the entries with no score, and the minimum scores, in a filter that is named score", async () => {
+    const html = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    const select = /<select id="score"[\s\S]*?<\/select>/.exec(html)?.[0] ?? "";
+    expect(html).toMatch(/<label[^>]*for="score"[^>]*>Puntuación<\/label>/);
+    expect(html).not.toContain("Puntuación mínima");
+    const options = [
+      ...select.matchAll(/<option value="([^"]*)"[^>]*>([^<]*)<\/option>/g),
+    ].map((match) => [match[1], match[2]]);
+    expect(options.slice(0, 4)).toEqual([
+      ["", "Todos"],
+      ["none", "Sin puntuar"],
+      ["10", "10 o más"],
+      ["9", "9 o más"],
+    ]);
+    expect(options).toHaveLength(12);
+  });
+
+  it("say it in English", async () => {
+    const html = await render(
+      "en",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    expect(html).toContain("Not scored");
+    expect(html).toContain("8 or more");
+    expect(html).toMatch(/<label[^>]*for="score"[^>]*>Score<\/label>/);
+  });
+
+  it("select the entries with no score when the address says so, and count it as a filter", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({ params: { score: "none" }, sections: threeEntries() })}
+      />,
+    );
+
+    expect(html).toMatch(
+      /<option value="none" selected="">Sin puntuar<\/option>/,
+    );
+    expect(html).toContain("Quitar filtros");
+  });
+
+  it("keep the filter of no score when the tab changes, and drop it when the filters are cleared", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          params: { score: "none", type: "anime" },
+          sections: threeEntries(),
+        })}
+      />,
+    );
+
+    expect(html).toContain('href="/library?type=movie&amp;score=none"');
+    expect(html).toContain('href="/library?type=anime"');
+  });
+
+  it("say that nothing matches when no entry is without a score", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          params: { score: "none" },
+          counts: { all: 0, anime: 0, movie: 0, series: 0, book: 0, manga: 0 },
+          sections: sectionsOf({}),
+        })}
+      />,
+    );
+
+    expect(html).toContain("Ningún título coincide con tu búsqueda.");
+    expect(html).toContain('href="/library"');
+  });
+
   it("say that nothing matches, and how to go back", async () => {
     const html = await render(
       "es",
@@ -464,7 +541,10 @@ describe("the score of an entry", () => {
     expect(rated).toContain('<span aria-hidden="true">★ 8</span>');
     expect(rated).toContain("Puntuación: 8 de 10");
     expect(unrated).not.toContain("★");
-    expect(unrated).not.toContain("Sin puntuar");
+    // The filter of the page has an option with those words, so only the card is looked at.
+    const card = /<ul class="mt-3 grid[\s\S]*?<\/ul>/.exec(unrated)?.[0] ?? "";
+    expect(card).toContain("Dune");
+    expect(card).not.toContain("Sin puntuar");
   });
 });
 

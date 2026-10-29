@@ -28,6 +28,21 @@ describe("libraryPath", () => {
     );
   });
 
+  it("keeps a score of none, as the minimum scores are kept", () => {
+    const none = queryOf("score=none&type=book");
+    const minimum = queryOf("score=8");
+
+    expect(libraryPath(none, none.pages)).toBe("/library?type=book&score=none");
+    expect(libraryPath(minimum, minimum.pages)).toBe("/library?score=8");
+    // Changing the tab keeps the filter; clearing the filters drops it.
+    expect(libraryPath(none, none.pages, { type: "manga" })).toBe(
+      "/library?type=manga&score=none",
+    );
+    expect(libraryPath(none, none.pages, { clear: true })).toBe(
+      "/library?type=book",
+    );
+  });
+
   it("drops the default sort, and the pages unless it is told to keep them", () => {
     const query = queryOf("sort=recent&completed_page=3");
 
@@ -90,6 +105,16 @@ describe("libraryBackPath", () => {
   it("goes to the plain library when it had nothing", () => {
     expect(libraryBackPath(`${origin}/library`, origin)).toBe("/library");
     expect(libraryBackPath(`${origin}/library?`, origin)).toBe("/library");
+  });
+
+  it("goes back to the library with the entries that were not scored", () => {
+    expect(
+      libraryBackPath(`${origin}/library?type=series&score=none`, origin),
+    ).toBe("/library?type=series&score=none");
+    // Only that exact word counts.
+    expect(libraryBackPath(`${origin}/library?score=NONE`, origin)).toBe(
+      "/library",
+    );
   });
 
   it("ignores a value the library would ignore, as the page does", () => {

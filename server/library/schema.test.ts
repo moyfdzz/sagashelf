@@ -201,6 +201,28 @@ describe("libraryQuerySchema", () => {
     });
   });
 
+  it("reads `none` as the entries that were never scored, and a number as a minimum", () => {
+    expect(libraryQuerySchema.parse({ score: "none" }).score).toBe("none");
+    expect(libraryQuerySchema.parse({ score: "10" }).score).toBe(10);
+    expect(libraryQuerySchema.parse({ score: "1" }).score).toBe(1);
+  });
+
+  it.each([
+    "NONE",
+    "None",
+    "nonee",
+    " none",
+    "none ",
+    "null",
+    "0",
+    "11",
+    "-1",
+    "7.5",
+    "",
+  ])("ignores the score %j, which is not none and not a minimum", (score) => {
+    expect(libraryQuerySchema.parse({ score }).score).toBeUndefined();
+  });
+
   it("ignores a value that is not valid instead of failing", () => {
     expect(
       libraryQuerySchema.parse({
