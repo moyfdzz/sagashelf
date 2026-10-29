@@ -9,6 +9,7 @@ import {
   saveEntry,
   totalEpisodes,
 } from "~server/db/library";
+import { returnPath } from "~server/library/back";
 import { applyStep } from "~server/library/rules";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
@@ -101,8 +102,16 @@ export async function action(args: Route.ActionArgs) {
     return fail("invalid_request", 404);
   }
 
+  // Without JavaScript the person goes back to the library or the title page they were on.
   return asksForDocument(request)
-    ? redirect("/library", { status: 303, headers: privateHeaders })
+    ? redirect(
+        returnPath(
+          request.headers.get("Referer"),
+          new URL(request.url).origin,
+          "/library",
+        ),
+        { status: 303, headers: privateHeaders },
+      )
     : data(
         {
           ok: true as const,

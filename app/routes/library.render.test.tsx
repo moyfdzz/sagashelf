@@ -407,28 +407,169 @@ const detailProps = (library: Record<string, unknown>) =>
     },
   }) as unknown as Parameters<typeof MediaDetail>[0];
 
+const inLibrary = (overrides: Record<string, unknown> = {}) => ({
+  signedIn: true,
+  status: "in_progress",
+  progress: 3,
+  progressUnit: null,
+  progressTotal: null,
+  totalEpisodes: 12,
+  ...overrides,
+});
+
+/** The page while a form of the library panel is on its way to the server and has no answer. */
+async function renderSending(
+  action: string,
+  fields: Record<string, string>,
+  element: ReactNode,
+): Promise<string> {
+  const i18n = createInstance();
+  await i18n.use(initReactI18next).init({
+    resources,
+    lng: "es",
+    fallbackLng: "es",
+    interpolation: { escapeValue: false },
+  });
+  const router = createMemoryRouter(
+    [
+      { path: "/", element },
+      {
+        id: "sent",
+        path: "/library/:mediaId/:what",
+        action: () => new Promise(() => undefined),
+      },
+      {
+        id: "added",
+        path: "/library/add",
+        action: () => new Promise(() => undefined),
+      },
+    ],
+    { initialEntries: ["/"] },
+  );
+  const formData = new FormData();
+  for (const [name, value] of Object.entries(fields)) formData.set(name, value);
+  void router.fetch(
+    `library-${mediaId}`,
+    action === "/library/add" ? "added" : "sent",
+    action,
+    { formMethod: "post", formData },
+  );
+  return renderToString(
+    <I18nextProvider i18n={i18n}>
+      <RouterProvider router={router} />
+    </I18nextProvider>,
+  );
+}
+
 describe("the library block of the title page", () => {
-  it("lets a signed-in person add the title with a form that reloads the page", async () => {
-    const html = await render(
-      "es",
-      <MediaDetail {...detailProps({ signedIn: true, status: null })} />,
-    );
+  const page = (library: Record<string, unknown>, locale: "es" | "en" = "es") =>
+    render(locale, <MediaDetail {...detailProps(library)} />);
+  const buttons = (html: string) =>
+    html.match(/<button[^>]*name="status"[^>]*>[^<]*<\/button>/g) ?? [];
+
+  it("lets a signed-in person add the title with a form that works without JavaScript", async () => {
+    const html = await page({ signedIn: true, status: null });
 
     expect(html).toContain('action="/library/add"');
     expect(html).toContain('method="post"');
     expect(html).toContain(`name="mediaId" value="${mediaId}"`);
     expect(html).toContain("Añadir a mi biblioteca");
+    expect(buttons(html)).toHaveLength(0);
   });
 
-  it("shows the status and a plain link to the entry when it is already there", async () => {
-    const html = await render(
-      "es",
-      <MediaDetail {...detailProps({ signedIn: true, status: "completed" })} />,
+  it("shows the five statuses as buttons, the current one pressed, each a plain form button", async () => {
+    const html = await page(inLibrary({ status: "paused" }));
+
+    expect(html).toContain("En tu biblioteca");
+    expect(html).toContain(`action="/library/${mediaId}/status"`);
+    const found = buttons(html);
+    expect(
+      found.map((button) => /value="([a-z_]+)"/.exec(button)?.[1]),
+    ).toEqual(["planned", "in_progress", "completed", "paused", "dropped"]);
+    expect(
+      found.filter((button) => button.includes('aria-pressed="true"')),
+    ).toHaveLength(1);
+    expect(found.find((button) => button.includes("En pausa"))).toContain(
+      'aria-pressed="true"',
+    );
+    expect(html).not.toContain("Añadir a mi biblioteca");
+    expect(html).toContain(`href="/library/${mediaId}"`);
+    expect(html).toContain("Editar mi entrada");
+  });
+
+  it("says what the group is for, so a screen reader announces it", async () => {
+    const html = await page(inLibrary());
+
+    expect(html).toMatch(/role="group"[^>]*aria-label="Cambiar el estado"/);
+  });
+
+  it("says the status in English", async () => {
+    const html = await page(inLibrary({ status: "completed" }), "en");
+
+    expect(html).toContain("In your library");
+    expect(html).toContain("Change the status");
+    expect(html).toContain("Completed");
+  });
+
+  it("turns off planned once there is progress, unless it is the status the title has", async () => {
+    const withProgress = buttons(await page(inLibrary({ progress: 3 })));
+    const without = buttons(
+      await page(inLibrary({ status: "paused", progress: 0 })),
+    );
+    const planned = buttons(
+      await page(inLibrary({ status: "planned", progress: 0 })),
     );
 
-    expect(html).toContain("En tu biblioteca: Completado");
-    expect(html).toContain(`href="/library/${mediaId}"`);
-    expect(html).not.toContain("Añadir a mi biblioteca");
+    const plannedOf = (found: string[]) =>
+      found.find((button) => button.includes('value="planned"')) ?? "";
+    expect(plannedOf(withProgress)).toContain('disabled=""');
+    expect(plannedOf(without)).not.toContain('disabled=""');
+    expect(plannedOf(planned)).not.toContain('disabled=""');
+  });
+
+  it("shows the progress with a bar and a +1 that goes to the step of the entry", async () => {
+    const html = await page(inLibrary());
+
+    expect(html).toContain("3 de 12 episodios");
+    expect(html).toContain('max="12"');
+    expect(html).toContain(`action="/library/${mediaId}/step"`);
+    expect(html).toContain('aria-label="+1 episodio: Ataque a los Titanes"');
+    expect(html).toContain(">+1<");
+  });
+
+  it("counts the pages of a book against its total, and chapters with no total", async () => {
+    const book = await page(
+      inLibrary({
+        progress: 120,
+        progressUnit: "pages",
+        progressTotal: 320,
+        totalEpisodes: 0,
+      }),
+    );
+    const manga = await page(
+      inLibrary({
+        progress: 40,
+        progressUnit: "chapters",
+        progressTotal: null,
+        totalEpisodes: 0,
+      }),
+    );
+
+    expect(book).toContain("120 de 320 páginas");
+    expect(book).toContain('aria-label="+1 página: Ataque a los Titanes"');
+    expect(manga).toContain("40 capítulos");
+    expect(manga).not.toContain("<progress");
+    expect(manga).toContain('aria-label="+1 capítulo: Ataque a los Titanes"');
+  });
+
+  it("has no +1 for a completed title, one at its end, or one with nothing to count", async () => {
+    for (const library of [
+      inLibrary({ status: "completed", progress: 12 }),
+      inLibrary({ progress: 12 }),
+      inLibrary({ progress: 0, totalEpisodes: 0 }),
+    ]) {
+      expect(await page(library)).not.toContain(`/library/${mediaId}/step`);
+    }
   });
 
   it("sends a visitor to sign in", async () => {
@@ -446,5 +587,84 @@ describe("the library block of the title page", () => {
     expect(html).toContain('href="/sign-in?redirectTo=%2Fmedia%2Fx"');
     expect(html).toContain("Sign in to add this title to your library");
     expect(html).not.toContain("Add to my library");
+  });
+});
+
+describe("the library block of the title page while a change is on its way", () => {
+  const sending = (
+    action: string,
+    fields: Record<string, string>,
+    library: Record<string, unknown>,
+  ) => renderSending(action, fields, <MediaDetail {...detailProps(library)} />);
+
+  it("shows a title that is being added as planned at once, with the buttons off", async () => {
+    const html = await sending(
+      "/library/add",
+      { mediaId },
+      {
+        signedIn: true,
+        status: null,
+        progress: 0,
+        totalEpisodes: 12,
+        progressUnit: null,
+        progressTotal: null,
+      },
+    );
+
+    expect(html).toContain("En tu biblioteca");
+    expect(html).not.toContain("Añadir a mi biblioteca");
+    expect(html).toMatch(/<button[^>]*value="planned"[^>]*aria-pressed="true"/);
+    for (const button of html.match(/<button[^>]*name="status"[^>]*>/g) ?? []) {
+      expect(button).toContain('disabled=""');
+    }
+  });
+
+  it("shows the status that was pressed at once", async () => {
+    const html = await sending(
+      `/library/${mediaId}/status`,
+      { status: "dropped" },
+      inLibrary(),
+    );
+
+    const pressed = (
+      html.match(/<button[^>]*aria-pressed="true"[^>]*>/g) ?? []
+    ).join("");
+    expect(pressed).toContain('value="dropped"');
+    expect(pressed).not.toContain('value="in_progress"');
+  });
+
+  it("shows a completed title with all its episodes at once", async () => {
+    const html = await sending(
+      `/library/${mediaId}/status`,
+      { status: "completed" },
+      inLibrary(),
+    );
+
+    expect(html).toContain("12 de 12 episodios");
+    expect(html).not.toContain(`/library/${mediaId}/step`);
+  });
+
+  it("shows one more at once with the step, and turns off the button", async () => {
+    const html = await sending(`/library/${mediaId}/step`, {}, inLibrary());
+
+    expect(html).toContain("4 de 12 episodios");
+    expect(html).toContain('value="4"');
+    const step =
+      /<button[^>]*aria-label="\+1[^"]*"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(step).toContain('disabled=""');
+  });
+
+  it("completes the title at once with the last step, and takes the +1 away", async () => {
+    const html = await sending(
+      `/library/${mediaId}/step`,
+      {},
+      inLibrary({ progress: 11 }),
+    );
+
+    expect(html).toContain("12 de 12 episodios");
+    expect(html).toMatch(
+      /<button[^>]*value="completed"[^>]*aria-pressed="true"/,
+    );
+    expect(html).not.toContain('aria-label="+1');
   });
 });

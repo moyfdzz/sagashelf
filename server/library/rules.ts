@@ -131,6 +131,35 @@ export function applyStep(current: EntryState, context: Context): RuleResult {
 }
 
 /**
+ * Another status for the entry, as the quick buttons of the title page do it. It is a save of the
+ * whole entry with only the status changed, so every rule of `applySave` holds: a completed
+ * title has all its episodes seen, a finish date only belongs to a completed title, and a planned
+ * title with progress is in progress, so asking for "planned" then gives "in progress".
+ */
+export function applyStatus(
+  current: EntryState,
+  status: LibraryStatus,
+  context: Context,
+): RuleResult {
+  return applySave(
+    current,
+    {
+      intent: "save",
+      status,
+      progress: current.progress,
+      progressUnit: current.progressUnit,
+      progressTotal: current.progressTotal,
+      score: current.score,
+      startedAt: current.startedAt,
+      finishedAt: current.finishedAt,
+      notes: current.notes,
+      visibility: current.visibility,
+    },
+    context,
+  );
+}
+
+/**
  * Starts a completed title again: back to the first episode, with a new start date. The run that
  * ends is saved with its dates in the history of viewings by the caller (`rewatchEntry`), so
  * nothing is counted here. The score and the notes stay.

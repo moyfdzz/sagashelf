@@ -67,6 +67,75 @@ describe("adding a title to the library", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
+  describe("from the title page with JavaScript, which sends a fetch", () => {
+    const fetchHeaders = { "Sec-Fetch-Dest": "empty" };
+
+    it("answers with data, so the page changes in place and nobody is taken away from it", async () => {
+      const result = await send({ mediaId }, fetchHeaders);
+
+      expect(result).toMatchObject({
+        init: { headers: { "Cache-Control": "private, no-store" } },
+        data: { ok: true },
+      });
+      expect(result).not.toBeInstanceOf(Response);
+      expect(mocks.addEntry).toHaveBeenCalledWith(
+        { fake: "database" },
+        "user-1",
+        mediaId,
+      );
+    });
+
+    it("answers a title that does not exist with data and not with an error thrown to the page", async () => {
+      mocks.addEntry.mockResolvedValue(false);
+
+      const result = await send({ mediaId }, fetchHeaders);
+
+      expect(result).toMatchObject({
+        init: { status: 404 },
+        data: { ok: false, error: "not_found" },
+      });
+    });
+
+    it("keeps the same protections: the origin, the size and the rate limit", async () => {
+      expect(
+        await statusOf(
+          send(
+            { mediaId },
+            { ...fetchHeaders, Origin: "https://evil.example" },
+          ),
+        ),
+      ).toBe(403);
+      expect(
+        await statusOf(
+          send({ mediaId }, { ...fetchHeaders, "Content-Length": "5000" }),
+        ),
+      ).toBe(413);
+      mocks.limit.mockResolvedValue({ success: false });
+      expect(await statusOf(send({ mediaId }, fetchHeaders))).toBe(429);
+    });
+
+    it("still sends a visitor to sign in", async () => {
+      mocks.getOptionalUser.mockResolvedValue(null);
+
+      const response = (await send({ mediaId }, fetchHeaders)) as Response;
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("Location")).toContain("/sign-in");
+    });
+  });
+
+  it("goes to the entry for a form that is a document or has no Sec-Fetch-Dest, as before", async () => {
+    for (const headers of [{ "Sec-Fetch-Dest": "document" }, {}] as Record<
+      string,
+      string
+    >[]) {
+      const response = (await send({ mediaId }, headers)) as Response;
+
+      expect(response.status).toBe(303);
+      expect(response.headers.get("Location")).toBe(`/library/${mediaId}`);
+    }
+  });
+
   it("takes the person from the session and never from the form", async () => {
     await statusOf(send({ mediaId, userId: "someone-else" }));
 

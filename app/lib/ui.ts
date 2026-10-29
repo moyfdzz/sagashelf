@@ -36,6 +36,9 @@ export const externalLinkClass = `${linkClass} after:ml-1 after:inline-block aft
 
 export const secondaryButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-4 py-2 font-semibold hover:brightness-95`;
 
+/** A small button inside a line or a card, like the "+1": the same edge as the others, less padding. */
+export const smallButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 disabled:opacity-60`;
+
 /** A link to another page that acts as a button: the same look, as a box that sits in the line. */
 export const secondaryLinkClass = `${secondaryButtonClass} inline-block whitespace-nowrap`;
 

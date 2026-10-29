@@ -81,9 +81,11 @@
     "sources": "The data comes from {{source}}. More in <credits>Credits</credits>.",
     "library": {
       "add": "Add to my library",
-      "inLibrary": "In your library: {{status}}",
       "edit": "Edit my entry",
-      "signIn": "Sign in to add this title to your library"
+      "signIn": "Sign in to add this title to your library",
+      "heading": "In your library",
+      "statusLabel": "Change the status",
+      "failed": "The change could not be saved. Try again."
     },
     "backToSearch": "← Back to the results",
     "backToEntry": "← Back to my entry"

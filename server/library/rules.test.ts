@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyRewatch,
+  applyStatus,
   applyStep,
   timesWatched,
   applySave,
@@ -516,5 +517,84 @@ describe("applyStep", () => {
       status: "in_progress",
       progress: 41,
     });
+  });
+});
+
+describe("applyStatus", () => {
+  const context = { totalEpisodes: 12, type: "series", today };
+  const change = (
+    current: EntryState,
+    status: EntryState["status"],
+    overrides = context,
+  ) => {
+    const result = applyStatus(current, status, overrides);
+    if (!result.ok) throw new Error(`unexpected rule error: ${result.error}`);
+    return result.next;
+  };
+  const watching: EntryState = {
+    ...planned,
+    status: "in_progress",
+    progress: 3,
+    startedAt: "2026-01-01",
+    score: 8,
+    notes: "una nota",
+  };
+
+  it("changes only the status of a title that is paused or dropped, and keeps the rest", () => {
+    for (const status of ["paused", "dropped"] as const) {
+      expect(change(watching, status)).toEqual({ ...watching, status });
+    }
+  });
+
+  it("gives a completed title all its episodes and a finish date of today", () => {
+    expect(change(watching, "completed")).toMatchObject({
+      status: "completed",
+      progress: 12,
+      finishedAt: today,
+      startedAt: "2026-01-01",
+      score: 8,
+      notes: "una nota",
+    });
+  });
+
+  it("does not make up an end for a book with no total", () => {
+    const book: EntryState = {
+      ...watching,
+      progress: 120,
+      progressUnit: "pages",
+      progressTotal: null,
+    };
+
+    expect(
+      change(book, "completed", { ...context, totalEpisodes: 0, type: "book" }),
+    ).toMatchObject({ status: "completed", progress: 120 });
+  });
+
+  it("takes the finish date away from a title that is not completed any more", () => {
+    const done: EntryState = {
+      ...watching,
+      status: "completed",
+      progress: 12,
+      finishedAt: "2026-02-01",
+    };
+
+    expect(change(done, "in_progress")).toMatchObject({
+      status: "in_progress",
+      finishedAt: null,
+    });
+  });
+
+  it("starts a planned title with a start date when it goes to in progress", () => {
+    expect(change(planned, "in_progress")).toMatchObject({
+      status: "in_progress",
+      startedAt: today,
+    });
+  });
+
+  it("keeps a title with progress in progress when planned is asked", () => {
+    expect(change(watching, "planned").status).toBe("in_progress");
+    expect(change({ ...watching, progress: 0 }, "planned").status).toBe(
+      "planned",
+    );
   });
 });
