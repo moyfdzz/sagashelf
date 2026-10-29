@@ -20,6 +20,11 @@
   // Adding routes switches workers.dev off unless this says otherwise. It stays on until
   // the custom domain is confirmed; turning it off is a later, separate change.
   "workers_dev": true,
+  // By default a deployment makes this file the only source of truth and deletes the variables
+  // that were added by hand in the dashboard. OPEN_LIBRARY_ENABLED and MANGADEX_ENABLED live
+  // only there on purpose (CI must never call the real services), so they have to survive it
+  // (SAG-74). A variable listed in this file is still set from the file.
+  "keep_vars": true,
   "assets": {
     "binding": "ASSETS",
   },
