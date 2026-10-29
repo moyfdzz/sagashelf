@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { data, Form, Link } from "react-router";
+import { data, Form, Link, useFetcher, useFetchers } from "react-router";
 
 import type { Route } from "./+types/library";
+import type { action as stepAction } from "./library.$mediaId.step";
 import {
   primaryButtonClass,
   secondaryLinkClass,
@@ -10,6 +11,7 @@ import {
   tabClass,
 } from "~/lib/ui";
 import { NotesPreview } from "~/components/NotesPreview";
+import { canStep } from "~/lib/library-step";
 import { readingContext } from "~/lib/media";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -221,9 +223,72 @@ function progressOf(row: Row): Progress | null {
     : null;
 }
 
-// "2 de 12 episodios", "120 de 320 páginas" or, with no total, "120 páginas".
-function ProgressText({ row, className }: { row: Row; className?: string }) {
+const stepKey = (row: Row) => `step-${row.mediaId}`;
+
+/**
+ * The row as the person expects to see it right after pressing "+1": one more, before the server
+ * has answered. When the step fails the fetcher is idle again and the real number comes back.
+ */
+function useShownRow(row: Row): Row {
+  const pending = useFetchers().some(
+    (fetcher) => fetcher.key === stepKey(row) && fetcher.state !== "idle",
+  );
+  return pending ? { ...row, progress: row.progress + 1 } : row;
+}
+
+const stepButtonClass =
+  "border-input-edge bg-surface text-fg focus-visible:outline-accent rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60";
+
+/**
+ * The quick "+1" of a row. A plain form that works without JavaScript (the server then sends the
+ * person back to the library); with it, the number goes up at once and the page stays where it is.
+ */
+function StepButton({ row }: { row: Row }) {
   const { t } = useTranslation();
+  const fetcher = useFetcher<typeof stepAction>({ key: stepKey(row) });
+  const shown = useShownRow(row);
+  if (!canStep(shown)) return null;
+
+  const answer = fetcher.data as { ok?: boolean } | undefined;
+  const failed = fetcher.state === "idle" && answer !== undefined && !answer.ok;
+  return (
+    <>
+      <fetcher.Form
+        method="post"
+        action={`/library/${row.mediaId}/step`}
+        className="inline"
+      >
+        <button
+          type="submit"
+          disabled={fetcher.state !== "idle"}
+          aria-label={t("library.card.step", {
+            context: row.progressUnit ?? "episodes",
+            title: row.title,
+          })}
+          className={stepButtonClass}
+        >
+          {t("library.card.stepShort")}
+        </button>
+      </fetcher.Form>
+      {failed ? (
+        <p role="alert" className="text-danger-text mt-1 text-sm font-semibold">
+          {t("library.card.stepFailed")}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+// "2 de 12 episodios", "120 de 320 páginas" or, with no total, "120 páginas".
+function ProgressText({
+  row: saved,
+  className,
+}: {
+  row: Row;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const row = useShownRow(saved);
   const progress = progressOf(row);
   if (!progress) return null;
   const { done, total, unit } = progress;
@@ -240,7 +305,8 @@ function ProgressText({ row, className }: { row: Row; className?: string }) {
 
 // A native <progress>: a bar needs no inline style (the strict CSP forbids it) and no script. It is
 // decorative, because the text next to it already says "2 of 12 episodes".
-function Bar({ row, className }: { row: Row; className: string }) {
+function Bar({ row: saved, className }: { row: Row; className: string }) {
+  const row = useShownRow(saved);
   const progress = progressOf(row);
   // No bar until there is an end to measure against.
   if (!progress?.total) return null;
@@ -333,6 +399,9 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
               ) : null}
             </div>
             <ProgressText row={row} className="sr-only" />
+            <div className="mt-1">
+              <StepButton row={row} />
+            </div>
           </li>
         ))}
       </ul>
@@ -365,10 +434,13 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
                 />
               ) : null}
             </div>
-            {progressOf(row) ? (
+            {progressOf(row) || canStep(row) ? (
               <div className="mt-2 max-w-xs">
                 <ProgressText row={row} className="text-sm" />
                 <Bar row={row} className="mt-1" />
+                <div className="mt-2">
+                  <StepButton row={row} />
+                </div>
               </div>
             ) : null}
             {row.timesWatched > 0 ? (

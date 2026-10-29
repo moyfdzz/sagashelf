@@ -534,7 +534,13 @@
       "progressDone_volumes_one": "{{count}} tomo",
       "progressDone_volumes_other": "{{count}} tomos",
       "watched_read_one": "Lo has leído {{count}} vez",
-      "watched_read_other": "Lo has leído {{count}} veces"
+      "watched_read_other": "Lo has leído {{count}} veces",
+      "stepShort": "+1",
+      "step_episodes": "+1 episodio: {{title}}",
+      "step_pages": "+1 página: {{title}}",
+      "step_chapters": "+1 capítulo: {{title}}",
+      "step_volumes": "+1 tomo: {{title}}",
+      "stepFailed": "No se pudo guardar el avance. Inténtalo de nuevo."
     },
     "editor": {
       "back": "Volver a mi biblioteca",

@@ -106,6 +106,31 @@ export function applySave(
 }
 
 /**
+ * One more episode, page, chapter or volume, as the quick button of the library does it. It is a
+ * save of the whole entry with the progress one higher, so every rule of `applySave` holds: the
+ * end completes the title, going past it is refused, and a planned title becomes in progress
+ * with a start date.
+ */
+export function applyStep(current: EntryState, context: Context): RuleResult {
+  return applySave(
+    current,
+    {
+      intent: "save",
+      status: current.status,
+      progress: current.progress + 1,
+      progressUnit: current.progressUnit,
+      progressTotal: current.progressTotal,
+      score: current.score,
+      startedAt: current.startedAt,
+      finishedAt: current.finishedAt,
+      notes: current.notes,
+      visibility: current.visibility,
+    },
+    context,
+  );
+}
+
+/**
  * Starts a completed title again: back to the first episode, with a new start date. The run that
  * ends is saved with its dates in the history of viewings by the caller (`rewatchEntry`), so
  * nothing is counted here. The score and the notes stay.
