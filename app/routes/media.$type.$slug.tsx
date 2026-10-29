@@ -12,6 +12,7 @@ import { imageSrc } from "~server/images/sources";
 import { importMedia, isMissingLanguage, isStale } from "~server/media/import";
 import { buildJsonLd, shortDescription } from "~server/media/json-ld";
 import { idFromSlug, isMediaKind, mediaPath } from "~server/media/slug";
+import { entryBackPath } from "~server/library/path";
 import { searchBackPath } from "~server/search/path";
 import { getDb, getMediaProviders, runInBackground } from "~server/runtime-env";
 import { pickTitle } from "~server/db/titles";
@@ -140,6 +141,8 @@ export async function loader(args: Route.LoaderArgs) {
     // The results the person came from, when they came from the search. The page is private, so
     // it can depend on where the visit started.
     backToSearch: searchBackPath(request.headers.get("Referer"), url.origin),
+    // The entry the person came from (its "View the title page" link), when they came from one.
+    backToEntry: entryBackPath(request.headers.get("Referer"), url.origin),
     library,
     type: detail.type,
     title,
@@ -217,6 +220,14 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
           <Link to={item.backToSearch} className="text-accent underline">
             {t("media.backToSearch")}
           </Link>
+        </p>
+      ) : item.backToEntry ? (
+        <p className="mb-6">
+          {/* A plain link: the entry page has its own security policy, which only a new document
+              gets. */}
+          <a href={item.backToEntry} className="text-accent underline">
+            {t("media.backToEntry")}
+          </a>
         </p>
       ) : null}
       <div className="flex flex-col gap-6 sm:flex-row">

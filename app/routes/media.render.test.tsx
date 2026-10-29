@@ -36,11 +36,15 @@ async function render(
   );
 }
 
-const props = (backToSearch: string | null) =>
+const props = (
+  backToSearch: string | null,
+  backToEntry: string | null = null,
+) =>
   ({
     loaderData: {
       id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
       backToSearch,
+      backToEntry,
       library: {
         signedIn: false,
         status: null,
@@ -99,5 +103,40 @@ describe("the link back to the search on a title page", () => {
 
     expect(html).not.toContain("Volver a los resultados");
     expect(html).not.toContain('href="/search');
+  });
+});
+
+describe("the link back to the entry on a title page", () => {
+  const entry = "/library/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
+
+  it("is the first thing on the page, as a plain link because the entry has its own policy", async () => {
+    const html = await render("es", <MediaDetail {...props(null, entry)} />);
+
+    expect(html).toContain("← Volver a mi entrada");
+    expect(html).toContain(`href="${entry}"`);
+    expect(html.indexOf("Volver a mi entrada")).toBeLessThan(
+      html.indexOf("The Pitt"),
+    );
+    // A whole-page link: the router does not take it over (the credits link below it does).
+    const tag = new RegExp(`<a [^>]*href="${entry}"[^>]*>`).exec(html)?.[0];
+    expect(tag).toBeTruthy();
+    expect(tag).not.toContain("data-discover");
+  });
+
+  it("is in English when the site is in English", async () => {
+    const html = await render("en", <MediaDetail {...props(null, entry)} />);
+
+    expect(html).toContain("← Back to my entry");
+  });
+
+  it("is the only link when the person came from an entry, and not there otherwise", async () => {
+    const fromEntry = await render(
+      "es",
+      <MediaDetail {...props(null, entry)} />,
+    );
+    const nowhere = await render("es", <MediaDetail {...props(null, null)} />);
+
+    expect(fromEntry).not.toContain("Volver a los resultados");
+    expect(nowhere).not.toContain("Volver a mi entrada");
   });
 });

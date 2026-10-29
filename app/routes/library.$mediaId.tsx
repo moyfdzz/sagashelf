@@ -42,6 +42,7 @@ import {
   viewingNotesMaxLength,
   visibilityLevels,
 } from "~server/library/schema";
+import { libraryBackPath } from "~server/library/path";
 import { mediaPath } from "~server/media/slug";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
@@ -147,9 +148,16 @@ export async function loader(args: Route.LoaderArgs) {
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
 
   const { t } = getInstance(args.context);
+  const url = new URL(args.request.url);
+  // The library the person came from, with its tab, filters and pages. Only the first load of the
+  // page knows it: when the editor saves, the loader runs again and the `Referer` is this page.
+  const backToLibrary = url.pathname.endsWith(".data")
+    ? null
+    : libraryBackPath(args.request.headers.get("Referer"), url.origin);
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
   return rootAuthLoader(args, () => ({
     title: t("library.title"),
+    backToLibrary,
     publishableKey: keys.publishableKey,
     entry: {
       mediaId: entry.mediaId,
@@ -355,6 +363,8 @@ export default function LibraryEntry({
   const saving = navigation.state === "submitting";
   // The finish date can only be set while the status is "completed".
   const [status, setStatus] = useState(loaderData.entry.status);
+  // Kept from the first load, so saving the entry does not send the person to a plain library.
+  const [libraryPathBack] = useState(loaderData.backToLibrary ?? "/library");
   const { formatDate } = useFormatters();
   const {
     entry,
@@ -413,7 +423,7 @@ export default function LibraryEntry({
     >
       <main className="container mx-auto max-w-2xl px-4 py-10">
         <p>
-          <Link to="/library" className="text-accent underline">
+          <Link to={libraryPathBack} className="text-accent underline">
             {t("library.editor.back")}
           </Link>
         </p>

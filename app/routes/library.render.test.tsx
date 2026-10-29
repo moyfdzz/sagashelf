@@ -54,6 +54,7 @@ const entryProps = (
     loaderData: {
       title: "Mi biblioteca",
       publishableKey: "publishable-key-for-tests",
+      backToLibrary: null,
       entry: {
         mediaId,
         status: "in_progress",
@@ -175,6 +176,30 @@ describe("the entry page", () => {
 
     expect(html).not.toContain('id="progress"');
     expect(html).toContain('type="hidden" name="progress" value="0"');
+  });
+
+  describe("the link back to the library", () => {
+    const backLink = (html: string) =>
+      /<a [^>]*href="([^"]*)"[^>]*>Volver a mi biblioteca<\/a>/.exec(html)?.[1];
+
+    it("goes back to the library as the person left it", async () => {
+      const html = await render(
+        "es",
+        <LibraryEntry
+          {...entryProps({}, undefined, {
+            backToLibrary: "/library?type=book&completed_page=2",
+          })}
+        />,
+      );
+
+      expect(backLink(html)).toBe("/library?type=book&amp;completed_page=2");
+    });
+
+    it("goes to the plain library when the person did not come from it", async () => {
+      const html = await render("es", <LibraryEntry {...entryProps()} />);
+
+      expect(backLink(html)).toBe("/library");
+    });
   });
 
   describe("the words about watching again", () => {

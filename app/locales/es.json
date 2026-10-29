@@ -85,7 +85,8 @@
       "edit": "Editar mi entrada",
       "signIn": "Inicia sesión para añadir este título a tu biblioteca"
     },
-    "backToSearch": "← Volver a los resultados"
+    "backToSearch": "← Volver a los resultados",
+    "backToEntry": "← Volver a mi entrada"
   },
   "errors": {
     "backHome": "Volver al inicio",

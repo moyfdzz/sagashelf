@@ -104,6 +104,15 @@ A person can add one episode, page, chapter or volume from the library page, wit
 - **Without JavaScript:** the same form posts to the same route. A browser that submits a form asks for a document (`Sec-Fetch-Dest: document`), and then the answer is a redirect to the library, or to the entry when the step was refused, instead of the JSON.
 - **Not done:** quick actions on the title page and on the search results. The search does not know who the person is nor what they hold, and a title it found that is not saved yet has to be saved first; both are their own tickets. The error message of a failed step has no automated test: the tests render on the server, where a finished fetcher keeps no answer.
 
+## Amendment (2026-10-29, SAG-81): going back keeps where the person was
+
+The library links to the entry page and never to the title page, so "back to my library" matters on the entry page. Its link used to go to `/library` with nothing, and the person lost the tab, the search, the filters, the sort, the view and the page of each section.
+
+- **The entry page** reads the `Referer` of its first load. `libraryBackPath` (`server/library/path.ts`) accepts only the library of this site (same origin, path exactly `/library`), reads the address with `libraryQuerySchema` (a value the page ignores is ignored here too) and builds it again with `libraryPath`, the function the library page uses for its own links. Nothing else of the `Referer` is kept. From anywhere else the link goes to `/library`, as before.
+- **It is read once.** Saving the entry runs the loader again with the entry page itself as the `Referer`, so a data request does not recompute it and the page keeps the first value.
+- **The title page** opened from an entry (its "View the title page" link) shows "Back to my entry", from `entryBackPath`: the path must be `/library/<id>` with a UUID, and the address is built again from the id. It is a whole-page link because the entry page has its own security policy.
+- **Not kept:** library, entry, title and entry again: the `Referer` of the second visit to the entry is the title page, so the link goes to `/library`.
+
 ## References
 
 - Ticket SAG-18 (Linear)

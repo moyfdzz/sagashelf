@@ -78,6 +78,7 @@ A title page opened from the search shows "Back to the results" as the first thi
 - **What is read:** `searchBackPath` (`server/search/path.ts`) accepts only an address of this site whose path is exactly `/search`, reads the text and the tab with the rules of the search itself (2 to 100 characters, a known tab) and builds the address again with `searchPath`, the function the search tabs use. Nothing else of the `Referer` is kept, so the link can only be `/search?q=...&type=...`.
 - **No link** for a bookmark, a shared link, another site, the library or a search that would not have run.
 - **Cache:** the page already answers `private, no-store`, so depending on where the visit started adds nothing.
+- **From an entry (SAG-81):** a title page opened from the "View the title page" link of an entry shows "Back to my entry" instead, with the same place and rules (`entryBackPath`, ADR-018). The `Referer` decides, so only one of the two links shows.
 
 ## Open questions
 
