@@ -1,7 +1,12 @@
 import { Trans, useTranslation } from "react-i18next";
 import { data, Form, Link, redirect } from "react-router";
 
-import { externalLinkClass, forwardLinkClass, linkClass } from "~/lib/ui";
+import {
+  externalLinkClass,
+  forwardLinkClass,
+  linkClass,
+  textLinkClass,
+} from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -376,7 +381,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
             source: item.source?.label ?? "TMDB",
           }}
           components={{
-            credits: <Link to="/credits" className={linkClass} />,
+            credits: <Link to="/credits" className={textLinkClass} />,
           }}
         />
       </p>

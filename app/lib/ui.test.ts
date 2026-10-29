@@ -11,6 +11,7 @@ import {
   secondaryLinkClass,
   segmentClass,
   tabClass,
+  textLinkClass,
 } from "./ui";
 
 describe("the look of what is pressed", () => {
@@ -43,31 +44,27 @@ describe("the look of what is pressed", () => {
 });
 
 describe("the look of a link", () => {
-  it("is blue and underlined before the pointer arrives, with the underline a little apart", () => {
+  it("is blue with no underline when it stands on its own, and amber under the pointer and the focus", () => {
     expect(linkClass).toContain("text-accent");
-    expect(linkClass).toMatch(/(^| )underline( |$)/);
-    expect(linkClass).toContain("underline-offset-4");
-  });
-
-  it("gets a thicker amber underline under the pointer and under the keyboard focus", () => {
+    expect(linkClass).not.toMatch(/(^| )underline( |$)/);
     for (const state of ["hover", "focus-visible"]) {
-      expect(linkClass).toContain(`${state}:decoration-2`);
-      expect(linkClass).toContain(`${state}:decoration-link-hover`);
+      expect(linkClass).toContain(`${state}:text-link-hover`);
     }
     // The focus ring of the other controls stays.
     expect(linkClass).toContain("focus-visible:outline-2");
   });
 
-  it("moves softly, and not at all for a person who asked for less motion", () => {
-    expect(linkClass).toContain("duration-150");
-    expect(linkClass).toContain(
-      "transition-[text-decoration-color,text-decoration-thickness]",
-    );
-    expect(linkClass).toContain("motion-reduce:transition-none");
+  it("keeps a thin underline, a little apart from the text, when it is inside a sentence", () => {
+    expect(textLinkClass).toContain(linkClass);
+    expect(textLinkClass).toMatch(/(^| )underline( |$)/);
+    expect(textLinkClass).toContain("decoration-1");
+    expect(textLinkClass).toContain("underline-offset-4");
   });
 
-  it("keeps the text color on hover: the amber is never a color for text on the light page", () => {
-    expect(linkClass).not.toContain("hover:text-");
+  it("moves softly, and not at all for a person who asked for less motion", () => {
+    expect(linkClass).toContain("transition-colors");
+    expect(linkClass).toContain("duration-150");
+    expect(linkClass).toContain("motion-reduce:transition-none");
   });
 
   it("adds an arrow that a screen reader does not read, to the links that go somewhere", () => {
@@ -75,14 +72,18 @@ describe("the look of a link", () => {
     expect(forwardLinkClass).toContain("after:content-['→'_/_'']");
     expect(externalLinkClass).toContain(linkClass);
     expect(externalLinkClass).toContain("after:content-['↗'_/_'']");
-    // An inline block, so the underline does not run under the arrow.
+    // An inline block, so nothing of the link runs under the arrow.
     expect(forwardLinkClass).toContain("after:inline-block");
     expect(externalLinkClass).toContain("after:inline-block");
+    // No arrow inside a sentence.
+    expect(textLinkClass).not.toMatch(/[→↗]/);
   });
 
   it("is not the look of a button", () => {
-    expect(linkClass).not.toContain("bg-accent");
-    expect(linkClass).not.toContain("border");
+    for (const className of [linkClass, textLinkClass]) {
+      expect(className).not.toContain("bg-accent");
+      expect(className).not.toContain("border");
+    }
   });
 });
 

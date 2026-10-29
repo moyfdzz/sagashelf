@@ -159,9 +159,10 @@ describe("the look of the links on a title page", () => {
     });
 
     const link = tagOf(html, "Ver en TMDB");
-    expect(link).toContain("decoration-link-hover");
+    expect(link).toContain("hover:text-link-hover");
     expect(link).toContain("↗");
-    expect(link).toContain("underline-offset-4");
+    // A link on its own has no underline.
+    expect(link).not.toMatch(/(^| )underline( |")/);
   });
 
   it("gives the link to the entry the shared look and an arrow that goes on", async () => {
@@ -170,7 +171,7 @@ describe("the look of the links on a title page", () => {
     });
 
     const link = tagOf(html, "Editar mi entrada");
-    expect(link).toContain("decoration-link-hover");
+    expect(link).toContain("hover:text-link-hover");
     expect(link).toContain("→");
     expect(link).not.toContain("↗");
   });
@@ -179,7 +180,7 @@ describe("the look of the links on a title page", () => {
     const html = await page({});
 
     const link = /<a [^>]*href="\/sign-in[^"]*"[^>]*>/.exec(html)?.[0] ?? "";
-    expect(link).toContain("decoration-link-hover");
+    expect(link).toContain("hover:text-link-hover");
     expect(link).not.toMatch(/[→↗]/);
   });
 
@@ -190,7 +191,34 @@ describe("the look of the links on a title page", () => {
     );
 
     const link = /<a [^>]*href="\/search\?q=dune"[^>]*>/.exec(html)?.[0] ?? "";
-    expect(link).toContain("decoration-link-hover");
+    expect(link).toContain("hover:text-link-hover");
     expect(html).toContain("← Volver a los resultados");
+  });
+});
+
+describe("links inside a sentence and links on their own", () => {
+  const classOf = (html: string, href: string) =>
+    new RegExp(`<a [^>]*href="${href}"[^>]*class="([^"]*)"`).exec(html)?.[1] ??
+    new RegExp(`<a [^>]*class="([^"]*)"[^>]*href="${href}"`).exec(html)?.[1] ??
+    "";
+
+  it("keeps a thin underline on the link to the credits, which is in a sentence", async () => {
+    const html = await render("es", <MediaDetail {...props(null)} />);
+
+    const credits = classOf(html, "/credits");
+    expect(credits).toMatch(/(^| )underline( |$)/);
+    expect(credits).toContain("underline-offset-4");
+    expect(credits).toContain("hover:text-link-hover");
+  });
+
+  it("has no underline on the link back, which stands on its own", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail {...props("/search?q=dune")} />,
+    );
+
+    const back = classOf(html, "/search[?]q=dune");
+    expect(back).toContain("hover:text-link-hover");
+    expect(back).not.toMatch(/(^| )underline( |$)/);
   });
 });
