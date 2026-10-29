@@ -36,6 +36,8 @@ export default function Privacy() {
             t("privacy.data.account"),
             t("privacy.data.google"),
             t("privacy.data.profile"),
+            t("privacy.data.library"),
+            t("privacy.data.viewings"),
             t("privacy.data.technical"),
             t("privacy.data.analytics"),
           ]}
@@ -51,6 +53,7 @@ export default function Privacy() {
             t("privacy.processors.clerk"),
             t("privacy.processors.neon"),
             t("privacy.processors.cloudflare"),
+            t("privacy.processors.titles"),
           ]}
         />
         <p>{t("privacy.processors.outro")}</p>
