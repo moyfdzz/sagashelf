@@ -19,6 +19,9 @@
   /* Actions and links on the page. */
   --accent: oklch(0.46 0.115 245);
   --accent-fg: oklch(0.99 0 0);
+  /* The underline of a link under the pointer. It is a line and not text, so it needs 3:1 against
+     the page (WCAG 1.4.11), not 4.5:1; amber, as the header is. */
+  --link-hover: oklch(0.6 0.15 75);
 
   --success-bg: oklch(0.95 0.05 155);
   --success-fg: oklch(0.3 0.08 155);
@@ -69,6 +72,7 @@
     --input-edge: oklch(0.5 0.04 255);
     --accent: oklch(0.72 0.12 240);
     --accent-fg: oklch(0.13 0.035 258);
+    --link-hover: oklch(0.8 0.14 82);
 
     --success-bg: oklch(0.26 0.06 155);
     --success-fg: oklch(0.93 0.05 155);
@@ -121,6 +125,7 @@
   --input-edge: oklch(0.5 0.04 255);
   --accent: oklch(0.72 0.12 240);
   --accent-fg: oklch(0.13 0.035 258);
+  --link-hover: oklch(0.8 0.14 82);
 
   --success-bg: oklch(0.26 0.06 155);
   --success-fg: oklch(0.93 0.05 155);
@@ -167,6 +172,7 @@
   --color-input-edge: var(--input-edge);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-link-hover: var(--link-hover);
   --color-success-bg: var(--success-bg);
   --color-success-fg: var(--success-fg);
   --color-success-edge: var(--success-edge);

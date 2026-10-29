@@ -178,6 +178,18 @@ describe("the entry page", () => {
     expect(html).toContain('type="hidden" name="progress" value="0"');
   });
 
+  it("gives the links of the entry the shared look, with an arrow on the one that goes to the title", async () => {
+    const html = await render("es", <LibraryEntry {...entryProps()} />);
+
+    const back = /<a [^>]*>Volver a mi biblioteca<\/a>/.exec(html)?.[0] ?? "";
+    const title =
+      /<a [^>]*>Ver la página del título<\/a>/.exec(html)?.[0] ?? "";
+    expect(back).toContain("decoration-link-hover");
+    expect(back).not.toContain("→");
+    expect(title).toContain("decoration-link-hover");
+    expect(title).toContain("→");
+  });
+
   describe("the link back to the library", () => {
     const backLink = (html: string) =>
       /<a [^>]*href="([^"]*)"[^>]*>Volver a mi biblioteca<\/a>/.exec(html)?.[1];

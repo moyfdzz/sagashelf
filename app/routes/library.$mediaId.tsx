@@ -9,7 +9,12 @@ import { ClerkSession } from "~/components/ClerkSession";
 import { StatusToast } from "~/components/StatusToast";
 import { useFormatters } from "~/lib/format";
 import { readingContext } from "~/lib/media";
-import { primaryButtonClass, secondaryButtonClass } from "~/lib/ui";
+import {
+  forwardLinkClass,
+  linkClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "~/lib/ui";
 import { CountedTextarea } from "~/components/CountedTextarea";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -423,7 +428,7 @@ export default function LibraryEntry({
     >
       <main className="container mx-auto max-w-2xl px-4 py-10">
         <p>
-          <Link to={libraryPathBack} className="text-accent underline">
+          <Link to={libraryPathBack} className={linkClass}>
             {t("library.editor.back")}
           </Link>
         </p>
@@ -445,7 +450,7 @@ export default function LibraryEntry({
               {media.year ? ` ${t("search.year", { year: media.year })}` : ""}
             </p>
             <p className="mt-2">
-              <a href={media.detailPath} className="text-accent underline">
+              <a href={media.detailPath} className={forwardLinkClass}>
                 {t("library.editor.viewTitle")}
               </a>
             </p>
