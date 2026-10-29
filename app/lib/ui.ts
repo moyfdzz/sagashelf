@@ -1,7 +1,7 @@
 // The look of what a person presses, in one place. Three kinds, so that they are told apart:
-// a hyperlink (blue and underlined, inside a sentence or the footer), an option to choose (the
-// tabs and the views, the chosen one filled) and an action (a button, even when it is a link to
-// another page). The colors are the design tokens, light and dark.
+// a hyperlink (blue, amber under the pointer, with a thin underline only inside a sentence), an
+// option to choose (the tabs and the views, the chosen one filled) and an action (a button, even
+// when it is a link to another page). The colors are the design tokens, light and dark.
 
 const focus =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -9,12 +9,19 @@ const focus =
 export const primaryButtonClass = `bg-accent text-accent-fg ${focus} rounded-md px-4 py-2 font-semibold transition hover:brightness-95 disabled:opacity-60`;
 
 /**
- * A link to another page, inside a sentence or on its own: blue text with an underline a little
- * apart from it, which gets thicker and amber under the pointer and under the keyboard focus. The
- * underline is there before the pointer arrives, so the text color never carries the meaning
- * alone. No transition for a person who asked for less motion.
+ * A link on its own (the footer, "Back to my library", the titles of a list): blue text with no
+ * underline, which turns amber under the pointer and under the keyboard focus. A list or a line
+ * of links is understood as links by where it is. No transition for a person who asked for less
+ * motion.
  */
-export const linkClass = `text-accent underline decoration-1 underline-offset-4 ${focus} rounded-sm transition-[text-decoration-color,text-decoration-thickness] duration-150 hover:decoration-2 hover:decoration-link-hover focus-visible:decoration-2 focus-visible:decoration-link-hover motion-reduce:transition-none`;
+export const linkClass = `text-accent ${focus} rounded-sm transition-colors duration-150 hover:text-link-hover focus-visible:text-link-hover motion-reduce:transition-none`;
+
+/**
+ * A link inside a sentence: the same, with a thin underline a little apart from the text. Without
+ * it the blue is only 2.56:1 against the text around it on the light page and 2.11:1 on the dark
+ * one, and 3:1 is needed to tell a link from its text without a line (WCAG 1.4.1).
+ */
+export const textLinkClass = `${linkClass} underline decoration-1 underline-offset-4`;
 
 // The arrow is drawn by the style and not written in the text, so it is the same in both
 // languages. It says "" as its alternative text, so a screen reader does not read it, and it is an

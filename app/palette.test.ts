@@ -76,6 +76,8 @@ const pairs: [string, string, number, string][] = [
   ["fg-muted", "surface-raised", 4.5, "hints on boxes"],
   ["accent", "surface", 4.5, "links and actions on the page"],
   ["accent", "surface-raised", 4.5, "links on boxes"],
+  ["link-hover", "surface", 4.5, "a link under the pointer on the page"],
+  ["link-hover", "surface-raised", 4.5, "a link under the pointer on boxes"],
   ["accent-fg", "accent", 4.5, "the text of a button"],
   ["input-edge", "surface", 3, "the edge of a field (non-text contrast)"],
   ["success-fg", "success-bg", 7, "the text of the success message"],

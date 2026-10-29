@@ -631,13 +631,17 @@ describe("the controls", () => {
     }
   });
 
-  it("leave the title of an entry as a hyperlink", async () => {
+  it("leave the title of an entry as a hyperlink that turns amber under the pointer", async () => {
     const html = await render(
       "es",
       <Library {...props({ sections: threeEntries() })} />,
     );
 
-    expect(tagOf(html, "Matrix")).toContain("text-accent underline");
+    const link = tagOf(html, "Matrix");
+    expect(link).toContain("text-accent");
+    expect(link).toContain("hover:text-link-hover");
+    // On its own in a list, so it needs no underline.
+    expect(link).not.toMatch(/(^| )underline( |")/);
   });
 });
 

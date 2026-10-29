@@ -19,9 +19,10 @@
   /* Actions and links on the page. */
   --accent: oklch(0.46 0.115 245);
   --accent-fg: oklch(0.99 0 0);
-  /* The underline of a link under the pointer. It is a line and not text, so it needs 3:1 against
-     the page (WCAG 1.4.11), not 4.5:1; amber, as the header is. */
-  --link-hover: oklch(0.6 0.15 75);
+  /* The text of a link under the pointer or the keyboard focus: amber, as the header is. It is
+     text, so it needs 4.5:1 against the page and the raised surface (a test reads these values).
+     The amber of the header is too light to be read on this page. */
+  --link-hover: oklch(0.5 0.13 70);
 
   --success-bg: oklch(0.95 0.05 155);
   --success-fg: oklch(0.3 0.08 155);

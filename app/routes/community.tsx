@@ -1,7 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
-import { linkClass } from "~/lib/ui";
+import { textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/community";
 import { LegalList, LegalPage, LegalSection } from "~/components/LegalPage";
 import { contactEmail } from "~/lib/legal";
@@ -33,7 +33,7 @@ export default function Community() {
         <Trans
           i18nKey="community.intro"
           components={{
-            terms: <Link to="/terms" className={linkClass} />,
+            terms: <Link to="/terms" className={textLinkClass} />,
           }}
         />
       }

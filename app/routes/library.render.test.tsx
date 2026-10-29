@@ -184,9 +184,9 @@ describe("the entry page", () => {
     const back = /<a [^>]*>Volver a mi biblioteca<\/a>/.exec(html)?.[0] ?? "";
     const title =
       /<a [^>]*>Ver la página del título<\/a>/.exec(html)?.[0] ?? "";
-    expect(back).toContain("decoration-link-hover");
+    expect(back).toContain("hover:text-link-hover");
     expect(back).not.toContain("→");
-    expect(title).toContain("decoration-link-hover");
+    expect(title).toContain("hover:text-link-hover");
     expect(title).toContain("→");
   });
 
