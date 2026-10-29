@@ -39,6 +39,7 @@ async function render(
 const props = (
   backToSearch: string | null,
   backToEntry: string | null = null,
+  extra: Record<string, unknown> = {},
 ) =>
   ({
     loaderData: {
@@ -66,6 +67,7 @@ const props = (
       canonicalUrl: "https://sagashelf.app/media/series/the-pitt-1",
       shareImageUrl: null,
       jsonLd: {},
+      ...extra,
     },
   }) as unknown as Parameters<typeof MediaDetail>[0];
 
@@ -138,5 +140,57 @@ describe("the link back to the entry on a title page", () => {
 
     expect(fromEntry).not.toContain("Volver a los resultados");
     expect(nowhere).not.toContain("Volver a mi entrada");
+  });
+});
+
+describe("the look of the links on a title page", () => {
+  const tagOf = (html: string, text: string) =>
+    new RegExp(`<a [^>]*>${text}</a>`).exec(html)?.[0] ?? "";
+  const page = (extra: Record<string, unknown>) =>
+    render("es", <MediaDetail {...props(null, null, extra)} />);
+
+  it("gives the link to the source the shared look and an arrow that leaves the site", async () => {
+    const html = await page({
+      source: {
+        name: "tmdb",
+        label: "TMDB",
+        url: "https://www.themoviedb.org/tv/1",
+      },
+    });
+
+    const link = tagOf(html, "Ver en TMDB");
+    expect(link).toContain("decoration-link-hover");
+    expect(link).toContain("↗");
+    expect(link).toContain("underline-offset-4");
+  });
+
+  it("gives the link to the entry the shared look and an arrow that goes on", async () => {
+    const html = await page({
+      library: { signedIn: true, status: "planned", signInPath: "/sign-in" },
+    });
+
+    const link = tagOf(html, "Editar mi entrada");
+    expect(link).toContain("decoration-link-hover");
+    expect(link).toContain("→");
+    expect(link).not.toContain("↗");
+  });
+
+  it("gives the sign in link the shared look, with no arrow", async () => {
+    const html = await page({});
+
+    const link = /<a [^>]*href="\/sign-in[^"]*"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(link).toContain("decoration-link-hover");
+    expect(link).not.toMatch(/[→↗]/);
+  });
+
+  it("gives the link back the shared look, with the arrow in its text", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail {...props("/search?q=dune")} />,
+    );
+
+    const link = /<a [^>]*href="\/search\?q=dune"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(link).toContain("decoration-link-hover");
+    expect(html).toContain("← Volver a los resultados");
   });
 });

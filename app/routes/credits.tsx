@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
+import { externalLinkClass, linkClass } from "~/lib/ui";
 import type { Route } from "./+types/credits";
 import { LegalList, LegalPage, LegalSection } from "~/components/LegalPage";
 import { getInstance } from "~/middleware/i18next";
@@ -29,7 +30,7 @@ function SourceLink({
   children?: ReactNode;
 }) {
   return (
-    <a href={href} rel="noreferrer" className="text-accent underline">
+    <a href={href} rel="noreferrer" className={externalLinkClass}>
       {children}
     </a>
   );
@@ -114,9 +115,7 @@ export default function Credits() {
           <Trans
             i18nKey="credits.cookies.body"
             components={{
-              site: (
-                <Link to="/privacy#cookies" className="text-accent underline" />
-              ),
+              site: <Link to="/privacy#cookies" className={linkClass} />,
             }}
           />
         </p>

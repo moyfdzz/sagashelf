@@ -1,6 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { data, Form, Link, redirect } from "react-router";
 
+import { externalLinkClass, forwardLinkClass, linkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -217,7 +218,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
     <main className="container mx-auto max-w-3xl px-4 py-10">
       {item.backToSearch ? (
         <p className="mb-6">
-          <Link to={item.backToSearch} className="text-accent underline">
+          <Link to={item.backToSearch} className={linkClass}>
             {t("media.backToSearch")}
           </Link>
         </p>
@@ -225,7 +226,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
         <p className="mb-6">
           {/* A plain link: the entry page has its own security policy, which only a new document
               gets. */}
-          <a href={item.backToEntry} className="text-accent underline">
+          <a href={item.backToEntry} className={linkClass}>
             {t("media.backToEntry")}
           </a>
         </p>
@@ -283,7 +284,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
               <a
                 href={item.source.url}
                 rel="noreferrer"
-                className="text-accent underline"
+                className={externalLinkClass}
               >
                 {t(`media.viewOn.${item.source.name}`)}
               </a>
@@ -301,10 +302,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                   </span>{" "}
                   {/* A plain link: the entry page has its own security policy, which only a new
                       document gets. */}
-                  <a
-                    href={`/library/${item.id}`}
-                    className="text-accent underline"
-                  >
+                  <a href={`/library/${item.id}`} className={forwardLinkClass}>
                     {t("media.library.edit")}
                   </a>
                 </p>
@@ -321,10 +319,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                 </Form>
               )
             ) : (
-              <a
-                href={item.library.signInPath}
-                className="text-accent underline"
-              >
+              <a href={item.library.signInPath} className={linkClass}>
                 {t("media.library.signIn")}
               </a>
             )}
@@ -381,7 +376,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
             source: item.source?.label ?? "TMDB",
           }}
           components={{
-            credits: <Link to="/credits" className="text-accent underline" />,
+            credits: <Link to="/credits" className={linkClass} />,
           }}
         />
       </p>

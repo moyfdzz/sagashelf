@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/react-router";
+import { linkClass } from "~/lib/ui";
 import type { ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router";
@@ -32,11 +33,9 @@ export function ClerkAuthPage({ clerkState, publishableKey, children }: Props) {
           <Trans
             i18nKey="legal.consent"
             components={{
-              terms: <Link to="/terms" className="text-accent underline" />,
-              privacy: <Link to="/privacy" className="text-accent underline" />,
-              community: (
-                <Link to="/community" className="text-accent underline" />
-              ),
+              terms: <Link to="/terms" className={linkClass} />,
+              privacy: <Link to="/privacy" className={linkClass} />,
+              community: <Link to="/community" className={linkClass} />,
             }}
           />
         </p>

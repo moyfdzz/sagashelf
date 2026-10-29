@@ -4,6 +4,7 @@ import { data, Form, Link, useFetcher, useFetchers } from "react-router";
 import type { Route } from "./+types/library";
 import type { action as stepAction } from "./library.$mediaId.step";
 import {
+  linkClass,
   primaryButtonClass,
   secondaryLinkClass,
   segmentClass,
@@ -91,8 +92,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
-
-const linkClass = "text-accent underline";
 
 // The color of the stripe of a section. It reuses the colors of the design (light and dark); the
 // name of the section is always written, so the color is never the only signal.

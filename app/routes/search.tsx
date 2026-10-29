@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import type { Route } from "./+types/search";
 import { SearchBox } from "~/components/SearchBox";
-import { tabClass } from "~/lib/ui";
+import { linkClass, tabClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { getMediaProviders } from "~server/runtime-env";
 import { getDb, getSearchCache, getSearchLimiter } from "~server/runtime-env";
@@ -189,11 +189,11 @@ export default function Search({ loaderData }: Route.ComponentProps) {
               <div className="min-w-0">
                 <p className="text-lg font-semibold">
                   {result.wholePage ? (
-                    <a href={result.href} className="text-accent underline">
+                    <a href={result.href} className={linkClass}>
                       {result.title}
                     </a>
                   ) : (
-                    <Link to={result.href} className="text-accent underline">
+                    <Link to={result.href} className={linkClass}>
                       {result.title}
                     </Link>
                   )}

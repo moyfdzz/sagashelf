@@ -43,3 +43,20 @@ for (const locale of locales) {
     }
   });
 }
+
+// The same pages in the dark theme, where the link colors and the amber of the underline differ.
+test.describe("dark theme", () => {
+  test.use({ colorScheme: "dark", locale: "es-MX" });
+
+  for (const { name, path } of pages) {
+    test(`${name} page has no accessibility violations`, async ({ page }) => {
+      await page.goto(path);
+
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze();
+
+      expect(results.violations).toEqual([]);
+    });
+  }
+});
