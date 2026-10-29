@@ -81,6 +81,19 @@ const load = (
     context: {},
   } as unknown as Route.LoaderArgs);
 
+// A visit that starts from a page: the browser sends that page as the `Referer`.
+const loadFrom = (referer: string | null, suffix = "") =>
+  loader({
+    params: { type: "movie", slug: `matrix-${id}` },
+    request: new Request(
+      `https://sagashelf.app/media/movie/matrix-${id}${suffix}`,
+      {
+        headers: referer === null ? {} : { Referer: referer },
+      },
+    ),
+    context: {},
+  } as unknown as Route.LoaderArgs);
+
 async function thrownStatus(promise: Promise<unknown>) {
   try {
     await promise;
@@ -378,6 +391,39 @@ describe("the detail page loader", () => {
 
     expect(response.status).toBe(301);
     expect(response.headers.get("Location")).toBe(`/media/movie/matrix-${id}`);
+  });
+
+  describe("the link back to the search", () => {
+    const back = async (referer: string | null, suffix = "") =>
+      ((await loadFrom(referer, suffix)) as { backToSearch: string | null })
+        .backToSearch;
+
+    it("goes back to the results the person came from, for a move inside the site and for a new page", async () => {
+      const from = "https://sagashelf.app/search?q=the+pitt&type=series";
+
+      expect(await back(from)).toBe("/search?q=the+pitt&type=series");
+      expect(await back(from, ".data")).toBe("/search?q=the+pitt&type=series");
+    });
+
+    it("has none for a bookmark, a shared link, the library or another site", async () => {
+      for (const referer of [
+        null,
+        "https://sagashelf.app/library",
+        "https://sagashelf.app/",
+        "https://evil.example/search?q=dune",
+        "http://sagashelf.app/search?q=dune",
+        "not an address",
+      ]) {
+        expect(await back(referer)).toBeNull();
+      }
+    });
+
+    it("never reflects the Referer: only the text and the tab, in an address of the search", async () => {
+      const hostile =
+        "https://sagashelf.app/search?q=dune&type=book&next=https://evil.example&x=%3Cscript%3E";
+
+      expect(await back(hostile)).toBe("/search?q=dune&type=book");
+    });
   });
 
   it("goes to the canonical address when the words or the type are wrong", async () => {

@@ -19,6 +19,7 @@ import {
 import { imageSrc } from "~server/images/sources";
 import { mediaPath, openPath } from "~server/media/slug";
 import { runSearch } from "~server/search/pipeline";
+import { searchPath } from "~server/search/path";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const { t } = getInstance(context);
@@ -110,14 +111,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-function tabHref(q: string, type: SearchType | undefined) {
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (type) params.set("type", type);
-  const text = params.toString();
-  return text ? `/search?${text}` : "/search";
-}
-
 export default function Search({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { q, type, status, results, failed } = loaderData;
@@ -134,7 +127,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
           {tabs.map((tab) => (
             <li key={tab ?? "all"}>
               <Link
-                to={tabHref(q, tab)}
+                to={searchPath(q, tab)}
                 aria-current={tab === type ? "page" : undefined}
                 className={tabClass(tab === type)}
               >
