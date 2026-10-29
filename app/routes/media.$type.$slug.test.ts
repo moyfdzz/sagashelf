@@ -245,6 +245,83 @@ describe("the detail page loader", () => {
     });
   });
 
+  it("gives the panel of the library the progress of the person and the episodes of the catalog", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    mocks.getEntry.mockResolvedValue({
+      status: "in_progress",
+      progress: 3,
+      progressUnit: null,
+      progressTotal: null,
+    });
+    const episode = (number: number) => ({
+      number,
+      title: null,
+      airDate: null,
+      runtime: null,
+    });
+    mocks.getMediaDetail.mockResolvedValue(
+      detail({
+        type: "series",
+        seasons: [
+          {
+            number: 0,
+            title: "Especiales",
+            airDate: null,
+            episodes: [episode(1)],
+          },
+          {
+            number: 1,
+            title: "T1",
+            airDate: null,
+            episodes: [episode(1), episode(2)],
+          },
+          { number: 2, title: "T2", airDate: null, episodes: [episode(1)] },
+        ],
+      }),
+    );
+
+    const result = await load("series", `matrix-${id}`);
+
+    // The special does not count: the end of the series is 3 episodes.
+    expect(result).toMatchObject({
+      library: {
+        signedIn: true,
+        status: "in_progress",
+        progress: 3,
+        progressUnit: null,
+        progressTotal: null,
+        totalEpisodes: 3,
+      },
+    });
+  });
+
+  it("gives the panel the unit and the total of a book, and nothing for a title with no entry", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    mocks.getEntry.mockResolvedValue({
+      status: "in_progress",
+      progress: 120,
+      progressUnit: "pages",
+      progressTotal: 320,
+    });
+    const book = await load("movie", `matrix-${id}`);
+    mocks.getEntry.mockResolvedValue(null);
+    const none = await load("movie", `matrix-${id}`);
+
+    expect(book).toMatchObject({
+      library: { progress: 120, progressUnit: "pages", progressTotal: 320 },
+    });
+    expect(none).toMatchObject({
+      library: {
+        signedIn: true,
+        status: null,
+        progress: 0,
+        progressUnit: null,
+        progressTotal: null,
+        totalEpisodes: 0,
+      },
+    });
+  });
+
   it("is never kept by a shared cache, because it shows the entry of the person", () => {
     expect(headers()).toEqual({ "Cache-Control": "private, no-store" });
   });

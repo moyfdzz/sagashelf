@@ -168,6 +168,26 @@ describe("the quick step of a library entry", () => {
     expect(failed.headers.get("Location")).toBe(`/library/${mediaId}`);
   });
 
+  it("sends a form without JavaScript back to the title page or the library it came from", async () => {
+    const document = { "Sec-Fetch-Dest": "document" };
+    const from = async (referer: string) =>
+      ((await send({ ...document, Referer: referer })) as Response).headers.get(
+        "Location",
+      );
+
+    expect(
+      await from("https://sagashelf.app/media/series/the-pitt-01a17ed1"),
+    ).toBe("/media/series/the-pitt-01a17ed1");
+    expect(await from("https://sagashelf.app/library?type=book&q=dune")).toBe(
+      "/library?type=book&q=dune",
+    );
+    // Anything else, and another site, goes to the plain library.
+    expect(await from("https://sagashelf.app/search?q=dune")).toBe("/library");
+    expect(await from("https://evil.example/library?type=book")).toBe(
+      "/library",
+    );
+  });
+
   it("refuses a form sent from another site, before looking at the session", async () => {
     const result = await send({ Origin: "https://evil.example" });
 

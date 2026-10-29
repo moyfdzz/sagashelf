@@ -20,6 +20,14 @@ async function answerWithoutReading<T>(request: Request, response: T) {
   return response;
 }
 
+/**
+ * A form that the title page sends with JavaScript is a `fetch`, and its answer is data: the
+ * page changes in place. The same form without JavaScript is a document, and the person goes to
+ * their entry. `Sec-Fetch-Dest` says which, and only the first is `empty`.
+ */
+const asksForData = (request: Request) =>
+  request.headers.get("Sec-Fetch-Dest") === "empty";
+
 /** The page the form was sent from, when it is on this site, to bring the person back to it. */
 function cameFrom(request: Request): string {
   const referer = request.headers.get("Referer");
@@ -87,7 +95,20 @@ export async function action(args: Route.ActionArgs) {
   }
 
   const found = await addEntry(await getDb(), user.id, parsed.data.mediaId);
-  if (!found) throw data({ error: "not_found" }, { status: 404 });
+  if (!found) {
+    if (asksForData(request)) {
+      return data(
+        { ok: false as const, error: "not_found" },
+        { status: 404, headers: privateHeaders },
+      );
+    }
+    throw data({ error: "not_found" }, { status: 404 });
+  }
+
+  if (asksForData(request)) {
+    // A new entry is "planned"; one the person already had keeps its own status.
+    return data({ ok: true as const }, { headers: privateHeaders });
+  }
 
   // The entry page loads Clerk's script under its own security policy, which only a new
   // document gets, so this is a redirect to a whole page.

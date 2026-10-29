@@ -121,6 +121,61 @@ test.describe("the quick +1 of the library", () => {
   });
 });
 
+test.describe("the quick status of the library", () => {
+  const path = "/library/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f/status";
+
+  test("is only for a POST", async ({ request }) => {
+    const response = await request.get(path);
+
+    expect(response.status()).toBe(405);
+  });
+
+  test("refuses a form sent from another site", async ({ request }) => {
+    const response = await request.post(path, {
+      headers: { Origin: "https://evil.example" },
+      form: { status: "paused" },
+      maxRedirects: 0,
+    });
+
+    expect(response.status()).toBe(403);
+  });
+
+  test("refuses a body that is too big", async ({ request }) => {
+    const response = await request.post(path, {
+      form: { status: "x".repeat(5000) },
+      maxRedirects: 0,
+    });
+
+    expect(response.status()).toBe(413);
+  });
+
+  test("is not for a visitor", async ({ request }) => {
+    const response = await request.post(path, {
+      form: { status: "paused" },
+      maxRedirects: 0,
+    });
+
+    // With Clerk's keys the visitor is sent to sign in; without them (CI) nobody gets in.
+    expect([302, 303, 307, 401, 503]).toContain(response.status());
+    expect(await response.text()).not.toContain('"ok":true');
+  });
+});
+
+test.describe("adding a title from the title page with JavaScript", () => {
+  test("sends a visitor to sign in, and never answers that it added", async ({
+    request,
+  }) => {
+    const response = await request.post("/library/add", {
+      headers: { "Sec-Fetch-Dest": "empty" },
+      form: { mediaId: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f" },
+      maxRedirects: 0,
+    });
+
+    expect([302, 303, 307, 401, 503]).toContain(response.status());
+    expect(await response.text()).not.toContain('"ok":true');
+  });
+});
+
 test.describe("the pages of the library", () => {
   test("are never kept by a shared cache", async ({ request }) => {
     const response = await request.get("/library", { maxRedirects: 0 });

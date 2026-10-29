@@ -1,13 +1,10 @@
+import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { data, Form, Link, redirect } from "react-router";
+import { data, Link, redirect } from "react-router";
 
-import {
-  externalLinkClass,
-  forwardLinkClass,
-  linkClass,
-  textLinkClass,
-} from "~/lib/ui";
+import { externalLinkClass, linkClass, textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
+import { TitleLibrary } from "~/components/TitleLibrary";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
@@ -128,7 +125,17 @@ export async function loader(args: Route.LoaderArgs) {
   const user = await getOptionalUser(args);
   const entry = user ? await getEntry(db, user.id, detail.id, locale) : null;
   const library = user
-    ? { signedIn: true as const, status: entry?.status ?? null }
+    ? {
+        signedIn: true as const,
+        status: entry?.status ?? null,
+        progress: entry?.progress ?? 0,
+        progressUnit: entry?.progressUnit ?? null,
+        progressTotal: entry?.progressTotal ?? null,
+        // The episodes of the catalog, specials not counted: the end of a series.
+        totalEpisodes: detail.seasons
+          .filter((season) => season.number > 0)
+          .reduce((sum, season) => sum + season.episodes.length, 0),
+      }
     : {
         signedIn: false as const,
         status: null,
@@ -214,6 +221,45 @@ function asDate(value: string): number {
   return Date.parse(`${value}T00:00:00Z`);
 }
 
+/**
+ * The link back to where the person came from: the search, or the entry of the library. It is read
+ * from the `Referer` of the first load. After a button of the library the loader runs again with
+ * this very page as the `Referer`, and then the loader has none, so the link is kept here from
+ * the first load. A new title (another `key`) starts again.
+ */
+function BackLink({
+  toSearch,
+  toEntry,
+}: {
+  toSearch: string | null;
+  toEntry: string | null;
+}) {
+  const { t } = useTranslation();
+  const [first] = useState({ toSearch, toEntry });
+
+  if (first.toSearch) {
+    return (
+      <p className="mb-6">
+        <Link to={first.toSearch} className={linkClass}>
+          {t("media.backToSearch")}
+        </Link>
+      </p>
+    );
+  }
+  if (first.toEntry) {
+    return (
+      <p className="mb-6">
+        {/* A plain link: the entry page has its own security policy, which only a new document
+            gets. */}
+        <a href={first.toEntry} className={linkClass}>
+          {t("media.backToEntry")}
+        </a>
+      </p>
+    );
+  }
+  return null;
+}
+
 export default function MediaDetail({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { formatDate } = useFormatters();
@@ -221,21 +267,11 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
-      {item.backToSearch ? (
-        <p className="mb-6">
-          <Link to={item.backToSearch} className={linkClass}>
-            {t("media.backToSearch")}
-          </Link>
-        </p>
-      ) : item.backToEntry ? (
-        <p className="mb-6">
-          {/* A plain link: the entry page has its own security policy, which only a new document
-              gets. */}
-          <a href={item.backToEntry} className={linkClass}>
-            {t("media.backToEntry")}
-          </a>
-        </p>
-      ) : null}
+      <BackLink
+        key={item.id}
+        toSearch={item.backToSearch}
+        toEntry={item.backToEntry}
+      />
       <div className="flex flex-col gap-6 sm:flex-row">
         {item.poster ? (
           <img
@@ -298,31 +334,11 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
 
           <div className="mt-6">
             {item.library.signedIn ? (
-              item.library.status ? (
-                <p>
-                  <span className="font-semibold">
-                    {t("media.library.inLibrary", {
-                      status: t(`library.status.${item.library.status}`),
-                    })}
-                  </span>{" "}
-                  {/* A plain link: the entry page has its own security policy, which only a new
-                      document gets. */}
-                  <a href={`/library/${item.id}`} className={forwardLinkClass}>
-                    {t("media.library.edit")}
-                  </a>
-                </p>
-              ) : (
-                // A whole-page form: the entry page it leads to has its own security policy.
-                <Form method="post" action="/library/add" reloadDocument>
-                  <input type="hidden" name="mediaId" value={item.id} />
-                  <button
-                    type="submit"
-                    className="bg-accent text-accent-fg focus-visible:outline-accent rounded-md px-4 py-2 font-semibold transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2"
-                  >
-                    {t("media.library.add")}
-                  </button>
-                </Form>
-              )
+              <TitleLibrary
+                id={item.id}
+                title={item.title}
+                entry={item.library}
+              />
             ) : (
               <a href={item.library.signInPath} className={linkClass}>
                 {t("media.library.signIn")}
