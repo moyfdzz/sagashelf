@@ -91,7 +91,7 @@ Open Library and MangaDex give no parts, so a book or a manga has no total in th
 - **Same rules as episodes** (`applySave`): the end is the total; progress above it is refused (`progress_too_high`); reaching it completes the title unless the status is paused or dropped; a title marked completed has all its units done. Without a total a book or a manga never completes by itself. Typing the total after the last unit was already reached also completes it.
 - **Library list**: "120 of 320 pages" with a bar, or "120 pages" without a bar when there is no total. A title with no progress and no total shows nothing.
 - **Export and import**: the JSON entries and the CSV carry `progressUnit` and `progressTotal`. `schemaVersion` stays 1: the change only adds fields, and a file from before it still imports (a book then reads as pages with no total).
-- **Not done**: the words "watch it again" and "episodes" in the buttons and some labels still assume a series; they were left as they are on purpose.
+- **Wording** (SAG-76): the words about watching a title again (the card, the history and the "watch it again" button) say "read" for a book or a manga. They use an i18next context, `read`, chosen by `readingContext` in `app/lib/media.ts`; the other kinds keep "watched". The keys and the data are the same.
 
 ## References
 

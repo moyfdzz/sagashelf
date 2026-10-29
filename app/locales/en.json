@@ -532,7 +532,9 @@
       "progressOf_volumes_one": "{{done}} of {{count}} volume",
       "progressOf_volumes_other": "{{done}} of {{count}} volumes",
       "progressDone_volumes_one": "{{count}} volume",
-      "progressDone_volumes_other": "{{count}} volumes"
+      "progressDone_volumes_other": "{{count}} volumes",
+      "watched_read_one": "You have read it {{count}} time",
+      "watched_read_other": "You have read it {{count}} times"
     },
     "editor": {
       "back": "Back to my library",
@@ -580,7 +582,10 @@
           "viewing_add": "The time was added.",
           "viewing_save": "The time was saved.",
           "viewing_remove": "The time was removed."
-        }
+        },
+        "title_read": "Times you have read it",
+        "count_read_one": "You have read it {{count}} time.",
+        "count_read_other": "You have read it {{count}} times."
       },
       "remove": {
         "summary": "Remove from my library",
@@ -599,7 +604,10 @@
       "progressUnitOptions": {
         "chapters": "Chapters",
         "volumes": "Volumes"
-      }
+      },
+      "rewatched_read": "You started again from the beginning.",
+      "rewatch_read": "Read it again",
+      "rewatchHint_read": "Save this run in your history and start again from the beginning."
     },
     "errors": {
       "summary": "Check the marked fields.",
@@ -609,7 +617,8 @@
       "notes_too_long": "The notes are too long.",
       "not_completed": "You can only watch a completed title again.",
       "viewings_limit": "You reached the most times that can be saved for this title.",
-      "generic": "We could not save the changes. Try again."
+      "generic": "We could not save the changes. Try again.",
+      "not_completed_read": "You can only read a completed title again."
     }
   }
 }

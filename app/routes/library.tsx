@@ -10,6 +10,7 @@ import {
   tabClass,
 } from "~/lib/ui";
 import { NotesPreview } from "~/components/NotesPreview";
+import { readingContext } from "~/lib/media";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { listLibrary, type LibraryRow } from "~server/db/library";
@@ -372,7 +373,10 @@ function Entries({ rows, view }: { rows: Row[]; view: LibraryView }) {
             ) : null}
             {row.timesWatched > 0 ? (
               <p className="mt-2 text-sm">
-                {t("library.card.watched", { count: row.timesWatched })}
+                {t("library.card.watched", {
+                  count: row.timesWatched,
+                  context: readingContext(row.type),
+                })}
               </p>
             ) : null}
             <p className="mt-2 text-sm">
