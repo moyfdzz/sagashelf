@@ -4,6 +4,8 @@ import {
   libraryStatuses,
   notesMaxLength,
   progressMax,
+  progressUnits,
+  progressUnitsFor,
   viewingNotesMaxLength,
 } from "./schema";
 import type { LibraryStatus } from "./schema";
@@ -58,6 +60,15 @@ const entrySchema = z.object({
   }),
   status: z.enum(libraryStatuses),
   progress: z.number().int().min(0).max(progressMax),
+  // Missing in a file from before books and manga had a total; both then read as "none".
+  progressUnit: z.enum(progressUnits).nullable().catch(null),
+  progressTotal: z
+    .number()
+    .int()
+    .min(1)
+    .max(progressMax)
+    .nullable()
+    .catch(null),
   score: z.number().int().min(1).max(10).nullable(),
   startedAt: isoDate.nullable(),
   finishedAt: isoDate.nullable(),
@@ -173,19 +184,22 @@ function datesInOrder(entry: ImportEntry): boolean {
 
 /**
  * What an imported entry becomes, with the same rules as the editor (`applySave`) except that no
- * date is invented: a title marked completed has all its episodes seen, the progress never passes
- * the last episode, episodes seen mean it is not just planned, and the finish date only belongs to
- * a completed title. The visibility of the file is used only when the person asks to keep it
- * (`keepVisibility`); otherwise an import never makes anything public. It only applies to a new
- * entry: one the person already has keeps its own.
+ * date is invented: a title marked completed has all its episodes (or pages, chapters, volumes)
+ * done, the progress never passes the end, progress made means it is not just planned, and the
+ * finish date only belongs to a completed title. A unit and a total only stay on a book or a
+ * manga, in a unit that kind of title can count. The visibility of the file is used only when the
+ * person asks to keep it (`keepVisibility`); otherwise an import never makes anything public. It
+ * only applies to a new entry: one the person already has keeps its own.
  */
 export function normalizeImported(
   entry: ImportEntry,
-  totalEpisodes: number,
+  title: { episodes: number; type: string },
   keepVisibility = false,
 ): {
   status: LibraryStatus;
   progress: number;
+  progressUnit: ImportEntry["progressUnit"];
+  progressTotal: number | null;
   score: number | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -193,16 +207,20 @@ export function normalizeImported(
   visibility: ImportEntry["visibility"];
 } {
   let { status, progress } = entry;
-  if (totalEpisodes > 0) {
-    progress =
-      status === "completed"
-        ? totalEpisodes
-        : Math.min(progress, totalEpisodes);
+  const allowed = progressUnitsFor(title.type);
+  const progressUnit =
+    allowed.find((unit) => unit === entry.progressUnit) ?? allowed[0] ?? null;
+  const progressTotal = progressUnit ? entry.progressTotal : null;
+  const total = progressUnit ? (progressTotal ?? 0) : title.episodes;
+  if (total > 0) {
+    progress = status === "completed" ? total : Math.min(progress, total);
   }
   if (status === "planned" && progress > 0) status = "in_progress";
   return {
     status,
     progress,
+    progressUnit,
+    progressTotal,
     score: entry.score,
     startedAt: entry.startedAt,
     finishedAt: status === "completed" ? entry.finishedAt : null,

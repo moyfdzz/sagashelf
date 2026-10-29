@@ -1,0 +1,4 @@
+ALTER TABLE "library_entries" ADD COLUMN "progress_unit" text;--> statement-breakpoint
+ALTER TABLE "library_entries" ADD COLUMN "progress_total" integer;--> statement-breakpoint
+ALTER TABLE "library_entries" ADD CONSTRAINT "library_entries_progress_unit_check" CHECK ("library_entries"."progress_unit" is null or "library_entries"."progress_unit" in ('pages', 'chapters', 'volumes'));--> statement-breakpoint
+ALTER TABLE "library_entries" ADD CONSTRAINT "library_entries_progress_total_check" CHECK ("library_entries"."progress_total" is null or ("library_entries"."progress_total" > 0 and "library_entries"."progress_unit" is not null and "library_entries"."progress" <= "library_entries"."progress_total"));

@@ -23,7 +23,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                                  | Accepted | Done (SAG-37)                         |
 | [016](016-provider-layer-and-tmdb.md)            | The provider layer and TMDB: the interface, the HTTP client and the 6-month cache rule    | Accepted | Done (SAG-13)                         |
 | [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                        | Accepted | Done (SAG-17)                         |
-| [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry             | Accepted | Partial (SAG-18)                      |
+| [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry             | Accepted | Partial (SAG-18, SAG-43)              |
 | [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)       | Accepted | Done (SAG-48)                         |
 | [022](022-manga-mangadex.md)                     | Manga through MangaDex: never banned, covers spaced, removals honored                     | Accepted | Done (SAG-66)                         |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |

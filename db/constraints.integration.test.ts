@@ -422,6 +422,54 @@ describe("library entries", () => {
     });
   });
 
+  it("enforce the unit and the total of the progress of a book or a manga", async () => {
+    const ana = await newUser();
+    const base = async () => ({
+      userId: ana.id,
+      mediaId: (await newMedia()).id,
+    });
+    const insert = async (
+      values: Partial<typeof libraryEntries.$inferInsert>,
+    ) =>
+      failsWith(
+        db.insert(libraryEntries).values({ ...(await base()), ...values }),
+      );
+
+    // A unit that does not exist is refused by the check, not only by the types.
+    const badUnit = await failsWith(
+      db.execute(sql`
+        INSERT INTO library_entries (user_id, media_id, progress_unit)
+        VALUES (${ana.id}, ${(await newMedia()).id}, 'leagues')
+      `),
+    );
+    expect(badUnit.code).toBe("23514");
+    // A total needs a unit, must be above zero, and progress never passes it.
+    expect((await insert({ progressTotal: 320 })).code).toBe("23514");
+    expect(
+      (await insert({ progressUnit: "pages", progressTotal: 0 })).code,
+    ).toBe("23514");
+    expect(
+      (
+        await insert({
+          progressUnit: "pages",
+          progressTotal: 320,
+          progress: 321,
+        })
+      ).code,
+    ).toBe("23514");
+
+    // The limits themselves, and a unit with no total, are allowed.
+    await db.insert(libraryEntries).values([
+      {
+        ...(await base()),
+        progressUnit: "pages",
+        progressTotal: 320,
+        progress: 320,
+      },
+      { ...(await base()), progressUnit: "chapters", progress: 1500 },
+    ]);
+  });
+
   it("are deleted with their person, and refuse a title that does not exist", async () => {
     const ana = await newUser();
     const dune = await newMedia();

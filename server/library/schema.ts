@@ -17,6 +17,17 @@ export const viewingNotesMaxLength = 500;
 /** More episodes than any series has: a typo does not reach the database as a huge number. */
 export const progressMax = 100_000;
 
+/** What the progress of a book or a manga counts. Series and movies count episodes instead. */
+export const progressUnits = ["pages", "chapters", "volumes"] as const;
+export type ProgressUnit = (typeof progressUnits)[number];
+
+/** The units a person can pick for a kind of title: none for those whose total is in the catalog. */
+export function progressUnitsFor(type: string): readonly ProgressUnit[] {
+  if (type === "book") return ["pages"];
+  if (type === "manga") return ["chapters", "volumes"];
+  return [];
+}
+
 const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -44,6 +55,16 @@ const saveSchema = z.strictObject({
     .regex(/^\d{1,6}$/)
     .transform(Number)
     .pipe(z.number().int().min(0).max(progressMax)),
+  // Only the editor of a book or a manga sends these; empty or missing means "none".
+  progressUnit: z
+    .union([z.literal(""), z.enum(progressUnits)])
+    .optional()
+    .transform((value) => (value ? value : null)),
+  progressTotal: z
+    .union([z.literal(""), z.string().regex(/^\d{1,6}$/)])
+    .optional()
+    .transform((value) => (value ? Number(value) : null))
+    .pipe(z.number().int().min(1).max(progressMax).nullable()),
   score: z
     .string()
     .regex(/^(?:10|[1-9])?$/)

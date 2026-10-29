@@ -160,6 +160,8 @@ erDiagram
     uuid media_id "unique with user_id"
     string status
     int progress
+    string progress_unit "pages, chapters or volumes; empty for episodes"
+    int progress_total "set by the person; empty for episodes"
   }
 ```
 

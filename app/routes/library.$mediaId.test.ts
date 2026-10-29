@@ -59,6 +59,8 @@ const stored = {
   imageUrl: "https://image.tmdb.org/t/p/w500/aot.jpg",
   status: "in_progress",
   progress: 2,
+  progressUnit: null,
+  progressTotal: null,
   score: 8,
   startedAt: "2026-01-02",
   finishedAt: null,
@@ -193,6 +195,72 @@ describe("saving an entry", () => {
       data: { ok: false, errors: { progress: "progress_too_high" } },
     });
     expect(mocks.saveEntry).not.toHaveBeenCalled();
+  });
+
+  it("tracks a book page by page and completes it at the last page", async () => {
+    mocks.getEntry.mockResolvedValue({ ...stored, type: "book" });
+    mocks.getSeasonCounts.mockResolvedValue([]);
+
+    await send({
+      ...form,
+      progress: "320",
+      progressUnit: "pages",
+      progressTotal: "320",
+    });
+
+    expect(mocks.saveEntry).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      expect.objectContaining({
+        status: "completed",
+        progress: 320,
+        progressUnit: "pages",
+        progressTotal: 320,
+      }),
+    );
+  });
+
+  it("answers with an error on the field when a book passes its total", async () => {
+    mocks.getEntry.mockResolvedValue({ ...stored, type: "book" });
+    mocks.getSeasonCounts.mockResolvedValue([]);
+
+    const result = await send({
+      ...form,
+      progress: "321",
+      progressUnit: "pages",
+      progressTotal: "320",
+    });
+
+    expect(result).toMatchObject({
+      init: { status: 400 },
+      data: { ok: false, errors: { progress: "progress_too_high" } },
+    });
+    expect(mocks.saveEntry).not.toHaveBeenCalled();
+  });
+
+  it("names the field of an invalid unit or total", async () => {
+    const result = await send({
+      ...form,
+      progressUnit: "leagues",
+      progressTotal: "0",
+    });
+
+    expect(result).toMatchObject({
+      init: { status: 400 },
+      data: {
+        ok: false,
+        errors: { progressUnit: "invalid", progressTotal: "invalid" },
+      },
+    });
+  });
+
+  it("offers the units of the kind of title in the loader", async () => {
+    mocks.getEntry.mockResolvedValue({ ...stored, type: "manga" });
+
+    const result = (await load()) as unknown as Record<string, unknown>;
+
+    expect(result.progressUnits).toEqual(["chapters", "volumes"]);
   });
 
   it("answers with an error on the field when the dates do not line up", async () => {

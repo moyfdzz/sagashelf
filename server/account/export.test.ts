@@ -77,15 +77,32 @@ describe("profileCsv", () => {
           visibility: "public",
           createdAt: new Date("2026-03-04T10:00:00Z"),
         },
+        {
+          title: "Dune",
+          status: "in_progress",
+          progress: 120,
+          progressUnit: "pages",
+          progressTotal: 320,
+          score: null,
+          startedAt: null,
+          finishedAt: null,
+          timesWatched: 0,
+          source: null,
+          viewings: [],
+          notes: null,
+          visibility: "private",
+          createdAt: new Date("2026-04-05T10:00:00Z"),
+        },
       ],
     });
 
     const rows = lines(csv);
     const at = rows.indexOf("");
     expect(rows.slice(at + 1)).toEqual([
-      "title,status,progress,score,started_at,finished_at,times_watched,notes,visibility,added_at,provider,external_id",
-      'Ataque a los Titanes,completed,25,9,2026-01-02,2026-02-03,2,"Muy buena, con coma",private,2026-01-01,tmdb,tv/1429',
-      "Matrix,planned,0,,,,0,,public,2026-03-04,,",
+      "title,status,progress,progress_unit,progress_total,score,started_at,finished_at,times_watched,notes,visibility,added_at,provider,external_id",
+      'Ataque a los Titanes,completed,25,,,9,2026-01-02,2026-02-03,2,"Muy buena, con coma",private,2026-01-01,tmdb,tv/1429',
+      "Matrix,planned,0,,,,,,0,,public,2026-03-04,,",
+      "Dune,in_progress,120,pages,320,,,,0,,private,2026-04-05,,",
       "",
       "title,started_on,finished_on,notes",
       'Ataque a los Titanes,2025-05-01,2025-05-03,"En el cine, con coma"',

@@ -13,6 +13,8 @@ export type KnownTitle = {
   hasEntry: boolean;
   /** Episodes of the title, specials not counted. 0 for a movie. */
   episodes: number;
+  /** The kind of title, which decides the units its progress can count. */
+  type: string;
 };
 
 /**
@@ -27,7 +29,7 @@ export async function lookupTitles(
 ): Promise<Map<string, KnownTitle>> {
   if (sources.length === 0) return new Map();
   const { rows } = (await db.execute(sql`
-    SELECT e.provider::text AS provider, e.external_id, m.id AS media_id,
+    SELECT e.provider::text AS provider, e.external_id, m.id AS media_id, m.type::text AS type,
            EXISTS (
              SELECT 1 FROM library_entries l
              WHERE l.user_id = ${userId}::uuid AND l.media_id = m.id
@@ -48,6 +50,7 @@ export async function lookupTitles(
         mediaId: String(row.media_id),
         hasEntry: row.has_entry === true,
         episodes: Number(row.episodes),
+        type: String(row.type),
       },
     ]),
   );
@@ -58,6 +61,8 @@ export type EntryToWrite = {
   mediaId: string;
   status: string;
   progress: number;
+  progressUnit: "pages" | "chapters" | "volumes" | null;
+  progressTotal: number | null;
   score: number | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -92,6 +97,8 @@ export async function writeEntries(
       media_id: entry.mediaId,
       status: entry.status,
       progress: entry.progress,
+      progress_unit: entry.progressUnit,
+      progress_total: entry.progressTotal,
       score: entry.score,
       started_at: entry.startedAt,
       finished_at: entry.finishedAt,
@@ -106,21 +113,23 @@ export async function writeEntries(
   );
   const onConflict = replace
     ? sql`DO UPDATE SET status = EXCLUDED.status, progress = EXCLUDED.progress,
+          progress_unit = EXCLUDED.progress_unit, progress_total = EXCLUDED.progress_total,
           score = EXCLUDED.score, started_at = EXCLUDED.started_at,
           finished_at = EXCLUDED.finished_at, notes = EXCLUDED.notes, updated_at = now()`
     : sql`DO NOTHING`;
   const { rows } = (await db.execute(sql`
     WITH input AS (
       SELECT * FROM jsonb_to_recordset(${payload}::jsonb) AS x(
-        media_id uuid, status text, progress int, score int, started_at date,
-        finished_at date, notes text, visibility text, viewings jsonb
+        media_id uuid, status text, progress int, progress_unit text, progress_total int,
+        score int, started_at date, finished_at date, notes text, visibility text, viewings jsonb
       )
     ),
     written AS (
       INSERT INTO library_entries
-        (user_id, media_id, status, progress, score, started_at, finished_at, notes, visibility)
-      SELECT ${userId}::uuid, media_id, status::library_status, progress, score, started_at,
-             finished_at, notes, visibility::privacy_level
+        (user_id, media_id, status, progress, progress_unit, progress_total, score, started_at,
+         finished_at, notes, visibility)
+      SELECT ${userId}::uuid, media_id, status::library_status, progress, progress_unit,
+             progress_total, score, started_at, finished_at, notes, visibility::privacy_level
       FROM input
       ON CONFLICT ON CONSTRAINT library_entries_user_media_unique ${onConflict}
       RETURNING id, media_id, (xmax = 0) AS added

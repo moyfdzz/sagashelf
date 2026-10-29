@@ -78,6 +78,8 @@ async function addSeries(
 const completed: EntryState = {
   status: "completed",
   progress: 3,
+  progressUnit: null,
+  progressTotal: null,
   score: 9,
   startedAt: "2026-01-01",
   finishedAt: "2026-02-01",
@@ -110,6 +112,8 @@ describe("addEntry", () => {
       title: "Ataque a los Titanes",
       status: "planned",
       progress: 0,
+      progressUnit: null,
+      progressTotal: null,
       score: null,
       startedAt: null,
       finishedAt: null,
@@ -222,6 +226,89 @@ describe("saveEntry, getEntry and removeEntry", () => {
   });
 });
 
+describe("the progress of a book or a manga", () => {
+  const reading: EntryState = {
+    ...completed,
+    status: "in_progress",
+    progress: 120,
+    progressUnit: "pages",
+    progressTotal: 320,
+    finishedAt: null,
+  };
+
+  it("writes the unit and the total and reads them back", async () => {
+    const ana = await newUser();
+    const mediaId = await addMedia("Dune", { type: "book" });
+    await addEntry(db, ana.id, mediaId);
+
+    await saveEntry(db, ana.id, mediaId, reading);
+
+    expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject({
+      progress: 120,
+      progressUnit: "pages",
+      progressTotal: 320,
+    });
+  });
+
+  it("has the database refuse a total below the progress, or a total with no unit", async () => {
+    const ana = await newUser();
+    const mediaId = await addMedia("Dune", { type: "book" });
+    await addEntry(db, ana.id, mediaId);
+
+    await expect(
+      saveEntry(db, ana.id, mediaId, { ...reading, progressTotal: 100 }),
+    ).rejects.toThrow();
+    await expect(
+      saveEntry(db, ana.id, mediaId, { ...reading, progressUnit: null }),
+    ).rejects.toThrow();
+  });
+
+  it("comes with each row of the library, and with the export", async () => {
+    const ana = await newUser();
+    const book = await addMedia("Dune", { type: "book" });
+    const manga = await addMedia("Berserk", { type: "manga" });
+    await addEntry(db, ana.id, book);
+    await addEntry(db, ana.id, manga);
+    await saveEntry(db, ana.id, book, reading);
+    await saveEntry(db, ana.id, manga, {
+      ...reading,
+      progress: 3,
+      progressUnit: "volumes",
+      progressTotal: null,
+    });
+
+    const rows = flat(
+      await listLibrary(db, ana.id, query({ sort: "title" }), "es"),
+    );
+    const exported = await exportAccount(db, ana.id);
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        title: "Berserk",
+        progress: 3,
+        progressUnit: "volumes",
+        progressTotal: null,
+        totalEpisodes: 0,
+      }),
+      expect.objectContaining({
+        title: "Dune",
+        progress: 120,
+        progressUnit: "pages",
+        progressTotal: 320,
+      }),
+    ]);
+    expect(exported?.libraryEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Dune",
+          progressUnit: "pages",
+          progressTotal: 320,
+        }),
+      ]),
+    );
+  });
+});
+
 describe("the data export", () => {
   it("has the library of the person and nothing of anybody else", async () => {
     const ana = await newUser();
@@ -290,6 +377,8 @@ describe("listLibrary", () => {
       ...completed,
       status: "in_progress",
       progress: 2,
+      progressUnit: null,
+      progressTotal: null,
       score: 8,
     });
     await saveEntry(db, ana.id, matrix, {

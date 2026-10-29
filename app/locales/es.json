@@ -520,7 +520,19 @@
       "noScoreMark": "—",
       "badge": "★ {{score}}",
       "watched_one": "Lo has visto {{count}} vez",
-      "watched_other": "Lo has visto {{count}} veces"
+      "watched_other": "Lo has visto {{count}} veces",
+      "progressOf_pages_one": "{{done}} de {{count}} página",
+      "progressOf_pages_other": "{{done}} de {{count}} páginas",
+      "progressDone_pages_one": "{{count}} página",
+      "progressDone_pages_other": "{{count}} páginas",
+      "progressOf_chapters_one": "{{done}} de {{count}} capítulo",
+      "progressOf_chapters_other": "{{done}} de {{count}} capítulos",
+      "progressDone_chapters_one": "{{count}} capítulo",
+      "progressDone_chapters_other": "{{count}} capítulos",
+      "progressOf_volumes_one": "{{done}} de {{count}} tomo",
+      "progressOf_volumes_other": "{{done}} de {{count}} tomos",
+      "progressDone_volumes_one": "{{count}} tomo",
+      "progressDone_volumes_other": "{{count}} tomos"
     },
     "editor": {
       "back": "Volver a mi biblioteca",
@@ -575,12 +587,24 @@
         "warning": "Se borran tu estado, tu progreso, tu puntuación y tus notas de este título. No se puede deshacer.",
         "confirm": "Quitar definitivamente"
       },
-      "finishedAtHint": "Solo se puede poner cuando el estado es Completado."
+      "finishedAtHint": "Solo se puede poner cuando el estado es Completado.",
+      "progressRead_pages": "Páginas leídas",
+      "progressTotal_pages": "Total de páginas",
+      "progressRead_chapters": "Capítulos leídos",
+      "progressTotal_chapters": "Total de capítulos",
+      "progressRead_volumes": "Tomos leídos",
+      "progressTotal_volumes": "Total de tomos",
+      "progressTotalHint": "Opcional. Escríbelo según tu edición: al llegar al final, el título se marca como completado.",
+      "progressUnit": "Contar por",
+      "progressUnitOptions": {
+        "chapters": "Capítulos",
+        "volumes": "Tomos"
+      }
     },
     "errors": {
       "summary": "Revisa los campos marcados.",
       "invalid": "Revisa este campo.",
-      "progress_too_high": "El progreso supera los episodios del título.",
+      "progress_too_high": "El progreso supera el total del título.",
       "dates_order": "La fecha de fin no puede ser anterior a la de inicio.",
       "notes_too_long": "Las notas son demasiado largas.",
       "not_completed": "Solo puedes volver a ver un título completado.",
