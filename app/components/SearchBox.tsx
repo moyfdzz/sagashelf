@@ -35,7 +35,8 @@ export function SearchBox({ initialQuery, type }: Props) {
 
   useEffect(() => {
     if ([...trimmed].length < minLength) return;
-    const params = new URLSearchParams({ q: trimmed });
+    // `suggest` tells the page this is only a list to pick from, not a page to show.
+    const params = new URLSearchParams({ q: trimmed, suggest: "1" });
     if (type) params.set("type", type);
     const timer = setTimeout(
       () => void load(`/search?${params}`),

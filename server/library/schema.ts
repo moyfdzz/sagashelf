@@ -138,6 +138,23 @@ export type SaveInput = z.output<typeof saveSchema>;
 
 export const addEntrySchema = z.strictObject({ mediaId: z.uuid() });
 
+/**
+ * A title that only a provider knows, as the search gives it: where it comes from and its id
+ * there. The id looks like `movie/603` for TMDB: letters, digits and a few separators, never more
+ * than 64. It is the same thing `/media/open` takes, so a title is named the same way by both.
+ */
+export const externalTitleSchema = z.strictObject({
+  provider: z.enum([
+    "tmdb",
+    "tvmaze",
+    "wikidata",
+    "open_library",
+    "google_books",
+    "mangadex",
+  ]),
+  id: z.string().regex(/^[A-Za-z0-9_/.-]{1,64}$/),
+});
+
 export const sortOptions = ["recent", "title", "score", "year"] as const;
 export type LibrarySort = (typeof sortOptions)[number];
 

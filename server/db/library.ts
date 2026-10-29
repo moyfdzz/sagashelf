@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 import type { ProfileDb } from "./profile";
 import { libraryEntries, mediaItems } from "./schema";
@@ -90,6 +90,29 @@ export async function getEntry(
     )
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * The status this person gave to each of these titles, for the ones they hold. A title they do
+ * not hold is not in the answer. The id of the person comes from the session, and the ids are the
+ * ones of the results of a search.
+ */
+export async function getEntryStatuses(
+  db: ProfileDb,
+  userId: string,
+  mediaIds: readonly string[],
+): Promise<Map<string, LibraryStatus>> {
+  if (mediaIds.length === 0) return new Map();
+  const rows = await db
+    .select({ mediaId: libraryEntries.mediaId, status: libraryEntries.status })
+    .from(libraryEntries)
+    .where(
+      and(
+        eq(libraryEntries.userId, userId),
+        inArray(libraryEntries.mediaId, [...mediaIds]),
+      ),
+    );
+  return new Map(rows.map((row) => [row.mediaId, row.status]));
 }
 
 /**

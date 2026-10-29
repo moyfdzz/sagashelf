@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   addEntry,
   getEntry,
+  getEntryStatuses,
   getSeasonCounts,
   listLibrary,
   removeEntry,
@@ -336,6 +337,47 @@ describe("the data export", () => {
     // Never the id of the account or of the title.
     expect(JSON.stringify(anaData)).not.toContain(ana.id);
     expect(JSON.stringify(anaData)).not.toContain(mediaId);
+  });
+});
+
+describe("getEntryStatuses", () => {
+  it("gives the status of each title the person holds, and leaves out the others", async () => {
+    const ana = await newUser();
+    const titan = await addMedia("Ataque a los Titanes");
+    const matrix = await addMedia("Matrix", { type: "movie" });
+    const bleach = await addMedia("Bleach");
+    await addEntry(db, ana.id, titan);
+    await addEntry(db, ana.id, matrix);
+    await saveEntry(db, ana.id, matrix, completed);
+
+    const statuses = await getEntryStatuses(db, ana.id, [
+      titan,
+      matrix,
+      bleach,
+    ]);
+
+    expect(statuses).toEqual(
+      new Map([
+        [titan, "planned"],
+        [matrix, "completed"],
+      ]),
+    );
+  });
+
+  it("never gives the status that somebody else gave", async () => {
+    const ana = await newUser();
+    const beto = await newUser();
+    const titan = await addMedia("Ataque a los Titanes");
+    await addEntry(db, beto.id, titan);
+    await saveEntry(db, beto.id, titan, completed);
+
+    expect(await getEntryStatuses(db, ana.id, [titan])).toEqual(new Map());
+  });
+
+  it("answers an empty list with nothing, without asking the database", async () => {
+    const ana = await newUser();
+
+    expect(await getEntryStatuses(db, ana.id, [])).toEqual(new Map());
   });
 });
 
