@@ -84,7 +84,8 @@
       "inLibrary": "In your library: {{status}}",
       "edit": "Edit my entry",
       "signIn": "Sign in to add this title to your library"
-    }
+    },
+    "backToSearch": "← Back to the results"
   },
   "errors": {
     "backHome": "Back to home",

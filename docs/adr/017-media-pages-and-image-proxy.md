@@ -70,6 +70,15 @@ A movie first opened in Spanish showed its Spanish title and synopsis to a visit
 - Follow-up (SAG-50): the source sends no original title when it equals the title of the language asked, so `saveMedia` keeps the stored one instead of writing null. A title from our database also carries how it matched in the query, and the ranking uses it, because the title shown can be in another language than the one that matched.
 - Not changed: the search still matches `title` and `original_title` only. Finding a title by its name in the other language, and showing that name in parentheses, is SAG-49 (it needs the full-text column and its index rebuilt).
 
+## Amendment: a link back to the search (SAG-79, 2026-10-29)
+
+A title page opened from the search shows "Back to the results" as the first thing on the page.
+
+- **Where it comes from:** the `Referer` of the visit. It was checked on production on 2026-10-29: a move inside the site (the request for `<address>.data`) and a new page both carry the full address of the search. That the browser keeps the original `Referer` through the `/media/open` redirect, for a title that is saved on opening, follows from the Fetch standard and was **not** tried, because trying it saves a title.
+- **What is read:** `searchBackPath` (`server/search/path.ts`) accepts only an address of this site whose path is exactly `/search`, reads the text and the tab with the rules of the search itself (2 to 100 characters, a known tab) and builds the address again with `searchPath`, the function the search tabs use. Nothing else of the `Referer` is kept, so the link can only be `/search?q=...&type=...`.
+- **No link** for a bookmark, a shared link, another site, the library or a search that would not have run.
+- **Cache:** the page already answers `private, no-store`, so depending on where the visit started adds nothing.
+
 ## Open questions
 
 - **Lighthouse budgets for a detail page** were not set: Lighthouse is informational in CI, so numbers would only be documentation. A page is one image (about 25 KB at `w342`) and a short list; measure it on the preview.

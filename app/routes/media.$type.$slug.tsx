@@ -12,6 +12,7 @@ import { imageSrc } from "~server/images/sources";
 import { importMedia, isMissingLanguage, isStale } from "~server/media/import";
 import { buildJsonLd, shortDescription } from "~server/media/json-ld";
 import { idFromSlug, isMediaKind, mediaPath } from "~server/media/slug";
+import { searchBackPath } from "~server/search/path";
 import { getDb, getMediaProviders, runInBackground } from "~server/runtime-env";
 import { pickTitle } from "~server/db/titles";
 
@@ -136,6 +137,9 @@ export async function loader(args: Route.LoaderArgs) {
 
   return {
     id: detail.id,
+    // The results the person came from, when they came from the search. The page is private, so
+    // it can depend on where the visit started.
+    backToSearch: searchBackPath(request.headers.get("Referer"), url.origin),
     library,
     type: detail.type,
     title,
@@ -208,6 +212,13 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
+      {item.backToSearch ? (
+        <p className="mb-6">
+          <Link to={item.backToSearch} className="text-accent underline">
+            {t("media.backToSearch")}
+          </Link>
+        </p>
+      ) : null}
       <div className="flex flex-col gap-6 sm:flex-row">
         {item.poster ? (
           <img
