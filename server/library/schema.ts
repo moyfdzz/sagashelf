@@ -218,10 +218,15 @@ export const libraryQuerySchema = z
       .transform(Number)
       .optional()
       .catch(undefined),
+    // A minimum from 1 to 10, or `none`: the entries that were never scored.
     score: z
-      .string()
-      .regex(/^(?:10|[1-9])$/)
-      .transform(Number)
+      .union([
+        z.literal("none"),
+        z
+          .string()
+          .regex(/^(?:10|[1-9])$/)
+          .transform(Number),
+      ])
       .optional()
       .catch(undefined),
     sort: z.enum(sortOptions).catch("recent"),

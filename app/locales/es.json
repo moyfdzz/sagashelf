@@ -496,11 +496,13 @@
       "search": "Buscar por título",
       "visibility": "Visibilidad",
       "year": "Año",
-      "minScore": "Puntuación mínima",
       "sort": "Ordenar por",
       "any": "Todos",
       "apply": "Aplicar",
-      "clear": "Quitar filtros"
+      "clear": "Quitar filtros",
+      "score": "Puntuación",
+      "unscored": "Sin puntuar",
+      "scoreAtLeast": "{{score}} o más"
     },
     "visibility": {
       "any": "Todas",

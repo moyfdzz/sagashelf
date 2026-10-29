@@ -449,7 +449,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
         </div>
         <div>
           <label htmlFor="score" className="font-semibold">
-            {t("library.filters.minScore")}
+            {t("library.filters.score")}
           </label>
           <select
             id="score"
@@ -458,9 +458,10 @@ export default function Library({ loaderData }: Route.ComponentProps) {
             className={inputClass}
           >
             <option value="">{t("library.filters.any")}</option>
+            <option value="none">{t("library.filters.unscored")}</option>
             {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((score) => (
               <option key={score} value={score}>
-                {score}
+                {t("library.filters.scoreAtLeast", { score })}
               </option>
             ))}
           </select>

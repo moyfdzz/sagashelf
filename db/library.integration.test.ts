@@ -548,6 +548,41 @@ describe("listLibrary", () => {
     ).toMatchObject({ all: 2, anime: 1, movie: 1 });
   });
 
+  it("filters the entries that were never scored, and the tabs count only those", async () => {
+    const { ana, matrix } = await fill();
+    const beto = await newUser();
+    // Beto has scored his own copy of the same title: that is not Ana's.
+    await addEntry(db, beto.id, matrix);
+    await saveEntry(db, beto.id, matrix, { ...completed, score: 9 });
+
+    // Ana scored the series (8) and the movie (10); the third title has none.
+    expect(await titles(ana.id, { score: "none" })).toEqual(["Bleach"]);
+    expect(await titles(ana.id, { score: "none", type: "movie" })).toEqual([]);
+    expect(
+      (await listLibrary(db, ana.id, query({ score: "none" }), "es")).counts,
+    ).toMatchObject({ all: 1, anime: 1, movie: 0 });
+    // The minimum scores still leave out the entry with no score.
+    expect(await titles(ana.id, { score: "1" })).toEqual([
+      "Ataque a los Titanes",
+      "Matrix",
+    ]);
+    // Scoring it takes it out of the filter, and removing the score brings it back.
+    expect(await titles(beto.id, { score: "none" })).toEqual([]);
+  });
+
+  it("filters the entries with no score together with the other filters", async () => {
+    const { ana, bleach } = await fill();
+
+    expect(await titles(ana.id, { score: "none", year: "2004" })).toEqual([
+      "Bleach",
+    ]);
+    expect(await titles(ana.id, { score: "none", year: "2013" })).toEqual([]);
+    expect(await titles(ana.id, { score: "none", q: "blea" })).toEqual([
+      "Bleach",
+    ]);
+    expect(bleach).toBeTruthy();
+  });
+
   describe("the search", () => {
     async function fillForSearch() {
       const ana = await newUser();

@@ -279,8 +279,12 @@ function filtersOf(
   const parts: SQL[] = [eq(libraryEntries.userId, userId)];
   if (withType && query.type) parts.push(eq(mediaItems.type, query.type));
   if (query.year) parts.push(eq(mediaItems.year, query.year));
-  // "Score" filters by a minimum: 8 shows everything rated 8 or higher.
-  if (query.score) parts.push(sql`${libraryEntries.score} >= ${query.score}`);
+  // "Score" filters by a minimum: 8 shows everything rated 8 or higher. "none" is the opposite end:
+  // what was never rated, which no minimum can show.
+  if (query.score === "none") parts.push(sql`${libraryEntries.score} IS NULL`);
+  else if (query.score) {
+    parts.push(sql`${libraryEntries.score} >= ${query.score}`);
+  }
   if (query.visibility) {
     parts.push(eq(libraryEntries.visibility, query.visibility));
   }
