@@ -58,6 +58,8 @@ const entryProps = (
         mediaId,
         status: "in_progress",
         progress: 2,
+        progressUnit: null,
+        progressTotal: null,
         score: 8,
         startedAt: "2026-01-02",
         finishedAt: null,
@@ -75,6 +77,7 @@ const entryProps = (
       viewings: [],
       timesWatched: 0,
       totalEpisodes: 4,
+      progressUnits: [],
       progressAt: { season: 1, episode: 2 },
       ...extra,
     },
@@ -174,6 +177,76 @@ describe("the entry page", () => {
     expect(html).toContain('type="hidden" name="progress" value="0"');
   });
 
+  it("asks for the pages of a book, and for an optional total", async () => {
+    const html = await render(
+      "es",
+      <LibraryEntry
+        {...entryProps(
+          { progress: 120, progressUnit: "pages", progressTotal: 320 },
+          undefined,
+          {
+            totalEpisodes: 0,
+            progressAt: null,
+            progressUnits: ["pages"],
+            media: { ...entryProps().loaderData.media, type: "book" },
+          },
+        )}
+      />,
+    );
+
+    expect(html).toContain("Páginas leídas");
+    expect(html).toContain("Total de páginas");
+    expect(html).toContain('id="progress"');
+    expect(html).toContain('value="120"');
+    expect(html).toContain('name="progressTotal"');
+    expect(html).toContain('value="320"');
+    // A book has only pages: nothing to pick.
+    expect(html).toContain('type="hidden" name="progressUnit" value="pages"');
+    expect(html).not.toContain('id="progressUnit"');
+    expect(html).not.toContain("Episodios vistos");
+  });
+
+  it("lets a manga count chapters or volumes", async () => {
+    const html = await render(
+      "es",
+      <LibraryEntry
+        {...entryProps(
+          { progress: 3, progressUnit: "volumes", progressTotal: 12 },
+          undefined,
+          {
+            totalEpisodes: 0,
+            progressAt: null,
+            progressUnits: ["chapters", "volumes"],
+            media: { ...entryProps().loaderData.media, type: "manga" },
+          },
+        )}
+      />,
+    );
+
+    expect(html).toContain('id="progressUnit"');
+    expect(html).toContain(
+      '<option value="volumes" selected="">Tomos</option>',
+    );
+    expect(html).toContain('<option value="chapters">Capítulos</option>');
+    expect(html).toContain("Tomos leídos");
+    expect(html).toContain("Total de tomos");
+  });
+
+  it("starts a manga in chapters when it has no unit yet", async () => {
+    const html = await render(
+      "en",
+      <LibraryEntry
+        {...entryProps({}, undefined, {
+          totalEpisodes: 0,
+          progressAt: null,
+          progressUnits: ["chapters", "volumes"],
+        })}
+      />,
+    );
+
+    expect(html).toContain("Chapters read");
+  });
+
   it("marks the field of an error, with its message", async () => {
     const html = await render(
       "es",
@@ -188,7 +261,7 @@ describe("the entry page", () => {
     expect(html).toContain("Revisa los campos marcados.");
     expect(html).toContain('aria-invalid="true"');
     expect(html).toContain('id="progress-error"');
-    expect(html).toContain("El progreso supera los episodios del título.");
+    expect(html).toContain("El progreso supera el total del título.");
   });
 
   it("announces that it saved", async () => {

@@ -71,6 +71,8 @@ const entry = (id: string, overrides: Record<string, unknown> = {}) => ({
   source: { provider: "tmdb", id },
   status: "completed",
   progress: 0,
+  progressUnit: null,
+  progressTotal: null,
   score: 9,
   startedAt: "2026-01-01",
   finishedAt: "2026-01-02",
@@ -106,6 +108,62 @@ const run = (
       locale: "es",
     },
   );
+
+describe("importing the progress of a book", () => {
+  const book = (id: number): NormalizedMedia => ({
+    ...movie(id, `Book ${id}`),
+    type: "book",
+  });
+
+  it("keeps the unit and the total, and writes them again when replacing", async () => {
+    const ana = await newUser();
+    const media = await saveMedia(db, book(1));
+    const read = {
+      status: "in_progress",
+      progress: 120,
+      progressUnit: "pages",
+      progressTotal: 320,
+      finishedAt: null,
+    };
+
+    await run(ana.id, [entry("movie/1", read)], {
+      providers: [provider([book(1)])],
+    });
+    expect(await getEntry(db, ana.id, media, "es")).toMatchObject({
+      progress: 120,
+      progressUnit: "pages",
+      progressTotal: 320,
+    });
+
+    await run(ana.id, [entry("movie/1", { ...read, progressTotal: 400 })], {
+      replace: true,
+      providers: [provider([book(1)])],
+    });
+    expect(await getEntry(db, ana.id, media, "es")).toMatchObject({
+      progressTotal: 400,
+    });
+  });
+
+  it("reads an entry from an older file, without a unit, as pages", async () => {
+    const ana = await newUser();
+    const media = await saveMedia(db, book(2));
+    const { progressUnit, progressTotal, ...older } = entry("movie/2", {
+      status: "in_progress",
+      progress: 40,
+      finishedAt: null,
+    });
+    void progressUnit;
+    void progressTotal;
+
+    await run(ana.id, [older], { providers: [provider([book(2)])] });
+
+    expect(await getEntry(db, ana.id, media, "es")).toMatchObject({
+      progress: 40,
+      progressUnit: "pages",
+      progressTotal: null,
+    });
+  });
+});
 
 describe("importing titles we already hold", () => {
   it("adds the entries with their fields and viewings, private by default", async () => {
@@ -186,6 +244,8 @@ describe("importing titles we already hold", () => {
     await saveEntry(db, ana.id, media, {
       status: "in_progress",
       progress: 0,
+      progressUnit: null,
+      progressTotal: null,
       score: 3,
       startedAt: null,
       finishedAt: null,
@@ -213,6 +273,8 @@ describe("importing titles we already hold", () => {
     await saveEntry(db, ana.id, media, {
       status: "in_progress",
       progress: 0,
+      progressUnit: null,
+      progressTotal: null,
       score: 3,
       startedAt: "2026-03-01",
       finishedAt: null,
@@ -264,6 +326,8 @@ describe("importing titles we already hold", () => {
     await saveEntry(db, beto.id, media, {
       status: "dropped",
       progress: 0,
+      progressUnit: null,
+      progressTotal: null,
       score: 2,
       startedAt: null,
       finishedAt: null,
@@ -458,6 +522,8 @@ describe("export, delete the account, create another, import", () => {
     await saveEntry(db, ana.id, first, {
       status: "completed",
       progress: 0,
+      progressUnit: null,
+      progressTotal: null,
       score: 10,
       startedAt: "2026-01-01",
       finishedAt: "2026-01-09",
@@ -472,6 +538,8 @@ describe("export, delete the account, create another, import", () => {
     await saveEntry(db, ana.id, second, {
       status: "paused",
       progress: 0,
+      progressUnit: null,
+      progressTotal: null,
       score: null,
       startedAt: "2026-02-01",
       finishedAt: null,

@@ -520,7 +520,19 @@
       "noScoreMark": "—",
       "badge": "★ {{score}}",
       "watched_one": "You have watched it {{count}} time",
-      "watched_other": "You have watched it {{count}} times"
+      "watched_other": "You have watched it {{count}} times",
+      "progressOf_pages_one": "{{done}} of {{count}} page",
+      "progressOf_pages_other": "{{done}} of {{count}} pages",
+      "progressDone_pages_one": "{{count}} page",
+      "progressDone_pages_other": "{{count}} pages",
+      "progressOf_chapters_one": "{{done}} of {{count}} chapter",
+      "progressOf_chapters_other": "{{done}} of {{count}} chapters",
+      "progressDone_chapters_one": "{{count}} chapter",
+      "progressDone_chapters_other": "{{count}} chapters",
+      "progressOf_volumes_one": "{{done}} of {{count}} volume",
+      "progressOf_volumes_other": "{{done}} of {{count}} volumes",
+      "progressDone_volumes_one": "{{count}} volume",
+      "progressDone_volumes_other": "{{count}} volumes"
     },
     "editor": {
       "back": "Back to my library",
@@ -575,12 +587,24 @@
         "warning": "Your status, progress, score and notes for this title are deleted. This cannot be undone.",
         "confirm": "Remove for good"
       },
-      "finishedAtHint": "It can only be set when the status is Completed."
+      "finishedAtHint": "It can only be set when the status is Completed.",
+      "progressRead_pages": "Pages read",
+      "progressTotal_pages": "Total pages",
+      "progressRead_chapters": "Chapters read",
+      "progressTotal_chapters": "Total chapters",
+      "progressRead_volumes": "Volumes read",
+      "progressTotal_volumes": "Total volumes",
+      "progressTotalHint": "Optional. Enter it for your edition: when you reach the end, the title is marked as completed.",
+      "progressUnit": "Count by",
+      "progressUnitOptions": {
+        "chapters": "Chapters",
+        "volumes": "Volumes"
+      }
     },
     "errors": {
       "summary": "Check the marked fields.",
       "invalid": "Check this field.",
-      "progress_too_high": "The progress is more than the episodes of the title.",
+      "progress_too_high": "The progress is more than the total of the title.",
       "dates_order": "The finish date cannot be before the start date.",
       "notes_too_long": "The notes are too long.",
       "not_completed": "You can only watch a completed title again.",

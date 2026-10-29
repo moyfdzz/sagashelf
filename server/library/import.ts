@@ -175,11 +175,7 @@ export async function runImport(
     seen.add(title.mediaId);
     rows.push({
       mediaId: title.mediaId,
-      ...normalizeImported(
-        entry,
-        title.episodes,
-        options.keepVisibility ?? false,
-      ),
+      ...normalizeImported(entry, title, options.keepVisibility ?? false),
       viewings: entry.viewings,
     });
   }

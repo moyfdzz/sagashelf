@@ -57,6 +57,8 @@ const entryColumns = (locale: Locale) => ({
   mediaId: libraryEntries.mediaId,
   status: libraryEntries.status,
   progress: libraryEntries.progress,
+  progressUnit: libraryEntries.progressUnit,
+  progressTotal: libraryEntries.progressTotal,
   score: libraryEntries.score,
   startedAt: libraryEntries.startedAt,
   finishedAt: libraryEntries.finishedAt,
@@ -126,6 +128,8 @@ export async function saveEntry(
     .set({
       status: next.status,
       progress: next.progress,
+      progressUnit: next.progressUnit,
+      progressTotal: next.progressTotal,
       score: next.score,
       startedAt: next.startedAt,
       finishedAt: next.finishedAt,
@@ -200,6 +204,8 @@ export type LibraryRow = {
   status: EntryState["status"];
   progress: number;
   totalEpisodes: number;
+  progressUnit: EntryState["progressUnit"];
+  progressTotal: number | null;
   score: number | null;
   visibility: Visibility;
   /** The private notes of the person, up to the limit of the editor. */
@@ -337,6 +343,8 @@ export async function listLibrary(
                ${mediaItems.type}::text AS type, ${mediaItems.year} AS year,
                ${mediaItems.imageUrl} AS image_url, ${libraryEntries.status}::text AS status,
                ${libraryEntries.progress} AS progress, ${libraryEntries.score} AS score,
+               ${libraryEntries.progressUnit} AS progress_unit,
+               ${libraryEntries.progressTotal} AS progress_total,
                ${libraryEntries.visibility}::text AS visibility,
                ${libraryEntries.notes} AS notes,
                (
@@ -376,6 +384,12 @@ export async function listLibrary(
         notes: row.notes === null ? null : String(row.notes),
         timesWatched: Number(row.times_watched),
         totalEpisodes: Number(row.total_episodes),
+        progressUnit:
+          row.progress_unit === null
+            ? null
+            : (String(row.progress_unit) as LibraryRow["progressUnit"]),
+        progressTotal:
+          row.progress_total === null ? null : Number(row.progress_total),
       });
       byStatus.set(status, list);
     }

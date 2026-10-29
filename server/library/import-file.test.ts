@@ -152,6 +152,8 @@ describe("parseImportFile", () => {
         "finishedAt",
         "notes",
         "progress",
+        "progressTotal",
+        "progressUnit",
         "score",
         "source",
         "startedAt",
@@ -243,6 +245,7 @@ describe("parseImportFile", () => {
 });
 
 describe("normalizeImported", () => {
+  const series = (episodes: number) => ({ episodes, type: "series" });
   const read = (overrides: Record<string, unknown> = {}) => {
     const [first] = parsed(file([entry(overrides)])).entries;
     if (!first) throw new Error("Expected an entry");
@@ -250,13 +253,17 @@ describe("normalizeImported", () => {
   };
 
   it("gives a completed title all its episodes", () => {
-    expect(normalizeImported(read({ progress: 3 }), 12).progress).toBe(12);
+    expect(normalizeImported(read({ progress: 3 }), series(12)).progress).toBe(
+      12,
+    );
   });
 
   it("never lets the progress pass the last episode", () => {
     expect(
-      normalizeImported(read({ status: "in_progress", progress: 999 }), 12)
-        .progress,
+      normalizeImported(
+        read({ status: "in_progress", progress: 999 }),
+        series(12),
+      ).progress,
     ).toBe(12);
   });
 
@@ -264,7 +271,7 @@ describe("normalizeImported", () => {
     expect(
       normalizeImported(
         read({ status: "planned", progress: 2, finishedAt: null }),
-        12,
+        series(12),
       ).status,
     ).toBe("in_progress");
   });
@@ -272,11 +279,11 @@ describe("normalizeImported", () => {
   it("keeps the finish date only for a completed title, and invents no date", () => {
     const paused = normalizeImported(
       read({ status: "paused", finishedAt: "2026-01-02", startedAt: null }),
-      0,
+      series(0),
     );
     const completed = normalizeImported(
       read({ finishedAt: null, startedAt: null }),
-      0,
+      series(0),
     );
 
     expect(paused).toMatchObject({ finishedAt: null, startedAt: null });
@@ -284,16 +291,91 @@ describe("normalizeImported", () => {
   });
 
   it("leaves the progress of a title with no episodes as it is", () => {
-    expect(normalizeImported(read({ progress: 5 }), 0).progress).toBe(5);
+    expect(normalizeImported(read({ progress: 5 }), series(0)).progress).toBe(
+      5,
+    );
+  });
+
+  it("keeps the unit and the total of a book, and gives a completed one all its pages", () => {
+    const book = { episodes: 0, type: "book" };
+
+    expect(
+      normalizeImported(
+        read({ progress: 3, progressUnit: "pages", progressTotal: 320 }),
+        book,
+      ),
+    ).toMatchObject({
+      progressUnit: "pages",
+      progressTotal: 320,
+      progress: 320,
+    });
+    expect(
+      normalizeImported(
+        read({
+          status: "in_progress",
+          progress: 999,
+          progressUnit: "pages",
+          progressTotal: 320,
+        }),
+        book,
+      ).progress,
+    ).toBe(320);
+  });
+
+  it("reads a book from an older file, without a unit, as pages with no total", () => {
+    const next = normalizeImported(
+      read({ status: "in_progress", progress: 40 }),
+      { episodes: 0, type: "book" },
+    );
+
+    expect(next).toMatchObject({
+      progressUnit: "pages",
+      progressTotal: null,
+      progress: 40,
+    });
+  });
+
+  it("drops a unit the kind of title cannot count", () => {
+    const next = normalizeImported(
+      read({ progress: 3, progressUnit: "pages", progressTotal: 320 }),
+      series(12),
+    );
+
+    expect(next).toMatchObject({ progressUnit: null, progressTotal: null });
+  });
+
+  it("lets a manga count volumes", () => {
+    const next = normalizeImported(
+      read({ progressUnit: "volumes", progressTotal: 12 }),
+      { episodes: 0, type: "manga" },
+    );
+
+    expect(next.progressUnit).toBe("volumes");
+  });
+
+  it("ignores a unit or a total that is not valid instead of leaving the entry out", () => {
+    const { entries, skipped } = parsed(
+      file([entry({ progressUnit: "leagues", progressTotal: -3 })]),
+    );
+
+    expect(skipped).toEqual([]);
+    expect(entries[0]?.entry).toMatchObject({
+      progressUnit: null,
+      progressTotal: null,
+    });
   });
 
   it("makes every entry private unless the person keeps the visibility of the file", () => {
     for (const visibility of ["public", "friends", "private"]) {
       const item = read({ visibility });
 
-      expect(normalizeImported(item, 0).visibility).toBe("private");
-      expect(normalizeImported(item, 0, false).visibility).toBe("private");
-      expect(normalizeImported(item, 0, true).visibility).toBe(visibility);
+      expect(normalizeImported(item, series(0)).visibility).toBe("private");
+      expect(normalizeImported(item, series(0), false).visibility).toBe(
+        "private",
+      );
+      expect(normalizeImported(item, series(0), true).visibility).toBe(
+        visibility,
+      );
     }
   });
 });

@@ -28,6 +28,12 @@ export const libraryEntries = pgTable(
       .references(() => mediaItems.id, { onDelete: "cascade" }),
     status: libraryStatus("status").notNull().default("planned"),
     progress: integer("progress").notNull().default(0),
+    // What `progress` counts for a book or a manga, and how many of them the person's edition
+    // has. Both are empty for titles whose total comes from the catalog (episodes).
+    progressUnit: text("progress_unit", {
+      enum: ["pages", "chapters", "volumes"],
+    }),
+    progressTotal: integer("progress_total"),
     score: smallint("score"),
     startedAt: date("started_at"),
     finishedAt: date("finished_at"),
@@ -40,6 +46,15 @@ export const libraryEntries = pgTable(
   (t) => [
     unique("library_entries_user_media_unique").on(t.userId, t.mediaId),
     check("library_entries_progress_check", sql`${t.progress} >= 0`),
+    check(
+      "library_entries_progress_unit_check",
+      sql`${t.progressUnit} is null or ${t.progressUnit} in ('pages', 'chapters', 'volumes')`,
+    ),
+    // A total only makes sense in a unit, and progress never passes it.
+    check(
+      "library_entries_progress_total_check",
+      sql`${t.progressTotal} is null or (${t.progressTotal} > 0 and ${t.progressUnit} is not null and ${t.progress} <= ${t.progressTotal})`,
+    ),
     check(
       "library_entries_score_check",
       sql`${t.score} is null or ${t.score} between 1 and 10`,

@@ -53,6 +53,8 @@ async function addMedia(title: string): Promise<string> {
 const completed: EntryState = {
   status: "completed",
   progress: 0,
+  progressUnit: null,
+  progressTotal: null,
   score: 9,
   startedAt: "2026-01-01",
   finishedAt: "2026-02-01",

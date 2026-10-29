@@ -65,7 +65,7 @@ A person needs to keep track of what they watch: a status, how far they got, a s
 ## Open questions
 
 - Whether "friends only" and "public" entries should show the notes. The notes are described as private today, and no one else sees anything, so the question is for SAG-21.
-- The progress of a book or manga (pages, chapters, volumes) depends on SAG-14.
+- ~~The progress of a book or manga (pages, chapters, volumes) depends on SAG-14.~~ Answered by the amendment of SAG-43 below.
 - Whether the library page needs a search box of its own once libraries are large.
 
 ## Amendment (2026-10-27, SAG-57): tabs by type, sections by status
@@ -80,6 +80,18 @@ The library page was one list with a form of filters. Most of the time the perso
 - **Three views**: covers (as before), titles only and a grid of covers. The address (`?view=`) wins and is remembered in a preference cookie, `libraryView`, like the language one: it works without JavaScript and holds nothing else. The privacy policy names it. Whether a section is open or closed is **not** remembered.
 - **Visibility filter** (SAG-59): `?visibility=public|friends|private`, a select next to the year and the score, kept when the tab changes and applied to the totals, the tab counts and the sections. A small label ("Public", "Friends") appears on the card only when the entry is not private. No migration: the column and the filter by person already existed.
 - **Not done**: a table view, and remembering open sections.
+
+## Amendment (2026-10-29, SAG-43): progress in pages, chapters and volumes
+
+Open Library and MangaDex give no parts, so a book or a manga has no total in the catalog (`getParts()` returns nothing for both). Progress is still one integer, `library_entries.progress`, but what it counts and where the end comes from now depend on the kind of title.
+
+- **Two optional columns** on `library_entries` (migration `0010`, additive): `progress_unit` (`pages`, `chapters` or `volumes`) and `progress_total` (how many the person's edition has). Checks: the unit is one of the three; a total needs a unit, is above zero, and `progress` never passes it. A series, an anime or a movie leaves both empty and keeps counting episodes against the catalog.
+- **Units by kind of title** (`progressUnitsFor`): a book counts pages; a manga counts chapters (the default) or volumes, the person picks. A unit the kind of title cannot count is dropped on save and on import.
+- **The total is typed by the person and optional.** Every edition has a different number of pages, so the catalog's number would often be wrong. Suggesting a total from the catalog (Open Library's page count, MangaDex's last chapter and volume) is left to a later ticket.
+- **Same rules as episodes** (`applySave`): the end is the total; progress above it is refused (`progress_too_high`); reaching it completes the title unless the status is paused or dropped; a title marked completed has all its units done. Without a total a book or a manga never completes by itself. Typing the total after the last unit was already reached also completes it.
+- **Library list**: "120 of 320 pages" with a bar, or "120 pages" without a bar when there is no total. A title with no progress and no total shows nothing.
+- **Export and import**: the JSON entries and the CSV carry `progressUnit` and `progressTotal`. `schemaVersion` stays 1: the change only adds fields, and a file from before it still imports (a book then reads as pages with no total).
+- **Not done**: the words "watch it again" and "episodes" in the buttons and some labels still assume a series; they were left as they are on purpose.
 
 ## References
 

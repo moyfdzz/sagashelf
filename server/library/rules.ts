@@ -1,9 +1,19 @@
-import type { LibraryStatus, SaveInput, Visibility } from "./schema";
+import { progressUnitsFor } from "./schema";
+import type {
+  LibraryStatus,
+  ProgressUnit,
+  SaveInput,
+  Visibility,
+} from "./schema";
 
 /** What the library keeps for one title, in the shape the rules work on. */
 export type EntryState = {
   status: LibraryStatus;
   progress: number;
+  /** What `progress` counts for a book or a manga. Null when it counts episodes. */
+  progressUnit: ProgressUnit | null;
+  /** How many units the person's edition has, when they said. Null for episodes. */
+  progressTotal: number | null;
   score: number | null;
   /** `YYYY-MM-DD`. */
   startedAt: string | null;
@@ -20,6 +30,8 @@ export type RuleResult =
 type Context = {
   /** Episodes of the title, specials not counted. 0 when there are none (a movie, a book). */
   totalEpisodes: number;
+  /** The kind of title, which decides the units its progress can count. */
+  type: string;
   /** `YYYY-MM-DD`, in UTC. */
   today: string;
 };
@@ -28,33 +40,42 @@ type Context = {
  * The entry after a person saves the editor. The form sends every field, so this decides what
  * follows from them: reaching the last episode completes the title, a title marked completed has
  * all its episodes seen, and the dates fill in when a title is started or finished and the
- * person left them empty. A date the person typed is never replaced.
+ * person left them empty. A date the person typed is never replaced. A book or a manga counts
+ * pages, chapters or volumes against the total the person typed; without one it never completes
+ * by itself.
  */
 export function applySave(
   current: EntryState,
   input: SaveInput,
-  { totalEpisodes, today }: Context,
+  { totalEpisodes, type, today }: Context,
 ): RuleResult {
-  if (totalEpisodes > 0 && input.progress > totalEpisodes) {
+  // A unit the kind of title cannot count is dropped, and a book always counts pages.
+  const allowed = progressUnitsFor(type);
+  const progressUnit =
+    allowed.find((unit) => unit === input.progressUnit) ?? allowed[0] ?? null;
+  const progressTotal = progressUnit ? input.progressTotal : null;
+  // The end of the title: the catalog's episodes, or the total the person typed.
+  const total = progressUnit ? (progressTotal ?? 0) : totalEpisodes;
+
+  if (total > 0 && input.progress > total) {
     return { ok: false, error: "progress_too_high" };
   }
 
   let status = input.status;
   let progress = input.progress;
 
-  // Reaching the last episode in this save completes the title. It does not override a status
+  // Reaching the last unit in this save completes the title. It does not override a status
   // the person picked on purpose (paused, dropped), and it does not fire again on a title that
   // was already at the end.
-  const reachedEnd =
-    totalEpisodes > 0 &&
-    progress === totalEpisodes &&
-    current.progress !== totalEpisodes;
+  const wasAtEnd =
+    current.progress === total && current.progressTotal === progressTotal;
+  const reachedEnd = total > 0 && progress === total && !wasAtEnd;
   if (reachedEnd && (status === "planned" || status === "in_progress")) {
     status = "completed";
   }
-  // A title marked completed has all its episodes seen.
-  if (status === "completed" && totalEpisodes > 0) progress = totalEpisodes;
-  // Episodes seen means it is not just planned.
+  // A title marked completed has all its units done.
+  if (status === "completed" && total > 0) progress = total;
+  // Progress made means it is not just planned.
   if (status === "planned" && progress > 0) status = "in_progress";
 
   let startedAt = input.startedAt;
@@ -73,6 +94,8 @@ export function applySave(
     next: {
       status,
       progress,
+      progressUnit,
+      progressTotal,
       score: input.score,
       startedAt,
       finishedAt,

@@ -7,7 +7,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 ## What works today
 
 - Search for movies, series, anime, books and manga, with a page for each title (synopsis, seasons and episodes, authors, credits). Movie, series and anime data comes from TMDB, book data from Open Library and manga data from MangaDex.
-- A personal library: statuses, progress, scores, private notes, and a history of the times you watched a title. It has tabs by type, search, filters, sort and list or grid views.
+- A personal library: statuses, progress (episodes, or pages, chapters and volumes for books and manga), scores, private notes, and a history of the times you watched a title. It has tabs by type, search, filters, sort and list or grid views.
 - Accounts with Clerk (email or Google), a profile with a privacy level, and a username you can change.
 - Your data is yours: download a copy of it, restore your library from that copy, or delete your account and everything in it.
 - Spanish (default) and English, light and dark mode, responsive on phone, tablet and desktop.

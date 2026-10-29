@@ -14,6 +14,8 @@ const today = "2026-10-25";
 const planned: EntryState = {
   status: "planned",
   progress: 0,
+  progressUnit: null,
+  progressTotal: null,
   score: null,
   startedAt: null,
   finishedAt: null,
@@ -26,6 +28,8 @@ const form = (overrides: Partial<SaveInput> = {}): SaveInput => ({
   intent: "save",
   status: "planned",
   progress: 0,
+  progressUnit: null,
+  progressTotal: null,
   score: null,
   startedAt: null,
   finishedAt: null,
@@ -38,8 +42,9 @@ function save(
   current: EntryState,
   input: SaveInput,
   totalEpisodes = 24,
+  type = "series",
 ): EntryState {
-  const result = applySave(current, input, { totalEpisodes, today });
+  const result = applySave(current, input, { totalEpisodes, type, today });
   if (!result.ok) throw new Error(`unexpected rule error: ${result.error}`);
   return result.next;
 }
@@ -169,6 +174,7 @@ describe("applySave", () => {
   it("does not let the progress pass the last episode", () => {
     const result = applySave(planned, form({ progress: 25 }), {
       totalEpisodes: 24,
+      type: "series",
       today,
     });
 
@@ -187,7 +193,7 @@ describe("applySave", () => {
         startedAt: "2026-05-02",
         finishedAt: "2026-05-01",
       }),
-      { totalEpisodes: 24, today },
+      { totalEpisodes: 24, type: "series", today },
     );
 
     expect(result).toEqual({ ok: false, error: "dates_order" });
@@ -198,7 +204,7 @@ describe("applySave", () => {
     const result = applySave(
       planned,
       form({ status: "completed", finishedAt: "2020-01-01" }),
-      { totalEpisodes: 24, today },
+      { totalEpisodes: 24, type: "series", today },
     );
 
     expect(result).toEqual({ ok: false, error: "dates_order" });
@@ -284,5 +290,150 @@ describe("locateProgress", () => {
   it("says nothing when the seasons hold fewer episodes than that", () => {
     expect(locateProgress(seasons, 38)).toBeNull();
     expect(locateProgress([], 3)).toBeNull();
+  });
+});
+
+describe("applySave for a book or a manga", () => {
+  const reading = (overrides: Partial<SaveInput> = {}) =>
+    form({
+      status: "in_progress",
+      progressUnit: "pages",
+      progressTotal: 320,
+      ...overrides,
+    });
+
+  it("completes a book when the last page is reached", () => {
+    const next = save(planned, reading({ progress: 320 }), 0, "book");
+
+    expect(next).toMatchObject({
+      status: "completed",
+      progress: 320,
+      progressUnit: "pages",
+      progressTotal: 320,
+      finishedAt: today,
+    });
+  });
+
+  it("never completes by itself when the person gave no total", () => {
+    const next = save(
+      planned,
+      reading({ progress: 900, progressTotal: null }),
+      0,
+      "book",
+    );
+
+    expect(next).toMatchObject({
+      status: "in_progress",
+      progress: 900,
+      progressTotal: null,
+    });
+  });
+
+  it("does not let the progress pass the total", () => {
+    const result = applySave(planned, reading({ progress: 321 }), {
+      totalEpisodes: 0,
+      type: "book",
+      today,
+    });
+
+    expect(result).toEqual({ ok: false, error: "progress_too_high" });
+  });
+
+  it("does not override a status picked on purpose when the end is reached", () => {
+    const next = save(
+      planned,
+      reading({ status: "paused", progress: 320 }),
+      0,
+      "book",
+    );
+
+    expect(next.status).toBe("paused");
+  });
+
+  it("gives a book marked completed all its pages", () => {
+    const next = save(planned, reading({ status: "completed" }), 0, "book");
+
+    expect(next.progress).toBe(320);
+  });
+
+  it("does not complete again a title that was already at the end", () => {
+    const atEnd: EntryState = {
+      ...planned,
+      status: "paused",
+      progress: 320,
+      progressUnit: "pages",
+      progressTotal: 320,
+    };
+
+    const next = save(atEnd, reading({ progress: 320 }), 0, "book");
+
+    expect(next.status).toBe("in_progress");
+  });
+
+  it("completes a title whose total was typed after the last page was reached", () => {
+    const next = save(
+      { ...planned, status: "in_progress", progress: 320 },
+      reading({ progress: 320 }),
+      0,
+      "book",
+    );
+
+    expect(next.status).toBe("completed");
+  });
+
+  it("counts a book in pages whatever the form sends", () => {
+    const next = save(
+      planned,
+      reading({ progressUnit: "volumes", progress: 3 }),
+      0,
+      "book",
+    );
+
+    expect(next.progressUnit).toBe("pages");
+  });
+
+  it("lets a manga count chapters or volumes, chapters by default", () => {
+    const volumes = save(
+      planned,
+      reading({ progressUnit: "volumes", progressTotal: 12, progress: 3 }),
+      0,
+      "manga",
+    );
+    const fallback = save(
+      planned,
+      reading({ progressUnit: null, progress: 3 }),
+      0,
+      "manga",
+    );
+
+    expect(volumes).toMatchObject({ progressUnit: "volumes", progress: 3 });
+    expect(fallback.progressUnit).toBe("chapters");
+  });
+
+  it("keeps no unit and no total on a series, where the catalog has the episodes", () => {
+    const next = save(planned, reading({ progress: 5 }), 24, "series");
+
+    expect(next).toMatchObject({
+      progressUnit: null,
+      progressTotal: null,
+      progress: 5,
+    });
+  });
+
+  it("starts again from zero and keeps the unit and the total", () => {
+    const done: EntryState = {
+      ...planned,
+      status: "completed",
+      progress: 320,
+      progressUnit: "pages",
+      progressTotal: 320,
+    };
+
+    const result = applyRewatch(done, { today });
+
+    expect(result).toMatchObject({
+      ok: true,
+      next: { progress: 0, progressUnit: "pages", progressTotal: 320 },
+    });
   });
 });

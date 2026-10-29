@@ -37,6 +37,7 @@ import {
   libraryActionSchema,
   libraryStatuses,
   notesMaxLength,
+  progressUnitsFor,
   viewingNotesMaxLength,
   visibilityLevels,
 } from "~server/library/schema";
@@ -67,6 +68,8 @@ type ErrorCode =
 type Field =
   | "status"
   | "progress"
+  | "progressUnit"
+  | "progressTotal"
   | "score"
   | "startedAt"
   | "finishedAt"
@@ -83,6 +86,8 @@ type FieldErrors = Partial<Record<Field, ErrorCode>>;
 const fields: readonly Field[] = [
   "status",
   "progress",
+  "progressUnit",
+  "progressTotal",
   "score",
   "startedAt",
   "finishedAt",
@@ -149,6 +154,8 @@ export async function loader(args: Route.LoaderArgs) {
       mediaId: entry.mediaId,
       status: entry.status,
       progress: entry.progress,
+      progressUnit: entry.progressUnit,
+      progressTotal: entry.progressTotal,
       score: entry.score,
       startedAt: entry.startedAt,
       finishedAt: entry.finishedAt,
@@ -169,6 +176,8 @@ export async function loader(args: Route.LoaderArgs) {
     viewings,
     timesWatched: timesWatched(viewings.length, entry.status),
     totalEpisodes: totalEpisodes(seasons),
+    // The units this kind of title can count; empty for those whose total is in the catalog.
+    progressUnits: progressUnitsFor(entry.type),
     progressAt: locateProgress(seasons, entry.progress),
   }));
 }
@@ -294,6 +303,7 @@ export async function action(args: Route.ActionArgs) {
       ? applyRewatch(current, { today: todayUtc() })
       : applySave(current, parsed.data, {
           totalEpisodes: totalEpisodes(await getSeasonCounts(db, mediaId.data)),
+          type: current.type,
           today: todayUtc(),
         });
   if (!result.ok) {
@@ -351,8 +361,11 @@ export default function LibraryEntry({
     viewings,
     timesWatched: watchedCount,
     totalEpisodes: total,
+    progressUnits: units,
     progressAt,
   } = loaderData;
+  // A manga lets the person pick; the first unit is the default. A book has only pages.
+  const [unit, setUnit] = useState(entry.progressUnit ?? units[0]);
   const dayText = (value: string) =>
     formatDate(Date.parse(`${value}T00:00:00Z`));
   const viewingDates = (from: string | null, to: string | null) =>
@@ -481,7 +494,78 @@ export default function LibraryEntry({
             {fieldError("status")}
           </div>
 
-          {total > 0 ? (
+          {unit ? (
+            <>
+              {units.length > 1 ? (
+                <div>
+                  <label htmlFor="progressUnit" className="font-semibold">
+                    {t("library.editor.progressUnit")}
+                  </label>
+                  <select
+                    id="progressUnit"
+                    name="progressUnit"
+                    value={unit}
+                    onChange={(event) =>
+                      setUnit(event.target.value as typeof unit)
+                    }
+                    {...invalid("progressUnit")}
+                    className={inputClass}
+                  >
+                    {units.map((option) => (
+                      <option key={option} value={option}>
+                        {t(
+                          `library.editor.progressUnitOptions.${option as "chapters"}`,
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldError("progressUnit")}
+                </div>
+              ) : (
+                <input type="hidden" name="progressUnit" value={unit} />
+              )}
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="progress" className="font-semibold">
+                    {t("library.editor.progressRead", { context: unit })}
+                  </label>
+                  <input
+                    id="progress"
+                    name="progress"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    defaultValue={entry.progress}
+                    {...invalid("progress")}
+                    className={inputClass}
+                  />
+                  {fieldError("progress")}
+                </div>
+                <div>
+                  <label htmlFor="progressTotal" className="font-semibold">
+                    {t("library.editor.progressTotal", { context: unit })}
+                  </label>
+                  <input
+                    id="progressTotal"
+                    name="progressTotal"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    defaultValue={entry.progressTotal ?? ""}
+                    {...invalid("progressTotal", "progressTotal-hint")}
+                    className={inputClass}
+                  />
+                  <p
+                    id="progressTotal-hint"
+                    className="text-fg-muted mt-1 text-sm"
+                  >
+                    {t("library.editor.progressTotalHint")}
+                  </p>
+                  {fieldError("progressTotal")}
+                </div>
+              </div>
+            </>
+          ) : total > 0 ? (
             <div>
               <label htmlFor="progress" className="font-semibold">
                 {t("library.editor.progress")}

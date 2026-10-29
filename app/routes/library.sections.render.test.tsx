@@ -57,6 +57,8 @@ const row = (
   notes: null,
   progress: 0,
   totalEpisodes: 0,
+  progressUnit: null,
+  progressTotal: null,
   score: null,
   timesWatched: 0,
   ...overrides,
@@ -807,6 +809,75 @@ describe("the progress bar", () => {
       expect(html).toContain('max="12"');
       expect(html).toContain("3 de 12 episodios");
     }
+  });
+
+  it("counts the pages of a book against the total the person typed", async () => {
+    const book = (view: LibraryView, progressTotal: number | null) =>
+      props({
+        view,
+        sections: sectionsOf({
+          in_progress: [
+            row("a", "Dune", "in_progress", {
+              progress: 120,
+              progressUnit: "pages",
+              progressTotal,
+            }),
+          ],
+        }),
+      });
+
+    const covers = await render("es", <Library {...book("covers", 320)} />);
+    const grid = await render("es", <Library {...book("grid", 320)} />);
+
+    for (const html of [covers, grid]) {
+      expect(html).toContain("120 de 320 páginas");
+      expect(html).toContain('max="320"');
+      expect(html).not.toContain("episodios");
+    }
+  });
+
+  it("shows only what was read when the total is not known, and no bar", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          view: "covers",
+          sections: sectionsOf({
+            in_progress: [
+              row("a", "Berserk", "in_progress", {
+                progress: 1,
+                progressUnit: "chapters",
+              }),
+              row("b", "Dune", "in_progress", {
+                progress: 120,
+                progressUnit: "pages",
+              }),
+            ],
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain("1 capítulo");
+    expect(html).toContain("120 páginas");
+    expect(html).not.toContain("<progress");
+  });
+
+  it("says nothing for a book or a manga that has no progress and no total", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          view: "covers",
+          sections: sectionsOf({
+            planned: [row("a", "Dune", "planned", { progressUnit: "pages" })],
+          }),
+        })}
+      />,
+    );
+
+    expect(html).not.toContain("páginas");
+    expect(html).not.toContain("<progress");
   });
 
   it("never passes its end", async () => {

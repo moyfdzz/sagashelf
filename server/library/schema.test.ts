@@ -25,6 +25,8 @@ describe("libraryActionSchema", () => {
       intent: "save",
       status: "in_progress",
       progress: 3,
+      progressUnit: null,
+      progressTotal: null,
       score: 8,
       startedAt: "2026-01-02",
       finishedAt: null,
@@ -54,6 +56,38 @@ describe("libraryActionSchema", () => {
     expect(libraryActionSchema.parse(withoutFinish)).toMatchObject({
       finishedAt: null,
     });
+  });
+
+  it("reads the unit and the total of a book or a manga", () => {
+    expect(
+      libraryActionSchema.parse({
+        ...valid,
+        progressUnit: "pages",
+        progressTotal: "320",
+      }),
+    ).toMatchObject({ progressUnit: "pages", progressTotal: 320 });
+  });
+
+  it("reads an empty total as none", () => {
+    expect(
+      libraryActionSchema.parse({
+        ...valid,
+        progressUnit: "chapters",
+        progressTotal: "",
+      }),
+    ).toMatchObject({ progressUnit: "chapters", progressTotal: null });
+  });
+
+  it.each([
+    ["a unit that does not exist", { progressUnit: "leagues" }],
+    ["a total of zero", { progressTotal: "0" }],
+    ["a negative total", { progressTotal: "-5" }],
+    ["a total with decimals", { progressTotal: "1.5" }],
+    ["a total above the limit", { progressTotal: "100001" }],
+  ])("refuses %s", (_name, change) => {
+    expect(libraryActionSchema.safeParse({ ...valid, ...change }).success).toBe(
+      false,
+    );
   });
 
   it("reads the two short forms", () => {

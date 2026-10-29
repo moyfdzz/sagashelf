@@ -71,6 +71,13 @@
       "when": 1793218905861,
       "tag": "0009_media_items_creators",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793292048309,
+      "tag": "0010_library_progress_units",
+      "breakpoints": true
     }
   ]
 }
