@@ -1,5 +1,3 @@
-import { Link } from "react-router";
-
 import { axisTicks, niceMax } from "~/lib/chart-scale";
 
 export type Column = {
@@ -7,7 +5,10 @@ export type Column = {
   /** What goes under the column. */
   label: string;
   value: number;
-  /** Where pressing the column goes. */
+  /**
+   * Where pressing the column goes. A plain link: the library has its own security policy, which
+   * only a new document gets (ADR-018, SAG-89).
+   */
   href?: string;
   /** The whole sentence for the hover, the focus and a screen reader: "6: 12 titles". */
   title: string;
@@ -112,13 +113,13 @@ export function ColumnChart({
         return (
           <g key={column.key}>
             {column.href ? (
-              <Link
-                to={column.href}
+              <a
+                href={column.href}
                 aria-label={column.title}
                 className="group focus-visible:outline-accent outline-offset-[-2px] focus-visible:outline-2"
               >
                 {mark}
-              </Link>
+              </a>
             ) : (
               <g className="group">{mark}</g>
             )}

@@ -451,6 +451,54 @@ describe("the statistics page", () => {
     expect(html).toMatch(/15 ene 2025/);
   });
 
+  describe("the links to the library (SAG-89)", () => {
+    // The library has its own security policy (ADR-018), which only a new document gets, so every
+    // link to it is a plain link. A link of the router carries `data-discover`.
+    const toLibrary = (html: string) =>
+      (html.match(/<a [^>]*>/g) ?? []).filter((tag) =>
+        tag.includes('href="/library'),
+      );
+
+    it("are all plain links, whatever chart or list they are in", async () => {
+      const html = await render(<Stats {...props(full)} />);
+      const links = toLibrary(html);
+
+      for (const tag of links) expect(tag, tag).not.toContain("data-discover");
+      // Not an empty check: the bars, the three lists, the genres and the table all link.
+      expect(links.length).toBeGreaterThanOrEqual(20);
+    });
+
+    it("include the bars of the scores and of the years of release", async () => {
+      const links = toLibrary(await render(<Stats {...props(full)} />)).join(
+        "\n",
+      );
+
+      expect(links).toContain('href="/library?rated=8"');
+      expect(links).toContain('href="/library?year=2014"');
+    });
+
+    it("include the entry of each list: the best scored, the most time, what was watched again and the oldest planned", async () => {
+      const links = toLibrary(await render(<Stats {...props(full)} />)).join(
+        "\n",
+      );
+
+      for (const mediaId of [
+        "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f", // best scored
+        "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa", // most time
+        "0199a3c2-7d4e-7b1a-8c3f-cccccccccccc", // watched again
+        "0199a3c2-7d4e-7b1a-8c3f-eeeeeeeeeeee", // oldest planned
+      ]) {
+        expect(links).toContain(`href="/library/${mediaId}"`);
+      }
+    });
+
+    it("leave the link to the search, which has no policy of its own, as a link of the router", async () => {
+      const html = await render(<Stats {...props(empty)} />);
+
+      expect(html).toMatch(/<a [^>]*href="\/search"[^>]*data-discover="true"/);
+    });
+  });
+
   describe("the genres (SAG-86)", () => {
     it("draws the time of each genre in days, with its titles, and leaves out the genres with no minutes", async () => {
       const html = await render(<Stats {...props(full)} />);

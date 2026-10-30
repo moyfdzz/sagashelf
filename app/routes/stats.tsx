@@ -95,6 +95,8 @@ function Panel({
   );
 }
 
+// Every link from this page to the library is a plain `<a>`, never the router's `Link`: the library
+// has its own security policy, which only a new document gets (ADR-018, SAG-89). A test keeps it so.
 export default function Stats({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { formatNumber, formatDate } = useFormatters();
@@ -409,12 +411,9 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
                     {formatNumber(index + 1)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <Link
-                      to={`/library/${entry.mediaId}`}
-                      className={linkClass}
-                    >
+                    <a href={`/library/${entry.mediaId}`} className={linkClass}>
                       {entry.title}
-                    </Link>{" "}
+                    </a>{" "}
                     <span className="text-fg-muted text-sm">
                       {withYear(entry.type, entry.year)}
                     </span>
@@ -637,12 +636,9 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
               {stats.mostRewatched.map((entry) => (
                 <li key={entry.mediaId} className="flex items-baseline gap-3">
                   <span className="min-w-0 flex-1">
-                    <Link
-                      to={`/library/${entry.mediaId}`}
-                      className={linkClass}
-                    >
+                    <a href={`/library/${entry.mediaId}`} className={linkClass}>
                       {entry.title}
-                    </Link>{" "}
+                    </a>{" "}
                     <span className="text-fg-muted text-sm">
                       {withYear(entry.type, entry.year)}
                     </span>
@@ -692,12 +688,9 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
               {stats.oldestPlanned.map((entry) => (
                 <li key={entry.mediaId} className="flex items-baseline gap-3">
                   <span className="min-w-0 flex-1">
-                    <Link
-                      to={`/library/${entry.mediaId}`}
-                      className={linkClass}
-                    >
+                    <a href={`/library/${entry.mediaId}`} className={linkClass}>
                       {entry.title}
-                    </Link>{" "}
+                    </a>{" "}
                     <span className="text-fg-muted text-sm">
                       {withYear(entry.type, entry.year)}
                     </span>

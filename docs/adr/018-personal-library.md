@@ -39,7 +39,7 @@ A person needs to keep track of what they watch: a status, how far they got, a s
 
 **The data export** has the library in the JSON file and, in the CSV file, as a second table below the profile (title, status, progress, score, dates, times watched again, notes, visibility, date added). Lists and custom entries are still only in the JSON file. A cell that starts like a formula is quoted so a spreadsheet does not run it.
 
-**Security policy.** `/library` and everything under it are session pages (`isSessionPage`): they get the narrow policy of ADR-011 that lets Clerk's script renew the session, because the entry page has a form that can stay open longer than the 60 seconds a session token lasts. No new origin is added. Links from other pages to the library are plain links, and the add form reloads the document, because a new document is what gets the policy.
+**Security policy.** `/library` and everything under it are session pages (`isSessionPage`): they get the narrow policy of ADR-011 that lets Clerk's script renew the session, because the entry page has a form that can stay open longer than the 60 seconds a session token lasts. No new origin is added. Links from other pages to the library are plain links, and the add form reloads the document, because a new document is what gets the policy. The statistics page follows it for every chart, list and table (`ColumnChart`, `RowBars` and the lists link with a plain `<a>`, SAG-89), and a render test of that page fails if a link to the library goes through the router's `Link`.
 
 ## Alternatives considered
 
