@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-29
-- **Implementation:** Done (SAG-61). The charts that wait for other tickets are listed under Open questions.
-- **Tickets:** SAG-61, SAG-20
+- **Implementation:** Done (SAG-61, SAG-85). The charts that wait for other tickets are listed under Open questions.
+- **Tickets:** SAG-61, SAG-85, SAG-20
 - **Related:** [ADR-002](002-data-postgres-neon-drizzle.md), [ADR-016](016-provider-layer-and-tmdb.md), [ADR-018](018-personal-library.md), [ADR-019](019-viewings-history.md), [ADR-007](007-background-work-cron-and-outbox.md)
 
 ## Context
@@ -16,7 +16,7 @@ The owner asked (2026-10-27) for a page with what a person has watched: titles, 
 
 ## Decision
 
-**The numbers are worked out in SQL when the page opens**, from the entries of the person of the verified session (`server/db/stats.ts`, `getStats`). Four statements, whatever the size of the library: the totals, the groups (by type, status, score and year of release), the finished viewings by year and month, and the best scored. Each one filters by the id of the person, taken from the session and never from the address.
+**The numbers are worked out in SQL when the page opens**, from the entries of the person of the verified session (`server/db/stats.ts`, `getStats`). A fixed number of statements, whatever the size of the library: the totals, the groups (by type, status, score, year of release, minutes and mean score), the finished viewings by year and month, the best scored, the titles with the most time and the most watched again, the span of each finished viewing, and the oldest planned (the last five came with SAG-85). Each one filters by the id of the person, taken from the session and never from the address.
 
 **What is counted**
 
@@ -26,6 +26,16 @@ The owner asked (2026-10-27) for a page with what a person has watched: titles, 
 - **Books and manga** count pages, chapters and volumes from `progress` and its unit, and no days.
 - **Finished by year and by month:** every finished viewing, that is, the finish date of a completed entry and the finish date of each earlier viewing. A finished viewing with no date cannot be placed, so it is counted apart and the page says how many there are. The chart by year of release counts entries and links to the library filter that already exists.
 - **Scores:** the mean of the scores given, and how many entries got each score from 1 to 10. A bar leads to `/library?rated=N`, a new filter for exactly that score (the older `score` is "N or more").
+
+**More numbers (SAG-85)**, all from data we already hold, with no migration and no new decision:
+
+- **Time by type:** the minutes of each type that has a length, as a proportion bar in days. Books and manga are left out because they have pages, not minutes. **Score by type:** the mean score and how many titles it comes from, on a scale of 0 to 10 (a bar is measured against 10, not against the longest row).
+- **Most time watched:** the ten entries with the most minutes watched (the same minutes as the tiles), in hours, each linked to its entry. **Watched again most:** the five entries with the most earlier viewings, with the minutes those viewings took; a title with no length shows the number of times only.
+- **Best year and best month:** the year and the month with the most finished viewings, taken from the numbers of the chart by month, with no new statement. Among equals the latest wins, and a period with nothing is never chosen.
+- **How long it takes to finish something:** the **median** of the days from the start date to the finish date of each finished viewing (the current run of a completed entry and every earlier viewing). The median and not the mean, because one title left for years would bend a mean. A viewing that lacks either date is not counted, and the page says how many. Finishing the day it started is zero days.
+- **Planned the longest:** the five entries in "planned" that were added first, with the day they were added.
+
+The lists show a few rows on purpose: ten for the time and five for the others. The three charts of SAG-85 (time by type, score by type, most time watched) write their numbers in the legend or at the end of every row instead of a `<details>` table, as the chart of statuses already did: the text is the table.
 
 **The length is one number per title** (migration `0011`, additive): `media_items.runtime_minutes`, with a check that it is not negative.
 
@@ -58,13 +68,13 @@ The owner asked (2026-10-27) for a page with what a person has watched: titles, 
 **Worse, or new work**
 
 - The days are approximate and wait for the job to fill the lengths: for a few hours after the deploy a title can lack one. The page says how many.
-- Each visit runs four statements. At this scale they are cheap; the first thing to watch if the page gets slow is the subquery that counts the episodes of a title.
+- Each visit runs eight statements. At this scale they are cheap; the first thing to watch if the page gets slow is the subquery that counts the episodes of a title.
 - A new filter in the library (`rated`) and a second set of colors for types (the charts) must be kept in step by hand with the badge colors if the types change.
 
 ## Open questions
 
 - **Not verified:** that TMDB sends `runtime` for the episodes in the season details the job asks for (`append_to_response=season/N`), as its documentation says. It was not read from a live answer because it needs the TMDB token. If it does not, the series use `episode_run_time`, or stay at 0. After the first runs of the job, count the titles with `runtime_minutes = 0` to see.
-- **Not built:** the title watched most times, the longest series completed, and genres, studios and authors (they need SAG-71). Statistics on a public profile follow the privacy of each entry and belong to the profile ticket (SAG-21).
+- **Not built:** the longest series completed and the activity streak (left out of SAG-85 on purpose: the first adds little to the list of most time, and the second is unreliable when dates are optional), and genres, studios and authors (they need SAG-71, then SAG-86). Statistics on a public profile follow the privacy of each entry and belong to the profile ticket (SAG-21).
 - **Not built:** a library filter by the year a title was finished, so the bars by year could be links. Earlier viewings are not entries, so it needs its own query.
 
 ## References

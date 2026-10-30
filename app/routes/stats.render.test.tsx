@@ -57,6 +57,12 @@ const empty: StatsData = {
   finishedByMonth: [],
   undatedFinished: 0,
   best: [],
+  minutesByType: {},
+  scoreByType: {},
+  mostWatched: [],
+  mostRewatched: [],
+  finishTime: { medianDays: null, counted: 0, skipped: 0 },
+  oldestPlanned: [],
 };
 
 const full: StatsData = {
@@ -93,6 +99,55 @@ const full: StatsData = {
       type: "anime",
       year: 2013,
       score: 10,
+    },
+  ],
+  minutesByType: { movie: 2_880, series: 11_520 },
+  scoreByType: {
+    movie: { average: 8, scored: 2 },
+    anime: { average: 9.5, scored: 1 },
+  },
+  mostWatched: [
+    {
+      mediaId: "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa",
+      title: "Los siete samuráis",
+      type: "movie",
+      year: 1954,
+      minutes: 600,
+    },
+    {
+      mediaId: "0199a3c2-7d4e-7b1a-8c3f-bbbbbbbbbbbb",
+      title: "Cowboy Bebop",
+      type: "anime",
+      year: 1998,
+      minutes: 90,
+    },
+  ],
+  mostRewatched: [
+    {
+      mediaId: "0199a3c2-7d4e-7b1a-8c3f-cccccccccccc",
+      title: "Interestelar",
+      type: "movie",
+      year: 2014,
+      rewatches: 2,
+      minutes: 240,
+    },
+    {
+      mediaId: "0199a3c2-7d4e-7b1a-8c3f-dddddddddddd",
+      title: "Dune",
+      type: "book",
+      year: 1965,
+      rewatches: 1,
+      minutes: 0,
+    },
+  ],
+  finishTime: { medianDays: 9, counted: 2, skipped: 1 },
+  oldestPlanned: [
+    {
+      mediaId: "0199a3c2-7d4e-7b1a-8c3f-eeeeeeeeeeee",
+      title: "Akira",
+      type: "movie",
+      year: 1988,
+      addedOn: "2025-01-15",
     },
   ],
 };
@@ -242,6 +297,12 @@ describe("the statistics page", () => {
     expect(html).not.toContain("Actividad por mes");
     expect(html).not.toContain("Por año de estreno");
     expect(html).not.toContain("NaN");
+    expect(html).not.toContain("Tiempo por tipo");
+    expect(html).not.toContain("Puntuación por tipo");
+    expect(html).not.toContain("Lo que más tiempo has visto");
+    expect(html).not.toContain("Lo que más has repetido");
+    expect(html).not.toContain("Tu ritmo");
+    expect(html).not.toContain("Pendientes desde hace más tiempo");
   });
 
   it("puts a title of a type we do not know in Others", async () => {
@@ -252,6 +313,99 @@ describe("the statistics page", () => {
     expect(html).toContain("Otros");
   });
 
+  it("writes the days of each type, with its share, and leaves out the types with no time", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain("Tiempo por tipo");
+    // 2 880 of 14 400 minutes are 2 of 10 days.
+    expect(html).toMatch(/2 días · 20\s%/);
+    expect(html).toMatch(/8 días · 80\s%/);
+    expect(html).toContain("<title>Series: 8 días</title>");
+    // Books have a place in the chart of types, but no days.
+    expect(html).not.toMatch(/<title>Libros: [^<]*días/);
+  });
+
+  it("measures the score of each type out of 10 and writes how many titles it comes from", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain("Puntuación por tipo");
+    expect(html).toContain("Películas · 2 títulos");
+    expect(html).toContain("Anime · 1 título");
+    expect(html).toContain(">9,5<");
+    // 8 out of 10 of a 300 wide track.
+    expect(html).toMatch(/<rect width="240"[^>]*class="fill-accent"/);
+  });
+
+  it("lists the titles with the most time, in hours, each linked to its entry", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain("Lo que más tiempo has visto");
+    expect(html).toContain("Los siete samuráis (Películas · 1954)");
+    expect(html).toContain(">10 h<");
+    expect(html).toContain(">1,5 h<");
+    expect(html).toContain(
+      'href="/library/0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa"',
+    );
+  });
+
+  it("lists what was watched again, with the extra hours only when there is a length", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain("Lo que más has repetido");
+    expect(html).toContain("2 veces más · 4 h");
+    expect(html).toContain(">1 vez más<");
+    expect(html).toContain(
+      'href="/library/0199a3c2-7d4e-7b1a-8c3f-cccccccccccc"',
+    );
+  });
+
+  it("writes the best year, the best month and the median of days, and how many are left out", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain("Tu ritmo");
+    expect(html).toMatch(
+      />2025<\/dd><dt[^>]*>Tu mejor año, con 2 títulos terminados/,
+    );
+    expect(html).toMatch(
+      />marzo 2025<\/dd><dt[^>]*>Tu mejor mes, con 2 títulos terminados/,
+    );
+    expect(html).toMatch(/>9<\/dd><dt[^>]*>Días que tardas en terminar algo/);
+    expect(html).toContain(
+      "1 vez que terminaste algo no tiene fecha de inicio",
+    );
+  });
+
+  it("leaves out the median and the note when every finished viewing has both dates", async () => {
+    const noSpan = await render(
+      <Stats
+        {...props({
+          ...full,
+          finishTime: { medianDays: null, counted: 0, skipped: 0 },
+        })}
+      />,
+    );
+    const allDated = await render(
+      <Stats
+        {...props({
+          ...full,
+          finishTime: { medianDays: 9, counted: 3, skipped: 0 },
+        })}
+      />,
+    );
+
+    expect(noSpan).not.toContain("Días que tardas");
+    expect(allDated).not.toContain("no tiene fecha de inicio");
+    expect(allDated).not.toContain("no tienen fecha de inicio");
+  });
+
+  it("lists the oldest planned with the day they were added", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain("Pendientes desde hace más tiempo");
+    expect(html).toContain("Akira");
+    expect(html).toMatch(/15 ene 2025/);
+  });
+
   it("says it in English", async () => {
     const html = await render(<Stats {...props(full)} />, "en");
 
@@ -260,5 +414,9 @@ describe("the statistics page", () => {
     expect(html).toContain("Average of 8.7 over 3 scored titles.");
     expect(html).toContain("Show the numbers");
     expect(html).toContain("<title>8: 2 titles</title>");
+    expect(html).toContain("Your pace");
+    expect(html).toContain("Your best year, with 2 titles finished");
+    expect(html).toContain("2 more times");
+    expect(html).toContain("Jan 15, 2025");
   });
 });

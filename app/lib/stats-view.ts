@@ -44,5 +44,36 @@ export function heatRows(
   });
 }
 
+/** The year and the month with the most finished viewings; among equals the latest wins. */
+export function bestPeriods(
+  years: readonly YearCount[],
+  months: readonly MonthCount[],
+): { year: YearCount | null; month: MonthCount | null } {
+  const latest = <T extends { count: number; year: number }>(
+    items: readonly T[],
+    later: (a: T, b: T) => boolean,
+  ): T | null =>
+    items.reduce<T | null>(
+      (best, item) =>
+        item.count > 0 &&
+        (best === null ||
+          item.count > best.count ||
+          (item.count === best.count && later(item, best)))
+          ? item
+          : best,
+      null,
+    );
+  return {
+    year: latest(years, (a, b) => a.year > b.year),
+    month: latest(
+      months,
+      (a, b) => a.year * 12 + a.month > b.year * 12 + b.month,
+    ),
+  };
+}
+
 /** Minutes as days, with one decimal at most: 1 440 minutes make a day. */
 export const minutesToDays = (minutes: number) => minutes / 1440;
+
+/** Minutes as hours, for the length of one title. */
+export const minutesToHours = (minutes: number) => minutes / 60;

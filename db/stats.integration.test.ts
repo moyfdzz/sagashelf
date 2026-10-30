@@ -65,7 +65,7 @@ async function addEntry(
   return row.id;
 }
 
-describe("the statistics of a person (SAG-61)", () => {
+describe("the statistics of a person (SAG-61, SAG-85)", () => {
   it("is all zeros and empty lists for a person with nothing", async () => {
     const user = await newUser();
 
@@ -90,6 +90,12 @@ describe("the statistics of a person (SAG-61)", () => {
       finishedByMonth: [],
       undatedFinished: 0,
       best: [],
+      minutesByType: {},
+      scoreByType: {},
+      mostWatched: [],
+      mostRewatched: [],
+      finishTime: { medianDays: null, counted: 0, skipped: 0 },
+      oldestPlanned: [],
     });
   });
 
@@ -248,6 +254,88 @@ describe("the statistics of a person (SAG-61)", () => {
       expect(stats.best[0]).toMatchObject({ type: "anime", year: 2020 });
     });
 
+    it("adds up the minutes of each type that has a length", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      // The book has pages, not minutes, and the planned movies were not watched.
+      expect(stats.minutesByType).toEqual({
+        anime: 300,
+        movie: 240,
+        series: 80,
+      });
+    });
+
+    it("averages the score of each type and counts the titles it comes from", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      expect(stats.scoreByType).toEqual({
+        movie: { average: 8, scored: 1 },
+        anime: { average: 10, scored: 1 },
+        book: { average: 8, scored: 1 },
+      });
+    });
+
+    it("lists the titles with the most minutes watched, the most first", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      expect(stats.mostWatched.map((entry) => entry.minutes)).toEqual([
+        300, 240, 80,
+      ]);
+      expect(stats.mostWatched[0]).toMatchObject({ type: "anime", year: 2020 });
+    });
+
+    it("lists what was watched again, with the minutes those viewings took", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      // Both were watched once more: the anime's 3 episodes of 50 minutes, then the movie's 120.
+      expect(
+        stats.mostRewatched.map((entry) => [
+          entry.type,
+          entry.rewatches,
+          entry.minutes,
+        ]),
+      ).toEqual([
+        ["anime", 1, 150],
+        ["movie", 1, 120],
+      ]);
+    });
+
+    it("takes the median of the days from the start to the finish, and counts the viewings left out", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      // 9 days for the movie, 1 for its earlier viewing; the anime, its earlier viewing and the
+      // book lack a start or a finish date.
+      expect(stats.finishTime).toEqual({
+        medianDays: 5,
+        counted: 2,
+        skipped: 3,
+      });
+    });
+
+    it("lists the planned titles that were added first", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      expect(stats.oldestPlanned.map((entry) => entry.year)).toEqual([
+        2021,
+        null,
+      ]);
+      expect(stats.oldestPlanned[0]?.addedOn).toMatch(
+        /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/,
+      );
+    });
+
     it("gives the title in the language of the visitor", async () => {
       const user = await newUser();
       const id = await addMedia({
@@ -278,10 +366,68 @@ describe("the statistics of a person (SAG-61)", () => {
 
       expect(mine.entries).toBe(6);
       expect(mine.scores[0]).toBe(0);
+      expect(mine.mostWatched.map((entry) => entry.minutes)).not.toContain(90);
+      expect(mine.finishTime.counted).toBe(2);
       expect(theirs.entries).toBe(1);
       expect(theirs.minutesWatched).toBe(90);
       expect(theirs.best).toHaveLength(1);
+      expect(theirs.mostWatched).toHaveLength(1);
+      expect(theirs.minutesByType).toEqual({ movie: 90 });
     });
+  });
+
+  it("keeps the ten titles with the most time and the five oldest planned", async () => {
+    const user = await newUser();
+    for (let minutes = 1; minutes <= 12; minutes += 1) {
+      await addEntry(user.id, await addMedia({ runtimeMinutes: minutes }), {
+        status: "completed",
+      });
+    }
+    for (let index = 0; index < 7; index += 1) {
+      await addEntry(user.id, await addMedia({ year: 2000 + index }));
+    }
+
+    const stats = await getStats(db, user.id, "es");
+
+    expect(stats.mostWatched.map((entry) => entry.minutes)).toEqual([
+      12, 11, 10, 9, 8, 7, 6, 5, 4, 3,
+    ]);
+    expect(stats.oldestPlanned.map((entry) => entry.year)).toEqual([
+      2000, 2001, 2002, 2003, 2004,
+    ]);
+  });
+
+  it("gives the lists in the language of the visitor", async () => {
+    const user = await newUser();
+    await addEntry(
+      user.id,
+      await addMedia({
+        runtimeMinutes: 100,
+        title: "Interestelar",
+        titles: { es: "Interestelar", en: "Interstellar" },
+      }),
+      { status: "completed" },
+    );
+
+    expect((await getStats(db, user.id, "en")).mostWatched[0]?.title).toBe(
+      "Interstellar",
+    );
+    expect((await getStats(db, user.id, "es")).mostWatched[0]?.title).toBe(
+      "Interestelar",
+    );
+  });
+
+  it("measures a viewing finished the day it started as zero days", async () => {
+    const user = await newUser();
+    await addEntry(user.id, await addMedia({ runtimeMinutes: 90 }), {
+      status: "completed",
+      startedAt: "2025-02-01",
+      finishedAt: "2025-02-01",
+    });
+
+    const stats = await getStats(db, user.id, "es");
+
+    expect(stats.finishTime).toEqual({ medianDays: 0, counted: 1, skipped: 0 });
   });
 
   it("does not count a movie that is not completed as watched", async () => {

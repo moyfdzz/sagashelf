@@ -13,16 +13,19 @@ const height = 8;
 
 /**
  * Amounts that are compared by length, one row each, in one color: the number is written at the
- * end of every row, so nothing depends on seeing the bar. The longest row fills the width.
+ * end of every row, so nothing depends on seeing the bar. The longest row fills the width, unless
+ * the amounts have a scale of their own (`scaleMax`, as scores out of 10).
  */
 export function RowBars({
   rows,
   format,
+  scaleMax,
 }: {
   rows: readonly RowBar[];
   format: (value: number) => string;
+  scaleMax?: number;
 }) {
-  const max = Math.max(1, ...rows.map((row) => row.value));
+  const max = scaleMax ?? Math.max(1, ...rows.map((row) => row.value));
 
   return (
     <ul className="max-w-md space-y-2.5">

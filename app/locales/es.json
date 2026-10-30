@@ -706,6 +706,42 @@
       "month": "Mes",
       "none": "Aún no hay fechas de término."
     },
-    "titlesLabel": "Títulos"
+    "titlesLabel": "Títulos",
+    "days_one": "{{value}} día",
+    "days_other": "{{value}} días",
+    "hours": "{{value}} h",
+    "timeByType": {
+      "title": "Tiempo por tipo",
+      "description": "Cuántos días de contenido viste de cada tipo. Los libros y el manga se cuentan en páginas, capítulos y volúmenes."
+    },
+    "scoreByType": {
+      "title": "Puntuación por tipo",
+      "description": "El promedio de tus puntuaciones en cada tipo, sobre 10."
+    },
+    "mostWatched": {
+      "title": "Lo que más tiempo has visto",
+      "description": "Los títulos con más horas vistas, contando cada vez que los viste. Pulsa uno para abrirlo."
+    },
+    "rewatched": {
+      "title": "Lo que más has repetido",
+      "description": "Los títulos que volviste a ver más veces y las horas que eso te costó.",
+      "times_one": "{{count}} vez más",
+      "times_other": "{{count}} veces más"
+    },
+    "pace": {
+      "title": "Tu ritmo",
+      "description": "Cuándo terminas más cosas y cuánto tardas en terminar algo.",
+      "bestYear_one": "Tu mejor año, con {{count}} título terminado",
+      "bestYear_other": "Tu mejor año, con {{count}} títulos terminados",
+      "bestMonth_one": "Tu mejor mes, con {{count}} título terminado",
+      "bestMonth_other": "Tu mejor mes, con {{count}} títulos terminados",
+      "median": "Días que tardas en terminar algo, en mediana",
+      "skipped_one": "{{count}} vez que terminaste algo no tiene fecha de inicio y de término, y no se cuenta en los días.",
+      "skipped_other": "{{count}} veces que terminaste algo no tienen fecha de inicio y de término, y no se cuentan en los días."
+    },
+    "oldestPlanned": {
+      "title": "Pendientes desde hace más tiempo",
+      "description": "Lo que agregaste hace más tiempo y aún no empiezas."
+    }
   }
 }
