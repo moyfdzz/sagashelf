@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-30
-- **Implementation:** Done (SAG-71). The statistics and the library filter that use the genres are SAG-86.
+- **Implementation:** Done (SAG-71, SAG-86). The statistics by genre and the library filter that use the genres are SAG-86.
 - **Tickets:** SAG-71, SAG-86, SAG-87, SAG-88
 - **Related:** [ADR-016](016-provider-layer-and-tmdb.md), [ADR-021](021-books-open-library.md), [ADR-022](022-manga-mangadex.md), [ADR-023](023-statistics.md)
 
@@ -30,12 +30,12 @@ The three sources do not agree:
 
 **The titles saved before** are filled by the job that already refreshes titles (`findMediaToRefresh`, every 6 hours, 5 titles each run): a title with `NULL` genres is asked once, whatever its source. **The titles that are in somebody's library go first**, after the stale ones, so what a person sees is filled before the rest of the catalog. No command is needed. The 6-month rule of TMDB (ADR-016) covers the genres too: they are part of the data the job refreshes.
 
-**The title page** shows the genres as a list of labels, with no link. The link to the library filtered by a genre comes with that filter in SAG-86, which also builds the statistics by genre.
+**The title page** shows the genres as a list of labels. For a signed-in person each label is a plain link to the library filtered by that genre (`/library?genre=X`, SAG-86); a visitor has no library, so for them it stays a label. The statistics by genre are in ADR-023.
 
 ## Alternatives considered
 
 - **Keep each provider's own genres.** The three vocabularies do not match ("Action" of TMDB, "Action" of MangaDex, "Adventure stories" of Open Library), so no count or filter across formats would work, and the ticket asked to keep the provider's tags out of the catalog.
-- **A table of genres and a table that joins them to titles.** It is the answer when genres carry data of their own (a description, a parent genre) or a title has thousands of them. A list of keys is enough here, it is read with the title in the same row, and `@>` with a GIN index (added when SAG-86 filters by it) answers "titles of this genre". It can become a table later without changing the list.
+- **A table of genres and a table that joins them to titles.** It is the answer when genres carry data of their own (a description, a parent genre) or a title has thousands of them. A list of keys is enough here, it is read with the title in the same row, and `@>` answers "titles of this genre". The library filter of SAG-86 runs it inside the entries of one person, so no index was added; if a query that spans the whole catalog is ever needed (for example for recommendations, SAG-87), a GIN index is the next step. It can become a table later without changing the list.
 - **A Postgres enum or a check of the keys.** Each new genre would need a migration. The list is expected to grow, and the code already refuses what is not on it.
 - **A short list of about 20 genres.** It leaves out what people who watch anime and read manga look for (isekai, mecha, magical girls). The owner asked for the niche ones too.
 - **Reading the subjects of Open Library with a model or a translation.** It adds a cost and a dependency for a source that is noisy by nature. A conservative pattern list is plain, and a book with no genre is said so in the statistics.
@@ -60,7 +60,7 @@ The three sources do not agree:
 
 - **Not verified:** the numbers of the TMDB genres. They are TMDB's published list for movies and series, written from it, and were not read from a live answer because that needs the TMDB token. If a number is wrong, its genre is dropped or wrong; after the first runs of the job, look at the genres of a few well-known titles.
 - **Not built:** the niche genres of anime and series. TMDB has keywords (for example the ones that say a series is an isekai) that could feed them. It is a ticket of its own (SAG-88): it asks one more call per title and its terms and numbers must be read first.
-- **Not built:** the statistics by genre and the filter `genre=X` of the library (SAG-86), and recommendations by similar genres (SAG-87).
+- **Not built:** recommendations by similar genres (SAG-87). The statistics by genre and the filter `genre=X` of the library are done (SAG-86).
 - Whether to show the genres in the search results; today only the title page does.
 
 ## References

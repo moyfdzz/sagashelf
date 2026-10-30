@@ -209,6 +209,21 @@ describe("libraryQuerySchema", () => {
     }
   });
 
+  it("reads `genre` as a key of the list of genres, and ignores anything else (SAG-86)", () => {
+    expect(libraryQuerySchema.parse({ genre: "action" }).genre).toBe("action");
+    expect(libraryQuerySchema.parse({ genre: "sci_fi" }).genre).toBe("sci_fi");
+    for (const genre of [
+      "",
+      "Action",
+      "sci-fi",
+      "nope",
+      " action",
+      "action,drama",
+    ]) {
+      expect(libraryQuerySchema.parse({ genre }).genre).toBeUndefined();
+    }
+  });
+
   it("reads `none` as the entries that were never scored, and a number as a minimum", () => {
     expect(libraryQuerySchema.parse({ score: "none" }).score).toBe("none");
     expect(libraryQuerySchema.parse({ score: "10" }).score).toBe(10);

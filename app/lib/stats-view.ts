@@ -72,6 +72,65 @@ export function bestPeriods(
   };
 }
 
+/** What the genre panels read of one genre. The server type has more, which these ignore. */
+export type GenreRow = {
+  genre: string;
+  titles: number;
+  minutes: number;
+  scored: number;
+  averageScore: number | null;
+};
+
+/** Genres shown in a bar chart; the table under it lists all of them. */
+export const genreBarCount = 10;
+/** Genres shown as the best scored. */
+export const bestGenreCount = 5;
+/** A genre needs this many scored titles to be ranked by its mean, so one score is not a trend. */
+export const bestGenreMinScored = 2;
+
+/** The genres with the most minutes watched. A genre with no minutes (only books) is left out. */
+export function topGenresByTime<T extends GenreRow>(
+  rows: readonly T[],
+  size = genreBarCount,
+): T[] {
+  return rows
+    .filter((row) => row.minutes > 0)
+    .sort(
+      (a, b) =>
+        b.minutes - a.minutes ||
+        b.titles - a.titles ||
+        a.genre.localeCompare(b.genre),
+    )
+    .slice(0, size);
+}
+
+/** The genres with the most titles, books and manga included. */
+export function topGenresByTitles<T extends GenreRow>(
+  rows: readonly T[],
+  size = genreBarCount,
+): T[] {
+  return [...rows]
+    .sort((a, b) => b.titles - a.titles || a.genre.localeCompare(b.genre))
+    .slice(0, size);
+}
+
+/** The genres with the highest mean score, among the ones with enough scored titles. */
+export function bestScoredGenres<T extends GenreRow>(
+  rows: readonly T[],
+  size = bestGenreCount,
+  minScored = bestGenreMinScored,
+): T[] {
+  return rows
+    .filter((row) => row.averageScore !== null && row.scored >= minScored)
+    .sort(
+      (a, b) =>
+        (b.averageScore ?? 0) - (a.averageScore ?? 0) ||
+        b.scored - a.scored ||
+        a.genre.localeCompare(b.genre),
+    )
+    .slice(0, size);
+}
+
 /** Minutes as days, with one decimal at most: 1 440 minutes make a day. */
 export const minutesToDays = (minutes: number) => minutes / 1440;
 

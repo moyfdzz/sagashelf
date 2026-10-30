@@ -564,6 +564,48 @@ describe("listLibrary", () => {
     ).toMatchObject({ all: 1, anime: 0, movie: 1 });
   });
 
+  it("filters the entries of one genre, and the tabs count only those (SAG-86)", async () => {
+    const { ana } = await fill();
+    await db.execute(
+      sql`UPDATE media_items SET genres = '["action","sci_fi"]'::jsonb WHERE title = 'Matrix'`,
+    );
+    await db.execute(
+      sql`UPDATE media_items SET genres = '["action","drama"]'::jsonb WHERE title = 'Ataque a los Titanes'`,
+    );
+    // Bleach has no genres at all: it never matches a genre.
+    expect(await titles(ana.id, { genre: "action" })).toEqual([
+      "Ataque a los Titanes",
+      "Matrix",
+    ]);
+    expect(await titles(ana.id, { genre: "sci_fi" })).toEqual(["Matrix"]);
+    expect(await titles(ana.id, { genre: "drama" })).toEqual([
+      "Ataque a los Titanes",
+    ]);
+    expect(await titles(ana.id, { genre: "western" })).toEqual([]);
+    expect(await titles(ana.id, { genre: "action", type: "movie" })).toEqual([
+      "Matrix",
+    ]);
+    expect(await titles(ana.id, { genre: "action", rated: "10" })).toEqual([
+      "Matrix",
+    ]);
+    expect(
+      (await listLibrary(db, ana.id, query({ genre: "action" }), "es")).counts,
+    ).toMatchObject({ all: 2, anime: 1, movie: 1 });
+  });
+
+  it("matches a genre exactly, not a part of another key, and ignores one that is not on the list (SAG-86)", async () => {
+    const { ana } = await fill();
+    await db.execute(
+      sql`UPDATE media_items SET genres = '["sci_fi","slice_of_life"]'::jsonb WHERE title = 'Matrix'`,
+    );
+
+    expect(await titles(ana.id, { genre: "slice_of_life" })).toEqual([
+      "Matrix",
+    ]);
+    expect(await titles(ana.id, { genre: "slice" })).toHaveLength(3);
+    expect(await titles(ana.id, { genre: "of_life" })).toHaveLength(3);
+  });
+
   it("filters the entries that were never scored, and the tabs count only those", async () => {
     const { ana, matrix } = await fill();
     const beto = await newUser();

@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-29
-- **Implementation:** Done (SAG-61, SAG-85). The charts that wait for other tickets are listed under Open questions.
-- **Tickets:** SAG-61, SAG-85, SAG-20
+- **Implementation:** Done (SAG-61, SAG-85, SAG-86). The charts that wait for other tickets are listed under Open questions.
+- **Tickets:** SAG-61, SAG-85, SAG-86, SAG-20
 - **Related:** [ADR-002](002-data-postgres-neon-drizzle.md), [ADR-016](016-provider-layer-and-tmdb.md), [ADR-018](018-personal-library.md), [ADR-019](019-viewings-history.md), [ADR-007](007-background-work-cron-and-outbox.md)
 
 ## Context
@@ -37,6 +37,15 @@ The owner asked (2026-10-27) for a page with what a person has watched: titles, 
 
 The lists show a few rows on purpose: ten for the time and five for the others. The three charts of SAG-85 (time by type, score by type, most time watched) write their numbers in the legend or at the end of every row instead of a `<details>` table, as the chart of statuses already did: the text is the table.
 
+**Statistics by genre (SAG-86)**, from the genres of ADR-024:
+
+- **What counts:** every entry that is **not planned** (completed, in progress, paused and dropped), because a planned title has not been watched or read. A dropped or paused title counts what was seen, as in the minutes. **A title with several genres is in the row of each one**, so the rows add up to more than the number of titles, and the page says so.
+- **What each genre adds up:** its titles, its minutes watched (the same minutes as the tiles), the pages, chapters and volumes of its books and manga, and the mean of its scores with how many there are. A genre that only books and manga have shows no bar of time: those have no minutes, so they appear in the bars of titles and in the table.
+- **The charts:** time by genre (the 10 with the most minutes, in days), titles by genre (the 10 with the most titles) and the best scored genres (the 5 with the highest mean, and only those with **at least 2 scored titles**, so one score is not a trend). They are bars of one color (a ranking by amount), each leading to the library with that genre (`/library?genre=X`). A table with **every** genre, its titles, days, pages, chapters, volumes and mean score is under "Show the numbers". The mix of genres by type was left out: five types and many genres say little.
+- **Titles with no genre:** the entries that are not planned and have no genre (saved before ADR-024 and not filled yet, or none of ours fits) are counted and the page says how many. When no title has a genre yet, the page says they are being filled instead of drawing empty charts.
+- **The filter `genre=X` of the library** takes only a key of the list of ADR-024 and ignores anything else. It is a containment test on the title's list (`@>`) inside the entries of the person, so it needs no index at this scale. It has a notice with a link to remove it, and it works together with the other filters.
+- **The links to the library are plain links**, not the router's `Link`, because the library has its own security policy that only a new document gets (ADR-018). `RowBars` and the table do it that way. The links of earlier charts that still use `Link` are SAG-89.
+
 **The length is one number per title** (migration `0011`, additive): `media_items.runtime_minutes`, with a check that it is not negative.
 
 - A movie keeps its `runtime`. A series keeps the **average length of the episodes** that say it (`saveParts`), or the average of TMDB's `episode_run_time` when the episodes say nothing. The days of a series are therefore approximate, and the page says so.
@@ -68,13 +77,13 @@ The lists show a few rows on purpose: ten for the time and five for the others. 
 **Worse, or new work**
 
 - The days are approximate and wait for the job to fill the lengths: for a few hours after the deploy a title can lack one. The page says how many.
-- Each visit runs eight statements. At this scale they are cheap; the first thing to watch if the page gets slow is the subquery that counts the episodes of a title.
+- Each visit runs nine statements. At this scale they are cheap; the first thing to watch if the page gets slow is the subquery that counts the episodes of a title.
 - A new filter in the library (`rated`) and a second set of colors for types (the charts) must be kept in step by hand with the badge colors if the types change.
 
 ## Open questions
 
 - **Not verified:** that TMDB sends `runtime` for the episodes in the season details the job asks for (`append_to_response=season/N`), as its documentation says. It was not read from a live answer because it needs the TMDB token. If it does not, the series use `episode_run_time`, or stay at 0. After the first runs of the job, count the titles with `runtime_minutes = 0` to see.
-- **Not built:** the longest series completed and the activity streak (left out of SAG-85 on purpose: the first adds little to the list of most time, and the second is unreliable when dates are optional), and genres, studios and authors (they need SAG-71, then SAG-86). Statistics on a public profile follow the privacy of each entry and belong to the profile ticket (SAG-21).
+- **Not built:** the longest series completed and the activity streak (left out of SAG-85 on purpose: the first adds little to the list of most time, and the second is unreliable when dates are optional), and studios and authors (they need their own providers' data). Statistics on a public profile follow the privacy of each entry and belong to the profile ticket (SAG-21).
 - **Not built:** a library filter by the year a title was finished, so the bars by year could be links. Earlier viewings are not entries, so it needs its own query.
 
 ## References

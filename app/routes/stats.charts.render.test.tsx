@@ -184,6 +184,26 @@ describe("RowBars", () => {
     expect(html.match(/class="fill-accent"/g)).toHaveLength(2);
   });
 
+  it("links a row with a plain link that loads a new document, because the library has its own security policy (SAG-86)", () => {
+    const html = render(
+      <RowBars
+        format={n}
+        rows={[
+          {
+            key: "a",
+            label: "Acción",
+            value: 4,
+            href: "/library?genre=action",
+          },
+        ]}
+      />,
+    );
+
+    expect(html).toContain('<a href="/library?genre=action"');
+    // A client-side link of the router would carry this marker.
+    expect(html).not.toContain("data-discover");
+  });
+
   it("measures the bars against the scale it is given, not the longest row", () => {
     const html = render(
       <RowBars
@@ -241,5 +261,39 @@ describe("ChartTable", () => {
     expect(html).toContain("Show the numbers");
     expect(html).toContain('scope="col"');
     expect(html).toContain(">12<");
+  });
+
+  it("takes a link in a cell, and keeps the first column as text when it is plain (SAG-86)", () => {
+    const action = "Action";
+    const html = render(
+      <ChartTable
+        summary="Show the numbers"
+        headers={["Genre", "Titles"]}
+        rows={[
+          [
+            <a key="a" href="/library?genre=action">
+              {action}
+            </a>,
+            "4",
+          ],
+          ["Drama", "3"],
+        ]}
+      />,
+    );
+
+    expect(html).toContain('<a href="/library?genre=action">Action</a>');
+    expect(html).toContain(">Drama<");
+    expect(html.match(/<tr/g)).toHaveLength(3);
+  });
+
+  it("leaves more room for a table with many columns, and keeps the scrolling inside its own box (SAG-86)", () => {
+    const base = { summary: "s", headers: ["a", "b"], rows: [["1", "2"]] };
+
+    expect(render(<ChartTable {...base} />)).toContain(
+      "overflow-x-auto max-w-md",
+    );
+    expect(render(<ChartTable {...base} wide />)).toContain(
+      "overflow-x-auto max-w-2xl",
+    );
   });
 });

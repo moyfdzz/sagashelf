@@ -286,6 +286,12 @@ function filtersOf(
     parts.push(sql`${libraryEntries.score} >= ${query.score}`);
   }
   if (query.rated) parts.push(eq(libraryEntries.score, query.rated));
+  // The genres are a list of keys: the title holds the one that was asked for (SAG-86).
+  if (query.genre) {
+    parts.push(
+      sql`${mediaItems.genres} @> ${JSON.stringify([query.genre])}::jsonb`,
+    );
+  }
   if (query.visibility) {
     parts.push(eq(libraryEntries.visibility, query.visibility));
   }

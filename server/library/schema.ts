@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { genres } from "../providers/genres";
+
 export const libraryStatuses = [
   "planned",
   "in_progress",
@@ -236,6 +238,9 @@ export const libraryQuerySchema = z
       .transform(Number)
       .optional()
       .catch(undefined),
+    // The titles of one genre of our list (ADR-024): where a genre of the statistics page leads
+    // (SAG-86). A key that is not on the list is ignored.
+    genre: z.enum(genres).optional().catch(undefined),
     sort: z.enum(sortOptions).catch("recent"),
   })
   .transform(

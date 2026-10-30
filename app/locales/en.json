@@ -506,7 +506,9 @@
       "unscored": "Not scored",
       "scoreAtLeast": "{{score}} or more",
       "ratedExactly": "Only titles scored {{score}}.",
-      "clearRated": "Remove this filter"
+      "clearRated": "Remove this filter",
+      "genreOnly": "Only titles of the genre {{genre}}.",
+      "clearGenre": "Remove this filter"
     },
     "visibility": {
       "any": "All",
@@ -743,6 +745,36 @@
     "oldestPlanned": {
       "title": "Planned the longest",
       "description": "What you added the longest ago and have not started."
+    },
+    "genres": {
+      "title": "Genres",
+      "none": "Your titles have no genre yet. They fill in by themselves little by little, and the ones you add from now on already have one.",
+      "without_one": "{{count}} title has no genre yet and is not counted in these charts.",
+      "without_other": "{{count}} titles have no genre yet and are not counted in these charts.",
+      "time": {
+        "title": "Time by genre",
+        "description": "The days of anime, movies and series of the 10 genres with the most time. A title with several genres counts in each one. Press a bar to see its titles."
+      },
+      "titles": {
+        "title": "Titles by genre",
+        "description": "The 10 genres with the most titles, books and manga included. Press a bar to see them."
+      },
+      "best": {
+        "title": "Best scored genres",
+        "description": "The average of your scores in each genre, out of 10. Only genres with at least 2 scored titles count."
+      },
+      "all": {
+        "title": "All your genres",
+        "description": "Every genre of what you have watched or read, with its time and its progress. Planned titles do not count."
+      },
+      "column": {
+        "genre": "Genre",
+        "days": "Days",
+        "pages": "Pages",
+        "chapters": "Chapters",
+        "volumes": "Volumes",
+        "score": "Score"
+      }
     }
   },
   "genres": {

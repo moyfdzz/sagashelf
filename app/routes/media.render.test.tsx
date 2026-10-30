@@ -104,13 +104,30 @@ describe("the genres on a title page (SAG-71)", () => {
     expect(html.indexOf(">Acción<")).toBeLessThan(html.indexOf("Sinopsis"));
   });
 
-  it("does not link the genres yet: the filter that would take a person to them is SAG-86", async () => {
+  it("leaves the genres as labels for a visitor, who has no library to filter (SAG-86)", async () => {
     const html = await render(
       "es",
       <MediaDetail {...withGenres(["action"])} />,
     );
 
     expect(html).not.toMatch(/<a [^>]*>Acción<\/a>/);
+    expect(html).not.toContain("/library?genre=");
+  });
+
+  it("links each genre to the library filtered by it for a signed-in person, as a plain link (SAG-86)", async () => {
+    const signedIn = props(null, null, {
+      genres: ["action", "sci_fi"],
+      library: { signedIn: true, status: null },
+    }) as Parameters<typeof MediaDetail>[0];
+
+    const html = await render("es", <MediaDetail {...signedIn} />);
+
+    expect(html).toMatch(
+      /<a [^>]*href="\/library\?genre=action"[^>]*>Acción<\/a>/,
+    );
+    expect(html).toMatch(
+      /<a [^>]*href="\/library\?genre=sci_fi"[^>]*>Ciencia ficción<\/a>/,
+    );
   });
 
   it("shows no list when the title has no genre, so there is no empty box", async () => {
