@@ -321,7 +321,18 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                   key={genre}
                   className="border-border bg-surface-raised text-fg-muted rounded-full border px-2.5 py-0.5 text-sm font-semibold"
                 >
-                  {t(`genres.${genre}`)}
+                  {item.library.signedIn ? (
+                    // A plain link: the library has its own security policy (ADR-018). A visitor
+                    // has no library, so for them it stays a label.
+                    <a
+                      href={`/library?genre=${genre}`}
+                      className="hover:text-link-hover focus-visible:outline-accent rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+                    >
+                      {t(`genres.${genre}`)}
+                    </a>
+                  ) : (
+                    t(`genres.${genre}`)
+                  )}
                 </li>
               ))}
             </ul>

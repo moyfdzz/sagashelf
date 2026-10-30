@@ -369,6 +369,47 @@ describe("the search and the filters", () => {
     expect(html).toContain('href="/library?type=anime"');
   });
 
+  it("say which genre is on, name it in the language of the site, and link to take it off (SAG-86)", async () => {
+    const es = await render(
+      "es",
+      <Library
+        {...props({
+          params: { genre: "sci_fi", type: "anime" },
+          sections: threeEntries(),
+        })}
+      />,
+    );
+    const en = await render(
+      "en",
+      <Library
+        {...props({ params: { genre: "sci_fi" }, sections: threeEntries() })}
+      />,
+    );
+
+    expect(es).toContain("Solo los títulos del género Ciencia ficción.");
+    expect(es).toContain('<input type="hidden" name="genre" value="sci_fi"/>');
+    // The link keeps the tab and drops only the genre.
+    expect(es).toContain('href="/library?type=anime"');
+    expect(es).toContain("Quitar este filtro");
+    expect(en).toContain("Only titles of the genre Sci-Fi.");
+  });
+
+  it("count a genre as a filter, so the page says that nothing matches instead of that the library is empty (SAG-86)", async () => {
+    const html = await render(
+      "es",
+      <Library
+        {...props({
+          params: { genre: "western" },
+          counts: { all: 0, anime: 0, movie: 0, series: 0, book: 0, manga: 0 },
+          sections: sectionsOf({}),
+        })}
+      />,
+    );
+
+    expect(html).toContain("Ningún título coincide con tu búsqueda.");
+    expect(html).toContain("Quitar filtros");
+  });
+
   it("say that nothing matches when no entry is without a score", async () => {
     const html = await render(
       "es",

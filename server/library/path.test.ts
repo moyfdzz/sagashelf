@@ -45,6 +45,35 @@ describe("libraryPath", () => {
     );
   });
 
+  it("keeps a genre through tabs and pages, and drops it alone or with the other filters (SAG-86)", () => {
+    const genre = queryOf("genre=isekai&year=2020&type=manga");
+
+    expect(libraryPath(genre, genre.pages)).toBe(
+      "/library?type=manga&year=2020&genre=isekai",
+    );
+    expect(libraryPath(genre, genre.pages, { type: "anime" })).toBe(
+      "/library?type=anime&year=2020&genre=isekai",
+    );
+    expect(libraryPath(genre, genre.pages, { ungenre: true })).toBe(
+      "/library?type=manga&year=2020",
+    );
+    expect(libraryPath(genre, genre.pages, { clear: true })).toBe(
+      "/library?type=manga",
+    );
+  });
+
+  it("keeps the genre and the exact score apart, so each one can be removed alone (SAG-86)", () => {
+    const both = queryOf("rated=8&genre=drama");
+
+    expect(libraryPath(both, both.pages)).toBe("/library?rated=8&genre=drama");
+    expect(libraryPath(both, both.pages, { unrate: true })).toBe(
+      "/library?genre=drama",
+    );
+    expect(libraryPath(both, both.pages, { ungenre: true })).toBe(
+      "/library?rated=8",
+    );
+  });
+
   it("keeps a score of none, as the minimum scores are kept", () => {
     const none = queryOf("score=none&type=book");
     const minimum = queryOf("score=8");

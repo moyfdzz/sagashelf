@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { ProfileDb } from "./profile";
+import { type Genre, isGenre } from "../providers/genres";
 import { localizedTitleSql } from "./titles";
 import type { Locale } from "../providers/types";
 
@@ -16,7 +17,22 @@ type TitleRef = {
   year: number | null;
 };
 
-/** The numbers of the statistics page of one person (SAG-61, SAG-85, ADR-023). */
+/** What one genre of our list adds up to in the library of a person (SAG-86). */
+export type GenreStat = {
+  genre: Genre;
+  /** Entries of the genre that are not planned. A title with several genres is in each one. */
+  titles: number;
+  /** Minutes watched of the titles of the genre that have a length. */
+  minutes: number;
+  pagesRead: number;
+  chaptersRead: number;
+  volumesRead: number;
+  /** How many of those entries have a score, and their mean (null when none). */
+  scored: number;
+  averageScore: number | null;
+};
+
+/** The numbers of the statistics page of one person (SAG-61, SAG-85, SAG-86, ADR-023). */
 export type Stats = {
   /** Every entry of the library, whatever its status. */
   entries: number;
@@ -66,6 +82,10 @@ export type Stats = {
   finishTime: { medianDays: number | null; counted: number; skipped: number };
   /** The planned titles that were added longest ago, the oldest first; `addedOn` is `YYYY-MM-DD`. */
   oldestPlanned: (TitleRef & { addedOn: string })[];
+  /** Every genre of the entries that are not planned, the one with the most titles first. */
+  byGenre: GenreStat[];
+  /** Entries that are not planned and have no genre (not filled yet, or none of ours fits). */
+  withoutGenre: number;
 };
 
 export const bestCount = 10;
@@ -78,6 +98,7 @@ const entriesOf = (userId: string) => sql`
   WITH e AS (
     SELECT le.id, le.media_id, le.status::text AS status, le.score, le.progress,
            le.progress_unit, mi.type::text AS type, mi.year, mi.runtime_minutes AS runtime,
+           mi.genres,
            (SELECT count(*)::int FROM library_viewings v WHERE v.entry_id = le.id) AS viewings,
            (
              SELECT count(*)::int FROM media_parts p
@@ -136,7 +157,10 @@ export async function getStats(
            coalesce(sum(progress) FILTER (WHERE progress_unit = 'chapters'), 0)::bigint AS chapters,
            coalesce(sum(progress) FILTER (WHERE progress_unit = 'volumes'), 0)::bigint AS volumes,
            count(score)::int AS scored,
-           avg(score)::float8 AS average_score
+           avg(score)::float8 AS average_score,
+           count(*) FILTER (
+             WHERE status <> 'planned' AND (genres IS NULL OR jsonb_array_length(genres) = 0)
+           )::int AS without_genre
     FROM w
   `)) as RawRows;
 
@@ -231,6 +255,23 @@ export async function getStats(
     LIMIT ${shortListCount}
   `)) as RawRows;
 
+  // A title with several genres is in the row of each one. The statement reads the keys as text
+  // and the code keeps only the ones of the list.
+  const { rows: genreRows } = (await db.execute(sql`
+    ${entriesOf(userId)}
+    SELECT g.genre AS genre, count(*)::int AS titles,
+           coalesce(sum(w.minutes), 0)::float8 AS minutes,
+           coalesce(sum(w.progress) FILTER (WHERE w.progress_unit = 'pages'), 0)::float8 AS pages,
+           coalesce(sum(w.progress) FILTER (WHERE w.progress_unit = 'chapters'), 0)::float8 AS chapters,
+           coalesce(sum(w.progress) FILTER (WHERE w.progress_unit = 'volumes'), 0)::float8 AS volumes,
+           count(w.score)::int AS scored,
+           avg(w.score)::float8 AS average
+    FROM w
+    CROSS JOIN LATERAL jsonb_array_elements_text(coalesce(w.genres, '[]'::jsonb)) AS g(genre)
+    WHERE w.status <> 'planned'
+    GROUP BY g.genre
+  `)) as RawRows;
+
   const [row = {}] = totals;
   const scores = Array.from({ length: 10 }, () => 0);
   const byType: Record<string, number> = {};
@@ -319,5 +360,19 @@ export async function getStats(
       ...titleOf(entry),
       addedOn: String(entry.added_on),
     })),
+    byGenre: genreRows
+      .filter((entry) => isGenre(entry.genre))
+      .map((entry) => ({
+        genre: entry.genre as Genre,
+        titles: num(entry.titles),
+        minutes: num(entry.minutes),
+        pagesRead: num(entry.pages),
+        chaptersRead: num(entry.chapters),
+        volumesRead: num(entry.volumes),
+        scored: num(entry.scored),
+        averageScore: entry.average === null ? null : num(entry.average),
+      }))
+      .sort((a, b) => b.titles - a.titles || a.genre.localeCompare(b.genre)),
+    withoutGenre: num(row.without_genre),
   };
 }

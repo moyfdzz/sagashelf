@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   bestPeriods,
+  bestScoredGenres,
   heatRows,
   lastYears,
   minutesToDays,
   minutesToHours,
+  topGenresByTime,
+  topGenresByTitles,
 } from "./stats-view";
 
 describe("lastYears", () => {
@@ -137,5 +140,118 @@ describe("bestPeriods", () => {
         [{ year: 2025, month: 1, count: 0 }],
       ),
     ).toEqual({ year: null, month: null });
+  });
+});
+
+describe("the genres of the statistics page (SAG-86)", () => {
+  const row = (
+    genre: string,
+    titles: number,
+    minutes: number,
+    scored = 0,
+    averageScore: number | null = null,
+  ) => ({ genre, titles, minutes, scored, averageScore });
+
+  describe("topGenresByTime", () => {
+    it("puts the genre with the most minutes first, then the one with more titles, then by name", () => {
+      const rows = [
+        row("drama", 3, 600),
+        row("action", 5, 900),
+        row("comedy", 4, 600),
+        row("horror", 4, 600),
+      ];
+
+      expect(topGenresByTime(rows).map((r) => r.genre)).toEqual([
+        "action",
+        "comedy",
+        "horror",
+        "drama",
+      ]);
+    });
+
+    it("leaves out a genre with no minutes, such as one that only books have", () => {
+      expect(
+        topGenresByTime([row("biography", 4, 0), row("drama", 1, 90)]).map(
+          (r) => r.genre,
+        ),
+      ).toEqual(["drama"]);
+    });
+
+    it("keeps only the first ten, and does not change the list it was given", () => {
+      const rows = Array.from({ length: 12 }, (_, index) =>
+        row(`genre_${String(index).padStart(2, "0")}`, 1, 100 + index),
+      );
+      const before = rows.map((r) => r.genre);
+
+      const top = topGenresByTime(rows);
+
+      expect(top).toHaveLength(10);
+      expect(top[0]?.genre).toBe("genre_11");
+      expect(rows.map((r) => r.genre)).toEqual(before);
+    });
+  });
+
+  describe("topGenresByTitles", () => {
+    it("counts books and manga too, and breaks a tie by name", () => {
+      const rows = [
+        row("drama", 2, 0),
+        row("action", 2, 500),
+        row("isekai", 6, 0),
+      ];
+
+      expect(topGenresByTitles(rows).map((r) => r.genre)).toEqual([
+        "isekai",
+        "action",
+        "drama",
+      ]);
+    });
+
+    it("keeps only the first ten", () => {
+      const rows = Array.from({ length: 11 }, (_, index) =>
+        row(`g${index}`, index + 1, 0),
+      );
+
+      expect(topGenresByTitles(rows)).toHaveLength(10);
+    });
+  });
+
+  describe("bestScoredGenres", () => {
+    it("ranks by the mean score, and needs two scored titles so one score is not a trend", () => {
+      const rows = [
+        row("drama", 4, 0, 1, 10),
+        row("action", 4, 0, 3, 8.5),
+        row("comedy", 4, 0, 2, 9),
+        row("horror", 4, 0, 0, null),
+      ];
+
+      expect(bestScoredGenres(rows).map((r) => r.genre)).toEqual([
+        "comedy",
+        "action",
+      ]);
+    });
+
+    it("breaks a tie by the number of scored titles and then by name, and keeps five", () => {
+      const rows = [
+        row("b", 2, 0, 2, 7),
+        row("a", 2, 0, 2, 7),
+        row("c", 3, 0, 3, 7),
+        row("d", 2, 0, 2, 6),
+        row("e", 2, 0, 2, 5),
+        row("f", 2, 0, 2, 4),
+      ];
+
+      expect(bestScoredGenres(rows).map((r) => r.genre)).toEqual([
+        "c",
+        "a",
+        "b",
+        "d",
+        "e",
+      ]);
+    });
+
+    it("is empty when no genre has enough scored titles", () => {
+      expect(bestScoredGenres([row("drama", 1, 0, 1, 9)])).toEqual([]);
+      expect(bestScoredGenres([])).toEqual([]);
+    });
   });
 });

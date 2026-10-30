@@ -96,6 +96,8 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
       mostRewatched: [],
       finishTime: { medianDays: null, counted: 0, skipped: 0 },
       oldestPlanned: [],
+      byGenre: [],
+      withoutGenre: 0,
     });
   });
 
@@ -104,7 +106,11 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
       const user = await newUser();
 
       // A movie of 120 minutes, completed and watched once before: two viewings.
-      const movie = await addMedia({ runtimeMinutes: 120, year: 2014 });
+      const movie = await addMedia({
+        runtimeMinutes: 120,
+        year: 2014,
+        genres: ["action", "sci_fi"],
+      });
       const movieEntry = await addEntry(user.id, movie, {
         status: "completed",
         score: 8,
@@ -123,6 +129,7 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
         runtimeMinutes: 40,
         year: 2020,
         episodes: 3,
+        genres: ["drama"],
       });
       await addEntry(user.id, watching, { status: "in_progress", progress: 2 });
 
@@ -132,6 +139,7 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
         runtimeMinutes: 50,
         year: 2020,
         episodes: 3,
+        genres: ["action", "drama"],
       });
       const doneEntry = await addEntry(user.id, done, {
         status: "completed",
@@ -143,7 +151,7 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
       // Two movies that are pending: one with a length, one without.
       await addEntry(
         user.id,
-        await addMedia({ runtimeMinutes: 100, year: 2021 }),
+        await addMedia({ runtimeMinutes: 100, year: 2021, genres: ["comedy"] }),
       );
       await addEntry(user.id, await addMedia({ year: null }));
 
@@ -153,6 +161,7 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
         await addMedia({
           type: "book",
           year: 2014,
+          genres: [],
           externalId: { provider: "open_library", id: "OL1W" },
         }),
         {
@@ -336,6 +345,85 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
       );
     });
 
+    it("adds up each genre: its titles, its minutes and its scores, a title with two genres in both (SAG-86)", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      // Action: the movie (240 min, score 8) and the anime (300 min, score 10). Drama: the series
+      // being watched (80 min, no score) and the anime. Science fiction: the movie alone.
+      expect(stats.byGenre).toEqual([
+        {
+          genre: "action",
+          titles: 2,
+          minutes: 540,
+          pagesRead: 0,
+          chaptersRead: 0,
+          volumesRead: 0,
+          scored: 2,
+          averageScore: 9,
+        },
+        {
+          genre: "drama",
+          titles: 2,
+          minutes: 380,
+          pagesRead: 0,
+          chaptersRead: 0,
+          volumesRead: 0,
+          scored: 1,
+          averageScore: 10,
+        },
+        {
+          genre: "sci_fi",
+          titles: 1,
+          minutes: 240,
+          pagesRead: 0,
+          chaptersRead: 0,
+          volumesRead: 0,
+          scored: 1,
+          averageScore: 8,
+        },
+      ]);
+    });
+
+    it("does not count a planned title in any genre, and counts what is not planned that has none (SAG-86)", async () => {
+      const user = await library();
+
+      const stats = await getStats(db, user.id, "es");
+
+      // The planned movie is of the genre comedy, and nothing else is.
+      expect(stats.byGenre.map((entry) => entry.genre)).not.toContain("comedy");
+      // The book says "asked, none fits". The planned movie with no genres is planned, so it is not
+      // counted either.
+      expect(stats.withoutGenre).toBe(1);
+    });
+
+    it("never counts the genres of another person", async () => {
+      const user = await library();
+      const other = await newUser();
+      await addEntry(
+        other.id,
+        await addMedia({ runtimeMinutes: 90, genres: ["action", "western"] }),
+        { status: "completed", score: 1 },
+      );
+
+      const mine = await getStats(db, user.id, "es");
+      const theirs = await getStats(db, other.id, "es");
+
+      expect(
+        mine.byGenre.find((entry) => entry.genre === "action"),
+      ).toMatchObject({
+        titles: 2,
+        minutes: 540,
+      });
+      expect(mine.byGenre.map((entry) => entry.genre)).not.toContain("western");
+      expect(theirs.byGenre.map((entry) => entry.genre)).toEqual([
+        "action",
+        "western",
+      ]);
+      expect(theirs.byGenre[0]).toMatchObject({ titles: 1, minutes: 90 });
+    });
+
     it("gives the title in the language of the visitor", async () => {
       const user = await newUser();
       const id = await addMedia({
@@ -428,6 +516,105 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
     const stats = await getStats(db, user.id, "es");
 
     expect(stats.finishTime).toEqual({ medianDays: 0, counted: 1, skipped: 0 });
+  });
+
+  it("counts the pages, chapters and volumes of a genre, and no minutes for a book or a manga (SAG-86)", async () => {
+    const user = await newUser();
+    await addEntry(
+      user.id,
+      await addMedia({
+        type: "manga",
+        genres: ["isekai", "fantasy"],
+        externalId: { provider: "mangadex", id: "manga-1" },
+      }),
+      { status: "in_progress", progress: 40, progressUnit: "chapters" },
+    );
+    await addEntry(
+      user.id,
+      await addMedia({
+        type: "manga",
+        genres: ["isekai"],
+        externalId: { provider: "mangadex", id: "manga-2" },
+      }),
+      { status: "completed", progress: 12, progressUnit: "volumes", score: 9 },
+    );
+    await addEntry(
+      user.id,
+      await addMedia({
+        type: "book",
+        genres: ["fantasy"],
+        externalId: { provider: "open_library", id: "OL2W" },
+      }),
+      { status: "completed", progress: 300, progressUnit: "pages", score: 7 },
+    );
+
+    const stats = await getStats(db, user.id, "es");
+
+    expect(stats.byGenre).toEqual([
+      {
+        genre: "fantasy",
+        titles: 2,
+        minutes: 0,
+        pagesRead: 300,
+        chaptersRead: 40,
+        volumesRead: 0,
+        scored: 1,
+        averageScore: 7,
+      },
+      {
+        genre: "isekai",
+        titles: 2,
+        minutes: 0,
+        pagesRead: 0,
+        chaptersRead: 40,
+        volumesRead: 12,
+        scored: 1,
+        averageScore: 9,
+      },
+    ]);
+  });
+
+  it("counts the titles with no genre yet, and leaves out a key that is not on the list (SAG-86)", async () => {
+    const user = await newUser();
+    // Never asked (null), saved before the genres were kept.
+    await addEntry(user.id, await addMedia({ runtimeMinutes: 100 }), {
+      status: "completed",
+    });
+    const taken = await addMedia({ runtimeMinutes: 100, genres: ["drama"] });
+    await db.execute(
+      sql`UPDATE media_items SET genres = '["drama", "taken_out", 7]'::jsonb WHERE id = ${taken}::uuid`,
+    );
+    await addEntry(user.id, taken, { status: "completed" });
+
+    const stats = await getStats(db, user.id, "es");
+
+    expect(stats.withoutGenre).toBe(1);
+    expect(stats.byGenre.map((entry) => entry.genre)).toEqual(["drama"]);
+  });
+
+  it("counts a dropped or paused title in its genres, because it was watched in part (SAG-86)", async () => {
+    const user = await newUser();
+    await addEntry(
+      user.id,
+      await addMedia({
+        type: "series",
+        runtimeMinutes: 30,
+        episodes: 4,
+        genres: ["horror"],
+      }),
+      { status: "dropped", progress: 2 },
+    );
+    await addEntry(
+      user.id,
+      await addMedia({ runtimeMinutes: 100, genres: ["horror"] }),
+      { status: "paused" },
+    );
+
+    const stats = await getStats(db, user.id, "es");
+
+    expect(stats.byGenre).toEqual([
+      expect.objectContaining({ genre: "horror", titles: 2, minutes: 60 }),
+    ]);
   });
 
   it("does not count a movie that is not completed as watched", async () => {

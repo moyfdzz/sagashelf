@@ -1,10 +1,8 @@
-import { Link } from "react-router";
-
 export type RowBar = {
   key: string;
   label: string;
   value: number;
-  /** Where pressing the row goes. */
+  /** Where pressing the row goes. A plain link: the library has its own security policy (ADR-018). */
   href?: string;
 };
 
@@ -63,12 +61,12 @@ export function RowBars({
         return (
           <li key={row.key}>
             {row.href ? (
-              <Link
-                to={row.href}
+              <a
+                href={row.href}
                 className="focus-visible:outline-accent hover:text-link-hover block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 {body}
-              </Link>
+              </a>
             ) : (
               body
             )}

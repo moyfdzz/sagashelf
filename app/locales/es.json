@@ -506,7 +506,9 @@
       "unscored": "Sin puntuar",
       "scoreAtLeast": "{{score}} o más",
       "ratedExactly": "Solo los títulos con puntuación {{score}}.",
-      "clearRated": "Quitar este filtro"
+      "clearRated": "Quitar este filtro",
+      "genreOnly": "Solo los títulos del género {{genre}}.",
+      "clearGenre": "Quitar este filtro"
     },
     "visibility": {
       "any": "Todas",
@@ -743,6 +745,36 @@
     "oldestPlanned": {
       "title": "Pendientes desde hace más tiempo",
       "description": "Lo que agregaste hace más tiempo y aún no empiezas."
+    },
+    "genres": {
+      "title": "Géneros",
+      "none": "Tus títulos aún no tienen género. Se van llenando solos poco a poco, y los que agregues desde ahora ya lo traen.",
+      "without_one": "{{count}} título aún no tiene género y no se cuenta en estas gráficas.",
+      "without_other": "{{count}} títulos aún no tienen género y no se cuentan en estas gráficas.",
+      "time": {
+        "title": "Tiempo por género",
+        "description": "Los días de anime, películas y series de los 10 géneros con más tiempo. Un título con varios géneros cuenta en cada uno. Pulsa una barra para ver sus títulos."
+      },
+      "titles": {
+        "title": "Títulos por género",
+        "description": "Los 10 géneros con más títulos, con libros y manga incluidos. Pulsa una barra para verlos."
+      },
+      "best": {
+        "title": "Géneros mejor puntuados",
+        "description": "El promedio de tus puntuaciones en cada género, sobre 10. Solo cuentan los géneros con al menos 2 títulos puntuados."
+      },
+      "all": {
+        "title": "Todos tus géneros",
+        "description": "Cada género de lo que has visto o leído, con su tiempo y su avance. Los títulos pendientes no cuentan."
+      },
+      "column": {
+        "genre": "Género",
+        "days": "Días",
+        "pages": "Páginas",
+        "chapters": "Capítulos",
+        "volumes": "Volúmenes",
+        "score": "Puntuación"
+      }
     }
   },
   "genres": {

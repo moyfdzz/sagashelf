@@ -63,6 +63,8 @@ const empty: StatsData = {
   mostRewatched: [],
   finishTime: { medianDays: null, counted: 0, skipped: 0 },
   oldestPlanned: [],
+  byGenre: [],
+  withoutGenre: 0,
 };
 
 const full: StatsData = {
@@ -150,6 +152,49 @@ const full: StatsData = {
       addedOn: "2025-01-15",
     },
   ],
+  byGenre: [
+    {
+      genre: "action",
+      titles: 4,
+      minutes: 14_400,
+      pagesRead: 0,
+      chaptersRead: 0,
+      volumesRead: 0,
+      scored: 3,
+      averageScore: 9,
+    },
+    {
+      genre: "drama",
+      titles: 3,
+      minutes: 2_880,
+      pagesRead: 0,
+      chaptersRead: 0,
+      volumesRead: 0,
+      scored: 2,
+      averageScore: 7.5,
+    },
+    {
+      genre: "isekai",
+      titles: 2,
+      minutes: 0,
+      pagesRead: 0,
+      chaptersRead: 120,
+      volumesRead: 0,
+      scored: 1,
+      averageScore: 10,
+    },
+    {
+      genre: "biography",
+      titles: 1,
+      minutes: 0,
+      pagesRead: 300,
+      chaptersRead: 0,
+      volumesRead: 0,
+      scored: 0,
+      averageScore: null,
+    },
+  ],
+  withoutGenre: 2,
 };
 
 const props = (stats: StatsData) =>
@@ -187,7 +232,7 @@ describe("the statistics page", () => {
     ).toContain("1 título aún no tiene duración");
     expect(
       await render(<Stats {...props({ ...full, unknownRuntime: 0 })} />),
-    ).not.toContain("aún no tiene");
+    ).not.toContain("aún no tiene duración");
   });
 
   it("writes a dash, not a zero, for days when everything that counts has no length", async () => {
@@ -404,6 +449,131 @@ describe("the statistics page", () => {
     expect(html).toContain("Pendientes desde hace más tiempo");
     expect(html).toContain("Akira");
     expect(html).toMatch(/15 ene 2025/);
+  });
+
+  describe("the genres (SAG-86)", () => {
+    it("draws the time of each genre in days, with its titles, and leaves out the genres with no minutes", async () => {
+      const html = await render(<Stats {...props(full)} />);
+
+      expect(html).toContain("Tiempo por género");
+      expect(html).toContain("Acción · 4 títulos");
+      expect(html).toContain(">10 días<");
+      expect(html).toContain("Drama · 3 títulos");
+      expect(html).toContain(">2 días<");
+      // Isekai and biography have chapters and pages, not minutes, so no bar of time.
+      expect(html).not.toContain("Isekai · 2 títulos");
+      expect(html).not.toContain("Biografía · 1 título");
+    });
+
+    it("draws the titles of each genre, books and manga included", async () => {
+      const html = await render(<Stats {...props(full)} />);
+
+      expect(html).toContain("Títulos por género");
+      expect(html).toContain(">Isekai<");
+      expect(html).toContain(">Biografía<");
+    });
+
+    it("links every genre of a chart to the library with that genre, as a plain link", async () => {
+      const html = await render(<Stats {...props(full)} />);
+
+      for (const genre of ["action", "drama", "isekai", "biography"]) {
+        expect(html).toContain(`href="/library?genre=${genre}"`);
+      }
+      // A plain link, because the library has its own security policy: no client-side link.
+      expect(html).not.toMatch(/data-discover[^>]*href="\/library\?genre=/);
+    });
+
+    it("ranks the best scored genres out of 10, and only the ones with two scored titles", async () => {
+      const html = await render(<Stats {...props(full)} />);
+
+      expect(html).toContain("Géneros mejor puntuados");
+      expect(html).toContain("Acción · 3 títulos");
+      expect(html).toContain("Drama · 2 títulos");
+      // Isekai has one score of 10: not enough to say it is the best.
+      expect(html).not.toContain("Isekai · 1 título");
+      // 9 out of 10 of a 300 wide track.
+      expect(html).toMatch(/<rect width="270"[^>]*class="fill-accent"/);
+    });
+
+    it("leaves out the best scored when no genre has two scored titles", async () => {
+      const html = await render(
+        <Stats
+          {...props({
+            ...full,
+            byGenre: full.byGenre.map((entry) => ({
+              ...entry,
+              scored: Math.min(entry.scored, 1),
+            })),
+          })}
+        />,
+      );
+
+      expect(html).not.toContain("Géneros mejor puntuados");
+      expect(html).toContain("Tiempo por género");
+    });
+
+    it("writes every genre in a table with the titles, the days and the progress, and a dash for what has none", async () => {
+      const html = await render(<Stats {...props(full)} />);
+
+      expect(html).toContain("Todos tus géneros");
+      for (const header of [
+        "Género",
+        "Días",
+        "Páginas",
+        "Capítulos",
+        "Volúmenes",
+        "Puntuación",
+      ]) {
+        expect(html).toContain(`>${header}</th>`);
+      }
+      expect(html).toContain(">300</td>");
+      expect(html).toContain(">120</td>");
+      expect(html).toContain(">7,5</td>");
+      expect(html).toContain(">—</td>");
+    });
+
+    it("says how many titles have no genre, and says nothing when every title has one", async () => {
+      expect(await render(<Stats {...props(full)} />)).toContain(
+        "2 títulos aún no tienen género",
+      );
+      expect(
+        await render(<Stats {...props({ ...full, withoutGenre: 1 })} />),
+      ).toContain("1 título aún no tiene género");
+      expect(
+        await render(<Stats {...props({ ...full, withoutGenre: 0 })} />),
+      ).not.toContain("aún no tienen género");
+    });
+
+    it("says the genres are still being filled when no title has one yet, and draws no chart of them", async () => {
+      const html = await render(
+        <Stats {...props({ ...full, byGenre: [], withoutGenre: 5 })} />,
+      );
+
+      expect(html).toContain("Tus títulos aún no tienen género");
+      expect(html).toContain("5 títulos aún no tienen género");
+      expect(html).not.toContain("Tiempo por género");
+      expect(html).not.toContain("Todos tus géneros");
+    });
+
+    it("shows nothing about genres when there is nothing to say", async () => {
+      const html = await render(
+        <Stats {...props({ ...full, byGenre: [], withoutGenre: 0 })} />,
+      );
+
+      expect(html).not.toContain("Tiempo por género");
+      expect(html).not.toContain("tienen género");
+      expect(html).not.toContain("NaN");
+    });
+
+    it("says it in English", async () => {
+      const html = await render(<Stats {...props(full)} />, "en");
+
+      expect(html).toContain("Time by genre");
+      expect(html).toContain("Action · 4 titles");
+      expect(html).toContain("Best scored genres");
+      expect(html).toContain("All your genres");
+      expect(html).toContain("2 titles have no genre yet");
+    });
   });
 
   it("says it in English", async () => {

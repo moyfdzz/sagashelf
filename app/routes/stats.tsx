@@ -11,10 +11,13 @@ import { RowBars } from "~/components/charts/RowBars";
 import { useFormatters } from "~/lib/format";
 import {
   bestPeriods,
+  bestScoredGenres,
   heatRows,
   lastYears,
   minutesToDays,
   minutesToHours,
+  topGenresByTime,
+  topGenresByTitles,
 } from "~/lib/stats-view";
 import { forwardLinkClass, linkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -79,7 +82,9 @@ function Panel({
   return (
     <section
       aria-labelledby={id}
-      className={wide ? "space-y-3 lg:col-span-2" : "space-y-3"}
+      // `min-w-0`: a grid item grows to the width of its content, and an open table with many
+      // columns must scroll inside its own box instead of widening the page.
+      className={wide ? "min-w-0 space-y-3 lg:col-span-2" : "min-w-0 space-y-3"}
     >
       <h2 id={id} className="text-xl font-semibold">
         {title}
@@ -202,6 +207,28 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
         maximumFractionDigits: 1,
       }),
     });
+  const daysText = (minutes: number) => {
+    const total = minutesToDays(minutes);
+    return t("stats.days", {
+      count: total,
+      value: formatNumber(total, { maximumFractionDigits: 1 }),
+    });
+  };
+
+  // The genres (SAG-86): a title with several is in each one. A bar leads to the library with the
+  // genre as a filter, as a plain link because the library has its own security policy.
+  const genreHref = (genre: string) => `/library?genre=${genre}`;
+  const genreTime = topGenresByTime(stats.byGenre);
+  const genreTitles = topGenresByTitles(stats.byGenre);
+  const genreBest = bestScoredGenres(stats.byGenre);
+  const orDash = (value: number, digits = 0) =>
+    value > 0
+      ? formatNumber(value, { maximumFractionDigits: digits })
+      : t("stats.none");
+  const withoutGenreNote =
+    stats.withoutGenre > 0
+      ? t("stats.genres.without", { count: stats.withoutGenre })
+      : null;
   const timeSegments: Segment[] = typeOrder.flatMap(([type, tone]) =>
     (stats.minutesByType[type] ?? 0) > 0
       ? [
@@ -443,6 +470,115 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
           </Panel>
         ) : null}
 
+        {stats.byGenre.length === 0 && withoutGenreNote ? (
+          <Panel id="stats-genres" title={t("stats.genres.title")} wide>
+            <p>{t("stats.genres.none")}</p>
+            <p className="text-fg-muted text-sm">{withoutGenreNote}</p>
+          </Panel>
+        ) : null}
+
+        {genreTime.length > 0 ? (
+          <Panel
+            id="stats-genre-time"
+            title={t("stats.genres.time.title")}
+            description={t("stats.genres.time.description")}
+          >
+            <RowBars
+              rows={genreTime.map((entry) => ({
+                key: entry.genre,
+                label: `${t(`genres.${entry.genre}`)} · ${titles(entry.titles)}`,
+                value: entry.minutes,
+                href: genreHref(entry.genre),
+              }))}
+              format={daysText}
+            />
+          </Panel>
+        ) : null}
+
+        {genreTitles.length > 0 ? (
+          <Panel
+            id="stats-genre-titles"
+            title={t("stats.genres.titles.title")}
+            description={t("stats.genres.titles.description")}
+          >
+            <RowBars
+              rows={genreTitles.map((entry) => ({
+                key: entry.genre,
+                label: t(`genres.${entry.genre}`),
+                value: entry.titles,
+                href: genreHref(entry.genre),
+              }))}
+              format={formatNumber}
+            />
+          </Panel>
+        ) : null}
+
+        {genreBest.length > 0 ? (
+          <Panel
+            id="stats-genre-best"
+            title={t("stats.genres.best.title")}
+            description={t("stats.genres.best.description")}
+          >
+            <RowBars
+              rows={genreBest.map((entry) => ({
+                key: entry.genre,
+                label: `${t(`genres.${entry.genre}`)} · ${titles(entry.scored)}`,
+                value: entry.averageScore ?? 0,
+                href: genreHref(entry.genre),
+              }))}
+              scaleMax={10}
+              format={(value) =>
+                formatNumber(value, { maximumFractionDigits: 1 })
+              }
+            />
+          </Panel>
+        ) : null}
+
+        {stats.byGenre.length > 0 ? (
+          <Panel
+            id="stats-genre-all"
+            title={t("stats.genres.all.title")}
+            description={t("stats.genres.all.description")}
+            wide
+          >
+            <ChartTable
+              wide
+              summary={t("stats.showNumbers")}
+              headers={[
+                t("stats.genres.column.genre"),
+                t("stats.titlesLabel"),
+                t("stats.genres.column.days"),
+                t("stats.genres.column.pages"),
+                t("stats.genres.column.chapters"),
+                t("stats.genres.column.volumes"),
+                t("stats.genres.column.score"),
+              ]}
+              rows={stats.byGenre.map((entry) => [
+                <a
+                  key={entry.genre}
+                  href={genreHref(entry.genre)}
+                  className={linkClass}
+                >
+                  {t(`genres.${entry.genre}`)}
+                </a>,
+                formatNumber(entry.titles),
+                orDash(minutesToDays(entry.minutes), 1),
+                orDash(entry.pagesRead),
+                orDash(entry.chaptersRead),
+                orDash(entry.volumesRead),
+                entry.averageScore === null
+                  ? t("stats.none")
+                  : formatNumber(entry.averageScore, {
+                      maximumFractionDigits: 1,
+                    }),
+              ])}
+            />
+            {withoutGenreNote ? (
+              <p className="text-fg-muted text-sm">{withoutGenreNote}</p>
+            ) : null}
+          </Panel>
+        ) : null}
+
         {timeSegments.length > 0 ? (
           <Panel
             id="stats-time-by-type"
@@ -451,13 +587,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
           >
             <ProportionBar
               segments={timeSegments}
-              format={(minutes) => {
-                const total = minutesToDays(minutes);
-                return t("stats.days", {
-                  count: total,
-                  value: formatNumber(total, { maximumFractionDigits: 1 }),
-                });
-              }}
+              format={daysText}
               formatShare={(share) => formatNumber(share, { style: "percent" })}
             />
           </Panel>
