@@ -31,6 +31,11 @@ export type NormalizedMedia = {
   synopsis: LocalizedText;
   /** Authors, in the order the source lists them. Left out when the source has none. */
   creators?: string[];
+  /**
+   * Minutes of a movie, or of a typical episode of a series. Left out when the source does not say.
+   * For a series that gives the length per episode, `saveParts` replaces it with their average.
+   */
+  runtimeMinutes?: number;
   imageUrl: string | null;
   status: MediaStatus;
   popularity: number;
@@ -45,6 +50,8 @@ export type NormalizedPart = {
   title: string | null;
   /** `YYYY-MM-DD`. */
   airDate: string | null;
+  /** For an episode, its length in minutes when the source says it. */
+  runtimeMinutes?: number;
   /** For an episode, the number of its season. */
   seasonNumber?: number;
 };

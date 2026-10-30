@@ -36,6 +36,9 @@ export async function saveMedia(
   const creators = media.creators?.length
     ? JSON.stringify(media.creators)
     : null;
+  // TMDB is asked about the length of everything it holds, so no answer is saved as 0: "asked,
+  // not known", which the refresh job does not ask again. Other sources never say a length.
+  const askedRuntime = provider === "tmdb" ? 0 : null;
   const { rows } = await db.execute(sql`
     WITH fresh AS (SELECT uuidv7() AS id),
     claimed AS (
@@ -47,11 +50,12 @@ export async function saveMedia(
     created AS (
       INSERT INTO media_items
         (id, type, title, titles, original_title, year, creators, synopsis, image_url, status,
-         popularity)
+         popularity, runtime_minutes)
       SELECT media_id, ${media.type}::media_type, ${media.title}, ${titles}::jsonb,
              ${media.originalTitle}, ${media.year}, ${creators}::jsonb,
              ${noSynopsis}::jsonb || ${synopsis}::jsonb, ${media.imageUrl},
-             ${media.status}::media_status, ${media.popularity}
+             ${media.status}::media_status, ${media.popularity},
+             coalesce(${media.runtimeMinutes ?? null}::int, ${askedRuntime}::int)
       FROM claimed WHERE inserted
       RETURNING id
     ),
@@ -69,6 +73,9 @@ export async function saveMedia(
         -- we hold (SAG-54).
         year = coalesce(${media.year}::int, year),
         creators = coalesce(${creators}::jsonb, creators),
+        -- A length the source does not send this time never erases the one we hold.
+        runtime_minutes = coalesce(${media.runtimeMinutes ?? null}::int, runtime_minutes,
+                                   ${askedRuntime}::int),
         synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
         image_url = coalesce(${media.imageUrl}::text, image_url),
         status = CASE WHEN ${media.status} = 'unknown' THEN status
@@ -90,7 +97,9 @@ export async function saveMedia(
 
 /**
  * Writes the seasons and episodes of a title, and updates the ones already there. One
- * statement, so a series is stored whole or not at all. Episodes point to their season.
+ * statement, so a series is stored whole or not at all. Episodes point to their season. When the
+ * episodes say how long they are, the title keeps their average as the length of an episode
+ * (SAG-61); episodes that say nothing leave the length the title already has.
  */
 export async function saveParts(
   db: SqlExecutor,
@@ -98,6 +107,14 @@ export async function saveParts(
   parts: readonly NormalizedPart[],
 ): Promise<void> {
   if (parts.length === 0) return;
+  const lengths = parts.flatMap((part) =>
+    part.kind === "episode" && part.runtimeMinutes ? [part.runtimeMinutes] : [],
+  );
+  const average = lengths.length
+    ? Math.round(
+        lengths.reduce((sum, minutes) => sum + minutes, 0) / lengths.length,
+      )
+    : null;
   const payload = JSON.stringify(
     parts.map((part) => ({
       kind: part.kind,
@@ -127,6 +144,11 @@ export async function saveParts(
       WHERE input.kind = 'episode'
       ON CONFLICT ON CONSTRAINT media_parts_media_kind_parent_number_unique
       DO UPDATE SET title = EXCLUDED.title, air_date = EXCLUDED.air_date, updated_at = now()
+      RETURNING 1
+    ),
+    runtime AS (
+      UPDATE media_items SET runtime_minutes = ${average}::int, updated_at = now()
+      WHERE id = ${mediaId}::uuid AND ${average}::int IS NOT NULL
       RETURNING 1
     )
     SELECT (SELECT count(*) FROM seasons)::int AS seasons,
@@ -161,8 +183,8 @@ export async function findStaleMedia(
 
 /**
  * The titles the scheduled job should ask the provider about (SAG-54): the ones older than
- * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, each group
- * oldest first. A title attempted in the last `retryAfterHours` is left out, so one the provider
+ * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, then the ones
+ * of TMDB that were saved before their length was kept, each group oldest first. A title attempted in the last `retryAfterHours` is left out, so one the provider
  * keeps failing on cannot take the whole batch every run. The last attempt is the `updated_at`
  * of its external id: `saveMedia` sets it on a success and `markRefreshAttempt` on a failure.
  */
@@ -182,6 +204,8 @@ export async function findMediaToRefresh(
         m.fetched_at < now() - make_interval(days => ${maxAgeDays})
         OR NOT jsonb_exists(m.synopsis, 'es') OR NOT jsonb_exists(m.synopsis, 'en')
         OR coalesce(m.titles->>'es', '') = '' OR coalesce(m.titles->>'en', '') = ''
+        -- Saved before the length was kept (SAG-61): asked once, and then it is 0 or a number.
+        OR (e.provider = 'tmdb' AND m.runtime_minutes IS NULL)
       )
     ORDER BY (m.fetched_at < now() - make_interval(days => ${maxAgeDays})) DESC, m.fetched_at
     LIMIT ${limit}

@@ -14,6 +14,7 @@ export default [
   route("community", "routes/community.tsx"),
   route("credits", "routes/credits.tsx"),
   route("library", "routes/library.tsx"),
+  route("stats", "routes/stats.tsx"),
   route("library/add", "routes/library.add.ts"),
   route("library/add-external", "routes/library.add-external.ts"),
   route("library/:mediaId", "routes/library.$mediaId.tsx"),

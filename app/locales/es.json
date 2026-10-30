@@ -12,7 +12,8 @@
     "settings": "Ajustes",
     "signOut": "Cerrar sesión",
     "search": "Buscar",
-    "library": "Mi biblioteca"
+    "library": "Mi biblioteca",
+    "stats": "Estadísticas"
   },
   "language": {
     "label": "Idioma"
@@ -502,7 +503,9 @@
       "clear": "Quitar filtros",
       "score": "Puntuación",
       "unscored": "Sin puntuar",
-      "scoreAtLeast": "{{score}} o más"
+      "scoreAtLeast": "{{score}} o más",
+      "ratedExactly": "Solo los títulos con puntuación {{score}}.",
+      "clearRated": "Quitar este filtro"
     },
     "visibility": {
       "any": "Todas",
@@ -636,5 +639,73 @@
       "generic": "No pudimos guardar los cambios. Inténtalo de nuevo.",
       "not_completed_read": "Solo puedes volver a leer un título completado."
     }
+  },
+  "stats": {
+    "title": "Estadísticas",
+    "description": "Lo que has visto y leído, calculado con tu biblioteca. Solo tú lo ves.",
+    "empty": "Aún no tienes títulos en tu biblioteca, así que no hay nada que contar.",
+    "emptyLink": "Buscar títulos",
+    "none": "—",
+    "titles_one": "{{count}} título",
+    "titles_other": "{{count}} títulos",
+    "point": "{{label}}: {{value}}",
+    "showNumbers": "Ver los números",
+    "tiles": {
+      "label": "Resumen",
+      "completed": "Títulos completados",
+      "episodes": "Episodios vistos",
+      "daysWatched": "Días de contenido visto",
+      "daysPlanned": "Días de contenido pendiente",
+      "averageScore": "Puntuación promedio",
+      "rewatches": "Veces que volviste a ver algo",
+      "pages": "Páginas leídas",
+      "chapters": "Capítulos leídos",
+      "volumes": "Volúmenes leídos"
+    },
+    "runtime": {
+      "note": "Los días son aproximados: en una serie se usa la duración promedio de un episodio.",
+      "missing_one": "{{count}} título aún no tiene duración y no se cuenta.",
+      "missing_other": "{{count}} títulos aún no tienen duración y no se cuentan."
+    },
+    "scores": {
+      "title": "Puntuaciones",
+      "description": "Cuántos títulos le diste a cada nota. Pulsa una barra para verlos.",
+      "summary_one": "Promedio de {{average}} en {{count}} título puntuado.",
+      "summary_other": "Promedio de {{average}} en {{count}} títulos puntuados.",
+      "none": "Aún no has puntuado ningún título.",
+      "score": "Nota"
+    },
+    "finished": {
+      "title": "Terminados por año",
+      "description": "Cuentan todas las veces que terminaste un título, también las que lo volviste a ver.",
+      "undated_one": "{{count}} vez que terminaste algo no tiene fecha y no aparece aquí.",
+      "undated_other": "{{count}} veces que terminaste algo no tienen fecha y no aparecen aquí.",
+      "none": "Aún no hay fechas de término.",
+      "year": "Año"
+    },
+    "released": {
+      "title": "Por año de estreno",
+      "description": "Los últimos años en que se estrenaron tus títulos. Pulsa una barra para verlos."
+    },
+    "types": {
+      "title": "Por tipo",
+      "other": "Otros"
+    },
+    "statuses": {
+      "title": "Por estado"
+    },
+    "best": {
+      "title": "Mejor puntuados",
+      "score": "{{score}}/10"
+    },
+    "activity": {
+      "title": "Actividad por mes",
+      "description": "Cuántas veces terminaste un título cada mes.",
+      "less": "Menos",
+      "more": "Más",
+      "month": "Mes",
+      "none": "Aún no hay fechas de término."
+    },
+    "titlesLabel": "Títulos"
   }
 }

@@ -66,6 +66,11 @@ export function AccountMenu() {
           </a>
         </li>
         <li>
+          <a href="/stats" className={itemClass}>
+            {t("nav.stats")}
+          </a>
+        </li>
+        <li>
           <a href="/settings/profile" className={itemClass}>
             {t("nav.settings")}
           </a>

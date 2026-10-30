@@ -18,6 +18,7 @@
     "server/db/titles.ts",
     "server/db/library.ts",
     "server/db/viewings.ts",
+    "server/db/stats.ts",
     "server/db/import.ts",
     "server/media/import.ts",
     "server/library/**/*",

@@ -548,6 +548,22 @@ describe("listLibrary", () => {
     ).toMatchObject({ all: 2, anime: 1, movie: 1 });
   });
 
+  it("filters the entries with exactly one score, and the tabs count only those (SAG-61)", async () => {
+    const { ana } = await fill();
+
+    // Ana scored the series 8 and the movie 10; "8 or more" is both, "exactly 8" is one.
+    expect(await titles(ana.id, { score: "8" })).toHaveLength(2);
+    expect(await titles(ana.id, { rated: "8" })).toEqual([
+      "Ataque a los Titanes",
+    ]);
+    expect(await titles(ana.id, { rated: "10" })).toEqual(["Matrix"]);
+    expect(await titles(ana.id, { rated: "9" })).toEqual([]);
+    expect(await titles(ana.id, { rated: "8", type: "movie" })).toEqual([]);
+    expect(
+      (await listLibrary(db, ana.id, query({ rated: "10" }), "es")).counts,
+    ).toMatchObject({ all: 1, anime: 0, movie: 1 });
+  });
+
   it("filters the entries that were never scored, and the tabs count only those", async () => {
     const { ana, matrix } = await fill();
     const beto = await newUser();

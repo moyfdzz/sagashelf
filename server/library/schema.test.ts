@@ -201,6 +201,14 @@ describe("libraryQuerySchema", () => {
     });
   });
 
+  it("reads `rated` as an exact score from 1 to 10, and ignores anything else (SAG-61)", () => {
+    expect(libraryQuerySchema.parse({ rated: "6" }).rated).toBe(6);
+    expect(libraryQuerySchema.parse({ rated: "10" }).rated).toBe(10);
+    for (const rated of ["0", "11", "7.5", "none", "", "-1", " 6"]) {
+      expect(libraryQuerySchema.parse({ rated }).rated).toBeUndefined();
+    }
+  });
+
   it("reads `none` as the entries that were never scored, and a number as a minimum", () => {
     expect(libraryQuerySchema.parse({ score: "none" }).score).toBe("none");
     expect(libraryQuerySchema.parse({ score: "10" }).score).toBe(10);

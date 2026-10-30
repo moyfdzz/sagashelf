@@ -158,3 +158,45 @@ describe("mapParts", () => {
     ]);
   });
 });
+
+describe("the length of a title (SAG-61)", () => {
+  it("takes the minutes of a movie, and nothing when TMDB sends 0 or none", () => {
+    expect(
+      mapTitle("movie", { id: 1, title: "A", runtime: 169 }, "es"),
+    ).toMatchObject({ runtimeMinutes: 169 });
+    for (const runtime of [0, null, undefined, -5, 1.5]) {
+      expect(
+        mapTitle("movie", { id: 1, title: "A", runtime }, "es"),
+      ).not.toHaveProperty("runtimeMinutes");
+    }
+  });
+
+  it("takes the average of the episode lengths of a series, and ignores the ones that mean nothing", () => {
+    expect(
+      mapTitle("tv", { id: 2, name: "B", episode_run_time: [45, 50, 0] }, "es"),
+    ).toMatchObject({ runtimeMinutes: 48 });
+    for (const list of [[], [0], undefined]) {
+      expect(
+        mapTitle("tv", { id: 2, name: "B", episode_run_time: list }, "es"),
+      ).not.toHaveProperty("runtimeMinutes");
+    }
+  });
+
+  it("keeps the length of each episode that has one", () => {
+    const parts = mapParts([
+      {
+        season_number: 1,
+        episodes: [
+          { episode_number: 1, runtime: 58 },
+          { episode_number: 2, runtime: null },
+          { episode_number: 3, runtime: 0 },
+        ],
+      },
+    ]);
+    const episodes = parts.filter((part) => part.kind === "episode");
+
+    expect(episodes[0]).toMatchObject({ runtimeMinutes: 58 });
+    expect(episodes[1]).not.toHaveProperty("runtimeMinutes");
+    expect(episodes[2]).not.toHaveProperty("runtimeMinutes");
+  });
+});

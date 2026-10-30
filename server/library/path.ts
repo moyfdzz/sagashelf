@@ -17,6 +17,8 @@ export type Change = {
   clear?: boolean;
   /** One section goes to another page; the other sections stay where they are. */
   section?: { status: LibraryStatus; page: number };
+  /** Drops the exact score and keeps the rest of the filters. */
+  unrate?: boolean;
   /** Keeps the page of every section. Without it (and without `section`) they all go to the first. */
   keepPages?: boolean;
 };
@@ -37,6 +39,7 @@ export function libraryPath(
     if (query.q) params.set("q", query.q);
     if (query.year) params.set("year", String(query.year));
     if (query.score) params.set("score", String(query.score));
+    if (query.rated && !change.unrate) params.set("rated", String(query.rated));
     if (query.visibility) params.set("visibility", query.visibility);
     if (query.sort !== "recent") params.set("sort", query.sort);
   }

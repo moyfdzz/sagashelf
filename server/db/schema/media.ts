@@ -48,6 +48,10 @@ export const mediaItems = pgTable(
     // The authors, in the order the source lists them (SAG-14). Null when the source has none;
     // a refresh that brings none never erases the ones we hold.
     creators: jsonb("creators").$type<string[]>(),
+    // Minutes of a movie, or of a typical episode of a series (SAG-61). Null: never asked the
+    // source. 0: asked, and the source does not know it (a refresh reads that as "done"). The
+    // statistics count a title with 0 as one without a duration.
+    runtimeMinutes: integer("runtime_minutes"),
     imageUrl: text("image_url"),
     status: mediaStatus("status").notNull().default("unknown"),
     popularity: real("popularity").notNull().default(0),
@@ -66,6 +70,10 @@ export const mediaItems = pgTable(
     ...timestamps,
   },
   (t) => [
+    check(
+      "media_items_runtime_check",
+      sql`${t.runtimeMinutes} is null or ${t.runtimeMinutes} >= 0`,
+    ),
     check(
       "media_items_year_check",
       sql`${t.year} is null or ${t.year} between 1000 and 2200`,

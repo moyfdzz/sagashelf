@@ -61,6 +61,15 @@
   --type-custom-bg: oklch(0.94 0.005 260);
   --type-custom-fg: oklch(0.35 0.01 260);
   --type-custom-dot: oklch(0.6 0.01 260);
+  /* Charts (SAG-61): the first five slots of the validated categorical palette, one per type in a
+     fixed order. Light has three marks under 3:1 against the page, so every chart also writes its
+     numbers (legend and table). The accent is the one hue of the single-series charts. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-other: oklch(0.6 0.01 260);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -109,6 +118,12 @@
     --type-custom-bg: oklch(0.28 0.01 260);
     --type-custom-fg: oklch(0.85 0.01 260);
     --type-custom-dot: oklch(0.7 0.01 260);
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-other: oklch(0.7 0.01 260);
   }
 }
 
@@ -162,6 +177,12 @@
   --type-custom-bg: oklch(0.28 0.01 260);
   --type-custom-fg: oklch(0.85 0.01 260);
   --type-custom-dot: oklch(0.7 0.01 260);
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-other: oklch(0.7 0.01 260);
 }
 
 @theme inline {
@@ -198,6 +219,12 @@
   --color-type-manga-dot: var(--type-manga-dot);
   --color-type-custom-bg: var(--type-custom-bg);
   --color-type-custom-fg: var(--type-custom-fg);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-other: var(--chart-other);
   --color-type-custom-dot: var(--type-custom-dot);
 
   --animate-toast-in: toast-in 180ms ease-out;

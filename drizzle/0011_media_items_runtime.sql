@@ -1,0 +1,2 @@
+ALTER TABLE "media_items" ADD COLUMN "runtime_minutes" integer;--> statement-breakpoint
+ALTER TABLE "media_items" ADD CONSTRAINT "media_items_runtime_check" CHECK ("media_items"."runtime_minutes" is null or "media_items"."runtime_minutes" >= 0);
