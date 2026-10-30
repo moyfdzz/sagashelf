@@ -9,7 +9,13 @@ import { HeatMap } from "~/components/charts/HeatMap";
 import { ProportionBar, type Segment } from "~/components/charts/ProportionBar";
 import { RowBars } from "~/components/charts/RowBars";
 import { useFormatters } from "~/lib/format";
-import { heatRows, lastYears, minutesToDays } from "~/lib/stats-view";
+import {
+  bestPeriods,
+  heatRows,
+  lastYears,
+  minutesToDays,
+  minutesToHours,
+} from "~/lib/stats-view";
 import { forwardLinkClass, linkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -60,15 +66,21 @@ function Panel({
   id,
   title,
   description,
+  wide,
   children,
 }: {
   id: string;
   title: string;
   description?: string;
+  /** Takes both columns of the grid. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section aria-labelledby={id} className="space-y-3">
+    <section
+      aria-labelledby={id}
+      className={wide ? "space-y-3 lg:col-span-2" : "space-y-3"}
+    >
       <h2 id={id} className="text-xl font-semibold">
         {title}
       </h2>
@@ -183,6 +195,62 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
   ];
 
   const heat = heatRows(stats.finishedByMonth);
+
+  const hours = (minutes: number) =>
+    t("stats.hours", {
+      value: formatNumber(minutesToHours(minutes), {
+        maximumFractionDigits: 1,
+      }),
+    });
+  const timeSegments: Segment[] = typeOrder.flatMap(([type, tone]) =>
+    (stats.minutesByType[type] ?? 0) > 0
+      ? [
+          {
+            key: type,
+            label: t(`library.tabs.${type}`),
+            value: stats.minutesByType[type] ?? 0,
+            tone,
+          },
+        ]
+      : [],
+  );
+  const scoreRows = typeOrder.flatMap(([type]) => {
+    const scored = stats.scoreByType[type];
+    return scored
+      ? [
+          {
+            key: type,
+            label: `${t(`library.tabs.${type}`)} · ${titles(scored.scored)}`,
+            value: scored.average,
+          },
+        ]
+      : [];
+  });
+  const rewatchLine = (entry: (typeof stats.mostRewatched)[number]) => {
+    const times = t("stats.rewatched.times", { count: entry.rewatches });
+    return entry.minutes > 0 ? `${times} · ${hours(entry.minutes)}` : times;
+  };
+
+  const best = bestPeriods(stats.finishedByYear, stats.finishedByMonth);
+  const paceTiles: [string, string][] = [];
+  if (best.year) {
+    paceTiles.push([
+      t("stats.pace.bestYear", { count: best.year.count }),
+      String(best.year.year),
+    ]);
+  }
+  if (best.month) {
+    paceTiles.push([
+      t("stats.pace.bestMonth", { count: best.month.count }),
+      `${monthName(best.month.month, "long")} ${best.month.year}`,
+    ]);
+  }
+  if (stats.finishTime.medianDays !== null) {
+    paceTiles.push([
+      t("stats.pace.median"),
+      formatNumber(stats.finishTime.medianDays, { maximumFractionDigits: 1 }),
+    ]);
+  }
 
   return (
     <main className="container mx-auto max-w-4xl px-4 py-10">
@@ -372,6 +440,146 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
                 ),
               )}
             />
+          </Panel>
+        ) : null}
+
+        {timeSegments.length > 0 ? (
+          <Panel
+            id="stats-time-by-type"
+            title={t("stats.timeByType.title")}
+            description={t("stats.timeByType.description")}
+          >
+            <ProportionBar
+              segments={timeSegments}
+              format={(minutes) => {
+                const total = minutesToDays(minutes);
+                return t("stats.days", {
+                  count: total,
+                  value: formatNumber(total, { maximumFractionDigits: 1 }),
+                });
+              }}
+              formatShare={(share) => formatNumber(share, { style: "percent" })}
+            />
+          </Panel>
+        ) : null}
+
+        {scoreRows.length > 0 ? (
+          <Panel
+            id="stats-score-by-type"
+            title={t("stats.scoreByType.title")}
+            description={t("stats.scoreByType.description")}
+          >
+            <RowBars
+              rows={scoreRows}
+              scaleMax={10}
+              format={(value) =>
+                formatNumber(value, { maximumFractionDigits: 1 })
+              }
+            />
+          </Panel>
+        ) : null}
+
+        {stats.mostWatched.length > 0 ? (
+          <Panel
+            id="stats-most-watched"
+            title={t("stats.mostWatched.title")}
+            description={t("stats.mostWatched.description")}
+          >
+            <RowBars
+              rows={stats.mostWatched.map((entry) => ({
+                key: entry.mediaId,
+                label: `${entry.title} (${withYear(entry.type, entry.year)})`,
+                value: entry.minutes,
+                href: `/library/${entry.mediaId}`,
+              }))}
+              format={hours}
+            />
+          </Panel>
+        ) : null}
+
+        {stats.mostRewatched.length > 0 ? (
+          <Panel
+            id="stats-most-rewatched"
+            title={t("stats.rewatched.title")}
+            description={t("stats.rewatched.description")}
+          >
+            <ol className="max-w-md space-y-2">
+              {stats.mostRewatched.map((entry) => (
+                <li key={entry.mediaId} className="flex items-baseline gap-3">
+                  <span className="min-w-0 flex-1">
+                    <Link
+                      to={`/library/${entry.mediaId}`}
+                      className={linkClass}
+                    >
+                      {entry.title}
+                    </Link>{" "}
+                    <span className="text-fg-muted text-sm">
+                      {withYear(entry.type, entry.year)}
+                    </span>
+                  </span>
+                  <span className="text-sm tabular-nums">
+                    {rewatchLine(entry)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Panel>
+        ) : null}
+
+        {paceTiles.length > 0 ? (
+          <Panel
+            id="stats-pace"
+            title={t("stats.pace.title")}
+            description={t("stats.pace.description")}
+            wide
+          >
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {paceTiles.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="border-border bg-surface-raised rounded-md border p-4"
+                >
+                  <dd className="text-2xl font-semibold">{value}</dd>
+                  <dt className="text-fg-muted mt-1 text-sm">{label}</dt>
+                </div>
+              ))}
+            </dl>
+            {stats.finishTime.skipped > 0 ? (
+              <p className="text-fg-muted text-sm">
+                {t("stats.pace.skipped", { count: stats.finishTime.skipped })}
+              </p>
+            ) : null}
+          </Panel>
+        ) : null}
+
+        {stats.oldestPlanned.length > 0 ? (
+          <Panel
+            id="stats-oldest-planned"
+            title={t("stats.oldestPlanned.title")}
+            description={t("stats.oldestPlanned.description")}
+          >
+            <ol className="max-w-md space-y-2">
+              {stats.oldestPlanned.map((entry) => (
+                <li key={entry.mediaId} className="flex items-baseline gap-3">
+                  <span className="min-w-0 flex-1">
+                    <Link
+                      to={`/library/${entry.mediaId}`}
+                      className={linkClass}
+                    >
+                      {entry.title}
+                    </Link>{" "}
+                    <span className="text-fg-muted text-sm">
+                      {withYear(entry.type, entry.year)}
+                    </span>
+                  </span>
+                  <span className="text-fg-muted text-sm tabular-nums">
+                    {formatDate(new Date(`${entry.addedOn}T00:00:00Z`), {
+                      dateStyle: "medium",
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </Panel>
         ) : null}
       </div>

@@ -8,7 +8,15 @@ import type { Locale } from "../providers/types";
 // database does not say so.
 type RawRows = { rows: Record<string, unknown>[] };
 
-/** The numbers of the statistics page of one person (SAG-61, ADR-023). */
+/** A title of the library, as the lists of the statistics page show it. */
+type TitleRef = {
+  mediaId: string;
+  title: string;
+  type: string;
+  year: number | null;
+};
+
+/** The numbers of the statistics page of one person (SAG-61, SAG-85, ADR-023). */
 export type Stats = {
   /** Every entry of the library, whatever its status. */
   entries: number;
@@ -42,16 +50,26 @@ export type Stats = {
   /** Finished viewings that have no finish date, so no chart can place them. */
   undatedFinished: number;
   /** The best scored entries, the latest changed first among equals. */
-  best: {
-    mediaId: string;
-    title: string;
-    type: string;
-    year: number | null;
-    score: number;
-  }[];
+  best: (TitleRef & { score: number })[];
+  /** Minutes watched of each type that has a length (movies, series, anime), as in the tiles. */
+  minutesByType: Record<string, number>;
+  /** The mean score and how many were given, for each type that has a scored title. */
+  scoreByType: Record<string, { average: number; scored: number }>;
+  /** The titles with the most minutes watched, the most first. */
+  mostWatched: (TitleRef & { minutes: number })[];
+  /** The titles watched again most times, with the minutes those extra viewings took. */
+  mostRewatched: (TitleRef & { rewatches: number; minutes: number })[];
+  /**
+   * How long finishing something takes, from the start date to the finish date of each finished
+   * viewing. `skipped` are the finished viewings that lack one of the two dates.
+   */
+  finishTime: { medianDays: number | null; counted: number; skipped: number };
+  /** The planned titles that were added longest ago, the oldest first; `addedOn` is `YYYY-MM-DD`. */
+  oldestPlanned: (TitleRef & { addedOn: string })[];
 };
 
 export const bestCount = 10;
+export const shortListCount = 5;
 
 // What the numbers of one person are made of: each entry with the times it was watched and the
 // episodes seen. A finished run counts every episode of the title, as the entry editor does.
@@ -70,12 +88,24 @@ const entriesOf = (userId: string) => sql`
     JOIN media_items mi ON mi.id = le.media_id
     WHERE le.user_id = ${userId}::uuid
   ),
-  w AS (
+  t AS (
     SELECT e.*,
            e.viewings + (CASE WHEN e.status = 'completed' THEN 1 ELSE 0 END) AS times,
            CASE WHEN e.type IN ('series', 'anime') AND e.progress_unit IS NULL
                 THEN e.progress + e.viewings * e.total_episodes ELSE 0 END AS episodes
     FROM e
+  ),
+  w AS (
+    SELECT t.*,
+           CASE WHEN t.runtime > 0 THEN t.runtime * (
+             CASE WHEN t.type = 'movie' THEN t.times
+                  WHEN t.type IN ('series', 'anime') THEN t.episodes ELSE 0 END
+           ) ELSE 0 END AS minutes,
+           CASE WHEN t.runtime > 0 THEN t.runtime * t.viewings * (
+             CASE WHEN t.type = 'movie' THEN 1
+                  WHEN t.type IN ('series', 'anime') THEN t.total_episodes ELSE 0 END
+           ) ELSE 0 END AS rewatch_minutes
+    FROM t
   )
 `;
 
@@ -93,10 +123,7 @@ export async function getStats(
            count(*) FILTER (WHERE status = 'completed')::int AS completed,
            coalesce(sum(episodes), 0)::bigint AS episodes,
            coalesce(sum(viewings), 0)::bigint AS rewatches,
-           coalesce(sum(CASE WHEN runtime > 0 THEN runtime * (
-             CASE WHEN type = 'movie' THEN times
-                  WHEN type IN ('series', 'anime') THEN episodes ELSE 0 END
-           ) ELSE 0 END), 0)::bigint AS minutes_watched,
+           coalesce(sum(minutes), 0)::bigint AS minutes_watched,
            coalesce(sum(CASE WHEN status = 'planned' AND runtime > 0 THEN runtime * (
              CASE WHEN type = 'movie' THEN 1
                   WHEN type IN ('series', 'anime') THEN total_episodes ELSE 0 END
@@ -115,13 +142,19 @@ export async function getStats(
 
   const { rows: groups } = (await db.execute(sql`
     ${entriesOf(userId)}
-    SELECT 'type' AS kind, type AS key, count(*)::int AS total FROM w GROUP BY type
+    SELECT 'type' AS kind, type AS key, count(*)::float8 AS total FROM w GROUP BY type
     UNION ALL
-    SELECT 'status', status, count(*)::int FROM w GROUP BY status
+    SELECT 'status', status, count(*)::float8 FROM w GROUP BY status
     UNION ALL
-    SELECT 'score', score::text, count(*)::int FROM w WHERE score IS NOT NULL GROUP BY score
+    SELECT 'score', score::text, count(*)::float8 FROM w WHERE score IS NOT NULL GROUP BY score
     UNION ALL
-    SELECT 'released', year::text, count(*)::int FROM w WHERE year IS NOT NULL GROUP BY year
+    SELECT 'released', year::text, count(*)::float8 FROM w WHERE year IS NOT NULL GROUP BY year
+    UNION ALL
+    SELECT 'minutes', type, sum(minutes)::float8 FROM w GROUP BY type HAVING sum(minutes) > 0
+    UNION ALL
+    SELECT 'scored', type, count(score)::float8 FROM w GROUP BY type HAVING count(score) > 0
+    UNION ALL
+    SELECT 'average', type, avg(score)::float8 FROM w GROUP BY type HAVING count(score) > 0
   `)) as RawRows;
 
   // Each finished viewing is an event: the current run of a completed entry, and every earlier
@@ -150,10 +183,61 @@ export async function getStats(
     LIMIT ${bestCount}
   `)) as RawRows;
 
+  const { rows: watched } = (await db.execute(sql`
+    ${entriesOf(userId)}
+    SELECT w.media_id, ${localizedTitleSql("mi", locale)} AS title, w.type, w.year, w.minutes
+    FROM w
+    JOIN media_items mi ON mi.id = w.media_id
+    WHERE w.minutes > 0
+    ORDER BY w.minutes DESC, w.id
+    LIMIT ${bestCount}
+  `)) as RawRows;
+
+  const { rows: rewatched } = (await db.execute(sql`
+    ${entriesOf(userId)}
+    SELECT w.media_id, ${localizedTitleSql("mi", locale)} AS title, w.type, w.year,
+           w.viewings, w.rewatch_minutes
+    FROM w
+    JOIN media_items mi ON mi.id = w.media_id
+    WHERE w.viewings > 0
+    ORDER BY w.viewings DESC, w.rewatch_minutes DESC, w.id
+    LIMIT ${shortListCount}
+  `)) as RawRows;
+
+  // The span of each finished viewing, from the entry's own dates and from every earlier viewing.
+  const { rows: spans } = (await db.execute(sql`
+    WITH finished AS (
+      SELECT le.started_at AS started, le.finished_at AS finished FROM library_entries le
+      WHERE le.user_id = ${userId}::uuid AND le.status = 'completed'
+      UNION ALL
+      SELECT v.started_on, v.finished_on FROM library_viewings v
+      JOIN library_entries le ON le.id = v.entry_id
+      WHERE le.user_id = ${userId}::uuid
+    )
+    SELECT count(*)::int AS total,
+           count(*) FILTER (WHERE started IS NOT NULL AND finished IS NOT NULL)::int AS counted,
+           (percentile_cont(0.5) WITHIN GROUP (ORDER BY (finished - started)::float8)
+             FILTER (WHERE started IS NOT NULL AND finished IS NOT NULL))::float8 AS median
+    FROM finished
+  `)) as RawRows;
+
+  const { rows: oldest } = (await db.execute(sql`
+    SELECT le.media_id, ${localizedTitleSql("mi", locale)} AS title, mi.type::text AS type,
+           mi.year, le.created_at::date::text AS added_on
+    FROM library_entries le
+    JOIN media_items mi ON mi.id = le.media_id
+    WHERE le.user_id = ${userId}::uuid AND le.status = 'planned'
+    ORDER BY le.created_at, le.id
+    LIMIT ${shortListCount}
+  `)) as RawRows;
+
   const [row = {}] = totals;
   const scores = Array.from({ length: 10 }, () => 0);
   const byType: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
+  const minutesByType: Record<string, number> = {};
+  const scoredByType: Record<string, number> = {};
+  const averageByType: Record<string, number> = {};
   const released: { year: number; count: number }[] = [];
   for (const group of groups) {
     const key = String(group.key);
@@ -161,8 +245,24 @@ export async function getStats(
     if (group.kind === "type") byType[key] = total;
     else if (group.kind === "status") byStatus[key] = total;
     else if (group.kind === "score") scores[Number(key) - 1] = total;
+    else if (group.kind === "minutes") minutesByType[key] = total;
+    else if (group.kind === "scored") scoredByType[key] = total;
+    else if (group.kind === "average") averageByType[key] = total;
     else released.push({ year: Number(key), count: total });
   }
+  const scoreByType = Object.fromEntries(
+    Object.entries(scoredByType).map(([type, scored]) => [
+      type,
+      { average: averageByType[type] ?? 0, scored },
+    ]),
+  );
+  const titleOf = (entry: Record<string, unknown>) => ({
+    mediaId: String(entry.media_id),
+    title: String(entry.title),
+    type: String(entry.type),
+    year: entry.year === null ? null : num(entry.year),
+  });
+  const [span = {}] = spans;
 
   const finishedByMonth = events
     .filter((event) => event.year !== null)
@@ -198,12 +298,26 @@ export async function getStats(
       .sort((a, b) => a.year - b.year),
     finishedByMonth,
     undatedFinished: num(events.find((event) => event.year === null)?.total),
-    best: best.map((entry) => ({
-      mediaId: String(entry.media_id),
-      title: String(entry.title),
-      type: String(entry.type),
-      year: entry.year === null ? null : num(entry.year),
-      score: num(entry.score),
+    best: best.map((entry) => ({ ...titleOf(entry), score: num(entry.score) })),
+    minutesByType,
+    scoreByType,
+    mostWatched: watched.map((entry) => ({
+      ...titleOf(entry),
+      minutes: num(entry.minutes),
+    })),
+    mostRewatched: rewatched.map((entry) => ({
+      ...titleOf(entry),
+      rewatches: num(entry.viewings),
+      minutes: num(entry.rewatch_minutes),
+    })),
+    finishTime: {
+      medianDays: span.median === null ? null : num(span.median),
+      counted: num(span.counted),
+      skipped: num(span.total) - num(span.counted),
+    },
+    oldestPlanned: oldest.map((entry) => ({
+      ...titleOf(entry),
+      addedOn: String(entry.added_on),
     })),
   };
 }

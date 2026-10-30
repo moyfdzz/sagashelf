@@ -706,6 +706,42 @@
       "month": "Month",
       "none": "There are no finish dates yet."
     },
-    "titlesLabel": "Titles"
+    "titlesLabel": "Titles",
+    "days_one": "{{value}} day",
+    "days_other": "{{value}} days",
+    "hours": "{{value}} h",
+    "timeByType": {
+      "title": "Time by type",
+      "description": "How many days of content you watched of each type. Books and manga are counted in pages, chapters and volumes."
+    },
+    "scoreByType": {
+      "title": "Score by type",
+      "description": "The average of your scores in each type, out of 10."
+    },
+    "mostWatched": {
+      "title": "Most time watched",
+      "description": "The titles with the most hours watched, counting every time you watched them. Press one to open it."
+    },
+    "rewatched": {
+      "title": "Most watched again",
+      "description": "The titles you watched again the most times, and the hours that took.",
+      "times_one": "{{count}} more time",
+      "times_other": "{{count}} more times"
+    },
+    "pace": {
+      "title": "Your pace",
+      "description": "When you finish the most things and how long finishing something takes you.",
+      "bestYear_one": "Your best year, with {{count}} title finished",
+      "bestYear_other": "Your best year, with {{count}} titles finished",
+      "bestMonth_one": "Your best month, with {{count}} title finished",
+      "bestMonth_other": "Your best month, with {{count}} titles finished",
+      "median": "Days it takes you to finish something, as a median",
+      "skipped_one": "{{count}} time you finished something has no start and finish date, and is not counted in the days.",
+      "skipped_other": "{{count}} times you finished something have no start and finish date, and are not counted in the days."
+    },
+    "oldestPlanned": {
+      "title": "Planned the longest",
+      "description": "What you added the longest ago and have not started."
+    }
   }
 }

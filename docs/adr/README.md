@@ -26,7 +26,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry             | Accepted | Partial (SAG-18, SAG-43)              |
 | [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)       | Accepted | Done (SAG-48)                         |
 | [022](022-manga-mangadex.md)                     | Manga through MangaDex: never banned, covers spaced, removals honored                     | Accepted | Done (SAG-66)                         |
-| [023](023-statistics.md)                         | Statistics of a person, worked out when the page opens; one length per title              | Accepted | Done (SAG-61)                         |
+| [023](023-statistics.md)                         | Statistics of a person, worked out when the page opens; one length per title              | Accepted | Done (SAG-61, SAG-85)                 |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

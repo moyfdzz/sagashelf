@@ -183,6 +183,19 @@ describe("RowBars", () => {
     // Two rows have a fill; the empty one has only its track.
     expect(html.match(/class="fill-accent"/g)).toHaveLength(2);
   });
+
+  it("measures the bars against the scale it is given, not the longest row", () => {
+    const html = render(
+      <RowBars
+        format={n}
+        scaleMax={10}
+        rows={[{ key: "a", label: "Series", value: 5 }]}
+      />,
+    );
+
+    // The track is 300 wide: half the scale is 150, not the full width of the only row.
+    expect(html).toMatch(/<rect width="150"[^>]*class="fill-accent"/);
+  });
 });
 
 describe("HeatMap", () => {
