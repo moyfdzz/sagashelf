@@ -1,0 +1,2 @@
+ALTER TABLE "media_items" ADD COLUMN "genres" jsonb;--> statement-breakpoint
+ALTER TABLE "media_items" ADD CONSTRAINT "media_items_genres_check" CHECK ("media_items"."genres" is null or jsonb_typeof("media_items"."genres") = 'array');

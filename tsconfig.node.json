@@ -25,6 +25,7 @@
     "server/db/search-local.ts",
     "server/search/normalize.ts",
     "server/providers/types.ts",
+    "server/providers/genres.ts",
     "server/account/profile-schema.ts",
     "server/account/export.ts",
     "server/account/username-schema.ts",

@@ -1,3 +1,4 @@
+import { type Genre, uniqueGenres } from "../genres";
 import type {
   Locale,
   MediaKind,
@@ -57,6 +58,42 @@ export const tmdbLanguage: Record<Locale, string> = {
 const imageBase = "https://image.tmdb.org/t/p/w500";
 
 const animationGenre = 16;
+
+/**
+ * The genres of TMDB by their number, which is the same in every language, as ours. "Animation" and
+ * "TV Movie" are formats, not genres, so they have none; a few of the series ones are two of ours.
+ */
+const genreOf: Record<number, readonly Genre[]> = {
+  28: ["action"],
+  12: ["adventure"],
+  35: ["comedy"],
+  80: ["crime"],
+  99: ["documentary"],
+  18: ["drama"],
+  10751: ["family"],
+  14: ["fantasy"],
+  36: ["historical"],
+  27: ["horror"],
+  10402: ["music"],
+  9648: ["mystery"],
+  10749: ["romance"],
+  878: ["sci_fi"],
+  53: ["thriller"],
+  10752: ["war"],
+  37: ["western"],
+  10759: ["action", "adventure"],
+  10762: ["family"],
+  10763: ["news"],
+  10764: ["reality"],
+  10765: ["sci_fi", "fantasy"],
+  10766: ["soap_opera"],
+  10767: ["talk_show"],
+  10768: ["war"],
+};
+
+/** The genres of our list for the numbers TMDB sent. Not called when TMDB sent no list. */
+export const genresOf = (ids: readonly number[]): Genre[] =>
+  uniqueGenres(ids.flatMap((id) => genreOf[id] ?? []));
 
 /**
  * TMDB has no "anime" type: anime are movies and series with the Animation genre made in
@@ -142,6 +179,9 @@ export function mapTitle(
     kind === "movie"
       ? minutesOrUndefined(raw.runtime)
       : episodeMinutes(raw.episode_run_time);
+  // A search brings the numbers (`genre_ids`) and a title its list of genres; with neither, TMDB
+  // did not say, which is not the same as "none".
+  const genreIds = raw.genre_ids ?? raw.genres?.map((genre) => genre.id);
 
   return {
     type: classify(kind, raw),
@@ -153,6 +193,7 @@ export function mapTitle(
     status: statusOf(raw.status),
     popularity: raw.popularity ?? 0,
     ...(runtimeMinutes ? { runtimeMinutes } : {}),
+    ...(genreIds ? { genres: genresOf(genreIds) } : {}),
     externalId: { provider: "tmdb", id: toExternalId(kind, raw.id) },
   };
 }

@@ -86,6 +86,15 @@ export const duneWork = {
   description:
     "Set on the desert planet Arrakis.\r\n\r\nA stunning blend of adventure and mysticism.",
   covers: [-1, 11481354, 12375564],
+  // Free text, with the noise it usually has.
+  subjects: [
+    "Fiction",
+    "Science fiction",
+    "Adventure stories",
+    "Juvenile literature",
+    "Ecology -- Fiction",
+    "Imaginary places",
+  ],
 };
 
 export type SeenRequest = { url: URL; headers: Headers };

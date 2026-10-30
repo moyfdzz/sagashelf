@@ -162,6 +162,7 @@ export async function loader(args: Route.LoaderArgs) {
     pageTitle: t("app.pageTitle", { title }),
     originalTitle: detail.originalTitle,
     creators: detail.creators,
+    genres: detail.genres,
     year: detail.year,
     status: detail.status,
     synopsis,
@@ -310,6 +311,21 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                   status: t(`media.status.${item.status}`),
                 })}
           </p>
+          {item.genres.length > 0 ? (
+            <ul
+              aria-label={t("media.genres")}
+              className="mt-3 flex flex-wrap gap-2"
+            >
+              {item.genres.map((genre) => (
+                <li
+                  key={genre}
+                  className="border-border bg-surface-raised text-fg-muted rounded-full border px-2.5 py-0.5 text-sm font-semibold"
+                >
+                  {t(`genres.${genre}`)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           <h2 className="mt-6 text-xl font-semibold">{t("media.synopsis")}</h2>
           {item.synopsis ? (

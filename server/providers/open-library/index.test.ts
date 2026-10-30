@@ -141,6 +141,31 @@ describe("the Open Library provider (contract)", () => {
       ]);
     });
 
+    it("reads the genres from the subjects of the work", async () => {
+      const provider = setup();
+
+      const book = await provider.getById("OL893414W", { locale: "en" });
+
+      expect(book?.genres).toEqual(["sci_fi", "adventure"]);
+    });
+
+    it("says none for a work that has no subjects, so it is not asked about again", async () => {
+      const provider = setup();
+
+      const book = await provider.getById("OL20036652W", { locale: "en" });
+
+      expect(book?.genres).toEqual([]);
+    });
+
+    it("does not say the genres of a book found by the search, which has no subjects", async () => {
+      const provider = setup();
+
+      const books = await provider.search("dune", { locale: "en" });
+
+      expect(books.length).toBeGreaterThan(0);
+      for (const book of books) expect(book).not.toHaveProperty("genres");
+    });
+
     it("keeps the English title and asks for nothing more when the site is in English", async () => {
       const seen: SeenRequest[] = [];
       const provider = setup(seen);

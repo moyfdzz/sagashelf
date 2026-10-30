@@ -32,6 +32,20 @@ export const berserk: MangadexManga = {
     status: "ongoing",
     year: 1989,
     contentRating: "suggestive",
+    // As MangaDex sends them (names read 2026-10-30): genres and themes, and a tag of the groups
+    // `format` and `content`, which are never read.
+    tags: [
+      { attributes: { name: { en: "Action" }, group: "genre" } },
+      { attributes: { name: { en: "Adventure" }, group: "genre" } },
+      { attributes: { name: { en: "Demons" }, group: "theme" } },
+      { attributes: { name: { en: "Drama" }, group: "genre" } },
+      { attributes: { name: { en: "Fantasy" }, group: "genre" } },
+      { attributes: { name: { en: "Horror" }, group: "genre" } },
+      { attributes: { name: { en: "Psychological" }, group: "genre" } },
+      { attributes: { name: { en: "Tragedy" }, group: "genre" } },
+      { attributes: { name: { en: "Gore" }, group: "content" } },
+      { attributes: { name: { en: "Award Winning" }, group: "format" } },
+    ],
   },
   relationships: [
     {

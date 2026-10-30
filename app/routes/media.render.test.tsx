@@ -56,6 +56,7 @@ const props = (
       pageTitle: "The Pitt | SagaShelf",
       originalTitle: null,
       creators: [],
+      genres: [],
       year: 2025,
       status: "ongoing",
       synopsis: null,
@@ -70,6 +71,54 @@ const props = (
       ...extra,
     },
   }) as unknown as Parameters<typeof MediaDetail>[0];
+
+describe("the genres on a title page (SAG-71)", () => {
+  const withGenres = (genres: string[]) =>
+    props(null, null, { genres }) as Parameters<typeof MediaDetail>[0];
+
+  it("names each genre in the language of the site, in a list that says what it is", async () => {
+    const es = await render(
+      "es",
+      <MediaDetail {...withGenres(["action", "sci_fi", "isekai"])} />,
+    );
+    const en = await render(
+      "en",
+      <MediaDetail {...withGenres(["action", "sci_fi", "isekai"])} />,
+    );
+
+    expect(es).toContain('aria-label="Géneros"');
+    expect(es).toContain(">Acción<");
+    expect(es).toContain(">Ciencia ficción<");
+    expect(es).toContain(">Isekai<");
+    expect(en).toContain('aria-label="Genres"');
+    expect(en).toContain(">Sci-Fi<");
+  });
+
+  it("keeps the order the genres were saved in, and puts them before the synopsis", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail {...withGenres(["drama", "action"])} />,
+    );
+
+    expect(html.indexOf(">Drama<")).toBeLessThan(html.indexOf(">Acción<"));
+    expect(html.indexOf(">Acción<")).toBeLessThan(html.indexOf("Sinopsis"));
+  });
+
+  it("does not link the genres yet: the filter that would take a person to them is SAG-86", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail {...withGenres(["action"])} />,
+    );
+
+    expect(html).not.toMatch(/<a [^>]*>Acción<\/a>/);
+  });
+
+  it("shows no list when the title has no genre, so there is no empty box", async () => {
+    const html = await render("es", <MediaDetail {...withGenres([])} />);
+
+    expect(html).not.toContain('aria-label="Géneros"');
+  });
+});
 
 describe("the link back to the search on a title page", () => {
   it("is the first thing on the page when the person came from the search", async () => {

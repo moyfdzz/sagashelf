@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import en from "./en.json";
 import es from "./es.json";
+import { genres } from "../../server/providers/genres";
 import { fallbackLanguage, resources, supportedLanguages } from "./index";
 
 type Tree = { [key: string]: string | Tree };
@@ -46,6 +47,19 @@ describe("locales", () => {
       expect(placeholders(english[key] ?? ""), key).toEqual(
         placeholders(spanish[key] ?? ""),
       );
+    }
+  });
+
+  it("name every genre of the list in both languages, and no genre that is not on it (SAG-71)", () => {
+    for (const [lang, messages] of Object.entries({
+      es: spanish,
+      en: english,
+    })) {
+      const named = Object.keys(messages)
+        .filter((key) => key.startsWith("genres."))
+        .map((key) => key.slice("genres.".length))
+        .sort();
+      expect(named, lang).toEqual([...genres].sort());
     }
   });
 

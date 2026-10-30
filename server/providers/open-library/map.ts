@@ -1,3 +1,4 @@
+import { type Genre, uniqueGenres } from "../genres";
 import type { NormalizedMedia } from "../types";
 
 /** What the search of Open Library sends for one work, reduced to the fields that are read. */
@@ -32,7 +33,52 @@ export type OpenLibraryWork = {
   covers?: number[];
   /** For a work that was merged into another one. */
   location?: string;
+  /** Free text, mostly English and often noisy ("Fiction", "Juvenile literature"). */
+  subjects?: string[];
 };
+
+// Written whole, as patterns over the folded subject. Only what clearly names a genre is listed: a
+// subject that fits none is dropped, so many books end with none of ours. English only.
+const genreOfSubject: readonly (readonly [RegExp, Genre])[] = [
+  [/\bfantasy/, "fantasy"],
+  [/science fiction|sci-fi/, "sci_fi"],
+  [/mysteries|mystery|detective/, "mystery"],
+  [/horror/, "horror"],
+  [/romance|love stories/, "romance"],
+  [/thrillers?\b|suspense/, "thriller"],
+  [/adventure/, "adventure"],
+  [/historical fiction/, "historical"],
+  [/humou?r|comedy|comic fiction/, "comedy"],
+  [/\bcrime\b|gangsters/, "crime"],
+  [/biograph/, "biography"],
+  [/vampires?\b/, "vampire"],
+  [/zombies?\b/, "zombie"],
+  [/superhero/, "superhero"],
+  [/martial arts/, "martial_arts"],
+  [/\bcooking\b/, "cooking"],
+  [/psychological fiction/, "psychological"],
+  [/western stories|western fiction/, "western"],
+  [/post-?apocalyptic/, "post_apocalyptic"],
+  [/time travel/, "time_travel"],
+  [/war stories|war fiction/, "war"],
+  [/\bsurvival\b/, "survival"],
+  [/\bsports\b/, "sports"],
+  [/school stories/, "school_life"],
+  [/supernatural|ghost stories/, "supernatural"],
+  [/philosophical fiction/, "philosophical"],
+];
+
+/** The genres of our list for the subjects of a work. */
+export function genresOfSubjects(subjects: readonly string[]): Genre[] {
+  return uniqueGenres(
+    subjects.flatMap((subject) => {
+      const text = subject.toLocaleLowerCase();
+      return genreOfSubject.flatMap(([pattern, genre]) =>
+        pattern.test(text) ? [genre] : [],
+      );
+    }),
+  );
+}
 
 /** Whether the editions of the work include one in Spanish, so it is worth asking for its title. */
 export const hasSpanishEdition = (doc: OpenLibrarySearchDoc) =>
@@ -68,6 +114,7 @@ export function descriptionOf(work: OpenLibraryWork): string | null {
 export function mapWork(
   doc: OpenLibrarySearchDoc,
   description: string | null = null,
+  subjects?: readonly string[],
 ): NormalizedMedia | null {
   const id = parseExternalId(doc.key ?? "");
   const title = textOrNull(doc.title);
@@ -84,6 +131,8 @@ export function mapWork(
     year: doc.first_publish_year ?? null,
     synopsis: description ? { en: description } : {},
     ...(creators.length > 0 ? { creators } : {}),
+    // The search does not send subjects, only the work does: without them the genres are not said.
+    ...(subjects ? { genres: genresOfSubjects(subjects) } : {}),
     imageUrl: doc.cover_i ? `${coverBase}/${doc.cover_i}-L.jpg` : null,
     status: "unknown",
     // More editions means a book people keep printing; capped so it stays near the other sources.

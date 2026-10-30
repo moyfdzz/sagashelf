@@ -39,6 +39,9 @@ export async function saveMedia(
   // TMDB is asked about the length of everything it holds, so no answer is saved as 0: "asked,
   // not known", which the refresh job does not ask again. Other sources never say a length.
   const askedRuntime = provider === "tmdb" ? 0 : null;
+  // Null says "the source did not say", which never replaces the genres we hold; an empty list says
+  // "asked, none of ours fits" and is kept only when we hold nothing.
+  const genres = media.genres ? JSON.stringify(media.genres) : null;
   const { rows } = await db.execute(sql`
     WITH fresh AS (SELECT uuidv7() AS id),
     claimed AS (
@@ -50,12 +53,13 @@ export async function saveMedia(
     created AS (
       INSERT INTO media_items
         (id, type, title, titles, original_title, year, creators, synopsis, image_url, status,
-         popularity, runtime_minutes)
+         popularity, runtime_minutes, genres)
       SELECT media_id, ${media.type}::media_type, ${media.title}, ${titles}::jsonb,
              ${media.originalTitle}, ${media.year}, ${creators}::jsonb,
              ${noSynopsis}::jsonb || ${synopsis}::jsonb, ${media.imageUrl},
              ${media.status}::media_status, ${media.popularity},
-             coalesce(${media.runtimeMinutes ?? null}::int, ${askedRuntime}::int)
+             coalesce(${media.runtimeMinutes ?? null}::int, ${askedRuntime}::int),
+             ${genres}::jsonb
       FROM claimed WHERE inserted
       RETURNING id
     ),
@@ -76,6 +80,10 @@ export async function saveMedia(
         -- A length the source does not send this time never erases the one we hold.
         runtime_minutes = coalesce(${media.runtimeMinutes ?? null}::int, runtime_minutes,
                                    ${askedRuntime}::int),
+        -- New genres replace the held ones; none (null) or an empty list never erases them.
+        genres = coalesce(
+          CASE WHEN jsonb_array_length(${genres}::jsonb) > 0 THEN ${genres}::jsonb END,
+          genres, ${genres}::jsonb),
         synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
         image_url = coalesce(${media.imageUrl}::text, image_url),
         status = CASE WHEN ${media.status} = 'unknown' THEN status
@@ -183,8 +191,11 @@ export async function findStaleMedia(
 
 /**
  * The titles the scheduled job should ask the provider about (SAG-54): the ones older than
- * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, then the ones
- * of TMDB that were saved before their length was kept, each group oldest first. A title attempted in the last `retryAfterHours` is left out, so one the provider
+ * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, the ones of
+ * TMDB that were saved before their length was kept and the ones saved before their genres were
+ * kept (SAG-71). The stale ones go first, then the ones that are in somebody's library (so what a
+ * person sees is filled first), each group oldest first. A title attempted in the last
+ * `retryAfterHours` is left out, so one the provider
  * keeps failing on cannot take the whole batch every run. The last attempt is the `updated_at`
  * of its external id: `saveMedia` sets it on a success and `markRefreshAttempt` on a failure.
  */
@@ -206,8 +217,12 @@ export async function findMediaToRefresh(
         OR coalesce(m.titles->>'es', '') = '' OR coalesce(m.titles->>'en', '') = ''
         -- Saved before the length was kept (SAG-61): asked once, and then it is 0 or a number.
         OR (e.provider = 'tmdb' AND m.runtime_minutes IS NULL)
+        -- Saved before the genres were kept (SAG-71): asked once, and then it is a list.
+        OR m.genres IS NULL
       )
-    ORDER BY (m.fetched_at < now() - make_interval(days => ${maxAgeDays})) DESC, m.fetched_at
+    ORDER BY (m.fetched_at < now() - make_interval(days => ${maxAgeDays})) DESC,
+             EXISTS (SELECT 1 FROM library_entries le WHERE le.media_id = m.id) DESC,
+             m.fetched_at
     LIMIT ${limit}
   `);
   return rows.map((row) => ({
