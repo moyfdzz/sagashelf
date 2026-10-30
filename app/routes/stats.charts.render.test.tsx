@@ -47,6 +47,14 @@ describe("ColumnChart", () => {
     expect(linked).not.toContain('role="img"');
   });
 
+  it("links a column with a plain link that loads a new document, because the library has its own security policy (SAG-89)", () => {
+    const html = render(<ColumnChart columns={columns} format={n} />);
+
+    expect(html).toContain('<a href="/library?rated=2"');
+    // A link of the router would carry this marker.
+    expect(html).not.toContain("data-discover");
+  });
+
   it("names a link with its whole sentence", () => {
     const html = render(<ColumnChart columns={columns} format={n} />);
 
