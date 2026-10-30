@@ -373,6 +373,52 @@ describe("saveMedia", () => {
     expect(item?.creators).toBeNull();
   });
 
+  it("keeps the length of a title, and says 0 when TMDB was asked and does not know it (SAG-61)", async () => {
+    const withLength = await saveMedia(db, { ...titan, runtimeMinutes: 24 });
+    const without = await saveMedia(db, {
+      ...titan,
+      externalId: { provider: "tmdb", id: "tv/2" },
+    });
+    const elsewhere = await saveMedia(db, {
+      ...titan,
+      type: "book",
+      externalId: { provider: "open_library", id: "OL1W" },
+    });
+
+    const lengths = async () =>
+      Object.fromEntries(
+        (await db.select().from(mediaItems)).map((item) => [
+          item.id,
+          item.runtimeMinutes,
+        ]),
+      );
+    expect(await lengths()).toEqual({
+      [withLength]: 24,
+      [without]: 0,
+      [elsewhere]: null,
+    });
+  });
+
+  it("keeps the length it holds when a refresh sends none, and replaces it when it sends another (SAG-61)", async () => {
+    const id = await saveMedia(db, { ...titan, runtimeMinutes: 24 });
+    const length = async () =>
+      (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
+        ?.runtimeMinutes;
+
+    await saveMedia(db, titan);
+    expect(await length()).toBe(24);
+
+    await saveMedia(db, { ...titan, runtimeMinutes: 30 });
+    expect(await length()).toBe(30);
+  });
+
+  it("is refused by the table when the length is negative", async () => {
+    await expect(
+      saveMedia(db, { ...titan, runtimeMinutes: -1 }),
+    ).rejects.toThrow();
+    expect(await db.select().from(mediaItems)).toHaveLength(0);
+  });
+
   it("is refused by the table when the year is out of range", async () => {
     await expect(saveMedia(db, { ...titan, year: 12 })).rejects.toThrow();
     expect(await db.select().from(mediaItems)).toHaveLength(0);
@@ -440,6 +486,45 @@ describe("saveParts", () => {
     expect(
       rows.find((row) => row.kind === "season" && row.number === 1)?.title,
     ).toBe("Primera temporada");
+  });
+
+  it("keeps the average length of the episodes as the length of the title (SAG-61)", async () => {
+    const id = await saveMedia(db, { ...titan, runtimeMinutes: 99 });
+    const length = async () =>
+      (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
+        ?.runtimeMinutes;
+
+    await saveParts(db, id, [
+      { kind: "season", number: 1, title: null, airDate: null },
+      {
+        kind: "episode",
+        number: 1,
+        title: null,
+        airDate: null,
+        seasonNumber: 1,
+        runtimeMinutes: 40,
+      },
+      {
+        kind: "episode",
+        number: 2,
+        title: null,
+        airDate: null,
+        seasonNumber: 1,
+        runtimeMinutes: 45,
+      },
+      {
+        kind: "episode",
+        number: 3,
+        title: null,
+        airDate: null,
+        seasonNumber: 1,
+      },
+    ]);
+    expect(await length()).toBe(43);
+
+    // Episodes that say nothing leave the length alone.
+    await saveParts(db, id, parts);
+    expect(await length()).toBe(43);
   });
 
   it("does nothing for a title with no parts", async () => {
@@ -521,6 +606,41 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     db.execute(
       sql`UPDATE media_external_ids SET updated_at = now() - interval '3 days' WHERE media_id = ${mediaId}`,
     );
+
+  it("asks once for the titles of TMDB saved before their length was kept, and not again (SAG-61)", async () => {
+    const old = await saveComplete("tv/1");
+    const asked = await saveComplete("tv/2");
+    await db.execute(
+      sql`UPDATE media_items SET runtime_minutes = NULL WHERE id = ${old}::uuid`,
+    );
+    for (const id of [old, asked]) await makeAttemptOld(id);
+
+    expect(
+      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+    ).toEqual([old]);
+
+    // Saving it again, even when TMDB sends no length, says it was asked.
+    await saveMedia(
+      db,
+      { ...complete, externalId: { provider: "tmdb", id: "tv/1" } },
+      "es",
+    );
+    await makeAttemptOld(old);
+    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+  });
+
+  it("never asks for the length of a title of another source (SAG-61)", async () => {
+    const book = {
+      ...complete,
+      type: "book" as const,
+      externalId: { provider: "open_library" as const, id: "OL1W" },
+    };
+    await saveMedia(db, book, "es");
+    const id = await saveMedia(db, book, "en");
+    await makeAttemptOld(id);
+
+    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+  });
 
   it("lists what is stale first, oldest first, then what lacks a language", async () => {
     const fresh = await saveComplete("tv/1");

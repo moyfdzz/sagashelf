@@ -12,7 +12,8 @@
     "settings": "Settings",
     "signOut": "Sign out",
     "search": "Search",
-    "library": "My library"
+    "library": "My library",
+    "stats": "Statistics"
   },
   "language": {
     "label": "Language"
@@ -502,7 +503,9 @@
       "clear": "Clear filters",
       "score": "Score",
       "unscored": "Not scored",
-      "scoreAtLeast": "{{score}} or more"
+      "scoreAtLeast": "{{score}} or more",
+      "ratedExactly": "Only titles scored {{score}}.",
+      "clearRated": "Remove this filter"
     },
     "visibility": {
       "any": "All",
@@ -636,5 +639,73 @@
       "generic": "We could not save the changes. Try again.",
       "not_completed_read": "You can only read a completed title again."
     }
+  },
+  "stats": {
+    "title": "Statistics",
+    "description": "What you have watched and read, worked out from your library. Only you see it.",
+    "empty": "You have no titles in your library yet, so there is nothing to count.",
+    "emptyLink": "Search for titles",
+    "none": "—",
+    "titles_one": "{{count}} title",
+    "titles_other": "{{count}} titles",
+    "point": "{{label}}: {{value}}",
+    "showNumbers": "Show the numbers",
+    "tiles": {
+      "label": "Summary",
+      "completed": "Titles completed",
+      "episodes": "Episodes watched",
+      "daysWatched": "Days of content watched",
+      "daysPlanned": "Days of content planned",
+      "averageScore": "Average score",
+      "rewatches": "Times you watched something again",
+      "pages": "Pages read",
+      "chapters": "Chapters read",
+      "volumes": "Volumes read"
+    },
+    "runtime": {
+      "note": "The days are approximate: for a series the average length of an episode is used.",
+      "missing_one": "{{count}} title has no length yet and is not counted.",
+      "missing_other": "{{count}} titles have no length yet and are not counted."
+    },
+    "scores": {
+      "title": "Scores",
+      "description": "How many titles you gave each score. Press a bar to see them.",
+      "summary_one": "Average of {{average}} over {{count}} scored title.",
+      "summary_other": "Average of {{average}} over {{count}} scored titles.",
+      "none": "You have not scored any title yet.",
+      "score": "Score"
+    },
+    "finished": {
+      "title": "Finished by year",
+      "description": "Every time you finished a title counts, the times you watched it again too.",
+      "undated_one": "{{count}} time you finished something has no date and is not shown here.",
+      "undated_other": "{{count}} times you finished something have no date and are not shown here.",
+      "none": "There are no finish dates yet.",
+      "year": "Year"
+    },
+    "released": {
+      "title": "By year of release",
+      "description": "The latest years your titles came out. Press a bar to see them."
+    },
+    "types": {
+      "title": "By type",
+      "other": "Others"
+    },
+    "statuses": {
+      "title": "By status"
+    },
+    "best": {
+      "title": "Best scored",
+      "score": "{{score}}/10"
+    },
+    "activity": {
+      "title": "Activity by month",
+      "description": "How many times you finished a title each month.",
+      "less": "Less",
+      "more": "More",
+      "month": "Month",
+      "none": "There are no finish dates yet."
+    },
+    "titlesLabel": "Titles"
   }
 }

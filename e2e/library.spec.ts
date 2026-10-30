@@ -7,6 +7,7 @@ test.describe("the library without a session", () => {
   for (const path of [
     "/library",
     "/library/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
+    "/stats",
   ]) {
     test(`${path} is not shown to a visitor`, async ({ request }) => {
       const response = await request.get(path, { maxRedirects: 0 });
@@ -16,7 +17,9 @@ test.describe("the library without a session", () => {
       if (response.status() !== 503) {
         expect(response.headers()["location"]).toMatch(/sign-in|clerk/);
       }
-      expect(await response.text()).not.toContain("Mi biblioteca");
+      const body = await response.text();
+      expect(body).not.toContain("Mi biblioteca");
+      expect(body).not.toContain("Estadísticas");
     });
   }
 });

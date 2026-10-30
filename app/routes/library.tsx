@@ -373,7 +373,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
     sections.map((section) => [section.status, section.page]),
   ) as Record<LibraryStatus, number>;
   const searching = Boolean(
-    query.q || query.year || query.score || query.visibility,
+    query.q || query.year || query.score || query.rated || query.visibility,
   );
   const total = query.type ? counts[query.type] : counts.all;
 
@@ -418,6 +418,22 @@ export default function Library({ loaderData }: Route.ComponentProps) {
         ) : null}
         {query.view ? (
           <input type="hidden" name="view" value={query.view} />
+        ) : null}
+        {query.rated ? (
+          <input type="hidden" name="rated" value={query.rated} />
+        ) : null}
+        {query.rated ? (
+          <p className="col-span-full flex flex-wrap items-center gap-x-3">
+            <span>
+              {t("library.filters.ratedExactly", { score: query.rated })}
+            </span>
+            <Link
+              to={libraryPath(query, pages, { unrate: true })}
+              className={linkClass}
+            >
+              {t("library.filters.clearRated")}
+            </Link>
+          </p>
         ) : null}
         <div className="col-span-full">
           <label htmlFor="q" className="font-semibold">

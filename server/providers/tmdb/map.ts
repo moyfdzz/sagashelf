@@ -24,6 +24,10 @@ export type TmdbTitle = {
   original_language?: string;
   status?: string;
   media_type?: string;
+  /** Minutes of a movie. */
+  runtime?: number | null;
+  /** Minutes of an episode of a series: TMDB sends a list, often empty. */
+  episode_run_time?: number[];
 };
 
 export type TmdbSeason = {
@@ -36,6 +40,7 @@ export type TmdbEpisode = {
   episode_number: number;
   name?: string | null;
   air_date?: string | null;
+  runtime?: number | null;
 };
 
 export type TmdbSeasonDetail = TmdbSeason & { episodes?: TmdbEpisode[] };
@@ -102,6 +107,20 @@ function statusOf(status: string | undefined): MediaStatus {
   }
 }
 
+/** A length in minutes that makes sense; TMDB sends 0 or null for the ones it does not know. */
+const minutesOrUndefined = (value: number | null | undefined) =>
+  typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : undefined;
+
+/** The length of an episode of a series, from the list TMDB sends: their average. */
+function episodeMinutes(list: number[] | undefined): number | undefined {
+  const known = (list ?? []).filter((v) => minutesOrUndefined(v));
+  return known.length
+    ? Math.round(known.reduce((sum, v) => sum + v, 0) / known.length)
+    : undefined;
+}
+
 const textOrNull = (value: string | null | undefined) =>
   value && value.trim() !== "" ? value.trim() : null;
 
@@ -119,6 +138,10 @@ export function mapTitle(
     kind === "movie" ? raw.original_title : raw.original_name,
   );
   const overview = textOrNull(raw.overview);
+  const runtimeMinutes =
+    kind === "movie"
+      ? minutesOrUndefined(raw.runtime)
+      : episodeMinutes(raw.episode_run_time);
 
   return {
     type: classify(kind, raw),
@@ -129,6 +152,7 @@ export function mapTitle(
     imageUrl: raw.poster_path ? `${imageBase}${raw.poster_path}` : null,
     status: statusOf(raw.status),
     popularity: raw.popularity ?? 0,
+    ...(runtimeMinutes ? { runtimeMinutes } : {}),
     externalId: { provider: "tmdb", id: toExternalId(kind, raw.id) },
   };
 }
@@ -142,12 +166,16 @@ export function mapParts(seasons: TmdbSeasonDetail[]): NormalizedPart[] {
       title: textOrNull(season.name),
       airDate: textOrNull(season.air_date),
     },
-    ...(season.episodes ?? []).map((episode) => ({
-      kind: "episode" as const,
-      number: episode.episode_number,
-      title: textOrNull(episode.name),
-      airDate: textOrNull(episode.air_date),
-      seasonNumber: season.season_number,
-    })),
+    ...(season.episodes ?? []).map((episode) => {
+      const runtimeMinutes = minutesOrUndefined(episode.runtime);
+      return {
+        kind: "episode" as const,
+        number: episode.episode_number,
+        title: textOrNull(episode.name),
+        airDate: textOrNull(episode.air_date),
+        seasonNumber: season.season_number,
+        ...(runtimeMinutes ? { runtimeMinutes } : {}),
+      };
+    }),
   ]);
 }

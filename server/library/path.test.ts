@@ -28,6 +28,23 @@ describe("libraryPath", () => {
     );
   });
 
+  it("keeps an exact score through tabs and pages, and drops it alone or with the other filters (SAG-61)", () => {
+    const rated = queryOf("rated=6&year=2014&type=movie");
+
+    expect(libraryPath(rated, rated.pages)).toBe(
+      "/library?type=movie&year=2014&rated=6",
+    );
+    expect(libraryPath(rated, rated.pages, { type: "manga" })).toBe(
+      "/library?type=manga&year=2014&rated=6",
+    );
+    expect(libraryPath(rated, rated.pages, { unrate: true })).toBe(
+      "/library?type=movie&year=2014",
+    );
+    expect(libraryPath(rated, rated.pages, { clear: true })).toBe(
+      "/library?type=movie",
+    );
+  });
+
   it("keeps a score of none, as the minimum scores are kept", () => {
     const none = queryOf("score=none&type=book");
     const minimum = queryOf("score=8");

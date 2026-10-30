@@ -285,6 +285,7 @@ function filtersOf(
   else if (query.score) {
     parts.push(sql`${libraryEntries.score} >= ${query.score}`);
   }
+  if (query.rated) parts.push(eq(libraryEntries.score, query.rated));
   if (query.visibility) {
     parts.push(eq(libraryEntries.visibility, query.visibility));
   }

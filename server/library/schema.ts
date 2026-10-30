@@ -229,6 +229,13 @@ export const libraryQuerySchema = z
       ])
       .optional()
       .catch(undefined),
+    // Exactly this score, from 1 to 10: where a bar of the statistics page leads (SAG-61).
+    rated: z
+      .string()
+      .regex(/^(?:10|[1-9])$/)
+      .transform(Number)
+      .optional()
+      .catch(undefined),
     sort: z.enum(sortOptions).catch("recent"),
   })
   .transform(
