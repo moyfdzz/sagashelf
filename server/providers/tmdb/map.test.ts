@@ -9,6 +9,7 @@ import {
 } from "../../testing/tmdb";
 import {
   classify,
+  genresOf,
   mapParts,
   mapTitle,
   parseExternalId,
@@ -76,8 +77,29 @@ describe("mapTitle", () => {
       imageUrl: "https://image.tmdb.org/t/p/w500/matrix.jpg",
       status: "unknown",
       popularity: 85.5,
+      genres: ["action", "sci_fi"],
       externalId: { provider: "tmdb", id: "movie/603" },
     });
+  });
+
+  it("reads the genres from the numbers of a search and from the list of a title", () => {
+    expect(
+      mapTitle("tv", { id: 1, name: "x", genre_ids: [18, 80] }, "en"),
+    ).toMatchObject({
+      genres: ["drama", "crime"],
+    });
+    expect(
+      mapTitle("tv", { id: 1, name: "x", genres: [{ id: 35 }] }, "en").genres,
+    ).toEqual(["comedy"]);
+  });
+
+  it("does not say the genres when TMDB sent no list, and says none when the list is empty", () => {
+    expect(mapTitle("tv", { id: 1, name: "x" }, "en")).not.toHaveProperty(
+      "genres",
+    );
+    expect(
+      mapTitle("tv", { id: 1, name: "x", genre_ids: [] }, "en").genres,
+    ).toEqual([]);
   });
 
   it("maps a series and keeps the original title only when it differs", () => {
@@ -123,6 +145,64 @@ describe("mapTitle", () => {
     expect(mapTitle("tv", { id: 1, name: "x", status }, "en").status).toBe(
       expected,
     );
+  });
+});
+
+describe("genresOf", () => {
+  it("turns the numbers of the movies into our genres", () => {
+    expect(genresOf([28, 12, 35, 80, 99, 18, 10751, 14, 36, 27])).toEqual([
+      "action",
+      "adventure",
+      "comedy",
+      "crime",
+      "documentary",
+      "drama",
+      "family",
+      "fantasy",
+      "historical",
+      "horror",
+    ]);
+    expect(genresOf([10402, 9648, 10749, 878, 53, 10752, 37])).toEqual([
+      "music",
+      "mystery",
+      "romance",
+      "sci_fi",
+      "thriller",
+      "war",
+      "western",
+    ]);
+  });
+
+  it("splits the joined genres of series in two, once each", () => {
+    expect(genresOf([10759, 10765])).toEqual([
+      "action",
+      "adventure",
+      "sci_fi",
+      "fantasy",
+    ]);
+    expect(genresOf([10759, 28])).toEqual(["action", "adventure"]);
+  });
+
+  it("maps the genres only series have", () => {
+    expect(genresOf([10762, 10763, 10764, 10766, 10767, 10768])).toEqual([
+      "family",
+      "news",
+      "reality",
+      "soap_opera",
+      "talk_show",
+      "war",
+    ]);
+  });
+
+  it("gives nothing for Animation and TV Movie, which are formats, nor for a number it does not know", () => {
+    expect(genresOf([16, 10770, 99999])).toEqual([]);
+  });
+
+  it("keeps an anime to the genres it has besides Animation", () => {
+    expect(mapTitle("tv", attackOnTitan, "en").genres).toEqual([
+      "action",
+      "adventure",
+    ]);
   });
 });
 

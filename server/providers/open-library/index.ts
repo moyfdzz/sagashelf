@@ -164,6 +164,8 @@ export function createOpenLibraryProvider(http: HttpClient): MediaProvider {
           cover_i: work.covers?.find((cover) => cover > 0),
         },
         descriptionOf(work),
+        // A work with no subjects says "none", so the refresh job does not ask for it again.
+        work.subjects ?? [],
       );
       if (!book || locale !== "es" || !doc || !hasSpanishEdition(doc)) {
         return book;

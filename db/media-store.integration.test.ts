@@ -8,12 +8,19 @@ import {
   saveMedia,
   saveParts,
 } from "../server/db/media-store";
-import { mediaExternalIds, mediaItems, mediaParts } from "../server/db/schema";
+import {
+  libraryEntries,
+  mediaExternalIds,
+  mediaItems,
+  mediaParts,
+} from "../server/db/schema";
 import { pickTitle } from "../server/db/titles";
 import type { NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
+import { factories, failsWith } from "./test-helpers";
 
 const { db, pool } = createTestDb();
+const { newUser } = factories(db);
 
 afterAll(async () => {
   await pool.end();
@@ -412,6 +419,74 @@ describe("saveMedia", () => {
     expect(await length()).toBe(30);
   });
 
+  describe("genres (SAG-71)", () => {
+    const genresOf = async (id: string) =>
+      (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
+        ?.genres;
+
+    it("saves the genres, leaves them null when the source did not say, and saves an empty list when it said none", async () => {
+      const said = await saveMedia(db, {
+        ...titan,
+        genres: ["action", "drama"],
+      });
+      const silent = await saveMedia(db, {
+        ...titan,
+        externalId: { provider: "tmdb", id: "tv/2" },
+      });
+      const none = await saveMedia(db, {
+        ...titan,
+        genres: [],
+        externalId: { provider: "tmdb", id: "tv/3" },
+      });
+
+      expect(await genresOf(said)).toEqual(["action", "drama"]);
+      expect(await genresOf(silent)).toBeNull();
+      expect(await genresOf(none)).toEqual([]);
+    });
+
+    it("replaces the genres it holds when the source sends others", async () => {
+      const id = await saveMedia(db, { ...titan, genres: ["action"] });
+
+      await saveMedia(db, { ...titan, genres: ["drama", "mystery"] });
+
+      expect(await genresOf(id)).toEqual(["drama", "mystery"]);
+    });
+
+    it("keeps the genres it holds when a refresh sends none or an empty list", async () => {
+      const id = await saveMedia(db, { ...titan, genres: ["action"] });
+
+      await saveMedia(db, titan);
+      expect(await genresOf(id)).toEqual(["action"]);
+
+      await saveMedia(db, { ...titan, genres: [] });
+      expect(await genresOf(id)).toEqual(["action"]);
+    });
+
+    it("keeps an empty list when the title held nothing, which says it was asked", async () => {
+      const id = await saveMedia(db, titan);
+      expect(await genresOf(id)).toBeNull();
+
+      await saveMedia(db, { ...titan, genres: [] });
+
+      expect(await genresOf(id)).toEqual([]);
+    });
+
+    it("is refused by the table when the genres are not a list", async () => {
+      const id = await saveMedia(db, titan);
+
+      const failure = await failsWith(
+        db.execute(
+          sql`UPDATE media_items SET genres = '"action"'::jsonb WHERE id = ${id}::uuid`,
+        ),
+      );
+
+      expect(failure).toEqual({
+        code: "23514",
+        constraint: "media_items_genres_check",
+      });
+    });
+  });
+
   it("is refused by the table when the length is negative", async () => {
     await expect(
       saveMedia(db, { ...titan, runtimeMinutes: -1 }),
@@ -589,6 +664,7 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
   const complete = {
     ...titan,
     synopsis: { es: "Sinopsis", en: "Synopsis" },
+    genres: ["drama" as const],
   };
 
   /** A title held in both languages, with a synopsis in each. */
@@ -627,6 +703,87 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     );
     await makeAttemptOld(old);
     expect(await findMediaToRefresh(db, 10)).toEqual([]);
+  });
+
+  it("asks once for the titles saved before their genres were kept, whatever the source (SAG-71)", async () => {
+    const old = await saveComplete("tv/1");
+    const asked = await saveComplete("tv/2");
+    const book = {
+      ...complete,
+      type: "book" as const,
+      externalId: { provider: "open_library" as const, id: "OL1W" },
+    };
+    await saveMedia(db, book, "es");
+    const oldBook = await saveMedia(db, book, "en");
+    for (const id of [old, oldBook]) {
+      await db.execute(
+        sql`UPDATE media_items SET genres = NULL WHERE id = ${id}::uuid`,
+      );
+    }
+    for (const id of [old, asked, oldBook]) await makeAttemptOld(id);
+
+    expect(
+      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId).sort(),
+    ).toEqual([old, oldBook].sort());
+
+    // Saving them again with an empty list says "asked, none of ours fits".
+    for (const media of [
+      {
+        ...complete,
+        genres: [],
+        externalId: { provider: "tmdb" as const, id: "tv/1" },
+      },
+      { ...book, genres: [] },
+    ]) {
+      await saveMedia(db, media, "es");
+    }
+    for (const id of [old, oldBook]) await makeAttemptOld(id);
+    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+  });
+
+  it("asks again for a title whose source sent no genres, until it says some or none (SAG-71)", async () => {
+    const id = await saveComplete("tv/1");
+    await db.execute(
+      sql`UPDATE media_items SET genres = NULL WHERE id = ${id}::uuid`,
+    );
+    // The same title, as a source that says no genres.
+    const silent = { ...titan, synopsis: complete.synopsis };
+
+    await saveMedia(
+      db,
+      { ...silent, externalId: { provider: "tmdb", id: "tv/1" } },
+      "es",
+    );
+    await makeAttemptOld(id);
+
+    expect(
+      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+    ).toEqual([id]);
+  });
+
+  it("puts the titles that are in somebody's library before the ones that are not, after the stale ones (SAG-71)", async () => {
+    const user = await newUser();
+    const lonely = await saveComplete("tv/1");
+    const kept = await saveComplete("tv/2");
+    const stale = await saveComplete("tv/3");
+    for (const id of [lonely, kept, stale]) {
+      await db.execute(
+        sql`UPDATE media_items SET genres = NULL WHERE id = ${id}::uuid`,
+      );
+      await makeAttemptOld(id);
+    }
+    // The title nobody holds is the oldest, so only the library can put the other first.
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '100 days' WHERE id = ${lonely}::uuid`,
+    );
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '170 days' WHERE id = ${stale}::uuid`,
+    );
+    await db.insert(libraryEntries).values({ userId: user.id, mediaId: kept });
+
+    expect(
+      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+    ).toEqual([stale, kept, lonely]);
   });
 
   it("never asks for the length of a title of another source (SAG-61)", async () => {

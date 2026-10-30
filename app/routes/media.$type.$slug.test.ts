@@ -48,6 +48,7 @@ function detail(overrides: Partial<MediaDetail> = {}): MediaDetail {
     originalTitle: "The Matrix",
     year: 1999,
     creators: [],
+    genres: [],
     synopsis: { es: "Un programador descubre la verdad." },
     imageUrl: "https://image.tmdb.org/t/p/w500/matrix.jpg",
     status: "finished",

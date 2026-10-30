@@ -7,7 +7,12 @@ import {
   vrmmo,
   vrmmoId,
 } from "../../testing/mangadex";
-import { mapManga, parseExternalId, plainDescription } from "./map";
+import {
+  genresOfTags,
+  mapManga,
+  parseExternalId,
+  plainDescription,
+} from "./map";
 
 describe("parseExternalId", () => {
   it("takes a uuid in any case and gives it in lowercase", () => {
@@ -40,6 +45,66 @@ describe("plainDescription", () => {
   });
 });
 
+describe("genresOfTags", () => {
+  const tag = (name: string, group: string) => ({
+    attributes: { name: { en: name }, group },
+  });
+
+  it("reads the genres and the themes that match one of ours, once each", () => {
+    expect(
+      genresOfTags([
+        tag("Isekai", "genre"),
+        tag("Mecha", "genre"),
+        tag("Superhero", "genre"),
+        tag("Magical Girls", "genre"),
+        tag("Reverse Harem", "theme"),
+        tag("Harem", "theme"),
+        tag("Ghosts", "theme"),
+        tag("Demons", "theme"),
+        tag("Police", "theme"),
+        tag("Mafia", "theme"),
+      ]),
+    ).toEqual([
+      "isekai",
+      "mecha",
+      "superhero",
+      "magical_girl",
+      "harem",
+      "supernatural",
+      "crime",
+    ]);
+  });
+
+  it("matches the English name whatever its case, with the quotes of Boys' Love", () => {
+    expect(
+      genresOfTags([
+        tag("SCI-FI", "genre"),
+        tag("slice of life", "genre"),
+        tag("Boys' Love", "genre"),
+        tag("Girls' Love", "genre"),
+      ]),
+    ).toEqual(["sci_fi", "slice_of_life", "boys_love", "girls_love"]);
+  });
+
+  it("never reads the groups format and content, even when the name matches", () => {
+    expect(
+      genresOfTags([tag("Action", "format"), tag("Horror", "content")]),
+    ).toEqual([]);
+  });
+
+  it("drops the tags that have no genre of ours, and the ones with no name or group", () => {
+    expect(
+      genresOfTags([
+        tag("Aliens", "theme"),
+        tag("Loli", "theme"),
+        { attributes: { group: "genre" } },
+        { attributes: { name: { en: "Action" } } },
+        {},
+      ]),
+    ).toEqual([]);
+  });
+});
+
 describe("mapManga", () => {
   it("chooses the title in the language of the visitor from the alternative titles", () => {
     expect(mapManga(berserk, "es")?.title).toBe("Berserk (edición en español)");
@@ -57,6 +122,16 @@ describe("mapManga", () => {
         en: "Guts, a former mercenary, hunts demons.",
       },
       creators: ["Miura Kentarou"],
+      genres: [
+        "action",
+        "adventure",
+        "supernatural",
+        "drama",
+        "fantasy",
+        "horror",
+        "psychological",
+        "tragedy",
+      ],
       imageUrl: `https://uploads.mangadex.org/covers/${berserkId}/11111111-2222-4333-8444-555555555555.jpg`,
       status: "ongoing",
       popularity: 0,
@@ -99,6 +174,8 @@ describe("mapManga", () => {
 
     expect(bare).toMatchObject({ year: null, imageUrl: null, synopsis: {} });
     expect(bare).not.toHaveProperty("creators");
+    // MangaDex always sends tags, so a manga without any is "asked, none of ours fits".
+    expect(bare?.genres).toEqual([]);
   });
 
   it("is null for adult material, for a record with no title and for a bad id", () => {

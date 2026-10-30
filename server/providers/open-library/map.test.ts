@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { dune, duneDuplicate, duneMessiah } from "../../testing/open-library";
 import {
   descriptionOf,
+  genresOfSubjects,
   groupWorks,
   hasSpanishEdition,
   mapWork,
@@ -11,6 +12,74 @@ import {
   spanishEditionTitles,
   withSpanishTitle,
 } from "./map";
+
+describe("genresOfSubjects", () => {
+  it("reads the subjects that clearly name a genre, whatever their case", () => {
+    expect(
+      genresOfSubjects([
+        "Fiction",
+        "Science fiction",
+        "FANTASY fiction",
+        "Detective and mystery stories",
+        "Horror tales",
+        "Love stories",
+        "Suspense fiction",
+        "Humorous stories",
+        "Historical fiction",
+        "Vampires -- Fiction",
+      ]),
+    ).toEqual([
+      "sci_fi",
+      "fantasy",
+      "mystery",
+      "horror",
+      "romance",
+      "thriller",
+      "comedy",
+      "historical",
+      "vampire",
+    ]);
+  });
+
+  it("gives each genre once and drops the noise of the subjects", () => {
+    expect(
+      genresOfSubjects([
+        "Science fiction",
+        "Science fiction, American",
+        "Juvenile literature",
+        "Accessible book",
+        "In library",
+        "Ecology",
+      ]),
+    ).toEqual(["sci_fi"]);
+  });
+
+  it("does not take a word that only looks like a genre", () => {
+    // A history book is not historical fiction, and "war" alone is not a war story.
+    expect(
+      genresOfSubjects([
+        "History",
+        "World War, 1939-1945",
+        "Warfare",
+        "Fantastic",
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("mapWork genres", () => {
+  const doc = { key: "/works/OL893414W", title: "Dune" };
+
+  it("does not say the genres when the subjects were not given, as in a search", () => {
+    expect(mapWork(doc)).not.toHaveProperty("genres");
+  });
+
+  it("says the genres of the subjects, and none for a work with no subject of ours", () => {
+    expect(mapWork(doc, null, ["Science fiction"])?.genres).toEqual(["sci_fi"]);
+    expect(mapWork(doc, null, ["Fiction"])?.genres).toEqual([]);
+    expect(mapWork(doc, null, [])?.genres).toEqual([]);
+  });
+});
 
 describe("pickSpanishTitle", () => {
   const pick = (

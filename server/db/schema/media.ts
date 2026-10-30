@@ -52,6 +52,10 @@ export const mediaItems = pgTable(
     // source. 0: asked, and the source does not know it (a refresh reads that as "done"). The
     // statistics count a title with 0 as one without a duration.
     runtimeMinutes: integer("runtime_minutes"),
+    // The genres of our own list (SAG-71, ADR-024), as keys. Null: never asked the source. An
+    // empty list: asked, and none of ours fits. A refresh that brings none never erases the ones we
+    // hold. The keys are checked in the code, so a new genre needs no migration.
+    genres: jsonb("genres").$type<string[]>(),
     imageUrl: text("image_url"),
     status: mediaStatus("status").notNull().default("unknown"),
     popularity: real("popularity").notNull().default(0),
@@ -73,6 +77,10 @@ export const mediaItems = pgTable(
     check(
       "media_items_runtime_check",
       sql`${t.runtimeMinutes} is null or ${t.runtimeMinutes} >= 0`,
+    ),
+    check(
+      "media_items_genres_check",
+      sql`${t.genres} is null or jsonb_typeof(${t.genres}) = 'array'`,
     ),
     check(
       "media_items_year_check",

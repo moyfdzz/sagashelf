@@ -47,6 +47,39 @@ describe("getMediaDetail", () => {
     expect((await getMediaDetail(db, anime))?.creators).toEqual([]);
   });
 
+  it("reads the genres of a title in the order they were saved, and an empty list for a title with none (SAG-71)", async () => {
+    const withGenres = await saveMedia(db, {
+      ...titan,
+      genres: ["drama", "action", "isekai"],
+    });
+    const noneFits = await saveMedia(db, {
+      ...titan,
+      genres: [],
+      externalId: { provider: "tmdb", id: "tv/2" },
+    });
+    const neverAsked = await saveMedia(db, {
+      ...titan,
+      externalId: { provider: "tmdb", id: "tv/3" },
+    });
+
+    expect((await getMediaDetail(db, withGenres))?.genres).toEqual([
+      "drama",
+      "action",
+      "isekai",
+    ]);
+    expect((await getMediaDetail(db, noneFits))?.genres).toEqual([]);
+    expect((await getMediaDetail(db, neverAsked))?.genres).toEqual([]);
+  });
+
+  it("leaves out a genre key that is no longer on the list (SAG-71)", async () => {
+    const id = await saveMedia(db, { ...titan, genres: ["action"] });
+    await db.execute(
+      sql`UPDATE media_items SET genres = '["action", "taken_out", 7]'::jsonb WHERE id = ${id}::uuid`,
+    );
+
+    expect((await getMediaDetail(db, id))?.genres).toEqual(["action"]);
+  });
+
   it("reads a title with its source id and its seasons and episodes in order", async () => {
     const id = await saveMedia(db, titan);
     await saveParts(db, id, [

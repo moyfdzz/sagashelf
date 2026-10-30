@@ -1,3 +1,4 @@
+import { type Genre, uniqueGenres } from "../genres";
 import type { Locale, MediaStatus, NormalizedMedia } from "../types";
 
 type LangMap = Record<string, string>;
@@ -21,9 +22,82 @@ export type MangadexManga = {
     status?: string;
     year?: number | null;
     contentRating?: string;
+    tags?: MangadexTag[];
   };
   relationships?: MangadexRelationship[];
 };
+
+/** A tag as MangaDex sends it with a manga: `group` is genre, theme, format or content. */
+export type MangadexTag = {
+  attributes?: { name?: LangMap; group?: string };
+};
+
+/**
+ * The tags of MangaDex (read 2026-10-30 from `GET /manga/tag`) that match a genre of ours, by their
+ * English name. The tags of the groups `format` and `content` are never read, and a tag with no
+ * match is dropped, so none of MangaDex's own tags is stored.
+ */
+const genreOfTag: Record<string, readonly Genre[]> = {
+  action: ["action"],
+  adventure: ["adventure"],
+  "boys' love": ["boys_love"],
+  comedy: ["comedy"],
+  cooking: ["cooking"],
+  crime: ["crime"],
+  demons: ["supernatural"],
+  drama: ["drama"],
+  fantasy: ["fantasy"],
+  ghosts: ["supernatural"],
+  "girls' love": ["girls_love"],
+  harem: ["harem"],
+  historical: ["historical"],
+  horror: ["horror"],
+  isekai: ["isekai"],
+  mafia: ["crime"],
+  "magical girls": ["magical_girl"],
+  "martial arts": ["martial_arts"],
+  mecha: ["mecha"],
+  medical: ["medical"],
+  military: ["military"],
+  music: ["music"],
+  mystery: ["mystery"],
+  philosophical: ["philosophical"],
+  police: ["crime"],
+  "post-apocalyptic": ["post_apocalyptic"],
+  psychological: ["psychological"],
+  reincarnation: ["reincarnation"],
+  romance: ["romance"],
+  samurai: ["samurai"],
+  "school life": ["school_life"],
+  "sci-fi": ["sci_fi"],
+  "slice of life": ["slice_of_life"],
+  sports: ["sports"],
+  superhero: ["superhero"],
+  supernatural: ["supernatural"],
+  survival: ["survival"],
+  thriller: ["thriller"],
+  "time travel": ["time_travel"],
+  tragedy: ["tragedy"],
+  vampires: ["vampire"],
+  "video games": ["video_games"],
+  wuxia: ["wuxia"],
+  zombies: ["zombie"],
+};
+
+const readGroups = new Set(["genre", "theme"]);
+
+/** The genres of our list for the tags of a manga. */
+export function genresOfTags(tags: readonly MangadexTag[]): Genre[] {
+  return uniqueGenres(
+    tags.flatMap((tag) => {
+      const group = tag.attributes?.group;
+      const name = tag.attributes?.name?.en?.trim().toLowerCase();
+      return group && readGroups.has(group) && name
+        ? (genreOfTag[name] ?? [])
+        : [];
+    }),
+  );
+}
 
 export const coverBase = "https://uploads.mangadex.org/covers";
 
@@ -166,6 +240,8 @@ export function mapManga(
     year: attributes.year ?? null,
     synopsis: { ...(es ? { es } : {}), ...(en ? { en } : {}) },
     ...(creators.length > 0 ? { creators } : {}),
+    // MangaDex always sends the tags of a manga: a manga with none of ours is "asked, none".
+    genres: genresOfTags(attributes.tags ?? []),
     imageUrl: cover ? `${coverBase}/${id}/${cover}` : null,
     status: statusOf(attributes.status),
     // MangaDex sends no popularity with a search; the order is its relevance, which is kept.

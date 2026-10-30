@@ -1,4 +1,5 @@
 import type { LocalizedText } from "../db/schema/shared";
+import type { Genre } from "./genres";
 
 /** The kinds of title a provider can return. `custom` titles are made by people, not fetched. */
 export type MediaKind = "anime" | "movie" | "series" | "book" | "manga";
@@ -36,6 +37,11 @@ export type NormalizedMedia = {
    * For a series that gives the length per episode, `saveParts` replaces it with their average.
    */
   runtimeMinutes?: number;
+  /**
+   * The genres of our own list (ADR-024). Left out when the source did not say; an empty list
+   * says "asked, and none of ours fits", which a refresh does not ask again.
+   */
+  genres?: Genre[];
   imageUrl: string | null;
   status: MediaStatus;
   popularity: number;

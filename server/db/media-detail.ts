@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { type Genre, isGenre } from "../providers/genres";
 import type { MediaKind, MediaStatus, ProviderId } from "../providers/types";
 import type { LocalizedText } from "./schema/shared";
 
@@ -27,6 +28,8 @@ export type MediaDetail = {
   originalTitle: string | null;
   year: number | null;
   creators: string[];
+  /** The genres of our list, in the order they were saved; empty when none is known yet. */
+  genres: Genre[];
   synopsis: LocalizedText;
   imageUrl: string | null;
   status: MediaStatus;
@@ -53,7 +56,8 @@ export async function getMediaDetail(
   id: string,
 ): Promise<MediaDetail | null> {
   const { rows } = await db.execute(sql`
-    SELECT m.id, m.type::text AS type, m.title, m.titles, m.original_title, m.year, m.creators, m.synopsis,
+    SELECT m.id, m.type::text AS type, m.title, m.titles, m.original_title, m.year, m.creators,
+           m.genres, m.synopsis,
            m.image_url, m.status::text AS status, m.fetched_at,
            e.provider::text AS provider, e.external_id,
            COALESCE((
@@ -102,6 +106,8 @@ export async function getMediaDetail(
     originalTitle: (row.original_title as string | null) ?? null,
     year: (row.year as number | null) ?? null,
     creators: (row.creators as string[] | null) ?? [],
+    // A key that is no longer in the list (a genre taken out later) is not shown.
+    genres: ((row.genres as unknown[] | null) ?? []).filter(isGenre),
     synopsis: (row.synopsis as LocalizedText) ?? {},
     imageUrl: (row.image_url as string | null) ?? null,
     status: row.status as MediaStatus,

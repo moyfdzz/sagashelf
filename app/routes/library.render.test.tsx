@@ -393,6 +393,7 @@ const detailProps = (library: Record<string, unknown>) =>
       pageTitle: "Ataque a los Titanes | SagaShelf",
       originalTitle: null,
       creators: [],
+      genres: [],
       year: 2013,
       status: "finished",
       synopsis: "Sinopsis",
