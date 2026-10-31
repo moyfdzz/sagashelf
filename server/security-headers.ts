@@ -76,10 +76,11 @@ export function isAuthPage(pathname: string): boolean {
  * lasts 60 seconds and only Clerk's script renews it, so these pages load that script (with no
  * visible component) to keep the session alive, and get the narrow policy below. The sign-out
  * page (SAG-38) needs the same script to end the session, and the same origins. The library
- * (SAG-18) is here because its entry page has a form that can stay open.
+ * (SAG-18) is here because its entry page has a form that can stay open, and so is the
+ * administration (SAG-92), whose forms are edited for a while.
  */
 export function isSessionPage(pathname: string): boolean {
-  return /^\/(settings|sign-out|library)(\/|$)/.test(pathname);
+  return /^\/(settings|sign-out|library|admin)(\/|$)/.test(pathname);
 }
 
 /**

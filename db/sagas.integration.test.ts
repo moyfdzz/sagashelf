@@ -116,13 +116,18 @@ describe("findSagaSyncWork", () => {
       ],
     });
 
+    // Q3 is a member of the saga that is saved, and nothing has described it: since SAG-92 the
+    // works of every saga in the database are asked for, not only the ones of the curated file.
     expect(
       await findSagaSyncWork(
         db,
         [{ slug: entry.slug, hash: "h2" }],
         ["Q1", "Q2"],
       ),
-    ).toEqual({ changedSlugs: ["attack-on-titan"], missingQids: ["Q2"] });
+    ).toEqual({
+      changedSlugs: ["attack-on-titan"],
+      missingQids: ["Q2", "Q3"],
+    });
   });
 });
 

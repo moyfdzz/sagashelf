@@ -1,3 +1,4 @@
+import { proposeSagaDrafts } from "../db/saga-drafts";
 import { getDb, getMediaProviders, getWikidata } from "../runtime-env";
 import { enrichWithWikidata } from "./enrich-wikidata";
 import { refreshStaleMedia } from "./refresh-stale-media";
@@ -43,13 +44,29 @@ export async function runScheduledJobs(): Promise<void> {
   }
 
   // The curated sagas (SAG-25, ADR-026). With nothing to do it costs one subrequest.
+  let sagasIdle = false;
   try {
     const wikidata = getWikidata();
     if (wikidata) {
       const summary = await syncSagas({ db: await getDb(), wikidata });
       console.log(JSON.stringify({ event: "sagas.sync", ...summary }));
+      sagasIdle = summary.sagas === 0 && summary.items === 0;
     }
   } catch (error) {
     logJobFailed("sync-sagas", error);
+  }
+
+  // Drafts for an administrator to review (SAG-92). They cost one more subrequest, so they wait
+  // for a run in which the sync had nothing to do: the first run of the sync costs four, and with
+  // the other jobs the 50 of a scheduled invocation would be passed.
+  if (sagasIdle) {
+    try {
+      const created = await proposeSagaDrafts(await getDb());
+      if (created > 0) {
+        console.log(JSON.stringify({ event: "sagas.drafts", created }));
+      }
+    } catch (error) {
+      logJobFailed("propose-saga-drafts", error);
+    }
   }
 }

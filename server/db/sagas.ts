@@ -15,7 +15,9 @@ export type SagaSyncWork = { changedSlugs: string[]; missingQids: string[] };
 /**
  * The curated sagas whose entry changed since they were saved, and the items of their members
  * that the members query has not described yet (no year). One query, so a run with nothing to do
- * costs one subrequest.
+ * costs one subrequest. A saga that an administrator edited, or that Wikidata suggested, belongs to
+ * the screen (SAG-92): the file never saves it again. The works to describe are those of every
+ * saga, so one an administrator added by hand is described too.
  */
 export async function findSagaSyncWork(
   db: SqlExecutor,
@@ -26,10 +28,14 @@ export async function findSagaSyncWork(
     SELECT 'saga' AS kind, x.slug AS value
     FROM jsonb_to_recordset(${JSON.stringify(sagas)}::jsonb) AS x(slug text, hash text)
     LEFT JOIN sagas s ON s.slug = x.slug
-    WHERE s.source_hash IS DISTINCT FROM x.hash
+    WHERE (s.id IS NULL OR s.origin = 'file') AND s.source_hash IS DISTINCT FROM x.hash
     UNION ALL
     SELECT 'item', q.qid
-    FROM jsonb_array_elements_text(${JSON.stringify(qids)}::jsonb) AS q(qid)
+    FROM (
+      SELECT jsonb_array_elements_text(${JSON.stringify(qids)}::jsonb) AS qid
+      UNION
+      SELECT qid FROM saga_wikidata_members
+    ) AS q
     LEFT JOIN wikidata_items i ON i.qid = q.qid
     WHERE i.details_at IS NULL
     ORDER BY 1, 2
@@ -75,6 +81,8 @@ export async function saveSagas(
       ON CONFLICT (slug) DO UPDATE SET
         title = EXCLUDED.title, titles = EXCLUDED.titles,
         source_hash = EXCLUDED.source_hash, updated_at = now()
+      -- What an administrator edited, or Wikidata suggested, is never saved over (SAG-92).
+      WHERE sagas.origin = 'file'
       RETURNING id, slug
     ),
     wanted AS (
@@ -143,7 +151,7 @@ export async function getSagaBySlug(
       ORDER BY m.id
       LIMIT 1
     ) matched ON true
-    WHERE s.slug = ${slug}
+    WHERE s.slug = ${slug} AND s.status = 'published'
     ORDER BY m.position
   `);
   const first = rows[0];
@@ -182,7 +190,7 @@ export async function getSagasOfMedia(
     JOIN wikidata_items i ON i.qid = sm.qid
     JOIN sagas s ON s.id = sm.saga_id
     JOIN media_items m ON m.id = ${mediaId}::uuid AND m.type <> 'custom'
-    WHERE ${mediaMatchesItem}
+    WHERE s.status = 'published' AND ${mediaMatchesItem}
     ORDER BY s.slug
   `);
   return rows.map((row) => ({

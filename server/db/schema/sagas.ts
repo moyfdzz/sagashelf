@@ -14,23 +14,42 @@ import { mediaItems } from "./media";
 import { type LocalizedText, primaryId, sagaRole, timestamps } from "./shared";
 
 /** A story told across formats: the page that groups its books, films, series and manga. */
-export const sagas = pgTable("sagas", {
-  id: primaryId(),
-  slug: text("slug").notNull().unique(),
-  // The name in English, the fallback of `titles`.
-  title: text("title").notNull(),
-  // The name in each language (SAG-25): `{ "es": "...", "en": "..." }`.
-  titles: jsonb("titles")
-    .$type<LocalizedText>()
-    .notNull()
-    .default(sql`'{}'::jsonb`),
-  // A hash of the curated entry the saga was last saved from (`server/sagas/curated.ts`): the
-  // sync saves a saga again only when the entry changed.
-  sourceHash: text("source_hash"),
-  description: jsonb("description").$type<LocalizedText>(),
-  imageUrl: text("image_url"),
-  ...timestamps,
-});
+export const sagas = pgTable(
+  "sagas",
+  {
+    id: primaryId(),
+    slug: text("slug").notNull().unique(),
+    // The name in English, the fallback of `titles`.
+    title: text("title").notNull(),
+    // The name in each language (SAG-25): `{ "es": "...", "en": "..." }`.
+    titles: jsonb("titles")
+      .$type<LocalizedText>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    // A hash of the curated entry the saga was last saved from (`server/sagas/curated.ts`): the
+    // sync saves a saga again only when the entry changed.
+    sourceHash: text("source_hash"),
+    // Whether visitors can see the saga (SAG-92). A draft is seen only by an administrator, and a
+    // saga suggested from Wikidata is always born a draft.
+    status: text("status").notNull().default("published"),
+    // Who owns the saga's content: `file` (the curated file seeds it and its sync updates it),
+    // `admin` (an administrator edited it on the screen, so the sync never touches it) or
+    // `wikidata` (a draft the cron proposed, which only an administrator changes).
+    origin: text("origin").notNull().default("file"),
+    // The media franchise a draft was proposed from, so it is not proposed twice.
+    franchiseQid: text("franchise_qid").unique(),
+    description: jsonb("description").$type<LocalizedText>(),
+    imageUrl: text("image_url"),
+    ...timestamps,
+  },
+  (t) => [
+    check("sagas_status_check", sql`${t.status} in ('draft', 'published')`),
+    check(
+      "sagas_origin_check",
+      sql`${t.origin} in ('file', 'admin', 'wikidata')`,
+    ),
+  ],
+);
 
 export const sagaMembers = pgTable(
   "saga_members",

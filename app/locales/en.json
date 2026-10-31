@@ -866,5 +866,70 @@
     "entry": "{{status}} · {{percent}}%",
     "notHeld": "Works with no link are not in the SagaShelf catalog yet: open them from the search to track them.",
     "signIn": "Sign in to see your progress in this saga"
+  },
+  "admin": {
+    "sagas": {
+      "title": "Sagas",
+      "description": "Create, edit and publish the sagas. Only you see a draft; visitors see the published ones.",
+      "create": {
+        "title": "Create a saga",
+        "titleEs": "Name in Spanish",
+        "titleEn": "Name in English",
+        "hint": "The address of the page is made from the English name and does not change afterwards.",
+        "submit": "Create draft"
+      },
+      "list": {
+        "title": "All sagas",
+        "empty": "There are no sagas yet.",
+        "works_one": "{{count}} work",
+        "works_other": "{{count}} works",
+        "described": "{{described}} of {{total}} described"
+      },
+      "status": {
+        "draft": "Draft",
+        "published": "Published"
+      },
+      "origin": {
+        "file": "From the file",
+        "admin": "Edited here",
+        "wikidata": "Suggested by Wikidata"
+      },
+      "edit": {
+        "back": "← All sagas",
+        "state": "Status",
+        "draftNote": "It is a draft: visitors do not see it.",
+        "publishedNote": "It is published: anyone can see it.",
+        "publish": "Publish",
+        "unpublish": "Unpublish",
+        "viewPublic": "View the public page",
+        "names": "Names",
+        "saveNames": "Save names",
+        "slug": "Address of the page: /sagas/{{slug}}",
+        "members": {
+          "title": "Works, in the order of the story",
+          "empty": "It has no works yet.",
+          "pending": "Wikidata has not described it yet (the system does it in a few hours)",
+          "up": "Move up",
+          "down": "Move down",
+          "remove": "Remove",
+          "upLabel": "Move {{name}} up",
+          "downLabel": "Move {{name}} down",
+          "removeLabel": "Remove {{name}}"
+        },
+        "add": {
+          "title": "Add a work",
+          "qid": "Wikidata code (for example Q22126305)",
+          "hint": "Paste the code or the address of the work in Wikidata. It shows on the page once Wikidata has described it.",
+          "submit": "Add"
+        }
+      }
+    },
+    "errors": {
+      "invalid_request": "The data is not valid. Check the fields and try again.",
+      "slug_taken": "A saga with that address already exists. Change the English name.",
+      "not_found": "What you wanted to change was not found.",
+      "already_there": "That work is already in the saga.",
+      "nothing_to_move": "That work cannot move any further that way."
+    }
   }
 }
