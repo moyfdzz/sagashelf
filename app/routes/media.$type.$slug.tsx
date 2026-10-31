@@ -477,6 +477,20 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
       {item.related.length > 0 ? (
         <section className="mt-10">
           <h2 className="text-xl font-semibold">{t("media.otherFormats")}</h2>
+          {item.sagas.length > 0 ? (
+            // The saga page lists every work in order: the list below is only a part of it.
+            <p className="mt-1">
+              {item.sagas.map((saga) => (
+                <Link
+                  key={saga.slug}
+                  to={`/sagas/${saga.slug}`}
+                  className={textLinkClass}
+                >
+                  {t("media.seeSaga", { title: saga.title })}
+                </Link>
+              ))}
+            </p>
+          ) : null}
           {item.related.map((group) => (
             <div key={group.format} className="mt-3">
               <h3 className="font-semibold">

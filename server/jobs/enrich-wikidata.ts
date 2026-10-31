@@ -11,7 +11,7 @@ import type { WikidataItem } from "../providers/wikidata/map";
  */
 export const wikidataBatchSize = 20;
 
-const runTimeoutMs = 25_000;
+const runTimeoutMs = 50_000;
 
 export type WikidataSummary = {
   found: number;

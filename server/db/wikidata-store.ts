@@ -4,6 +4,8 @@ import type { SqlExecutor } from "./clerk-sync";
 import type { LocalizedText } from "./schema/shared";
 import {
   isWikidataFormat,
+  largeFranchiseSize,
+  mainFormats,
   type WikidataFormat,
   type WikidataItem,
   type WikidataScheme,
@@ -187,7 +189,7 @@ export type RelatedFormat = {
 };
 
 /** The most related items a page lists. */
-export const relatedLimit = 60;
+export const relatedLimit = 30;
 
 /**
  * What Wikidata says is the same story as a title: the other members of its media franchises and
@@ -207,8 +209,19 @@ export async function getRelatedFormats(
       WHERE l.relation = 'franchise'
     ),
     related AS (
-      SELECT l.from_qid AS qid FROM wikidata_links l JOIN franchises f ON l.to_qid = f.qid
-      WHERE l.relation = 'franchise'
+      -- A large franchise lists toys, spoofs and games next to its works: only the main formats
+      -- stay, whatever an older run saved (SAG-94).
+      SELECT m.from_qid AS qid FROM (
+        SELECT l.from_qid, count(*) OVER (PARTITION BY l.to_qid) AS size
+        FROM wikidata_links l JOIN franchises f ON l.to_qid = f.qid
+        WHERE l.relation = 'franchise'
+      ) m
+      JOIN wikidata_items mi ON mi.qid = m.from_qid
+      WHERE m.size <= ${largeFranchiseSize}
+         OR mi.format IN (${sql.join(
+           mainFormats.map((format) => sql`${format}`),
+           sql`, `,
+         )})
       UNION
       SELECT l.to_qid FROM wikidata_links l JOIN me ON l.from_qid = me.qid
       WHERE l.relation = 'based_on'
@@ -230,7 +243,10 @@ export async function getRelatedFormats(
     WHERE i.qid NOT IN (SELECT qid FROM me)
       AND i.format <> 'franchise'
       AND (matched.id IS NULL OR matched.id <> ${mediaId}::uuid)
-    ORDER BY i.format, coalesce(i.labels->>'en', i.labels->>'es', i.qid), i.qid
+    -- The main works first, the oldest first: the same ones on every visit.
+    ORDER BY array_position(
+               ARRAY['anime', 'movie', 'series', 'manga', 'book', 'game', 'other']::text[], i.format),
+             i.year NULLS LAST, coalesce(i.labels->>'en', i.labels->>'es', i.qid), i.qid
     LIMIT ${relatedLimit}
   `);
   return rows.map((row) => ({
