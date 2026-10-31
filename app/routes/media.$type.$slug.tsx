@@ -1,16 +1,18 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { data, Link, redirect } from "react-router";
 
 import { externalLinkClass, linkClass, textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
 import { TitleLibrary } from "~/components/TitleLibrary";
+import { WikidataLink } from "~/components/WikidataLink";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import { getEntry } from "~server/db/library";
 import { getMediaDetail } from "~server/db/media-detail";
+import { getSagasOfMedia } from "~server/db/sagas";
 import { getRelatedFormats } from "~server/db/wikidata-store";
 import { imageSrc } from "~server/images/sources";
 import { importMedia, isMissingLanguage, isStale } from "~server/media/import";
@@ -159,6 +161,22 @@ export async function loader(args: Route.LoaderArgs) {
     locale,
   );
 
+  // The sagas this title is part of, for its badge. The page does not need them either.
+  const sagas = (
+    await getSagasOfMedia(db, detail.id).catch((error: unknown) => {
+      console.log(
+        JSON.stringify({
+          event: "media.sagas_failed",
+          error: error instanceof Error ? error.name : "unknown",
+        }),
+      );
+      return [];
+    })
+  ).map((saga) => ({
+    slug: saga.slug,
+    title: saga.titles[locale] || saga.title,
+  }));
+
   const { t } = getInstance(context);
   const description = shortDescription(synopsis);
   const poster = imageSrc(detail.imageUrl, "w342");
@@ -188,6 +206,7 @@ export async function loader(args: Route.LoaderArgs) {
     poster,
     seasons: detail.seasons,
     related,
+    sagas,
     source: sourceOf(detail.provider, detail.externalId),
     canonicalUrl,
     shareImageUrl,
@@ -279,19 +298,6 @@ function BackLink({
   return null;
 }
 
-/** The link back to Wikidata that its credit asks for; Trans puts the words inside it. */
-function WikidataLink({ children }: { children?: ReactNode }) {
-  return (
-    <a
-      href="https://www.wikidata.org/"
-      rel="noreferrer"
-      className={textLinkClass}
-    >
-      {children}
-    </a>
-  );
-}
-
 export default function MediaDetail({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { formatDate } = useFormatters();
@@ -342,6 +348,26 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                   status: t(`media.status.${item.status}`),
                 })}
           </p>
+          {item.sagas.length > 0 ? (
+            <ul className="mt-2 space-y-1">
+              {item.sagas.map((saga) => (
+                <li key={saga.slug}>
+                  <Trans
+                    i18nKey="media.partOfSaga"
+                    values={{ title: saga.title }}
+                    components={{
+                      saga: (
+                        <Link
+                          to={`/sagas/${saga.slug}`}
+                          className={textLinkClass}
+                        />
+                      ),
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {item.genres.length > 0 ? (
             <ul
               aria-label={t("media.genres")}

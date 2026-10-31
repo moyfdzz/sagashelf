@@ -113,6 +113,13 @@ export type WikidataItem = {
   franchises: string[];
   /** The works it is based on (`P144`). Only the lookup of a title asks for these. */
   basedOn: string[];
+  /**
+   * The year it came out (the first of `P577` publication date or `P580` start time). Only the
+   * members query asks for it; null there says Wikidata has no date.
+   */
+  year?: number | null;
+  /** True for an item the members query described, which is the one that says its year. */
+  detailed?: boolean;
 };
 
 /** A SPARQL answer, reduced to what is read. */
@@ -243,6 +250,7 @@ export function buildMembersQuery(
   return `${prefixes}
 SELECT ?member
   (SAMPLE(?es) AS ?labelEs) (SAMPLE(?en) AS ?labelEn)
+  (MIN(YEAR(?date)) AS ?year)
   (GROUP_CONCAT(DISTINCT STRAFTER(STR(?class), "entity/"); separator=" ") AS ?classes)
   (GROUP_CONCAT(DISTINCT STRAFTER(STR(?fr), "entity/"); separator=" ") AS ?franchises)
   (SAMPLE(?tmdbMovie) AS ?idTmdbMovie) (SAMPLE(?tmdbTv) AS ?idTmdbTv)
@@ -253,6 +261,9 @@ WHERE {
   OPTIONAL { ?member rdfs:label ?es . FILTER(LANG(?es) = "es") }
   OPTIONAL { ?member rdfs:label ?en . FILTER(LANG(?en) = "en") }
   OPTIONAL { ?member wdt:P31 ?class }
+  OPTIONAL { ?member wdt:P577 ?published }
+  OPTIONAL { ?member wdt:P580 ?started }
+  BIND(COALESCE(?published, ?started) AS ?date)
   OPTIONAL { ?member wdt:P4947 ?tmdbMovie }
   OPTIONAL { ?member wdt:P4983 ?tmdbTv }
   OPTIONAL { ?member wdt:P4087 ?malManga }
@@ -280,6 +291,7 @@ export function parseMembers(answer: SparqlResult): WikidataItem[] {
       const value = bindingText(row, column);
       if (value && valueShape[scheme].test(value)) ids[scheme] = value;
     }
+    const year = Number(bindingText(row, "year"));
     items.push({
       qid,
       labels: labelsOf(row),
@@ -287,6 +299,9 @@ export function parseMembers(answer: SparqlResult): WikidataItem[] {
       ids,
       franchises: qidsOf(bindingText(row, "franchises")),
       basedOn: [],
+      year:
+        Number.isInteger(year) && year >= 1000 && year <= 2200 ? year : null,
+      detailed: true,
     });
   }
   return items;

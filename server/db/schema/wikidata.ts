@@ -4,6 +4,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uuid,
@@ -35,9 +36,18 @@ export const wikidataItems = pgTable(
       .$type<Record<string, string>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    // The year it came out (the first of its publication or start date), when Wikidata says it.
+    year: smallint("year"),
+    // When the members query described this item (its year and ids). Null: it only came as the
+    // result of a lookup, so a saga that lists it asks again.
+    detailsAt: timestamp("details_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
+    check(
+      "wikidata_items_year_check",
+      sql`${t.year} is null or ${t.year} between 1000 and 2200`,
+    ),
     check("wikidata_items_qid_check", sql`${t.qid} ~ '^Q[0-9]{1,12}$'`),
     check(
       "wikidata_items_labels_check",

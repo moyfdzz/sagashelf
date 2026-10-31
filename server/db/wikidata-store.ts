@@ -99,6 +99,8 @@ export async function saveWikidata(
       labels: item.labels,
       format: item.format,
       ids: item.ids,
+      year: item.year ?? null,
+      detailed: item.detailed ?? false,
     })),
   );
   const links = JSON.stringify(
@@ -120,10 +122,10 @@ export async function saveWikidata(
   );
   await db.execute(sql`
     WITH saved_items AS (
-      INSERT INTO wikidata_items (qid, labels, format, ids)
-      SELECT qid, labels, format, ids
+      INSERT INTO wikidata_items (qid, labels, format, ids, year, details_at)
+      SELECT qid, labels, format, ids, year, CASE WHEN detailed THEN now() END
       FROM jsonb_to_recordset(${items}::jsonb)
-        AS x(qid text, labels jsonb, format text, ids jsonb)
+        AS x(qid text, labels jsonb, format text, ids jsonb, year int, detailed boolean)
       ON CONFLICT (qid) DO UPDATE SET
         labels = wikidata_items.labels || EXCLUDED.labels,
         -- A title we looked up is saved with the format "other" until a members query names it,
@@ -131,6 +133,10 @@ export async function saveWikidata(
         format = CASE WHEN EXCLUDED.format = 'other' THEN wikidata_items.format
                       ELSE EXCLUDED.format END,
         ids = wikidata_items.ids || EXCLUDED.ids,
+        -- Only the members query says the year, and its answer replaces an older one.
+        year = CASE WHEN EXCLUDED.details_at IS NOT NULL THEN EXCLUDED.year
+                    ELSE wikidata_items.year END,
+        details_at = coalesce(EXCLUDED.details_at, wikidata_items.details_at),
         updated_at = now()
       RETURNING 1
     ),
@@ -148,6 +154,23 @@ export async function saveWikidata(
     ON CONFLICT (media_id) DO UPDATE SET qid = EXCLUDED.qid, checked_at = now()
   `);
 }
+
+/**
+ * Whether the title `m` (`media_items`) is the item `i` (`wikidata_items`): it was looked up as
+ * that item, or it has the same id in TMDB or Open Library, or the same MyAnimeList or AniList id
+ * as a manga. The aliases are fixed because the fragment is written into other queries.
+ */
+export const mediaMatchesItem = sql`(
+  m.id IN (SELECT media_id FROM media_wikidata WHERE qid = i.qid)
+  OR m.id IN (
+    SELECT media_id FROM media_external_ids
+    WHERE (provider = 'tmdb' AND external_id IN (
+             'movie/' || (i.ids->>'tmdb_movie'), 'tv/' || (i.ids->>'tmdb_tv')))
+       OR (provider = 'open_library' AND external_id = i.ids->>'open_library')
+  )
+  OR m.cross_ids @> jsonb_build_object('mal', i.ids->>'mal_manga')
+  OR m.cross_ids @> jsonb_build_object('anilist', i.ids->>'anilist_manga')
+)`;
 
 /** One thing related to a title, as the page lists it. */
 export type RelatedFormat = {
@@ -200,17 +223,7 @@ export async function getRelatedFormats(
     LEFT JOIN LATERAL (
       SELECT m.id, m.type::text AS type, m.title, m.titles
       FROM media_items m
-      WHERE m.type <> 'custom' AND (
-        m.id IN (SELECT media_id FROM media_wikidata WHERE qid = i.qid)
-        OR m.id IN (
-          SELECT media_id FROM media_external_ids
-          WHERE (provider = 'tmdb' AND external_id IN (
-                   'movie/' || (i.ids->>'tmdb_movie'), 'tv/' || (i.ids->>'tmdb_tv')))
-             OR (provider = 'open_library' AND external_id = i.ids->>'open_library')
-        )
-        OR m.cross_ids @> jsonb_build_object('mal', i.ids->>'mal_manga')
-        OR m.cross_ids @> jsonb_build_object('anilist', i.ids->>'anilist_manga')
-      )
+      WHERE m.type <> 'custom' AND ${mediaMatchesItem}
       ORDER BY m.id
       LIMIT 1
     ) matched ON true

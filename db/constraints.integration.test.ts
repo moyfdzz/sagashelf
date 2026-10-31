@@ -51,6 +51,7 @@ describe("migrations", () => {
       "processed_webhooks",
       "reports",
       "saga_members",
+      "saga_wikidata_members",
       "sagas",
       "users",
       "webhook_deliveries",

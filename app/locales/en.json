@@ -105,7 +105,8 @@
       "game": "Video games",
       "other": "Other"
     },
-    "relationsSource": "The relations come from <wikidata>Wikidata</wikidata>."
+    "relationsSource": "The relations come from <wikidata>Wikidata</wikidata>.",
+    "partOfSaga": "Part of the <saga>{{title}}</saga> saga"
   },
   "errors": {
     "backHome": "Back to home",
@@ -841,5 +842,28 @@
     "reality": "Reality",
     "soap_opera": "Soap opera",
     "talk_show": "Talk show"
+  },
+  "saga": {
+    "summary_one": "{{count}} work in every format",
+    "summary_other": "{{count}} works in every format",
+    "description": "The {{count}} works of the {{title}} saga in every format, in order, with your progress in each.",
+    "progress": {
+      "title": "Your progress",
+      "label": "Progress in the saga",
+      "summary": "{{percent}}% · {{completed}} of {{total}} works completed",
+      "none": "You have no works of this saga in your library yet."
+    },
+    "hint": {
+      "start": "Where to start:",
+      "next": "Keep going with:"
+    },
+    "order": {
+      "label": "Order",
+      "release": "Release order",
+      "story": "Story order"
+    },
+    "entry": "{{status}} · {{percent}}%",
+    "notHeld": "Works with no link are not in the SagaShelf catalog yet: open them from the search to track them.",
+    "signIn": "Sign in to see your progress in this saga"
   }
 }

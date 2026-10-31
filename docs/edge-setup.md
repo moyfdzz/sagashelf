@@ -165,3 +165,11 @@ The other formats of a story come from Wikidata, which needs no key ([ADR-025](a
 - [ ] Previews Base: leave it unset.
 - [ ] Check after the first cron runs (every 6 hours): the Worker logs show `wikidata.batch` with `found`, `matched` and `unknown`, and no `job.failed` for `enrich-wikidata`. Then `SELECT count(*) FILTER (WHERE qid IS NOT NULL) AS matched, count(*) AS total FROM media_wikidata;` says how much of the catalog Wikidata knows. A title of a well-known anime shows "Otros formatos de esta historia".
 - [ ] Watch for a few days: a `429` or `403` from `wikidata` opens the circuit for five minutes. If `job.failed` appears for CPU time, tell the owner before changing anything (ADR-007: the Workers paid plan is the answer).
+
+### Sagas (SAG-25)
+
+The sagas need nothing new in the dashboard: they use `WIKIDATA_ENABLED` and the cron of section 13. The migration is `0014_sagas` (additive: a table, two columns of `sagas` and two of `wikidata_items`), applied by the owner with the PR open and before the merge, like `0013`.
+
+- [ ] Check after the migration: `SELECT table_name FROM information_schema.tables WHERE table_name = 'saga_wikidata_members'` (one row) and `SELECT column_name FROM information_schema.columns WHERE table_name = 'wikidata_items' AND column_name IN ('year', 'details_at')` (two rows).
+- [ ] Check after the first cron run that follows the deploy: the Worker logs show `sagas.sync` with `sagas: 21` and an `items` count near 160, and no `job.failed` for `sync-sagas`. Then `SELECT count(*) FROM sagas` is 21, and `https://sagashelf.app/sagas/attack-on-titan` opens.
+- [ ] Watch the first runs: the scheduled invocation shares 50 subrequests (ADR-026 counts at most 49). If `job.failed` appears for the subrequest limit or the CPU time, tell the owner before changing anything.

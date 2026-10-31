@@ -14,6 +14,7 @@ vi.mock("~server/auth/require", () => ({}));
 vi.mock("~server/db/library", () => ({}));
 vi.mock("~server/db/media-detail", () => ({}));
 vi.mock("~server/db/wikidata-store", () => ({}));
+vi.mock("~server/db/sagas", () => ({}));
 vi.mock("~server/media/import", () => ({}));
 
 async function render(
@@ -66,6 +67,7 @@ const props = (
       poster: null,
       seasons: [],
       related: [],
+      sagas: [],
       source: null,
       canonicalUrl: "https://sagashelf.app/media/series/the-pitt-1",
       shareImageUrl: null,
@@ -338,5 +340,35 @@ describe("the other formats of a story (SAG-16)", () => {
 
     expect(html).not.toContain("Otros formatos");
     expect(html).not.toContain("wikidata.org");
+  });
+});
+
+describe("the saga badge (SAG-25)", () => {
+  const withSagas = (sagas: unknown[]) =>
+    props(null, null, { sagas }) as Parameters<typeof MediaDetail>[0];
+
+  it("links to the saga page, in each language", async () => {
+    const sagas = [{ slug: "attack-on-titan", title: "Ataque a los Titanes" }];
+
+    const es = await render("es", <MediaDetail {...withSagas(sagas)} />);
+    const en = await render(
+      "en",
+      <MediaDetail
+        {...withSagas([{ slug: "attack-on-titan", title: "Attack on Titan" }])}
+      />,
+    );
+
+    expect(es).toMatch(
+      /Parte de la saga <a [^>]*href="\/sagas\/attack-on-titan"[^>]*>Ataque a los Titanes<\/a>/,
+    );
+    expect(en).toMatch(
+      /Part of the <a [^>]*href="\/sagas\/attack-on-titan"[^>]*>Attack on Titan<\/a> saga/,
+    );
+  });
+
+  it("shows nothing for a title that is in no saga", async () => {
+    const html = await render("es", <MediaDetail {...withSagas([])} />);
+
+    expect(html).not.toContain("Parte de la saga");
   });
 });
