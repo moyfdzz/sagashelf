@@ -48,6 +48,17 @@ test.describe("opening a title", () => {
     ).toBeVisible();
   });
 
+  test("answers 404 for a saga address that is not a slug, before it reads the database (SAG-25)", async ({
+    page,
+  }) => {
+    const response = await page.goto("/sagas/Not_A_Slug");
+
+    expect(response?.status()).toBe(404);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Página no encontrada" }),
+    ).toBeVisible();
+  });
+
   test("keeps crawlers away from the address that saves a title", async ({
     request,
   }) => {

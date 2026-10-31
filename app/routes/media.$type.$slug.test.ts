@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getEntry: vi.fn(),
   getMediaDetail: vi.fn(),
   getRelatedFormats: vi.fn(),
+  getSagasOfMedia: vi.fn(),
   importMedia: vi.fn(),
   runInBackground: vi.fn(),
   locale: "es",
@@ -20,6 +21,9 @@ vi.mock("~server/auth/require", () => ({
 vi.mock("~server/db/library", () => ({ getEntry: mocks.getEntry }));
 vi.mock("~server/db/media-detail", () => ({
   getMediaDetail: mocks.getMediaDetail,
+}));
+vi.mock("~server/db/sagas", () => ({
+  getSagasOfMedia: mocks.getSagasOfMedia,
 }));
 vi.mock("~server/db/wikidata-store", () => ({
   getRelatedFormats: mocks.getRelatedFormats,
@@ -70,6 +74,7 @@ beforeEach(() => {
   mocks.getEntry.mockReset().mockResolvedValue(null);
   mocks.getMediaDetail.mockReset().mockResolvedValue(detail());
   mocks.getRelatedFormats.mockReset().mockResolvedValue([]);
+  mocks.getSagasOfMedia.mockReset().mockResolvedValue([]);
   mocks.importMedia.mockReset().mockResolvedValue(null);
   mocks.runInBackground.mockReset();
 });
@@ -170,6 +175,42 @@ describe("the other formats of a story (SAG-16)", () => {
     expect(result.related).toEqual([]);
     expect(console.log).toHaveBeenCalledWith(
       JSON.stringify({ event: "media.related_failed", error: "TypeError" }),
+    );
+  });
+});
+
+describe("the saga badge of a title (SAG-25)", () => {
+  it("names the sagas the title is part of, in the language of the visitor", async () => {
+    mocks.getSagasOfMedia.mockResolvedValue([
+      {
+        slug: "matrix",
+        title: "The Matrix",
+        titles: { es: "Matrix", en: "The Matrix" },
+      },
+    ]);
+
+    const result = (await load("movie", `matrix-${id}`)) as {
+      sagas: unknown;
+    };
+
+    expect(mocks.getSagasOfMedia).toHaveBeenCalledWith(
+      { fake: "database" },
+      id,
+    );
+    expect(result.sagas).toEqual([{ slug: "matrix", title: "Matrix" }]);
+  });
+
+  it("still shows the page when the sagas cannot be read", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    mocks.getSagasOfMedia.mockRejectedValue(new TypeError("no table"));
+
+    const result = (await load("movie", `matrix-${id}`)) as {
+      sagas: unknown;
+    };
+
+    expect(result.sagas).toEqual([]);
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "media.sagas_failed", error: "TypeError" }),
     );
   });
 });

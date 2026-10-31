@@ -29,6 +29,9 @@ function merge(a: WikidataItem, b: WikidataItem): WikidataItem {
     ids: { ...a.ids, ...b.ids },
     franchises: [...new Set([...a.franchises, ...b.franchises])],
     basedOn: [...new Set([...a.basedOn, ...b.basedOn])],
+    // The members query is the one that describes an item, so its year wins.
+    year: b.detailed ? b.year : (a.year ?? b.year),
+    detailed: a.detailed || b.detailed,
   };
 }
 

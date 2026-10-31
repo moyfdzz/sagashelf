@@ -105,7 +105,8 @@
       "game": "Videojuegos",
       "other": "Otros"
     },
-    "relationsSource": "Las relaciones vienen de <wikidata>Wikidata</wikidata>."
+    "relationsSource": "Las relaciones vienen de <wikidata>Wikidata</wikidata>.",
+    "partOfSaga": "Parte de la saga <saga>{{title}}</saga>"
   },
   "errors": {
     "backHome": "Volver al inicio",
@@ -841,5 +842,28 @@
     "reality": "Reality",
     "soap_opera": "Telenovela",
     "talk_show": "Programa de entrevistas"
+  },
+  "saga": {
+    "summary_one": "{{count}} obra en todos sus formatos",
+    "summary_other": "{{count}} obras en todos sus formatos",
+    "description": "Las {{count}} obras de la saga {{title}} en todos sus formatos, en orden, con tu progreso en cada una.",
+    "progress": {
+      "title": "Tu progreso",
+      "label": "Progreso en la saga",
+      "summary": "{{percent}} % · {{completed}} de {{total}} obras completadas",
+      "none": "Aún no tienes obras de esta saga en tu biblioteca."
+    },
+    "hint": {
+      "start": "Por dónde empezar:",
+      "next": "Sigue con:"
+    },
+    "order": {
+      "label": "Orden",
+      "release": "Orden de estreno",
+      "story": "Orden de la historia"
+    },
+    "entry": "{{status}} · {{percent}} %",
+    "notHeld": "Las obras sin enlace todavía no están en el catálogo de SagaShelf: ábrelas desde la búsqueda para seguirlas.",
+    "signIn": "Inicia sesión para ver tu progreso en esta saga"
   }
 }

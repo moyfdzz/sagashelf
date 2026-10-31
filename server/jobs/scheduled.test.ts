@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getWikidata: vi.fn(),
   refreshStaleMedia: vi.fn(),
   enrichWithWikidata: vi.fn(),
+  syncSagas: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -15,6 +16,7 @@ vi.mock("../runtime-env", () => ({
   getMediaProviders: mocks.getMediaProviders,
   getWikidata: mocks.getWikidata,
 }));
+vi.mock("./sync-sagas", () => ({ syncSagas: mocks.syncSagas }));
 vi.mock("./enrich-wikidata", () => ({
   enrichWithWikidata: mocks.enrichWithWikidata,
 }));
@@ -136,5 +138,54 @@ describe("runScheduledJobs", () => {
         error: "RangeError",
       }),
     );
+  });
+
+  it("syncs the curated sagas after the Wikidata job, when it is switched on (SAG-25)", async () => {
+    const db = { execute: vi.fn() };
+    const wikidata = { lookup: vi.fn(), members: vi.fn() };
+    mocks.getMediaProviders.mockReturnValue([]);
+    mocks.getWikidata.mockReturnValue(wikidata);
+    mocks.getDb.mockResolvedValue(db);
+    mocks.enrichWithWikidata.mockResolvedValue({
+      found: 0,
+      matched: 0,
+      unknown: 0,
+      items: 0,
+    });
+    mocks.syncSagas.mockResolvedValue({ sagas: 21, items: 160 });
+
+    await runScheduledJobs();
+
+    expect(mocks.syncSagas).toHaveBeenCalledWith({ db, wikidata });
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "sagas.sync", sagas: 21, items: 160 }),
+    );
+  });
+
+  it("logs a failure of the saga sync by name and does not throw", async () => {
+    mocks.getMediaProviders.mockReturnValue([]);
+    mocks.getWikidata.mockReturnValue({});
+    mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+    mocks.enrichWithWikidata.mockResolvedValue({});
+    mocks.syncSagas.mockRejectedValue(new SyntaxError("bad"));
+
+    await expect(runScheduledJobs()).resolves.toBeUndefined();
+
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "job.failed",
+        job: "sync-sagas",
+        error: "SyntaxError",
+      }),
+    );
+  });
+
+  it("does not sync sagas when Wikidata is off", async () => {
+    mocks.getMediaProviders.mockReturnValue([]);
+    mocks.getWikidata.mockReturnValue(null);
+
+    await runScheduledJobs();
+
+    expect(mocks.syncSagas).not.toHaveBeenCalled();
   });
 });

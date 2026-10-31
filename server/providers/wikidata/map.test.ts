@@ -125,6 +125,37 @@ describe("buildMembersQuery", () => {
 });
 
 describe("parseMembers", () => {
+  it("reads the year, and says null when Wikidata has no date (SAG-25)", () => {
+    const members = parseMembers(membersAnswer);
+
+    expect(members.find((item) => item.qid === mangaQid)).toMatchObject({
+      year: 2009,
+      detailed: true,
+    });
+    expect(members.find((item) => item.qid === filmQid)?.year).toBe(2015);
+    expect(members.find((item) => item.qid === "Q20800425")?.year).toBeNull();
+    expect(
+      parseMembers({
+        results: {
+          bindings: [
+            {
+              member: { value: "http://www.wikidata.org/entity/Q1" },
+              year: { value: "99999" },
+            },
+          ],
+        },
+      })[0]?.year,
+    ).toBeNull();
+  });
+
+  it("asks for the date of each member, the publication or the start", () => {
+    const query = buildMembersQuery([franchiseQid], []);
+
+    expect(query).toContain("wdt:P577");
+    expect(query).toContain("wdt:P580");
+    expect(query).toContain("MIN(YEAR(?date))");
+  });
+
   it("reads the format from the classes and the ids we can match", () => {
     const members = parseMembers(membersAnswer);
 

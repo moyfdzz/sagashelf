@@ -1,6 +1,7 @@
 import { getDb, getMediaProviders, getWikidata } from "../runtime-env";
 import { enrichWithWikidata } from "./enrich-wikidata";
 import { refreshStaleMedia } from "./refresh-stale-media";
+import { syncSagas } from "./sync-sagas";
 
 const logJobFailed = (job: string, error: unknown) =>
   console.log(
@@ -39,5 +40,16 @@ export async function runScheduledJobs(): Promise<void> {
     }
   } catch (error) {
     logJobFailed("enrich-wikidata", error);
+  }
+
+  // The curated sagas (SAG-25, ADR-026). With nothing to do it costs one subrequest.
+  try {
+    const wikidata = getWikidata();
+    if (wikidata) {
+      const summary = await syncSagas({ db: await getDb(), wikidata });
+      console.log(JSON.stringify({ event: "sagas.sync", ...summary }));
+    }
+  } catch (error) {
+    logJobFailed("sync-sagas", error);
   }
 }
