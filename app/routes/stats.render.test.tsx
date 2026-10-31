@@ -197,9 +197,9 @@ const full: StatsData = {
   withoutGenre: 2,
 };
 
-const props = (stats: StatsData) =>
+const props = (stats: StatsData, type: string | null = null) =>
   ({
-    loaderData: { title: "Estadísticas", stats },
+    loaderData: { title: "Estadísticas", type, stats },
   }) as unknown as Parameters<typeof Stats>[0];
 
 describe("the statistics page", () => {
@@ -636,5 +636,144 @@ describe("the statistics page", () => {
     expect(html).toContain("Your best year, with 2 titles finished");
     expect(html).toContain("2 more times");
     expect(html).toContain("Jan 15, 2025");
+  });
+});
+
+describe("the tabs by type (SAG-91)", () => {
+  /** A library of manga only: a reading, a genre that links to the library and a score. */
+  const manga: StatsData = {
+    ...full,
+    entries: 2,
+    completed: 1,
+    episodesWatched: 0,
+    rewatches: 0,
+    minutesWatched: 0,
+    minutesPlanned: 0,
+    unknownRuntime: 0,
+    chaptersRead: 120,
+    byType: { manga: 2 },
+    minutesByType: {},
+    scoreByType: { manga: { average: 9, scored: 1 } },
+    mostWatched: [],
+    mostRewatched: [],
+  };
+  const tabsOf = (html: string) =>
+    (html.match(/<a [^>]*>[^<]*<\/a>/g) ?? []).filter((tag) =>
+      tag.includes('href="/stats'),
+    );
+
+  it("shows a link for All and one for each type, in the language of the page", async () => {
+    const es = tabsOf(await render(<Stats {...props(full)} />)).join("\n");
+    const en = tabsOf(await render(<Stats {...props(full)} />, "en")).join(
+      "\n",
+    );
+
+    expect(es).toMatch(/href="\/stats"[^>]*>Todos</);
+    expect(es).toMatch(/href="\/stats\?type=movie"[^>]*>Películas</);
+    expect(es).toMatch(/href="\/stats\?type=series"[^>]*>Series</);
+    expect(es).toMatch(/href="\/stats\?type=anime"[^>]*>Anime</);
+    expect(es).toMatch(/href="\/stats\?type=book"[^>]*>Libros</);
+    expect(es).toMatch(/href="\/stats\?type=manga"[^>]*>Manga</);
+    expect(en).toMatch(/href="\/stats\?type=movie"[^>]*>Movies</);
+    expect(tabsOf(await render(<Stats {...props(full)} />))).toHaveLength(6);
+  });
+
+  it("names the nav and marks the tab in use, and only that one", async () => {
+    const all = await render(<Stats {...props(full)} />);
+    const onManga = await render(<Stats {...props(manga, "manga")} />);
+
+    expect(all).toContain('aria-label="Tipos de contenido"');
+    expect(
+      tabsOf(all).filter((tag) => tag.includes("aria-current")),
+    ).toHaveLength(1);
+    expect(tabsOf(all).find((tag) => tag.includes("aria-current"))).toContain(
+      'href="/stats"',
+    );
+    expect(
+      tabsOf(onManga).find((tag) => tag.includes("aria-current")),
+    ).toContain('href="/stats?type=manga"');
+  });
+
+  it("leaves out the panels that compare types on the tab of one type", async () => {
+    const all = await render(<Stats {...props(full)} />);
+    const onManga = await render(<Stats {...props(manga, "manga")} />);
+
+    expect(all).toContain('id="stats-types"');
+    expect(all).toContain('id="stats-time-by-type"');
+    expect(all).toContain('id="stats-score-by-type"');
+    expect(onManga).not.toContain('id="stats-types"');
+    expect(onManga).not.toContain('id="stats-time-by-type"');
+    expect(onManga).not.toContain('id="stats-score-by-type"');
+    // What is not about types stays.
+    expect(onManga).toContain('id="stats-statuses"');
+  });
+
+  it("leaves out the tiles that do not apply to the type, and keeps the ones that do", async () => {
+    const onManga = await render(<Stats {...props(manga, "manga")} />);
+    const onMovie = await render(<Stats {...props(full, "movie")} />);
+    const onSeries = await render(<Stats {...props(full, "series")} />);
+
+    expect(onManga).toContain("Títulos completados");
+    expect(onManga).toContain("Capítulos leídos");
+    for (const label of [
+      "Episodios vistos",
+      "Días de contenido visto",
+      "Días de contenido pendiente",
+    ]) {
+      expect(onManga).not.toContain(label);
+    }
+    expect(onMovie).toContain("Días de contenido visto");
+    expect(onMovie).not.toContain("Episodios vistos");
+    expect(onSeries).toContain("Episodios vistos");
+  });
+
+  it("leaves out the note about lengths, which is for video, on the tab of a book", async () => {
+    const withNote = { ...full, unknownRuntime: 2 };
+
+    const all = await render(<Stats {...props(withNote)} />);
+    const onBook = await render(<Stats {...props(withNote, "book")} />);
+
+    expect(all).toContain("2 títulos aún no tienen duración");
+    expect(all).toContain("Los días son aproximados");
+    expect(onBook).not.toContain("aún no tienen duración");
+    expect(onBook).not.toContain("Los días son aproximados");
+  });
+
+  it("keeps the type in the links to the library, as a plain link", async () => {
+    const html = await render(<Stats {...props(manga, "manga")} />);
+    const links = (html.match(/<a [^>]*>/g) ?? []).filter((tag) =>
+      tag.includes('href="/library'),
+    );
+    const text = links.join("\n");
+
+    expect(text).toContain('href="/library?type=manga&amp;rated=8"');
+    expect(text).toContain('href="/library?type=manga&amp;year=2014"');
+    expect(text).toContain('href="/library?type=manga&amp;genre=isekai"');
+    for (const tag of links) expect(tag, tag).not.toContain("data-discover");
+  });
+
+  it("leaves the links to the library as they were on the tab of all types", async () => {
+    const html = await render(<Stats {...props(full)} />);
+
+    expect(html).toContain('href="/library?rated=8"');
+    expect(html).toContain('href="/library?genre=isekai"');
+    expect(html).not.toContain("/library?type=");
+  });
+
+  it("says there is nothing of that type, with the tabs to go elsewhere", async () => {
+    const es = await render(<Stats {...props(empty, "manga")} />);
+    const en = await render(<Stats {...props(empty, "movie")} />, "en");
+
+    expect(es).toContain("Aún no has guardado manga.");
+    expect(es).not.toContain("Aún no tienes títulos en tu biblioteca");
+    expect(tabsOf(es)).toHaveLength(6);
+    expect(en).toContain("You have not saved any movies yet.");
+    expect(es).toMatch(/<a [^>]*href="\/search"/);
+  });
+
+  it("shows no tabs for a library with nothing in it at all", async () => {
+    const html = await render(<Stats {...props(empty)} />);
+
+    expect(tabsOf(html)).toHaveLength(0);
   });
 });

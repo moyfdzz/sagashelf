@@ -643,3 +643,312 @@ describe("the statistics of a person (SAG-61, SAG-85)", () => {
     expect(stats.minutesWatched).toBe(120);
   });
 });
+
+describe("the statistics of one type (SAG-91)", () => {
+  /**
+   * One person with every type: a movie (completed, watched once before), a series being watched,
+   * an anime completed, a planned movie, a book and a manga, each with its own year, score,
+   * genre and dates, so a filter that leaks shows in some number.
+   */
+  async function everyType() {
+    const user = await newUser();
+
+    const movie = await addMedia({
+      runtimeMinutes: 120,
+      year: 2014,
+      title: "A movie",
+      genres: ["action"],
+    });
+    const movieEntry = await addEntry(user.id, movie, {
+      status: "completed",
+      score: 8,
+      startedAt: "2025-03-01",
+      finishedAt: "2025-03-10",
+    });
+    await db.insert(libraryViewings).values({
+      entryId: movieEntry,
+      startedOn: "2024-05-01",
+      finishedOn: "2024-05-02",
+    });
+    const plannedMovie = await addMedia({
+      runtimeMinutes: 100,
+      year: 2021,
+      title: "A planned movie",
+      genres: ["comedy"],
+    });
+    await addEntry(user.id, plannedMovie);
+
+    const series = await addMedia({
+      type: "series",
+      runtimeMinutes: 40,
+      year: 2020,
+      episodes: 3,
+      title: "A series",
+      genres: ["drama"],
+    });
+    await addEntry(user.id, series, { status: "in_progress", progress: 2 });
+
+    const anime = await addMedia({
+      type: "anime",
+      runtimeMinutes: 50,
+      year: 2013,
+      episodes: 3,
+      title: "An anime",
+      genres: ["action", "drama"],
+    });
+    await addEntry(user.id, anime, {
+      status: "completed",
+      progress: 3,
+      score: 10,
+      startedAt: "2025-01-01",
+      finishedAt: "2025-01-21",
+    });
+
+    const book = await addMedia({
+      type: "book",
+      year: 1999,
+      title: "A book",
+      genres: ["mystery"],
+      externalId: { provider: "open_library", id: "OL1W" },
+    });
+    await addEntry(user.id, book, {
+      status: "completed",
+      progress: 300,
+      progressUnit: "pages",
+      progressTotal: 300,
+      score: 6,
+      finishedAt: "2025-06-15",
+    });
+
+    const manga = await addMedia({
+      type: "manga",
+      year: 2005,
+      title: "A manga",
+      genres: ["isekai"],
+      externalId: {
+        provider: "mangadex",
+        id: "00000000-0000-4000-8000-000000000001",
+      },
+    });
+    await addEntry(user.id, manga, {
+      status: "in_progress",
+      progress: 40,
+      progressUnit: "chapters",
+      score: 9,
+    });
+    return user;
+  }
+
+  it("is the same as before when no type is asked", async () => {
+    const user = await everyType();
+
+    expect(await getStats(db, user.id, "es", undefined)).toEqual(
+      await getStats(db, user.id, "es"),
+    );
+    expect((await getStats(db, user.id, "es")).entries).toBe(6);
+  });
+
+  it("counts only the entries of the type, in every number", async () => {
+    const user = await everyType();
+
+    const movie = await getStats(db, user.id, "es", "movie");
+    expect(movie).toMatchObject({
+      entries: 2,
+      completed: 1,
+      rewatches: 1,
+      // 120 minutes, twice (the completed run and the earlier viewing), and the planned one.
+      minutesWatched: 240,
+      minutesPlanned: 100,
+      scored: 1,
+      averageScore: 8,
+      episodesWatched: 0,
+      pagesRead: 0,
+      chaptersRead: 0,
+    });
+    expect(movie.byType).toEqual({ movie: 2 });
+    expect(movie.byStatus).toEqual({ completed: 1, planned: 1 });
+    expect(movie.scores[7]).toBe(1);
+    expect(movie.scores.reduce((sum, count) => sum + count, 0)).toBe(1);
+    expect(movie.releasedByYear).toEqual([
+      { year: 2014, count: 1 },
+      { year: 2021, count: 1 },
+    ]);
+
+    const series = await getStats(db, user.id, "es", "series");
+    expect(series).toMatchObject({
+      entries: 1,
+      completed: 0,
+      episodesWatched: 2,
+      minutesWatched: 80,
+      scored: 0,
+      averageScore: null,
+    });
+    expect(series.byType).toEqual({ series: 1 });
+
+    const anime = await getStats(db, user.id, "es", "anime");
+    expect(anime).toMatchObject({
+      entries: 1,
+      completed: 1,
+      episodesWatched: 3,
+      minutesWatched: 150,
+      averageScore: 10,
+    });
+
+    const book = await getStats(db, user.id, "es", "book");
+    expect(book).toMatchObject({
+      entries: 1,
+      pagesRead: 300,
+      chaptersRead: 0,
+      minutesWatched: 0,
+      averageScore: 6,
+    });
+
+    const manga = await getStats(db, user.id, "es", "manga");
+    expect(manga).toMatchObject({
+      entries: 1,
+      chaptersRead: 40,
+      pagesRead: 0,
+      averageScore: 9,
+    });
+  });
+
+  it("adds up, across the five types, to what the whole library says", async () => {
+    const user = await everyType();
+    const all = await getStats(db, user.id, "es");
+
+    const parts = await Promise.all(
+      (["movie", "series", "anime", "book", "manga"] as const).map((type) =>
+        getStats(db, user.id, "es", type),
+      ),
+    );
+    const sum = (pick: (stats: (typeof parts)[number]) => number) =>
+      parts.reduce((total, stats) => total + pick(stats), 0);
+
+    expect(sum((stats) => stats.entries)).toBe(all.entries);
+    expect(sum((stats) => stats.completed)).toBe(all.completed);
+    expect(sum((stats) => stats.minutesWatched)).toBe(all.minutesWatched);
+    expect(sum((stats) => stats.minutesPlanned)).toBe(all.minutesPlanned);
+    expect(sum((stats) => stats.scored)).toBe(all.scored);
+    expect(sum((stats) => stats.rewatches)).toBe(all.rewatches);
+  });
+
+  it("lists only titles of the type: the best, the most watched, the oldest planned", async () => {
+    const user = await everyType();
+
+    const movie = await getStats(db, user.id, "es", "movie");
+    expect(movie.best.map((entry) => entry.title)).toEqual(["A movie"]);
+    expect(movie.mostWatched.map((entry) => entry.title)).toEqual(["A movie"]);
+    expect(movie.mostRewatched.map((entry) => entry.title)).toEqual([
+      "A movie",
+    ]);
+    expect(movie.oldestPlanned.map((entry) => entry.title)).toEqual([
+      "A planned movie",
+    ]);
+
+    const anime = await getStats(db, user.id, "es", "anime");
+    expect(anime.best.map((entry) => entry.title)).toEqual(["An anime"]);
+    expect(anime.oldestPlanned).toEqual([]);
+    expect(anime.mostRewatched).toEqual([]);
+
+    const manga = await getStats(db, user.id, "es", "manga");
+    expect(manga.best.map((entry) => entry.title)).toEqual(["A manga"]);
+    expect(manga.mostWatched).toEqual([]);
+  });
+
+  it("places in time only the viewings of the type", async () => {
+    const user = await everyType();
+
+    const movie = await getStats(db, user.id, "es", "movie");
+    expect(movie.finishedByMonth).toEqual([
+      { year: 2024, month: 5, count: 1 },
+      { year: 2025, month: 3, count: 1 },
+    ]);
+    expect(movie.finishedByYear).toEqual([
+      { year: 2024, count: 1 },
+      { year: 2025, count: 1 },
+    ]);
+    // The movie ran from the 1st to the 10th, and its earlier viewing took one day.
+    expect(movie.finishTime).toEqual({ medianDays: 5, counted: 2, skipped: 0 });
+
+    const book = await getStats(db, user.id, "es", "book");
+    expect(book.finishedByMonth).toEqual([{ year: 2025, month: 6, count: 1 }]);
+    expect(book.finishTime).toEqual({
+      medianDays: null,
+      counted: 0,
+      skipped: 1,
+    });
+
+    const anime = await getStats(db, user.id, "es", "anime");
+    expect(anime.finishTime).toEqual({
+      medianDays: 20,
+      counted: 1,
+      skipped: 0,
+    });
+  });
+
+  it("counts only the genres of the type, and the titles with none apart", async () => {
+    const user = await everyType();
+
+    const anime = await getStats(db, user.id, "es", "anime");
+    expect(anime.byGenre.map((entry) => entry.genre).sort()).toEqual([
+      "action",
+      "drama",
+    ]);
+    expect(
+      anime.byGenre.find((entry) => entry.genre === "action"),
+    ).toMatchObject({ titles: 1, minutes: 150, scored: 1, averageScore: 10 });
+
+    const movie = await getStats(db, user.id, "es", "movie");
+    // The planned movie (comedy) is not counted in its genres.
+    expect(movie.byGenre.map((entry) => entry.genre)).toEqual(["action"]);
+
+    const manga = await getStats(db, user.id, "es", "manga");
+    expect(manga.byGenre).toMatchObject([
+      { genre: "isekai", titles: 1, chaptersRead: 40 },
+    ]);
+  });
+
+  it("is empty for a type the person has nothing of", async () => {
+    const user = await newUser();
+    await addEntry(user.id, await addMedia({ runtimeMinutes: 90 }), {
+      status: "completed",
+      score: 7,
+    });
+
+    const manga = await getStats(db, user.id, "es", "manga");
+
+    expect(manga).toMatchObject({
+      entries: 0,
+      completed: 0,
+      minutesWatched: 0,
+      averageScore: null,
+      best: [],
+      byGenre: [],
+      oldestPlanned: [],
+      finishedByMonth: [],
+    });
+    expect(manga.byType).toEqual({});
+    expect(manga.finishTime).toEqual({
+      medianDays: null,
+      counted: 0,
+      skipped: 0,
+    });
+  });
+
+  it("never counts the entries of another person, whatever the type", async () => {
+    const user = await everyType();
+    const other = await newUser();
+    await addEntry(
+      other.id,
+      await addMedia({ type: "manga", title: "Not yours", genres: ["isekai"] }),
+      { status: "completed", score: 1, finishedAt: "2025-02-02" },
+    );
+
+    const manga = await getStats(db, user.id, "es", "manga");
+
+    expect(manga.entries).toBe(1);
+    expect(manga.best.map((entry) => entry.title)).toEqual(["A manga"]);
+    expect(manga.finishedByMonth).toEqual([]);
+    expect(manga.byGenre).toMatchObject([{ genre: "isekai", titles: 1 }]);
+  });
+});

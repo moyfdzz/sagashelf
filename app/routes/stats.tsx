@@ -19,21 +19,29 @@ import {
   topGenresByTime,
   topGenresByTitles,
 } from "~/lib/stats-view";
-import { forwardLinkClass, linkClass } from "~/lib/ui";
+import { forwardLinkClass, linkClass, tabClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
-import { getStats } from "~server/db/stats";
+import { getStats, isStatsType } from "~server/db/stats";
 import { getDb } from "~server/runtime-env";
 
 export async function loader(args: Route.LoaderArgs) {
   const user = await requireUser(args);
   const { t } = getInstance(args.context);
+  // The tab asked for (SAG-91). Anything that is not one of the types means all of them.
+  const asked = new URL(args.request.url).searchParams.get("type");
+  const type = isStatsType(asked) ? asked : null;
   const stats = await getStats(
     await getDb(),
     user.id,
     getLocale(args.context) === "en" ? "en" : "es",
+    type ?? undefined,
   );
-  return { title: t("app.pageTitle", { title: t("stats.title") }), stats };
+  return {
+    title: t("app.pageTitle", { title: t("stats.title") }),
+    type,
+    stats,
+  };
 }
 
 // A page with a person's data is never kept by a shared cache.
@@ -56,6 +64,12 @@ const typeOrder = [
   ["book", "chart-4"],
   ["manga", "chart-5"],
 ] as const;
+
+// The tabs (SAG-91): all of them, then one per type. Each is a plain address, so it works without
+// JavaScript and can be kept as a bookmark. The labels are the ones of the library tabs.
+const tabTypes = [null, "movie", "series", "anime", "book", "manga"] as const;
+const videoTypes = ["movie", "series", "anime"];
+const episodeTypes = ["series", "anime"];
 
 const statusOrder = [
   "planned",
@@ -95,12 +109,49 @@ function Panel({
   );
 }
 
+/**
+ * The row of tabs. The statistics page is not a session page, so a move between its tabs is a
+ * router link, which keeps the back button honest and asks only for the data of the page.
+ */
+function StatsTabs({ type }: { type: (typeof tabTypes)[number] }) {
+  const { t } = useTranslation();
+  return (
+    <nav aria-label={t("library.tabs.label")} className="mt-6">
+      <ul className="flex flex-wrap gap-2">
+        {tabTypes.map((tab) => {
+          const active = type === tab;
+          return (
+            <li key={tab ?? "all"}>
+              <Link
+                to={tab ? `/stats?type=${tab}` : "/stats"}
+                aria-current={active ? "page" : undefined}
+                className={tabClass(active)}
+              >
+                {t(`library.tabs.${tab ?? "all"}`)}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 // Every link from this page to the library is a plain `<a>`, never the router's `Link`: the library
 // has its own security policy, which only a new document gets (ADR-018, SAG-89). A test keeps it so.
 export default function Stats({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { formatNumber, formatDate } = useFormatters();
-  const { stats } = loaderData;
+  const { stats, type } = loaderData;
+  // Where a bar leads: the library with the filter of the bar, and the tab's type when there is one.
+  // The type goes first, as the library writes its own addresses.
+  const libraryHref = (filter: Record<string, string | number>) => {
+    const params = new URLSearchParams(type ? { type } : {});
+    for (const [key, value] of Object.entries(filter)) {
+      params.set(key, String(value));
+    }
+    return `/library?${params}`;
+  };
   const monthName = (month: number, style: "narrow" | "long") =>
     formatDate(new Date(Date.UTC(2000, month - 1, 15)), { month: style });
   const titles = (count: number) => t("stats.titles", { count });
@@ -116,7 +167,10 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
     return (
       <main className="container mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-3xl font-bold">{t("stats.title")}</h1>
-        <p className="text-fg-muted mt-2">{t("stats.empty")}</p>
+        {type ? <StatsTabs type={type} /> : null}
+        <p className="text-fg-muted mt-4">
+          {type ? t(`library.empty.byType.${type}`) : t("stats.empty")}
+        </p>
         <p className="mt-4">
           <Link to="/search" className={forwardLinkClass}>
             {t("stats.emptyLink")}
@@ -130,11 +184,21 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
     minutes === 0 && stats.unknownRuntime > 0
       ? t("stats.none")
       : formatNumber(minutesToDays(minutes), { maximumFractionDigits: 1 });
+  // A tab of one type leaves out what that type has no use for: episodes and days are for video,
+  // and only series and anime have episodes.
+  const showVideo = !type || videoTypes.includes(type);
+  const showEpisodes = !type || episodeTypes.includes(type);
   const tiles: [string, string][] = [
     [t("stats.tiles.completed"), formatNumber(stats.completed)],
-    [t("stats.tiles.episodes"), formatNumber(stats.episodesWatched)],
-    [t("stats.tiles.daysWatched"), days(stats.minutesWatched)],
-    [t("stats.tiles.daysPlanned"), days(stats.minutesPlanned)],
+    ...(showEpisodes
+      ? [[t("stats.tiles.episodes"), formatNumber(stats.episodesWatched)]]
+      : []),
+    ...(showVideo
+      ? [
+          [t("stats.tiles.daysWatched"), days(stats.minutesWatched)],
+          [t("stats.tiles.daysPlanned"), days(stats.minutesPlanned)],
+        ]
+      : []),
     [
       t("stats.tiles.averageScore"),
       stats.averageScore === null
@@ -142,7 +206,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
         : formatNumber(stats.averageScore, { maximumFractionDigits: 1 }),
     ],
     [t("stats.tiles.rewatches"), formatNumber(stats.rewatches)],
-  ];
+  ] as [string, string][];
   if (stats.pagesRead > 0) {
     tiles.push([t("stats.tiles.pages"), formatNumber(stats.pagesRead)]);
   }
@@ -153,8 +217,9 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
     tiles.push([t("stats.tiles.volumes"), formatNumber(stats.volumesRead)]);
   }
 
-  const runtimeNote =
-    stats.unknownRuntime > 0
+  const runtimeNote = !showVideo
+    ? null
+    : stats.unknownRuntime > 0
       ? `${t("stats.runtime.note")} ${t("stats.runtime.missing", { count: stats.unknownRuntime })}`
       : t("stats.runtime.note");
 
@@ -162,7 +227,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
     key: String(index + 1),
     label: formatNumber(index + 1),
     value: count,
-    href: count > 0 ? `/library?rated=${index + 1}` : undefined,
+    href: count > 0 ? libraryHref({ rated: index + 1 }) : undefined,
     title: t("stats.point", {
       label: formatNumber(index + 1),
       value: titles(count),
@@ -179,7 +244,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
       key: String(year),
       label: String(year),
       value: count,
-      href: link && count > 0 ? `/library?year=${year}` : undefined,
+      href: link && count > 0 ? libraryHref({ year }) : undefined,
       title: t("stats.point", { label: year, value: titles(count) }),
     }));
 
@@ -219,7 +284,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
 
   // The genres (SAG-86): a title with several is in each one. A bar leads to the library with the
   // genre as a filter, as a plain link because the library has its own security policy.
-  const genreHref = (genre: string) => `/library?genre=${genre}`;
+  const genreHref = (genre: string) => libraryHref({ genre });
   const genreTime = topGenresByTime(stats.byGenre);
   const genreTitles = topGenresByTitles(stats.byGenre);
   const genreBest = bestScoredGenres(stats.byGenre);
@@ -285,6 +350,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
     <main className="container mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-3xl font-bold">{t("stats.title")}</h1>
       <p className="text-fg-muted mt-2">{t("stats.description")}</p>
+      <StatsTabs type={type} />
 
       <section aria-label={t("stats.tiles.label")} className="mt-8">
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -298,7 +364,9 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
             </div>
           ))}
         </dl>
-        <p className="text-fg-muted mt-3 text-sm">{runtimeNote}</p>
+        {runtimeNote ? (
+          <p className="text-fg-muted mt-3 text-sm">{runtimeNote}</p>
+        ) : null}
       </section>
 
       <div className="mt-10 grid gap-x-10 gap-y-12 lg:grid-cols-2">
@@ -362,13 +430,16 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
           ) : null}
         </Panel>
 
-        <Panel id="stats-types" title={t("stats.types.title")}>
-          <ProportionBar
-            segments={segments}
-            format={formatNumber}
-            formatShare={(share) => formatNumber(share, { style: "percent" })}
-          />
-        </Panel>
+        {/* The panels that compare types say nothing on the tab of a single type. */}
+        {type ? null : (
+          <Panel id="stats-types" title={t("stats.types.title")}>
+            <ProportionBar
+              segments={segments}
+              format={formatNumber}
+              formatShare={(share) => formatNumber(share, { style: "percent" })}
+            />
+          </Panel>
+        )}
 
         <Panel id="stats-statuses" title={t("stats.statuses.title")}>
           <RowBars
@@ -578,7 +649,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
           </Panel>
         ) : null}
 
-        {timeSegments.length > 0 ? (
+        {!type && timeSegments.length > 0 ? (
           <Panel
             id="stats-time-by-type"
             title={t("stats.timeByType.title")}
@@ -592,7 +663,7 @@ export default function Stats({ loaderData }: Route.ComponentProps) {
           </Panel>
         ) : null}
 
-        {scoreRows.length > 0 ? (
+        {!type && scoreRows.length > 0 ? (
           <Panel
             id="stats-score-by-type"
             title={t("stats.scoreByType.title")}
