@@ -42,6 +42,11 @@ export type NormalizedMedia = {
    * says "asked, and none of ours fits", which a refresh does not ask again.
    */
   genres?: Genre[];
+  /**
+   * Ids the source gives for the same title in other catalogs (SAG-16). Left out when the source
+   * does not carry that field; an empty object says "asked, none given".
+   */
+  crossIds?: { mal?: string; anilist?: string };
   imageUrl: string | null;
   status: MediaStatus;
   popularity: number;

@@ -23,7 +23,7 @@ flowchart LR
 
   neon[("Neon Postgres<br/>Drizzle, SAG-9")]
   clerk["Clerk accounts<br/>sessions (SAG-10), user webhook (SAG-11)"]
-  providers["Data providers<br/>TMDB, Open Library and MangaDex built<br/>(SAG-13, 14, 66)<br/>TVmaze, Wikidata, Google Books<br/>planned (SAG-16, 67)"]
+  providers["Data providers<br/>TMDB, Open Library, MangaDex and Wikidata built<br/>(SAG-13, 14, 66, 16)<br/>TVmaze, Google Books<br/>planned (SAG-90, 67)"]
   discord["Discord webhooks<br/>planned, SAG-27"]
   gh["GitHub<br/>repository, Actions, ruleset"]
 
@@ -43,7 +43,7 @@ flowchart LR
   class providers,discord planned
 ```
 
-The Worker serves the pages (search, title pages, the library, the statistics, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime), Open Library (books) and MangaDex (manga) are the data providers built; the last two are switched on by a variable. The others are planned. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54); the outbox that would need it every minute is still planned.
+The Worker serves the pages (search, title pages, the library, the statistics, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime), Open Library (books) and MangaDex (manga) are the data providers built; the last two are switched on by a variable. Wikidata is not a provider of titles: a job looks each title up and keeps which other formats of the same story it has ([ADR-025](adr/025-wikidata.md), SAG-16, switched on by `WIKIDATA_ENABLED`). The others are planned. The `scheduled` handler runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54), then looks up to 20 titles up in Wikidata; the outbox that would need it every minute is still planned.
 
 ## 2. Life of a request
 

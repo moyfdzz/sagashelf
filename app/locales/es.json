@@ -94,7 +94,18 @@
     },
     "backToSearch": "← Volver a los resultados",
     "backToEntry": "← Volver a mi entrada",
-    "genres": "Géneros"
+    "genres": "Géneros",
+    "otherFormats": "Otros formatos de esta historia",
+    "formats": {
+      "anime": "Anime",
+      "movie": "Películas",
+      "series": "Series",
+      "manga": "Manga",
+      "book": "Libros",
+      "game": "Videojuegos",
+      "other": "Otros"
+    },
+    "relationsSource": "Las relaciones vienen de <wikidata>Wikidata</wikidata>."
   },
   "errors": {
     "backHome": "Volver al inicio",
@@ -313,7 +324,6 @@
       "title": "Fuentes que se añadirán",
       "intro": "SagaShelf todavía no usa estas fuentes. Cuando lo haga, se mostrarán con este crédito:",
       "tvmaze": "Horarios de episodios de <site>TVmaze</site>, con licencia CC BY-SA.",
-      "wikidata": "Relaciones entre títulos de <site>Wikidata</site> (Powered by Wikidata), de dominio público (CC0).",
       "googleBooks": "Libros de <site>Google Books</site>, solo para mostrar y sin guardarse."
     },
     "openLibrary": {
@@ -331,6 +341,10 @@
     "cookies": {
       "title": "Cookies",
       "body": "Solo usamos cookies necesarias, por eso no hay un aviso que aceptar. <site>Más información en la Política de privacidad</site>."
+    },
+    "wikidata": {
+      "title": "Wikidata",
+      "body": "Las relaciones entre títulos (de qué historia forma parte cada uno y en qué otros formatos existe) vienen de <site>Wikidata</site>, de dominio público (CC0). Powered by Wikidata."
     }
   },
   "privacy": {

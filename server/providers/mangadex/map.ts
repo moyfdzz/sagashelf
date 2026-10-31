@@ -23,6 +23,8 @@ export type MangadexManga = {
     year?: number | null;
     contentRating?: string;
     tags?: MangadexTag[];
+    /** Ids in other catalogs: `al` is AniList, `mal` is MyAnimeList (read 2026-10-30). */
+    links?: { al?: string; mal?: string } | null;
   };
   relationships?: MangadexRelationship[];
 };
@@ -85,6 +87,20 @@ const genreOfTag: Record<string, readonly Genre[]> = {
 };
 
 const readGroups = new Set(["genre", "theme"]);
+
+const numericId = /^[0-9]{1,9}$/;
+
+/** The AniList and MyAnimeList ids of a manga, which are the bridge to Wikidata (SAG-16). */
+export function crossIdsOfLinks(
+  links: NonNullable<MangadexManga["attributes"]>["links"],
+): { mal?: string; anilist?: string } {
+  const mal = links?.mal?.trim();
+  const anilist = links?.al?.trim();
+  return {
+    ...(mal && numericId.test(mal) ? { mal } : {}),
+    ...(anilist && numericId.test(anilist) ? { anilist } : {}),
+  };
+}
 
 /** The genres of our list for the tags of a manga. */
 export function genresOfTags(tags: readonly MangadexTag[]): Genre[] {
@@ -242,6 +258,7 @@ export function mapManga(
     ...(creators.length > 0 ? { creators } : {}),
     // MangaDex always sends the tags of a manga: a manga with none of ours is "asked, none".
     genres: genresOfTags(attributes.tags ?? []),
+    crossIds: crossIdsOfLinks(attributes.links),
     imageUrl: cover ? `${coverBase}/${id}/${cover}` : null,
     status: statusOf(attributes.status),
     // MangaDex sends no popularity with a search; the order is its relevance, which is kept.

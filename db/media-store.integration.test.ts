@@ -419,6 +419,56 @@ describe("saveMedia", () => {
     expect(await length()).toBe(30);
   });
 
+  describe("ids in other catalogs (SAG-16)", () => {
+    const manga: NormalizedMedia = {
+      ...titan,
+      type: "manga",
+      externalId: {
+        provider: "mangadex",
+        id: "00000000-0000-4000-8000-000000000001",
+      },
+    };
+    const crossIdsOf = async (id: string) =>
+      (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
+        ?.crossIds;
+
+    it("saves the ids, leaves them null when the source did not say, and saves an empty object when it said none", async () => {
+      const said = await saveMedia(db, {
+        ...manga,
+        crossIds: { mal: "2", anilist: "30002" },
+      });
+      const none = await saveMedia(db, {
+        ...manga,
+        externalId: {
+          provider: "mangadex",
+          id: "00000000-0000-4000-8000-000000000002",
+        },
+        crossIds: {},
+      });
+      const silent = await saveMedia(db, titan);
+
+      expect(await crossIdsOf(said)).toEqual({ mal: "2", anilist: "30002" });
+      expect(await crossIdsOf(none)).toEqual({});
+      expect(await crossIdsOf(silent)).toBeNull();
+    });
+
+    it("keeps the ids it holds when a later save brings none, and replaces them when it brings others", async () => {
+      const id = await saveMedia(db, { ...manga, crossIds: { mal: "2" } });
+
+      await saveMedia(db, { ...manga, crossIds: {} });
+      expect(await crossIdsOf(id)).toEqual({ mal: "2" });
+      await saveMedia(db, { ...manga, crossIds: { mal: "3", anilist: "9" } });
+      expect(await crossIdsOf(id)).toEqual({ mal: "3", anilist: "9" });
+    });
+
+    it("keeps an empty object when the title held nothing, which says it was asked", async () => {
+      const id = await saveMedia(db, titan);
+      await saveMedia(db, { ...titan, crossIds: {} });
+
+      expect(await crossIdsOf(id)).toEqual({});
+    });
+  });
+
   describe("genres (SAG-71)", () => {
     const genresOf = async (id: string) =>
       (await db.select().from(mediaItems).where(eq(mediaItems.id, id)))[0]
@@ -784,6 +834,31 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     expect(
       (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
     ).toEqual([stale, kept, lonely]);
+  });
+
+  it("asks once for the manga saved before their ids in other catalogs were kept, and not again (SAG-16)", async () => {
+    const manga = {
+      ...complete,
+      type: "manga" as const,
+      externalId: {
+        provider: "mangadex" as const,
+        id: "00000000-0000-4000-8000-000000000001",
+      },
+    };
+    await saveMedia(db, manga, "es");
+    const id = await saveMedia(db, manga, "en");
+    const tmdb = await saveComplete("tv/1");
+    await makeAttemptOld(id);
+    await makeAttemptOld(tmdb);
+
+    // The title of TMDB never has these ids, so it is not asked for them.
+    expect(
+      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+    ).toEqual([id]);
+
+    await saveMedia(db, { ...manga, crossIds: {} }, "en");
+    await makeAttemptOld(id);
+    expect(await findMediaToRefresh(db, 10)).toEqual([]);
   });
 
   it("never asks for the length of a title of another source (SAG-61)", async () => {

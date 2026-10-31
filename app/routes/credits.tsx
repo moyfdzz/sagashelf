@@ -79,6 +79,16 @@ export default function Credits() {
           />
         </p>
       </LegalSection>
+      <LegalSection title={t("credits.wikidata.title")}>
+        <p>
+          <Trans
+            i18nKey="credits.wikidata.body"
+            components={{
+              site: <SourceLink href="https://www.wikidata.org/" />,
+            }}
+          />
+        </p>
+      </LegalSection>
       <LegalSection title={t("credits.soon.title")}>
         <p>{t("credits.soon.intro")}</p>
         <LegalList
@@ -88,13 +98,6 @@ export default function Credits() {
               i18nKey="credits.soon.tvmaze"
               components={{
                 site: <SourceLink href="https://www.tvmaze.com/" />,
-              }}
-            />,
-            <Trans
-              key="wikidata"
-              i18nKey="credits.soon.wikidata"
-              components={{
-                site: <SourceLink href="https://www.wikidata.org/" />,
               }}
             />,
             <Trans

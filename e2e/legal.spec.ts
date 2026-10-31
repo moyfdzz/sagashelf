@@ -94,6 +94,19 @@ for (const [locale, key] of [
       ).toHaveAttribute("href", "https://mangadex.org/");
     });
 
+    test("the credits page names Wikidata with a link back", async ({
+      page,
+    }) => {
+      await page.goto("/credits");
+
+      await expect(
+        page.getByRole("main").getByRole("link", { name: "Wikidata" }),
+      ).toHaveAttribute("href", "https://www.wikidata.org/");
+      await expect(
+        page.getByRole("main").getByText("Powered by Wikidata"),
+      ).toBeVisible();
+    });
+
     test("the credits page credits Open Library with a link back", async ({
       page,
     }) => {
