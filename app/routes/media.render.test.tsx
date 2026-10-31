@@ -13,6 +13,7 @@ vi.mock("~server/runtime-env", () => ({}));
 vi.mock("~server/auth/require", () => ({}));
 vi.mock("~server/db/library", () => ({}));
 vi.mock("~server/db/media-detail", () => ({}));
+vi.mock("~server/db/wikidata-store", () => ({}));
 vi.mock("~server/media/import", () => ({}));
 
 async function render(
@@ -64,6 +65,7 @@ const props = (
       description: "",
       poster: null,
       seasons: [],
+      related: [],
       source: null,
       canonicalUrl: "https://sagashelf.app/media/series/the-pitt-1",
       shareImageUrl: null,
@@ -286,5 +288,55 @@ describe("links inside a sentence and links on their own", () => {
     const back = classOf(html, "/search[?]q=dune");
     expect(back).toContain("hover:text-link-hover");
     expect(back).not.toMatch(/(^| )underline( |$)/);
+  });
+});
+
+describe("the other formats of a story (SAG-16)", () => {
+  const related = [
+    {
+      format: "movie",
+      items: [
+        {
+          qid: "Q2",
+          label: "Película Titán",
+          href: "/media/movie/pelicula-titan-1",
+        },
+      ],
+    },
+    {
+      format: "manga",
+      items: [{ qid: "Q1", label: "Attack on Titan", href: null }],
+    },
+  ];
+  const withRelated = (extra: unknown[]) =>
+    props(null, null, { related: extra }) as Parameters<typeof MediaDetail>[0];
+
+  it("lists each format under its heading, with a link only for what the catalog holds", async () => {
+    const html = await render("es", <MediaDetail {...withRelated(related)} />);
+
+    expect(html).toContain("Otros formatos de esta historia");
+    expect(html).toContain(">Películas<");
+    expect(html).toContain(">Manga<");
+    expect(html).toMatch(
+      /<a [^>]*href="\/media\/movie\/pelicula-titan-1"[^>]*>Película Titán<\/a>/,
+    );
+    expect(html).toContain("<li>Attack on Titan</li>");
+    expect(html).not.toMatch(/<a [^>]*>Attack on Titan<\/a>/);
+  });
+
+  it("names Wikidata as the source, with a link", async () => {
+    const html = await render("en", <MediaDetail {...withRelated(related)} />);
+
+    expect(html).toContain("Other formats of this story");
+    expect(html).toMatch(
+      /<a [^>]*href="https:\/\/www.wikidata.org\/"[^>]*>Wikidata<\/a>/,
+    );
+  });
+
+  it("shows nothing when Wikidata knows no other format", async () => {
+    const html = await render("es", <MediaDetail {...withRelated([])} />);
+
+    expect(html).not.toContain("Otros formatos");
+    expect(html).not.toContain("wikidata.org");
   });
 });

@@ -32,6 +32,8 @@ export const berserk: MangadexManga = {
     status: "ongoing",
     year: 1989,
     contentRating: "suggestive",
+    // The ids in other catalogs, as MangaDex sends them (read 2026-10-30).
+    links: { al: "30002", mal: "2" },
     // As MangaDex sends them (names read 2026-10-30): genres and themes, and a tag of the groups
     // `format` and `content`, which are never read.
     tags: [

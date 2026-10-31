@@ -154,3 +154,14 @@ Manga comes from MangaDex, which needs no key ([ADR-022](adr/022-manga-mangadex.
 - [ ] Check after the deploy: `/search?q=one+piece&type=manga` shows manga with covers and authors (the covers appear a few at a time, 4 a second), a manga opens with its synopsis and the link "Ver en MangaDex", and the covers load from `/img/mangadex/...`.
 - [ ] Watch for a few days: the search `failed` list or the log for `mangadex` with `429` or `403`. The Worker shares its outgoing address with others, so MangaDex may limit it; the circuit then opens for a minute and the rest of the search keeps working (ADR-022). If it happens often, tell the owner before changing anything.
 - [ ] Removal requests: nothing to do until one arrives. The procedure is in ADR-022 (a list in `server/providers/removed.ts`, a deploy, and deleting the saved row after the owner decides).
+
+## 13. Wikidata (SAG-16)
+
+The other formats of a story come from Wikidata, which needs no key ([ADR-025](adr/025-wikidata.md)). Like Open Library and MangaDex, it is switched on by a plain variable, `WIKIDATA_ENABLED`, so CI and previews never call the real service.
+
+- [ ] **Migration `0013_wikidata`** (three new tables and the column `media_items.cross_ids`, all additive) applied in production by the owner **with the PR open and before the merge**, with the steps of the handoff. Check with `SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%wikidata%'` (three rows) and `SELECT column_name FROM information_schema.columns WHERE table_name = 'media_items' AND column_name = 'cross_ids'`.
+- [ ] Local value in `.dev.vars`: `WIKIDATA_ENABLED=true` (name in `.env.example`). Do not turn it on against the remote database of `.dev.vars` unless the owner wants the cron job run by hand, because the job writes.
+- [ ] **Production** variable `WIKIDATA_ENABLED` = `true`, as plain text, in the Worker's Settings, Variables and Secrets, **after** the code is deployed. Not in `wrangler.jsonc`, and kept across deployments by `keep_vars`.
+- [ ] Previews Base: leave it unset.
+- [ ] Check after the first cron runs (every 6 hours): the Worker logs show `wikidata.batch` with `found`, `matched` and `unknown`, and no `job.failed` for `enrich-wikidata`. Then `SELECT count(*) FILTER (WHERE qid IS NOT NULL) AS matched, count(*) AS total FROM media_wikidata;` says how much of the catalog Wikidata knows. A title of a well-known anime shows "Otros formatos de esta historia".
+- [ ] Watch for a few days: a `429` or `403` from `wikidata` opens the circuit for five minutes. If `job.failed` appears for CPU time, tell the owner before changing anything (ADR-007: the Workers paid plan is the answer).

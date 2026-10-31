@@ -1,5 +1,15 @@
-import { getDb, getMediaProviders } from "../runtime-env";
+import { getDb, getMediaProviders, getWikidata } from "../runtime-env";
+import { enrichWithWikidata } from "./enrich-wikidata";
 import { refreshStaleMedia } from "./refresh-stale-media";
+
+const logJobFailed = (job: string, error: unknown) =>
+  console.log(
+    JSON.stringify({
+      event: "job.failed",
+      job,
+      error: error instanceof Error ? error.name : "unknown",
+    }),
+  );
 
 /**
  * What the Cron Trigger runs (ADR-007: one `scheduled` handler that dispatches small jobs). A
@@ -9,19 +19,25 @@ export async function runScheduledJobs(): Promise<void> {
   try {
     const providers = getMediaProviders();
     // Without a provider there is nothing to refresh, and the database stays asleep.
-    if (providers.length === 0) return;
-    const summary = await refreshStaleMedia({
-      db: await getDb(),
-      providers,
-    });
-    console.log(JSON.stringify({ event: "media.refresh_batch", ...summary }));
+    if (providers.length > 0) {
+      const summary = await refreshStaleMedia({
+        db: await getDb(),
+        providers,
+      });
+      console.log(JSON.stringify({ event: "media.refresh_batch", ...summary }));
+    }
   } catch (error) {
-    console.log(
-      JSON.stringify({
-        event: "job.failed",
-        job: "refresh-stale-media",
-        error: error instanceof Error ? error.name : "unknown",
-      }),
-    );
+    logJobFailed("refresh-stale-media", error);
+  }
+
+  // After the refresh, which fills the ids this job looks titles up by (SAG-16, ADR-025).
+  try {
+    const wikidata = getWikidata();
+    if (wikidata) {
+      const summary = await enrichWithWikidata({ db: await getDb(), wikidata });
+      console.log(JSON.stringify({ event: "wikidata.batch", ...summary }));
+    }
+  } catch (error) {
+    logJobFailed("enrich-wikidata", error);
   }
 }

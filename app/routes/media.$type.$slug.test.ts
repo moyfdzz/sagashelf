@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getOptionalUser: vi.fn(),
   getEntry: vi.fn(),
   getMediaDetail: vi.fn(),
+  getRelatedFormats: vi.fn(),
   importMedia: vi.fn(),
   runInBackground: vi.fn(),
   locale: "es",
@@ -19,6 +20,9 @@ vi.mock("~server/auth/require", () => ({
 vi.mock("~server/db/library", () => ({ getEntry: mocks.getEntry }));
 vi.mock("~server/db/media-detail", () => ({
   getMediaDetail: mocks.getMediaDetail,
+}));
+vi.mock("~server/db/wikidata-store", () => ({
+  getRelatedFormats: mocks.getRelatedFormats,
 }));
 vi.mock("~server/media/import", async (importOriginal) => ({
   ...(await importOriginal<typeof import("~server/media/import")>()),
@@ -65,6 +69,7 @@ beforeEach(() => {
   mocks.getOptionalUser.mockReset().mockResolvedValue(null);
   mocks.getEntry.mockReset().mockResolvedValue(null);
   mocks.getMediaDetail.mockReset().mockResolvedValue(detail());
+  mocks.getRelatedFormats.mockReset().mockResolvedValue([]);
   mocks.importMedia.mockReset().mockResolvedValue(null);
   mocks.runInBackground.mockReset();
 });
@@ -103,6 +108,71 @@ async function thrownStatus(promise: Promise<unknown>) {
   }
   return undefined;
 }
+
+describe("the other formats of a story (SAG-16)", () => {
+  const sagaRelated = [
+    {
+      qid: "Q1",
+      format: "manga",
+      labels: { en: "Attack on Titan" },
+      media: null,
+    },
+    {
+      qid: "Q2",
+      format: "movie",
+      labels: {},
+      media: {
+        id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70",
+        type: "movie",
+        title: "Titan Film",
+        titles: { es: "Película Titán" },
+      },
+    },
+  ];
+
+  it("groups what Wikidata relates to the title, in the language of the visitor", async () => {
+    mocks.getRelatedFormats.mockResolvedValue(sagaRelated);
+
+    const result = (await load("movie", `matrix-${id}`)) as Awaited<
+      ReturnType<typeof loader>
+    > & { related: unknown };
+
+    expect(mocks.getRelatedFormats).toHaveBeenCalledWith(
+      { fake: "database" },
+      id,
+    );
+    expect(result.related).toEqual([
+      {
+        format: "movie",
+        items: [
+          {
+            qid: "Q2",
+            label: "Película Titán",
+            href: "/media/movie/pelicula-titan-0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70",
+          },
+        ],
+      },
+      {
+        format: "manga",
+        items: [{ qid: "Q1", label: "Attack on Titan", href: null }],
+      },
+    ]);
+  });
+
+  it("still shows the page when the relations cannot be read", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    mocks.getRelatedFormats.mockRejectedValue(new TypeError("no table"));
+
+    const result = (await load("movie", `matrix-${id}`)) as {
+      related: unknown;
+    };
+
+    expect(result.related).toEqual([]);
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "media.related_failed", error: "TypeError" }),
+    );
+  });
+});
 
 describe("the detail page loader", () => {
   it("shows a title with its poster through the proxy and its share data", async () => {

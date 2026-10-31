@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { data, Link, redirect } from "react-router";
 
@@ -11,9 +11,11 @@ import { getOptionalUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import { getEntry } from "~server/db/library";
 import { getMediaDetail } from "~server/db/media-detail";
+import { getRelatedFormats } from "~server/db/wikidata-store";
 import { imageSrc } from "~server/images/sources";
 import { importMedia, isMissingLanguage, isStale } from "~server/media/import";
 import { buildJsonLd, shortDescription } from "~server/media/json-ld";
+import { groupRelated } from "~server/media/related";
 import { idFromSlug, isMediaKind, mediaPath } from "~server/media/slug";
 import { entryBackPath } from "~server/library/path";
 import { searchBackPath } from "~server/search/path";
@@ -142,6 +144,21 @@ export async function loader(args: Route.LoaderArgs) {
         signInPath: signInPath(request.url),
       };
 
+  // What Wikidata says is the same story. The page is useful without it, so a failure only hides
+  // the list.
+  const related = groupRelated(
+    await getRelatedFormats(db, detail.id).catch((error: unknown) => {
+      console.log(
+        JSON.stringify({
+          event: "media.related_failed",
+          error: error instanceof Error ? error.name : "unknown",
+        }),
+      );
+      return [];
+    }),
+    locale,
+  );
+
   const { t } = getInstance(context);
   const description = shortDescription(synopsis);
   const poster = imageSrc(detail.imageUrl, "w342");
@@ -170,6 +187,7 @@ export async function loader(args: Route.LoaderArgs) {
     description,
     poster,
     seasons: detail.seasons,
+    related,
     source: sourceOf(detail.provider, detail.externalId),
     canonicalUrl,
     shareImageUrl,
@@ -259,6 +277,19 @@ function BackLink({
     );
   }
   return null;
+}
+
+/** The link back to Wikidata that its credit asks for; Trans puts the words inside it. */
+function WikidataLink({ children }: { children?: ReactNode }) {
+  return (
+    <a
+      href="https://www.wikidata.org/"
+      rel="noreferrer"
+      className={textLinkClass}
+    >
+      {children}
+    </a>
+  );
 }
 
 export default function MediaDetail({ loaderData }: Route.ComponentProps) {
@@ -414,6 +445,40 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {item.related.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold">{t("media.otherFormats")}</h2>
+          {item.related.map((group) => (
+            <div key={group.format} className="mt-3">
+              <h3 className="font-semibold">
+                {t(`media.formats.${group.format}`)}
+              </h3>
+              <ul className="mt-1 list-disc space-y-1 pl-6">
+                {group.items.map((related) => (
+                  <li key={related.qid}>
+                    {related.href ? (
+                      <Link to={related.href} className={textLinkClass}>
+                        {related.label}
+                      </Link>
+                    ) : (
+                      related.label
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p className="text-fg-muted mt-3 text-sm">
+            <Trans
+              i18nKey="media.relationsSource"
+              components={{
+                wikidata: <WikidataLink />,
+              }}
+            />
+          </p>
         </section>
       ) : null}
 

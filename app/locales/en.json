@@ -94,7 +94,18 @@
     },
     "backToSearch": "← Back to the results",
     "backToEntry": "← Back to my entry",
-    "genres": "Genres"
+    "genres": "Genres",
+    "otherFormats": "Other formats of this story",
+    "formats": {
+      "anime": "Anime",
+      "movie": "Movies",
+      "series": "Series",
+      "manga": "Manga",
+      "book": "Books",
+      "game": "Video games",
+      "other": "Other"
+    },
+    "relationsSource": "The relations come from <wikidata>Wikidata</wikidata>."
   },
   "errors": {
     "backHome": "Back to home",
@@ -313,7 +324,6 @@
       "title": "Sources to be added",
       "intro": "SagaShelf does not use these sources yet. When it does, they will be shown with this credit:",
       "tvmaze": "Episode schedules from <site>TVmaze</site>, licensed CC BY-SA.",
-      "wikidata": "Relations between titles from <site>Wikidata</site> (Powered by Wikidata), public domain (CC0).",
       "googleBooks": "Books from <site>Google Books</site>, for display only and never stored."
     },
     "openLibrary": {
@@ -331,6 +341,10 @@
     "cookies": {
       "title": "Cookies",
       "body": "We only use necessary cookies, so there is no notice to accept. <site>More in the Privacy policy</site>."
+    },
+    "wikidata": {
+      "title": "Wikidata",
+      "body": "The relations between titles (which story each one belongs to and which other formats it exists in) come from <site>Wikidata</site>, public domain (CC0). Powered by Wikidata."
     }
   },
   "privacy": {

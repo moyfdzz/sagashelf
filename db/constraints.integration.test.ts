@@ -46,6 +46,7 @@ describe("migrations", () => {
       "media_external_ids",
       "media_items",
       "media_parts",
+      "media_wikidata",
       "outbox",
       "processed_webhooks",
       "reports",
@@ -54,6 +55,8 @@ describe("migrations", () => {
       "users",
       "webhook_deliveries",
       "webhook_endpoints",
+      "wikidata_items",
+      "wikidata_links",
     ]);
 
     const extensions = await db.execute<{ extname: string }>(

@@ -401,6 +401,7 @@ const detailProps = (library: Record<string, unknown>) =>
       description: "Sinopsis",
       poster: null,
       seasons: [],
+      related: [],
       source: null,
       canonicalUrl: "https://sagashelf.app/x",
       shareImageUrl: null,

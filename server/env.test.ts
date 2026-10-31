@@ -51,6 +51,16 @@ describe("parseEnv", () => {
     ).toThrow(/MANGADEX_ENABLED/);
   });
 
+  it("accepts WIKIDATA_ENABLED as true or false and nothing else", () => {
+    expect(parseEnv({ APP_ENV: "preview", WIKIDATA_ENABLED: "true" })).toEqual({
+      APP_ENV: "preview",
+      WIKIDATA_ENABLED: "true",
+    });
+    expect(() =>
+      parseEnv({ APP_ENV: "preview", WIKIDATA_ENABLED: "yes" }),
+    ).toThrow(/WIKIDATA_ENABLED/);
+  });
+
   it("accepts OPEN_LIBRARY_ENABLED as true or false and nothing else", () => {
     expect(
       parseEnv({ APP_ENV: "preview", OPEN_LIBRARY_ENABLED: "true" }),

@@ -56,6 +56,9 @@ export const mediaItems = pgTable(
     // empty list: asked, and none of ours fits. A refresh that brings none never erases the ones we
     // hold. The keys are checked in the code, so a new genre needs no migration.
     genres: jsonb("genres").$type<string[]>(),
+    // Ids this title has in other catalogs, for the Wikidata lookup (SAG-16): `mal` and `anilist`
+    // for a manga of MangaDex. Null: never asked the source. An empty object: asked, none given.
+    crossIds: jsonb("cross_ids").$type<Record<string, string>>(),
     imageUrl: text("image_url"),
     status: mediaStatus("status").notNull().default("unknown"),
     popularity: real("popularity").notNull().default(0),
@@ -87,6 +90,10 @@ export const mediaItems = pgTable(
       sql`${t.year} is null or ${t.year} between 1000 and 2200`,
     ),
     index("media_items_type_popularity_idx").on(t.type, t.popularity.desc()),
+    index("media_items_cross_ids_idx").using(
+      "gin",
+      sql`${t.crossIds} jsonb_path_ops`,
+    ),
     index("media_items_search_vector_idx").using("gin", t.searchVector),
     // The fuzzy title indexes (pg_trgm) are in the `search_indexes` migration.
   ],

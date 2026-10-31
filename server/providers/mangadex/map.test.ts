@@ -8,6 +8,7 @@ import {
   vrmmoId,
 } from "../../testing/mangadex";
 import {
+  crossIdsOfLinks,
   genresOfTags,
   mapManga,
   parseExternalId,
@@ -42,6 +43,27 @@ describe("plainDescription", () => {
     expect(plainDescription(undefined)).toBeNull();
     expect(plainDescription("  ")).toBeNull();
     expect(plainDescription("---\nonly credits")).toBeNull();
+  });
+});
+
+describe("the ids in other catalogs (SAG-16)", () => {
+  it("keeps the AniList and MyAnimeList ids, the bridge to Wikidata", () => {
+    expect(mapManga(berserk, "en")?.crossIds).toEqual({
+      mal: "2",
+      anilist: "30002",
+    });
+  });
+
+  it("says 'asked, none given' for a manga with no links", () => {
+    expect(mapManga(vrmmo, "en")?.crossIds).toEqual({});
+  });
+
+  it("drops what is not a plain number", () => {
+    expect(crossIdsOfLinks({ al: "30002", mal: "x/../1" })).toEqual({
+      anilist: "30002",
+    });
+    expect(crossIdsOfLinks(null)).toEqual({});
+    expect(crossIdsOfLinks(undefined)).toEqual({});
   });
 });
 
@@ -122,6 +144,7 @@ describe("mapManga", () => {
         en: "Guts, a former mercenary, hunts demons.",
       },
       creators: ["Miura Kentarou"],
+      crossIds: { mal: "2", anilist: "30002" },
       genres: [
         "action",
         "adventure",

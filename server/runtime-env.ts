@@ -7,6 +7,7 @@ import {
 } from "./auth/clerk-options";
 import { parseEnv, type AppEnv } from "./env";
 import { buildProviders } from "./providers/registry";
+import { getWikidataClient } from "./providers/wikidata";
 import { createSearchCache } from "./search/cache";
 
 /** The Workers Rate Limiting binding for write endpoints (see `ratelimits` in wrangler.jsonc). */
@@ -92,6 +93,11 @@ export function getMediaProviders() {
     openLibraryEnabled: OPEN_LIBRARY_ENABLED === "true",
     mangadexEnabled: MANGADEX_ENABLED === "true",
   });
+}
+
+/** The Wikidata client, or null when this deployment has not switched it on (WIKIDATA_ENABLED). */
+export function getWikidata() {
+  return getEnv().WIKIDATA_ENABLED === "true" ? getWikidataClient() : null;
 }
 
 /** The Clerk webhook signing secret, or null when this deployment has none. */

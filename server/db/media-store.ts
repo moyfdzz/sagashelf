@@ -42,6 +42,8 @@ export async function saveMedia(
   // Null says "the source did not say", which never replaces the genres we hold; an empty list says
   // "asked, none of ours fits" and is kept only when we hold nothing.
   const genres = media.genres ? JSON.stringify(media.genres) : null;
+  // The same for the ids in other catalogs: an empty object is kept only when we hold nothing.
+  const crossIds = media.crossIds ? JSON.stringify(media.crossIds) : null;
   const { rows } = await db.execute(sql`
     WITH fresh AS (SELECT uuidv7() AS id),
     claimed AS (
@@ -53,13 +55,13 @@ export async function saveMedia(
     created AS (
       INSERT INTO media_items
         (id, type, title, titles, original_title, year, creators, synopsis, image_url, status,
-         popularity, runtime_minutes, genres)
+         popularity, runtime_minutes, genres, cross_ids)
       SELECT media_id, ${media.type}::media_type, ${media.title}, ${titles}::jsonb,
              ${media.originalTitle}, ${media.year}, ${creators}::jsonb,
              ${noSynopsis}::jsonb || ${synopsis}::jsonb, ${media.imageUrl},
              ${media.status}::media_status, ${media.popularity},
              coalesce(${media.runtimeMinutes ?? null}::int, ${askedRuntime}::int),
-             ${genres}::jsonb
+             ${genres}::jsonb, ${crossIds}::jsonb
       FROM claimed WHERE inserted
       RETURNING id
     ),
@@ -84,6 +86,9 @@ export async function saveMedia(
         genres = coalesce(
           CASE WHEN jsonb_array_length(${genres}::jsonb) > 0 THEN ${genres}::jsonb END,
           genres, ${genres}::jsonb),
+        cross_ids = coalesce(
+          CASE WHEN ${crossIds}::jsonb <> '{}'::jsonb THEN ${crossIds}::jsonb END,
+          cross_ids, ${crossIds}::jsonb),
         synopsis = ${noSynopsis}::jsonb || synopsis || ${synopsis}::jsonb,
         image_url = coalesce(${media.imageUrl}::text, image_url),
         status = CASE WHEN ${media.status} = 'unknown' THEN status
@@ -193,7 +198,7 @@ export async function findStaleMedia(
  * The titles the scheduled job should ask the provider about (SAG-54): the ones older than
  * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, the ones of
  * TMDB that were saved before their length was kept and the ones saved before their genres were
- * kept (SAG-71). The stale ones go first, then the ones that are in somebody's library (so what a
+ * kept (SAG-71) and the manga saved before their ids in other catalogs were kept (SAG-16). The stale ones go first, then the ones that are in somebody's library (so what a
  * person sees is filled first), each group oldest first. A title attempted in the last
  * `retryAfterHours` is left out, so one the provider
  * keeps failing on cannot take the whole batch every run. The last attempt is the `updated_at`
@@ -219,6 +224,8 @@ export async function findMediaToRefresh(
         OR (e.provider = 'tmdb' AND m.runtime_minutes IS NULL)
         -- Saved before the genres were kept (SAG-71): asked once, and then it is a list.
         OR m.genres IS NULL
+        -- A manga saved before its ids in other catalogs were kept (SAG-16).
+        OR (e.provider = 'mangadex' AND m.cross_ids IS NULL)
       )
     ORDER BY (m.fetched_at < now() - make_interval(days => ${maxAgeDays})) DESC,
              EXISTS (SELECT 1 FROM library_entries le WHERE le.media_id = m.id) DESC,
