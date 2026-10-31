@@ -372,3 +372,60 @@ describe("the saga badge (SAG-25)", () => {
     expect(html).not.toContain("Parte de la saga");
   });
 });
+
+describe("the link to the saga above the other formats (SAG-94)", () => {
+  const related = [
+    {
+      format: "movie",
+      items: [{ qid: "Q2", label: "La película", href: null }],
+    },
+  ];
+  const withBoth = (sagas: unknown[], list: unknown[] = related) =>
+    props(null, null, { sagas, related: list }) as Parameters<
+      typeof MediaDetail
+    >[0];
+
+  it("sends a title that is part of a saga to the whole saga, from the list of other formats", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail
+        {...withBoth([{ slug: "star-wars", title: "Star Wars" }])}
+      />,
+    );
+
+    expect(html).toMatch(
+      /<a [^>]*href="\/sagas\/star-wars"[^>]*>Ver toda la saga Star Wars<\/a>/,
+    );
+    // It comes before the list, so it is the first thing under the heading.
+    expect(html.indexOf("Ver toda la saga")).toBeGreaterThan(
+      html.indexOf("Otros formatos de esta historia"),
+    );
+    expect(html.indexOf("Ver toda la saga")).toBeLessThan(
+      html.indexOf("La película"),
+    );
+  });
+
+  it("says it in English too", async () => {
+    const html = await render(
+      "en",
+      <MediaDetail
+        {...withBoth([{ slug: "star-wars", title: "Star Wars" }])}
+      />,
+    );
+
+    expect(html).toContain("See the whole Star Wars saga");
+  });
+
+  it("has no such link for a title that is in no saga, or when there is no list", async () => {
+    const none = await render("es", <MediaDetail {...withBoth([])} />);
+    const noList = await render(
+      "es",
+      <MediaDetail
+        {...withBoth([{ slug: "star-wars", title: "Star Wars" }], [])}
+      />,
+    );
+
+    expect(none).not.toContain("Ver toda la saga");
+    expect(noList).not.toContain("Ver toda la saga Star Wars");
+  });
+});

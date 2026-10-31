@@ -12,6 +12,7 @@ import {
 import {
   findTitlesToLookUp,
   getRelatedFormats,
+  relatedLimit,
   retryAfterDays,
   saveWikidata,
 } from "../server/db/wikidata-store";
@@ -473,5 +474,116 @@ describe("getRelatedFormats", () => {
       items: [],
     });
     expect(await getRelatedFormats(db, lonely)).toEqual([]);
+  });
+});
+
+describe("getRelatedFormats for a large franchise (SAG-94)", () => {
+  const big = "Q900";
+  const small = "Q901";
+
+  /** A title in a franchise with `others` members besides it. */
+  async function franchiseWith(franchise: string, others: WikidataItem[]) {
+    const anime = await saveMedia(db, base);
+    await saveWikidata(db, {
+      titles: [{ mediaId: anime, qid: "Q1" }],
+      items: [
+        item({
+          qid: "Q1",
+          labels: { en: "The title" },
+          format: "anime",
+          year: 2000,
+          franchises: [franchise],
+        }),
+        ...others.map((other) => ({ ...other, franchises: [franchise] })),
+      ],
+    });
+    return anime;
+  }
+
+  const games = (count: number) =>
+    Array.from({ length: count }, (_, index) =>
+      item({
+        qid: `Q${1000 + index}`,
+        labels: { en: `Game ${index}` },
+        format: "game",
+        year: 2010,
+      }),
+    );
+
+  it("lists only the main works of a franchise that is large, whatever was saved", async () => {
+    const anime = await franchiseWith(big, [
+      ...games(70),
+      item({
+        qid: "Q2",
+        labels: { en: "The film" },
+        format: "movie",
+        year: 2005,
+      }),
+      item({
+        qid: "Q3",
+        labels: { en: "The manga" },
+        format: "manga",
+        year: 1999,
+      }),
+    ]);
+
+    const related = await getRelatedFormats(db, anime);
+
+    expect(related.map((row) => row.qid)).toEqual(["Q2", "Q3"]);
+  });
+
+  it("keeps the games of a small franchise", async () => {
+    const anime = await franchiseWith(small, [
+      ...games(3),
+      item({
+        qid: "Q2",
+        labels: { en: "The film" },
+        format: "movie",
+        year: 2005,
+      }),
+    ]);
+
+    const related = await getRelatedFormats(db, anime);
+
+    expect(related.map((row) => row.format)).toEqual([
+      "movie",
+      "game",
+      "game",
+      "game",
+    ]);
+  });
+
+  it("orders the main formats first and the oldest first, and the same on every visit", async () => {
+    const anime = await franchiseWith(small, [
+      item({ qid: "Q4", labels: { en: "Zeta" }, format: "book", year: 2001 }),
+      item({ qid: "Q5", labels: { en: "Alpha" }, format: "book", year: 2003 }),
+      item({ qid: "Q6", labels: { en: "No date" }, format: "book" }),
+      item({ qid: "Q7", labels: { en: "Film" }, format: "movie", year: 2010 }),
+      item({ qid: "Q8", labels: { en: "Game" }, format: "game", year: 1990 }),
+    ]);
+
+    const first = (await getRelatedFormats(db, anime)).map((row) => row.qid);
+    const second = (await getRelatedFormats(db, anime)).map((row) => row.qid);
+
+    expect(first).toEqual(["Q7", "Q4", "Q5", "Q6", "Q8"]);
+    expect(second).toEqual(first);
+  });
+
+  it("caps the list", async () => {
+    const works = Array.from({ length: relatedLimit + 10 }, (_, index) =>
+      item({
+        qid: `Q${2000 + index}`,
+        labels: { en: `Book ${index}` },
+        format: "book",
+        year: 1900 + index,
+      }),
+    );
+    const anime = await franchiseWith(small, works);
+
+    const related = await getRelatedFormats(db, anime);
+
+    expect(related).toHaveLength(relatedLimit);
+    // The oldest ones are the ones kept.
+    expect(related[0]?.qid).toBe("Q2000");
   });
 });

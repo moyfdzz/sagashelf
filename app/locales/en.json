@@ -106,7 +106,8 @@
       "other": "Other"
     },
     "relationsSource": "The relations come from <wikidata>Wikidata</wikidata>.",
-    "partOfSaga": "Part of the <saga>{{title}}</saga> saga"
+    "partOfSaga": "Part of the <saga>{{title}}</saga> saga",
+    "seeSaga": "See the whole {{title}} saga"
   },
   "errors": {
     "backHome": "Back to home",

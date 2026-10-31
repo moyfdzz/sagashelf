@@ -89,6 +89,27 @@ export function formatOfClasses(classes: readonly string[]): WikidataFormat {
   return "other";
 }
 
+/** The formats a title page and a saga page list for a large franchise (SAG-94). */
+export const mainFormats = [
+  "anime",
+  "movie",
+  "series",
+  "manga",
+  "book",
+] as const satisfies readonly WikidataFormat[];
+
+/** The classes of those formats, which the members query keeps for a large franchise. */
+export const mainClasses: readonly string[] = Object.entries(formatOfClass)
+  .filter(([, format]) => (mainFormats as readonly string[]).includes(format))
+  .map(([qid]) => qid);
+
+/**
+ * A franchise with more members than this is large: it lists toys, spoofs, games and episodes
+ * next to the real works (Star Wars 3183, One Piece 1320, Dune 235, read 2026-10-31), so only its
+ * main works that a catalog we use knows are kept. A smaller one is kept whole.
+ */
+export const largeFranchiseSize = 60;
+
 const qidShape = /^Q[0-9]{1,12}$/;
 
 /** `http://www.wikidata.org/entity/Q42` or `Q42` as `Q42`, or null. */
@@ -243,7 +264,12 @@ export function buildMembersQuery(
   const direct = [...new Set([...franchiseList, ...extraList])];
   const branches = [
     ...(franchiseList.length > 0
-      ? [`{ VALUES ?fr { ${wd(franchiseList)} } ?member wdt:P8345 ?fr . }`]
+      ? [
+          // The size of each franchise comes with its members, so a large one can be thinned.
+          `{ VALUES ?fr { ${wd(franchiseList)} }
+    { SELECT ?fr (COUNT(DISTINCT ?each) AS ?size) WHERE { VALUES ?fr { ${wd(franchiseList)} } ?each wdt:P8345 ?fr } GROUP BY ?fr }
+    ?member wdt:P8345 ?fr . }`,
+        ]
       : []),
     `{ VALUES ?member { ${wd(direct)} } OPTIONAL { ?member wdt:P8345 ?fr } }`,
   ];
@@ -269,8 +295,13 @@ WHERE {
   OPTIONAL { ?member wdt:P4087 ?malManga }
   OPTIONAL { ?member wdt:P8731 ?alManga }
   OPTIONAL { ?member wdt:P648 ?openLibrary }
+  OPTIONAL { ?member wdt:P31 ?main . VALUES ?main { ${wd(mainClasses)} } }
+  # A large franchise keeps only its main works that a catalog knows (SAG-94).
+  FILTER(!BOUND(?size) || ?size <= ${largeFranchiseSize} || (BOUND(?main) && (
+    BOUND(?tmdbMovie) || BOUND(?tmdbTv) || BOUND(?malManga) || BOUND(?alManga) || BOUND(?openLibrary))))
 }
 GROUP BY ?member
+ORDER BY (COALESCE(?year, 9999)) ?member
 LIMIT ${membersLimit}`;
 }
 

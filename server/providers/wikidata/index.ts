@@ -64,8 +64,9 @@ export function createWikidataClientWithDefaults(
       provider: "wikidata",
       headers: { Accept: "application/sparql-results+json" },
       ratePerSecond: requestsPerSecond,
-      // A query can take a few seconds, but a run must not wait longer than this.
-      timeoutMs: 15_000,
+      // The members of a large franchise take up to about 13 seconds together (read 2026-10-31).
+      // Waiting costs no CPU, and the endpoint's own limit is 60 seconds.
+      timeoutMs: 40_000,
       // A 429 means stop, and do not insist (Wikidata's usage guidelines).
       retries: 0,
       stopOnStatus: [429, 403],

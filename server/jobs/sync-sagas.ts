@@ -63,7 +63,7 @@ export async function syncSagas(
   const ask = work.missingQids.slice(0, itemsPerRun);
   if (ask.length > 0) {
     const items = await deps.wikidata.members([], ask, {
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(40_000),
     });
     await saveWikidata(deps.db, { titles: [], items });
     summary.items = items.length;

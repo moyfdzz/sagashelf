@@ -12,6 +12,9 @@ import {
   buildLookupQuery,
   buildMembersQuery,
   formatOfClasses,
+  largeFranchiseSize,
+  mainClasses,
+  mainFormats,
   parseLookup,
   parseMembers,
   qidOf,
@@ -198,5 +201,55 @@ describe("qidOf", () => {
     expect(qidOf("Q42")).toBe("Q42");
     expect(qidOf("P42")).toBeNull();
     expect(qidOf(undefined)).toBeNull();
+  });
+});
+
+describe("large franchises (SAG-94)", () => {
+  it("counts the members of each franchise, so a large one can be thinned", () => {
+    const query = buildMembersQuery([franchiseQid], []) ?? "";
+
+    expect(query).toContain("COUNT(DISTINCT ?each)");
+    expect(query).toContain(`?size <= ${largeFranchiseSize}`);
+    // Only the franchise branch has a size, so the items asked for by id are never dropped.
+    expect(query).toContain("!BOUND(?size)");
+  });
+
+  it("keeps only a main work that a catalog knows once the franchise is large, oldest first", () => {
+    const query = buildMembersQuery([franchiseQid], []) ?? "";
+
+    expect(query).toContain("BOUND(?main)");
+    for (const id of [
+      "tmdbMovie",
+      "tmdbTv",
+      "malManga",
+      "alManga",
+      "openLibrary",
+    ]) {
+      expect(query).toContain(`BOUND(?${id})`);
+    }
+    expect(query).toContain("ORDER BY (COALESCE(?year, 9999)) ?member");
+  });
+
+  it("names the classes of the main formats and no others", () => {
+    expect(mainClasses).toEqual(
+      expect.arrayContaining([
+        "Q63952888",
+        "Q11424",
+        "Q5398426",
+        "Q21198342",
+        "Q8261",
+      ]),
+    );
+    // A video game, a media franchise and an unknown class are not a main work.
+    expect(mainClasses).not.toContain("Q7889");
+    expect(mainClasses).not.toContain("Q196600");
+    expect(formatOfClasses(mainClasses.slice(0, 1))).not.toBe("other");
+    expect(mainFormats).toEqual(["anime", "movie", "series", "manga", "book"]);
+  });
+
+  it("puts the main classes in the query", () => {
+    const query = buildMembersQuery([franchiseQid], []) ?? "";
+
+    for (const qid of mainClasses) expect(query).toContain(`wd:${qid}`);
   });
 });
