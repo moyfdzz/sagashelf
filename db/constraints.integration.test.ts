@@ -45,6 +45,7 @@ describe("migrations", () => {
       "lists",
       "media_external_ids",
       "media_items",
+      "media_next_episode",
       "media_parts",
       "media_wikidata",
       "outbox",

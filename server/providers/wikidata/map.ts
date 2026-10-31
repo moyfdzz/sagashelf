@@ -129,7 +129,7 @@ export type WikidataItem = {
   qid: string;
   labels: { es?: string; en?: string };
   format: WikidataFormat;
-  ids: Partial<Record<WikidataScheme, string>>;
+  ids: Partial<Record<WikidataScheme | "tvmaze", string>>;
   /** The media franchises it belongs to (`P8345`). */
   franchises: string[];
   /** The works it is based on (`P144`). Only the lookup of a title asks for these. */
@@ -202,10 +202,12 @@ SELECT ?scheme ?value ?item
   (SAMPLE(?es) AS ?labelEs) (SAMPLE(?en) AS ?labelEn)
   (GROUP_CONCAT(DISTINCT STRAFTER(STR(?fr), "entity/"); separator=" ") AS ?franchises)
   (GROUP_CONCAT(DISTINCT STRAFTER(STR(?base), "entity/"); separator=" ") AS ?basedOn)
+  (SAMPLE(?tvmaze) AS ?idTvmaze)
 WHERE {
   ${blocks.join("\n  UNION\n  ")}
   OPTIONAL { ?item wdt:P8345 ?fr }
   OPTIONAL { ?item wdt:P144 ?base }
+  OPTIONAL { ?item wdt:P8600 ?tvmaze }
   OPTIONAL { ?item rdfs:label ?es . FILTER(LANG(?es) = "es") }
   OPTIONAL { ?item rdfs:label ?en . FILTER(LANG(?en) = "en") }
 }
@@ -223,6 +225,8 @@ export function parseLookup(answer: SparqlResult): LookupHit[] {
     const value = bindingText(row, "value");
     const qid = qidOf(bindingText(row, "item"));
     if (!scheme || !value || !qid || !valueShape[scheme]?.test(value)) continue;
+    // The id of the show in TVmaze (`P8600`, SAG-90), a plain number.
+    const tvmaze = bindingText(row, "idTvmaze");
     hits.push({
       source: { scheme, value },
       item: {
@@ -230,7 +234,10 @@ export function parseLookup(answer: SparqlResult): LookupHit[] {
         labels: labelsOf(row),
         // The format of the title we looked up is the one of our own catalog; the job sets it.
         format: "other",
-        ids: { [scheme]: value },
+        ids: {
+          [scheme]: value,
+          ...(tvmaze && /^[0-9]{1,9}$/.test(tvmaze) ? { tvmaze } : {}),
+        },
         franchises: qidsOf(bindingText(row, "franchises")),
         basedOn: qidsOf(bindingText(row, "basedOn")),
       },

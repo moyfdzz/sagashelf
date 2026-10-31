@@ -38,6 +38,8 @@ const envSchema = z.object({
   MANGADEX_ENABLED: z.enum(["true", "false"]).optional(),
   // The same for Wikidata (SAG-16): no key, a plain variable, unset in CI and in previews.
   WIKIDATA_ENABLED: z.enum(["true", "false"]).optional(),
+  // The same for TVmaze (SAG-90): no key, a plain variable, unset in CI and in previews.
+  TVMAZE_ENABLED: z.enum(["true", "false"]).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

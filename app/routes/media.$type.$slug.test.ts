@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getMediaDetail: vi.fn(),
   getRelatedFormats: vi.fn(),
   getSagasOfMedia: vi.fn(),
+  getNextEpisode: vi.fn(),
   importMedia: vi.fn(),
   runInBackground: vi.fn(),
   locale: "es",
@@ -21,6 +22,9 @@ vi.mock("~server/auth/require", () => ({
 vi.mock("~server/db/library", () => ({ getEntry: mocks.getEntry }));
 vi.mock("~server/db/media-detail", () => ({
   getMediaDetail: mocks.getMediaDetail,
+}));
+vi.mock("~server/db/next-episodes", () => ({
+  getNextEpisode: mocks.getNextEpisode,
 }));
 vi.mock("~server/db/sagas", () => ({
   getSagasOfMedia: mocks.getSagasOfMedia,
@@ -75,6 +79,7 @@ beforeEach(() => {
   mocks.getMediaDetail.mockReset().mockResolvedValue(detail());
   mocks.getRelatedFormats.mockReset().mockResolvedValue([]);
   mocks.getSagasOfMedia.mockReset().mockResolvedValue([]);
+  mocks.getNextEpisode.mockReset().mockResolvedValue(null);
   mocks.importMedia.mockReset().mockResolvedValue(null);
   mocks.runInBackground.mockReset();
 });
@@ -709,6 +714,71 @@ describe("the detail page meta", () => {
           "script:ld+json": expect.objectContaining({ "@type": "Movie" }),
         }),
       ]),
+    );
+  });
+});
+
+describe("the next episode of a series (SAG-90)", () => {
+  const next = {
+    airDate: "2026-11-14",
+    season: 2,
+    number: 5,
+    name: "The Fifth",
+  };
+
+  it("gives the next episode of a series and of an anime", async () => {
+    mocks.getNextEpisode.mockResolvedValue(next);
+    for (const type of ["series", "anime"] as const) {
+      mocks.getMediaDetail.mockResolvedValue(detail({ type }));
+
+      const result = (await load(type, `matrix-${id}`)) as {
+        nextEpisode: unknown;
+      };
+
+      expect(result.nextEpisode).toEqual(next);
+    }
+    expect(mocks.getNextEpisode).toHaveBeenCalledWith({ fake: "database" }, id);
+  });
+
+  it("asks nothing for a movie, a book or a manga, which have no next episode", async () => {
+    mocks.getNextEpisode.mockResolvedValue(next);
+    for (const type of ["movie", "book", "manga"] as const) {
+      mocks.getMediaDetail.mockResolvedValue(detail({ type }));
+
+      const result = (await load(type, `matrix-${id}`)) as {
+        nextEpisode: unknown;
+      };
+
+      expect(result.nextEpisode).toBeNull();
+    }
+    expect(mocks.getNextEpisode).not.toHaveBeenCalled();
+  });
+
+  it("is null for a series TVmaze knows of no next episode for", async () => {
+    mocks.getMediaDetail.mockResolvedValue(detail({ type: "series" }));
+
+    const result = (await load("series", `matrix-${id}`)) as {
+      nextEpisode: unknown;
+    };
+
+    expect(result.nextEpisode).toBeNull();
+  });
+
+  it("still shows the page when the next episode cannot be read", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    mocks.getMediaDetail.mockResolvedValue(detail({ type: "series" }));
+    mocks.getNextEpisode.mockRejectedValue(new TypeError("no table"));
+
+    const result = (await load("series", `matrix-${id}`)) as {
+      nextEpisode: unknown;
+    };
+
+    expect(result.nextEpisode).toBeNull();
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "media.next_episode_failed",
+        error: "TypeError",
+      }),
     );
   });
 });

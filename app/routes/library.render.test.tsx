@@ -403,6 +403,7 @@ const detailProps = (library: Record<string, unknown>) =>
       seasons: [],
       related: [],
       sagas: [],
+      nextEpisode: null,
       source: null,
       canonicalUrl: "https://sagashelf.app/x",
       shareImageUrl: null,

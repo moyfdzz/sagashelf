@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runScheduledJobs } from "./scheduled";
+import { readFileSync } from "node:fs";
+
+import { runScheduledJobs, runTvmazeJobs, tvmazeCron } from "./scheduled";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
@@ -10,12 +12,18 @@ const mocks = vi.hoisted(() => ({
   enrichWithWikidata: vi.fn(),
   syncSagas: vi.fn(),
   proposeSagaDrafts: vi.fn(),
+  getTvmaze: vi.fn(),
+  refreshNextEpisodes: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
   getDb: mocks.getDb,
   getMediaProviders: mocks.getMediaProviders,
   getWikidata: mocks.getWikidata,
+  getTvmaze: mocks.getTvmaze,
+}));
+vi.mock("./refresh-next-episodes", () => ({
+  refreshNextEpisodes: mocks.refreshNextEpisodes,
 }));
 vi.mock("./sync-sagas", () => ({ syncSagas: mocks.syncSagas }));
 vi.mock("../db/saga-drafts", () => ({
@@ -249,5 +257,78 @@ describe("runScheduledJobs", () => {
         }),
       );
     });
+  });
+});
+
+describe("the second Cron Trigger (SAG-90)", () => {
+  it("is declared in wrangler.jsonc next to the first, so the handler can tell them apart", () => {
+    const config = readFileSync("wrangler.jsonc", "utf8");
+
+    expect(config).toContain(`"${tvmazeCron}"`);
+    expect(config).toContain('"0 */6 * * *"');
+    expect(tvmazeCron).not.toBe("0 */6 * * *");
+  });
+
+  it("asks TVmaze for the next episodes with its own client and logs the summary", async () => {
+    const db = { execute: vi.fn() };
+    const tvmaze = { getShow: vi.fn() };
+    mocks.getTvmaze.mockReturnValue(tvmaze);
+    mocks.getDb.mockResolvedValue(db);
+    mocks.refreshNextEpisodes.mockResolvedValue({
+      found: 4,
+      saved: 3,
+      withNext: 2,
+      failed: 1,
+      stopped: false,
+    });
+
+    await runTvmazeJobs();
+
+    expect(mocks.refreshNextEpisodes).toHaveBeenCalledWith({ db, tvmaze });
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "tvmaze.batch",
+        found: 4,
+        saved: 3,
+        withNext: 2,
+        failed: 1,
+        stopped: false,
+      }),
+    );
+  });
+
+  it("leaves the database asleep when TVmaze is off", async () => {
+    mocks.getTvmaze.mockReturnValue(null);
+
+    await runTvmazeJobs();
+
+    expect(mocks.getDb).not.toHaveBeenCalled();
+    expect(mocks.refreshNextEpisodes).not.toHaveBeenCalled();
+  });
+
+  it("logs a failure by name and does not throw", async () => {
+    mocks.getTvmaze.mockReturnValue({});
+    mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+    mocks.refreshNextEpisodes.mockRejectedValue(new TypeError("no table"));
+
+    await expect(runTvmazeJobs()).resolves.toBeUndefined();
+
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "job.failed",
+        job: "refresh-next-episodes",
+        error: "TypeError",
+      }),
+    );
+  });
+
+  it("does not run the jobs of the first trigger", async () => {
+    mocks.getTvmaze.mockReturnValue(null);
+
+    await runTvmazeJobs();
+
+    expect(mocks.getMediaProviders).not.toHaveBeenCalled();
+    expect(mocks.enrichWithWikidata).not.toHaveBeenCalled();
+    expect(mocks.syncSagas).not.toHaveBeenCalled();
   });
 });

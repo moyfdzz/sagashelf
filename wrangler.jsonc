@@ -85,10 +85,13 @@
       },
     ],
   },
-  // One Cron Trigger runs the `scheduled` handler, which dispatches the jobs in server/jobs
-  // (ADR-007). Every 6 hours, UTC: it refreshes the titles close to TMDB's 6 months (SAG-54).
+  // The `scheduled` handler dispatches the jobs in server/jobs (ADR-007). Every 6 hours, UTC, the
+  // first Cron Trigger refreshes the titles close to TMDB's 6 months (SAG-54), looks the titles up
+  // in Wikidata and brings the sagas (SAG-16, SAG-25). The second one, half an hour later, asks
+  // TVmaze for the next episode of the series (SAG-90, ADR-027): it is an invocation of its own,
+  // so it has its own 50 subrequests. The Free plan allows 5 Cron Triggers per account.
   "triggers": {
-    "crons": ["0 */6 * * *"],
+    "crons": ["0 */6 * * *", "30 */6 * * *"],
   },
   "observability": {
     "enabled": true,

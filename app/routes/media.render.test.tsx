@@ -15,6 +15,7 @@ vi.mock("~server/db/library", () => ({}));
 vi.mock("~server/db/media-detail", () => ({}));
 vi.mock("~server/db/wikidata-store", () => ({}));
 vi.mock("~server/db/sagas", () => ({}));
+vi.mock("~server/db/next-episodes", () => ({}));
 vi.mock("~server/media/import", () => ({}));
 
 async function render(
@@ -68,6 +69,7 @@ const props = (
       seasons: [],
       related: [],
       sagas: [],
+      nextEpisode: null,
       source: null,
       canonicalUrl: "https://sagashelf.app/media/series/the-pitt-1",
       shareImageUrl: null,
@@ -427,5 +429,92 @@ describe("the link to the saga above the other formats (SAG-94)", () => {
 
     expect(none).not.toContain("Ver toda la saga");
     expect(noList).not.toContain("Ver toda la saga Star Wars");
+  });
+});
+
+describe("the next episode line (SAG-90)", () => {
+  const withNext = (nextEpisode: unknown) =>
+    props(null, null, { nextEpisode, type: "series" }) as Parameters<
+      typeof MediaDetail
+    >[0];
+
+  it("says the season, the episode and the day, and credits TVmaze with a link", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail
+        {...withNext({
+          airDate: "2026-11-14",
+          season: 2,
+          number: 5,
+          name: null,
+        })}
+      />,
+    );
+
+    expect(html).toContain("Próximo episodio: temporada 2, episodio 5");
+    expect(html).toContain("14 de noviembre de 2026");
+    expect(html).toMatch(
+      /Fecha de <a [^>]*href="https:\/\/www.tvmaze.com\/"[^>]*>TVmaze<\/a>/,
+    );
+  });
+
+  it("names the episode when TVmaze does", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail
+        {...withNext({
+          airDate: "2026-11-14",
+          season: 2,
+          number: 5,
+          name: "El quinto",
+        })}
+      />,
+    );
+
+    expect(html).toContain("«El quinto» (temporada 2, episodio 5)");
+  });
+
+  it("says only the day when TVmaze gives no season or number", async () => {
+    const html = await render(
+      "es",
+      <MediaDetail
+        {...withNext({
+          airDate: "2026-11-14",
+          season: null,
+          number: null,
+          name: "Especial",
+        })}
+      />,
+    );
+
+    expect(html).toContain("Próximo episodio: 14 de noviembre de 2026");
+    expect(html).not.toContain("temporada");
+  });
+
+  it("says it in English", async () => {
+    const html = await render(
+      "en",
+      <MediaDetail
+        {...withNext({
+          airDate: "2026-11-14",
+          season: 2,
+          number: 5,
+          name: null,
+        })}
+      />,
+    );
+
+    expect(html).toContain("Next episode: season 2, episode 5");
+    expect(html).toContain("November 14, 2026");
+    expect(html).toMatch(
+      /Date from <a [^>]*href="https:\/\/www.tvmaze.com\/"[^>]*>TVmaze<\/a>/,
+    );
+  });
+
+  it("shows nothing, and no credit, when there is no next episode", async () => {
+    const html = await render("es", <MediaDetail {...withNext(null)} />);
+
+    expect(html).not.toContain("Próximo episodio");
+    expect(html).not.toContain("tvmaze.com");
   });
 });

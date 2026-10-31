@@ -107,6 +107,19 @@ for (const [locale, key] of [
       ).toBeVisible();
     });
 
+    test("the credits page credits TVmaze with a link back and its license", async ({
+      page,
+    }) => {
+      await page.goto("/credits");
+
+      await expect(
+        page.getByRole("main").getByRole("link", { name: "TVmaze" }),
+      ).toHaveAttribute("href", "https://www.tvmaze.com/");
+      await expect(
+        page.getByRole("main").getByRole("link", { name: "CC BY-SA" }),
+      ).toHaveAttribute("href", "https://www.tvmaze.com/api#licensing");
+    });
+
     test("the credits page credits Open Library with a link back", async ({
       page,
     }) => {

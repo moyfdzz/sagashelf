@@ -69,6 +69,39 @@ describe("buildLookupQuery", () => {
   });
 });
 
+describe("parseLookup, the show in TVmaze (SAG-90)", () => {
+  it("asks for the id of the show in TVmaze, in the same query", () => {
+    const query = buildLookupQuery([{ scheme: "tmdb_tv", value: "1429" }]);
+
+    expect(query).toContain("wdt:P8600");
+    expect(query).toContain("?idTvmaze");
+  });
+
+  it("reads it with the item, and leaves it out when there is none or it is not a number", () => {
+    const row = (idTvmaze?: string) => ({
+      results: {
+        bindings: [
+          {
+            scheme: { value: "tmdb_tv" },
+            value: { value: "1" },
+            item: { value: "http://www.wikidata.org/entity/Q1" },
+            ...(idTvmaze === undefined
+              ? {}
+              : { idTvmaze: { value: idTvmaze } }),
+          },
+        ],
+      },
+    });
+
+    expect(parseLookup(row("919"))[0]?.item.ids).toEqual({
+      tmdb_tv: "1",
+      tvmaze: "919",
+    });
+    expect(parseLookup(row())[0]?.item.ids).toEqual({ tmdb_tv: "1" });
+    expect(parseLookup(row("1; DROP"))[0]?.item.ids).toEqual({ tmdb_tv: "1" });
+  });
+});
+
 describe("parseLookup", () => {
   it("reads the item, its labels, its franchise and the work it is based on", () => {
     const [hit] = parseLookup(lookupAnswer);
@@ -79,7 +112,7 @@ describe("parseLookup", () => {
         qid: animeQid,
         labels: { es: "Ataque a los Titanes", en: "Attack on Titan" },
         format: "other",
-        ids: { tmdb_tv: "1429" },
+        ids: { tmdb_tv: "1429", tvmaze: "919" },
         franchises: [franchiseQid],
         basedOn: [mangaQid],
       },

@@ -5,6 +5,7 @@ import { data, Link, redirect } from "react-router";
 import { externalLinkClass, linkClass, textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
 import { TitleLibrary } from "~/components/TitleLibrary";
+import { TvmazeLink } from "~/components/TvmazeLink";
 import { WikidataLink } from "~/components/WikidataLink";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -12,6 +13,7 @@ import { getOptionalUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import { getEntry } from "~server/db/library";
 import { getMediaDetail } from "~server/db/media-detail";
+import { getNextEpisode } from "~server/db/next-episodes";
 import { getSagasOfMedia } from "~server/db/sagas";
 import { getRelatedFormats } from "~server/db/wikidata-store";
 import { imageSrc } from "~server/images/sources";
@@ -177,6 +179,21 @@ export async function loader(args: Route.LoaderArgs) {
     title: saga.titles[locale] || saga.title,
   }));
 
+  // The next episode of a series or an anime, from TVmaze (SAG-90). The page shows without it
+  // when it cannot be read.
+  const nextEpisode =
+    detail.type === "series" || detail.type === "anime"
+      ? await getNextEpisode(db, detail.id).catch((error: unknown) => {
+          console.log(
+            JSON.stringify({
+              event: "media.next_episode_failed",
+              error: error instanceof Error ? error.name : "unknown",
+            }),
+          );
+          return null;
+        })
+      : null;
+
   const { t } = getInstance(context);
   const description = shortDescription(synopsis);
   const poster = imageSrc(detail.imageUrl, "w342");
@@ -207,6 +224,7 @@ export async function loader(args: Route.LoaderArgs) {
     seasons: detail.seasons,
     related,
     sagas,
+    nextEpisode,
     source: sourceOf(detail.provider, detail.externalId),
     canonicalUrl,
     shareImageUrl,
@@ -348,6 +366,30 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                   status: t(`media.status.${item.status}`),
                 })}
           </p>
+          {item.nextEpisode ? (
+            <p className="mt-2">
+              {t(
+                item.nextEpisode.season !== null &&
+                  item.nextEpisode.number !== null
+                  ? item.nextEpisode.name
+                    ? "media.nextEpisodeNamed"
+                    : "media.nextEpisode"
+                  : "media.nextEpisodeDate",
+                {
+                  season: item.nextEpisode.season,
+                  number: item.nextEpisode.number,
+                  name: item.nextEpisode.name,
+                  date: formatDate(asDate(item.nextEpisode.airDate)),
+                },
+              )}{" "}
+              <span className="text-fg-muted text-sm">
+                <Trans
+                  i18nKey="media.nextEpisodeSource"
+                  components={{ tvmaze: <TvmazeLink /> }}
+                />
+              </span>
+            </p>
+          ) : null}
           {item.sagas.length > 0 ? (
             <ul className="mt-2 space-y-1">
               {item.sagas.map((saga) => (

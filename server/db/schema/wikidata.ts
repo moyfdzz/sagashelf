@@ -7,6 +7,7 @@ import {
   smallint,
   text,
   timestamp,
+  integer,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -94,6 +95,11 @@ export const mediaWikidata = pgTable(
     checkedAt: timestamp("checked_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // The id of the show in TVmaze that Wikidata gives for a series (`P8600`, SAG-90). Null: none.
+    tvmazeId: integer("tvmaze_id"),
+    // When Wikidata was last asked for it. Null: the title was looked up before the id was read,
+    // so the job looks it up once more.
+    tvmazeCheckedAt: timestamp("tvmaze_checked_at", { withTimezone: true }),
   },
   (t) => [
     check(
