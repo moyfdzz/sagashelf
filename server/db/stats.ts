@@ -9,6 +9,24 @@ import type { Locale } from "../providers/types";
 // database does not say so.
 type RawRows = { rows: Record<string, unknown>[] };
 
+/** The types the statistics can be narrowed to (SAG-91). Without one, every type is counted. */
+export const statsTypes = [
+  "movie",
+  "series",
+  "anime",
+  "book",
+  "manga",
+] as const;
+export type StatsType = (typeof statsTypes)[number];
+
+export const isStatsType = (value: unknown): value is StatsType =>
+  typeof value === "string" &&
+  (statsTypes as readonly string[]).includes(value);
+
+/** A condition on the type of the title, as part of a `WHERE`, or nothing when no type is asked. */
+const ofType = (alias: string, type: StatsType | undefined) =>
+  type ? sql`AND ${sql.raw(alias)}.type = ${type}::media_type` : sql``;
+
 /** A title of the library, as the lists of the statistics page show it. */
 type TitleRef = {
   mediaId: string;
@@ -94,7 +112,7 @@ export const shortListCount = 5;
 // What the numbers of one person are made of: each entry with the times it was watched and the
 // episodes seen. A finished run counts every episode of the title, as the entry editor does.
 // Everything is read with the id of the person of the verified session.
-const entriesOf = (userId: string) => sql`
+const entriesOf = (userId: string, type?: StatsType) => sql`
   WITH e AS (
     SELECT le.id, le.media_id, le.status::text AS status, le.score, le.progress,
            le.progress_unit, mi.type::text AS type, mi.year, mi.runtime_minutes AS runtime,
@@ -107,7 +125,7 @@ const entriesOf = (userId: string) => sql`
            ) AS total_episodes
     FROM library_entries le
     JOIN media_items mi ON mi.id = le.media_id
-    WHERE le.user_id = ${userId}::uuid
+    WHERE le.user_id = ${userId}::uuid ${ofType("mi", type)}
   ),
   t AS (
     SELECT e.*,
@@ -137,9 +155,10 @@ export async function getStats(
   db: ProfileDb,
   userId: string,
   locale: Locale,
+  type?: StatsType,
 ): Promise<Stats> {
   const { rows: totals } = (await db.execute(sql`
-    ${entriesOf(userId)}
+    ${entriesOf(userId, type)}
     SELECT count(*)::int AS entries,
            count(*) FILTER (WHERE status = 'completed')::int AS completed,
            coalesce(sum(episodes), 0)::bigint AS episodes,
@@ -165,7 +184,7 @@ export async function getStats(
   `)) as RawRows;
 
   const { rows: groups } = (await db.execute(sql`
-    ${entriesOf(userId)}
+    ${entriesOf(userId, type)}
     SELECT 'type' AS kind, type AS key, count(*)::float8 AS total FROM w GROUP BY type
     UNION ALL
     SELECT 'status', status, count(*)::float8 FROM w GROUP BY status
@@ -186,11 +205,13 @@ export async function getStats(
   const { rows: events } = (await db.execute(sql`
     WITH finished AS (
       SELECT le.finished_at AS day FROM library_entries le
-      WHERE le.user_id = ${userId}::uuid AND le.status = 'completed'
+      JOIN media_items mi ON mi.id = le.media_id
+      WHERE le.user_id = ${userId}::uuid AND le.status = 'completed' ${ofType("mi", type)}
       UNION ALL
       SELECT v.finished_on FROM library_viewings v
       JOIN library_entries le ON le.id = v.entry_id
-      WHERE le.user_id = ${userId}::uuid
+      JOIN media_items mi ON mi.id = le.media_id
+      WHERE le.user_id = ${userId}::uuid ${ofType("mi", type)}
     )
     SELECT extract(year FROM day)::int AS year, extract(month FROM day)::int AS month,
            count(*)::int AS total
@@ -202,13 +223,13 @@ export async function getStats(
            mi.year, le.score
     FROM library_entries le
     JOIN media_items mi ON mi.id = le.media_id
-    WHERE le.user_id = ${userId}::uuid AND le.score IS NOT NULL
+    WHERE le.user_id = ${userId}::uuid AND le.score IS NOT NULL ${ofType("mi", type)}
     ORDER BY le.score DESC, le.updated_at DESC, le.id
     LIMIT ${bestCount}
   `)) as RawRows;
 
   const { rows: watched } = (await db.execute(sql`
-    ${entriesOf(userId)}
+    ${entriesOf(userId, type)}
     SELECT w.media_id, ${localizedTitleSql("mi", locale)} AS title, w.type, w.year, w.minutes
     FROM w
     JOIN media_items mi ON mi.id = w.media_id
@@ -218,7 +239,7 @@ export async function getStats(
   `)) as RawRows;
 
   const { rows: rewatched } = (await db.execute(sql`
-    ${entriesOf(userId)}
+    ${entriesOf(userId, type)}
     SELECT w.media_id, ${localizedTitleSql("mi", locale)} AS title, w.type, w.year,
            w.viewings, w.rewatch_minutes
     FROM w
@@ -232,11 +253,13 @@ export async function getStats(
   const { rows: spans } = (await db.execute(sql`
     WITH finished AS (
       SELECT le.started_at AS started, le.finished_at AS finished FROM library_entries le
-      WHERE le.user_id = ${userId}::uuid AND le.status = 'completed'
+      JOIN media_items mi ON mi.id = le.media_id
+      WHERE le.user_id = ${userId}::uuid AND le.status = 'completed' ${ofType("mi", type)}
       UNION ALL
       SELECT v.started_on, v.finished_on FROM library_viewings v
       JOIN library_entries le ON le.id = v.entry_id
-      WHERE le.user_id = ${userId}::uuid
+      JOIN media_items mi ON mi.id = le.media_id
+      WHERE le.user_id = ${userId}::uuid ${ofType("mi", type)}
     )
     SELECT count(*)::int AS total,
            count(*) FILTER (WHERE started IS NOT NULL AND finished IS NOT NULL)::int AS counted,
@@ -250,7 +273,7 @@ export async function getStats(
            mi.year, le.created_at::date::text AS added_on
     FROM library_entries le
     JOIN media_items mi ON mi.id = le.media_id
-    WHERE le.user_id = ${userId}::uuid AND le.status = 'planned'
+    WHERE le.user_id = ${userId}::uuid AND le.status = 'planned' ${ofType("mi", type)}
     ORDER BY le.created_at, le.id
     LIMIT ${shortListCount}
   `)) as RawRows;
@@ -258,7 +281,7 @@ export async function getStats(
   // A title with several genres is in the row of each one. The statement reads the keys as text
   // and the code keeps only the ones of the list.
   const { rows: genreRows } = (await db.execute(sql`
-    ${entriesOf(userId)}
+    ${entriesOf(userId, type)}
     SELECT g.genre AS genre, count(*)::int AS titles,
            coalesce(sum(w.minutes), 0)::float8 AS minutes,
            coalesce(sum(w.progress) FILTER (WHERE w.progress_unit = 'pages'), 0)::float8 AS pages,

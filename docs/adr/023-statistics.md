@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-29
-- **Implementation:** Done (SAG-61, SAG-85, SAG-86). The charts that wait for other tickets are listed under Open questions.
-- **Tickets:** SAG-61, SAG-85, SAG-86, SAG-20
+- **Implementation:** Done (SAG-61, SAG-85, SAG-86, SAG-91). The charts that wait for other tickets are listed under Open questions.
+- **Tickets:** SAG-61, SAG-85, SAG-86, SAG-91, SAG-20
 - **Related:** [ADR-002](002-data-postgres-neon-drizzle.md), [ADR-016](016-provider-layer-and-tmdb.md), [ADR-018](018-personal-library.md), [ADR-019](019-viewings-history.md), [ADR-007](007-background-work-cron-and-outbox.md)
 
 ## Context
@@ -56,6 +56,8 @@ The lists show a few rows on purpose: ten for the time and five for the others. 
 **The charts are SVG drawn by the server**, with no library and no script. Each has a table with the same numbers (`<details>`), the hover and the focus say the value (a native `<title>`), and a chart with links is a group of links while one without them is an image described in words. The colors are tokens in `app.css`, light and dark. The accent is the one hue of the charts that show one series. The five types use the first five slots of the validated categorical palette of the data-visualization guide, checked with its validator in both themes on 2026-10-29 (it passes every gate). **The type colors of the badges were not reused:** in the order of the tabs two neighbours were too close, and in dark mode they were outside the lightness band of a chart mark. In light mode three of the five are under 3:1 against the page, so the legend and the table always write the numbers (the rule the guide gives for that case).
 
 **The page** is `/stats`, private (`Cache-Control: private, no-store`, `noindex`), linked from the account menu. A visitor is sent to sign in like any private page.
+
+**Tabs by type (SAG-91).** `/stats?type=movie` (also `series`, `anime`, `book`, `manga`) narrows every number of the page to one type; no `type`, or one that is not on the list, means all of them. The filter is applied **once** to the list of entries that most statements start from (`entriesOf`) and to the five statements that read the library directly (the finished viewings by month, the span of each viewing, the best scored and the oldest planned), so no panel can leak another type; an integration test checks each number on a library that holds all five types, that the five types add up to the whole library and that the entries of another person are never counted. The tabs are plain links to `/stats` and `/stats?type=X`, so they work without JavaScript, can be kept as a bookmark and keep the back button honest; the active one is marked with `aria-current`. Their names and the empty messages are the ones of the library (`library.tabs`, `library.empty.byType`). Anime is its own tab, as in the library, and the tab is **not remembered**: every visit opens "All" (a cookie for it would add a privacy line for little). On a tab of one type the panels that compare types (by type, time by type, score by type) are left out, the tiles keep to what the type has (episodes only for series and anime, days and the note about lengths only for video), and every link to the library keeps the type (`/library?type=manga&genre=isekai`), as a plain link like the others. A type with nothing in the library says so and keeps the tabs. No migration, no new color.
 
 ## Alternatives considered
 

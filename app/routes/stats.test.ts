@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("~server/auth/require", () => ({ requireUser: mocks.requireUser }));
-vi.mock("~server/db/stats", () => ({ getStats: mocks.getStats }));
+vi.mock("~server/db/stats", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("~server/db/stats")>()),
+  getStats: mocks.getStats,
+}));
 vi.mock("~server/runtime-env", () => ({
   getDb: async () => ({ fake: "database" }),
 }));
@@ -27,9 +30,9 @@ beforeEach(() => {
   mocks.getStats.mockReset().mockResolvedValue(stats);
 });
 
-const load = () =>
+const load = (search = "") =>
   loader({
-    request: new Request("https://sagashelf.app/stats"),
+    request: new Request(`https://sagashelf.app/stats${search}`),
     params: {},
     context: {},
   } as unknown as Route.LoaderArgs);
@@ -44,8 +47,36 @@ describe("the statistics page loader", () => {
       { fake: "database" },
       "user-1",
       "en",
+      undefined,
     );
-    expect(answer).toEqual({ title: "app.pageTitle", stats });
+    expect(answer).toEqual({ title: "app.pageTitle", type: null, stats });
+  });
+
+  it("narrows the numbers to the type of the tab (SAG-91)", async () => {
+    for (const type of ["movie", "series", "anime", "book", "manga"]) {
+      mocks.getStats.mockClear();
+
+      const answer = await load(`?type=${type}`);
+
+      expect(mocks.getStats.mock.calls[0]?.[3]).toBe(type);
+      expect(answer).toMatchObject({ type });
+    }
+  });
+
+  it("counts every type for a type that does not exist, for an empty one and for 'custom'", async () => {
+    for (const search of [
+      "?type=nope",
+      "?type=",
+      "?type=custom",
+      "?type=MANGA",
+    ]) {
+      mocks.getStats.mockClear();
+
+      const answer = await load(search);
+
+      expect(mocks.getStats.mock.calls[0]?.[3]).toBeUndefined();
+      expect(answer).toMatchObject({ type: null });
+    }
   });
 
   it("falls back to Spanish for any language that is not English", async () => {
