@@ -21,6 +21,8 @@
     "server/db/stats.ts",
     "server/db/wikidata-store.ts",
     "server/db/sagas.ts",
+    "server/db/roles.ts",
+    "server/auth/authorize.ts",
     "server/db/sagas-admin.ts",
     "server/db/saga-drafts.ts",
     "server/db/next-episodes.ts",

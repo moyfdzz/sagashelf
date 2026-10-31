@@ -13,7 +13,8 @@
     "signOut": "Cerrar sesión",
     "search": "Buscar",
     "library": "Mi biblioteca",
-    "stats": "Estadísticas"
+    "stats": "Estadísticas",
+    "admin": "Administración"
   },
   "language": {
     "label": "Idioma"

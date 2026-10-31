@@ -45,6 +45,18 @@ test.describe("the administration of the sagas without a session", () => {
     expect(create.status()).toBeGreaterThanOrEqual(300);
   });
 
+  test("no page offers the link to the administration to a visitor (SAG-95)", async ({
+    request,
+  }) => {
+    for (const path of ["/", "/search", "/credits"]) {
+      const body = await (await request.get(path)).text();
+
+      expect(body, path).not.toContain("/admin/sagas");
+      expect(body, path).not.toContain("Administración");
+      expect(body, path).not.toContain("Administration");
+    }
+  });
+
   test("keeps crawlers away from the administration", async ({ request }) => {
     const robots = await (await request.get("/robots.txt")).text();
 
