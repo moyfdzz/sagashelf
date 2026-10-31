@@ -66,7 +66,11 @@ export async function enrichWithWikidata(
     const held = items.get(item.qid);
     items.set(item.qid, held ? merge(held, item) : item);
   };
-  const titles: { mediaId: string; qid: string | null }[] = [];
+  const titles: {
+    mediaId: string;
+    qid: string | null;
+    tvmazeId: number | null;
+  }[] = [];
   for (const candidate of candidates) {
     const hit = hits.find((found) =>
       candidate.sources.some(
@@ -75,7 +79,11 @@ export async function enrichWithWikidata(
           source.value === found.source.value,
       ),
     );
-    titles.push({ mediaId: candidate.mediaId, qid: hit?.item.qid ?? null });
+    titles.push({
+      mediaId: candidate.mediaId,
+      qid: hit?.item.qid ?? null,
+      tvmazeId: hit?.item.ids.tvmaze ? Number(hit.item.ids.tvmaze) : null,
+    });
     if (hit) {
       // The format of a title we hold is the one our own catalog gives it.
       add({ ...hit.item, format: candidate.type });

@@ -60,3 +60,7 @@ The `scheduled` handler now calls `runScheduledJobs` (`server/jobs/scheduled.ts`
 - Cloudflare Workers limits, <https://developers.cloudflare.com/workers/platform/limits/> (read 2026-10-20)
 - Cloudflare Cron Triggers, <https://developers.cloudflare.com/workers/configuration/cron-triggers/> (read 2026-10-20)
 - Tickets SAG-27, SAG-24 and SAG-28 (Linear)
+
+## Update (SAG-90, 2026-10-31)
+
+A second Cron Trigger was added (`30 */6 * * *`) for the next episodes of the series: the first one has no subrequests left for one call per show, and each trigger is an invocation with its own 50. The handler tells them apart by `controller.cron`. The Free plan allows 5 triggers per account, so 2 are used. See [ADR-027](027-tvmaze-next-episode.md).

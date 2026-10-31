@@ -107,7 +107,11 @@
     },
     "relationsSource": "Las relaciones vienen de <wikidata>Wikidata</wikidata>.",
     "partOfSaga": "Parte de la saga <saga>{{title}}</saga>",
-    "seeSaga": "Ver toda la saga {{title}}"
+    "seeSaga": "Ver toda la saga {{title}}",
+    "nextEpisode": "Próximo episodio: temporada {{season}}, episodio {{number}} · {{date}}",
+    "nextEpisodeNamed": "Próximo episodio: «{{name}}» (temporada {{season}}, episodio {{number}}) · {{date}}",
+    "nextEpisodeDate": "Próximo episodio: {{date}}",
+    "nextEpisodeSource": "Fecha de <tvmaze>TVmaze</tvmaze>."
   },
   "errors": {
     "backHome": "Volver al inicio",
@@ -325,7 +329,6 @@
     "soon": {
       "title": "Fuentes que se añadirán",
       "intro": "SagaShelf todavía no usa estas fuentes. Cuando lo haga, se mostrarán con este crédito:",
-      "tvmaze": "Horarios de episodios de <site>TVmaze</site>, con licencia CC BY-SA.",
       "googleBooks": "Libros de <site>Google Books</site>, solo para mostrar y sin guardarse."
     },
     "openLibrary": {
@@ -347,6 +350,10 @@
     "wikidata": {
       "title": "Wikidata",
       "body": "Las relaciones entre títulos (de qué historia forma parte cada uno y en qué otros formatos existe) vienen de <site>Wikidata</site>, de dominio público (CC0). Powered by Wikidata."
+    },
+    "tvmaze": {
+      "title": "TVmaze",
+      "body": "Las fechas del próximo episodio de las series y el anime vienen de <site>TVmaze</site>, con licencia <license>CC BY-SA</license>."
     }
   },
   "privacy": {

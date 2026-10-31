@@ -37,6 +37,8 @@ SAG-16 asked for two adapters, TVmaze and Wikidata, so that a series shows its n
 
 **No new origin in the CSP**: Wikidata is called only from the server.
 
+**The id of the show in TVmaze (SAG-90).** The lookup also asks `P8600` ("TV Maze series ID") and the job keeps it in `media_wikidata.tvmaze_id`: it is how the next episode of a series is found without a call to TMDB ([ADR-027](027-tvmaze-next-episode.md)).
+
 ## Large franchises (SAG-94)
 
 The first version brought the members of a franchise with no order and cut them at 400, and a title page showed 60 of those alphabetically. That works for a small franchise (Attack on Titan has 23 members) and fails for a large one (read 2026-10-31: Star Wars 3183, One Piece 1320, Dune 235, Dragon Ball 210): the 400 were arbitrary and full of toys, spoofs, games and episodes. SAG-94 changes three things:

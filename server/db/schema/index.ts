@@ -6,5 +6,6 @@ export * from "./operations";
 export * from "./sagas";
 export * from "./shared";
 export * from "./social";
+export * from "./tvmaze";
 export * from "./users";
 export * from "./wikidata";

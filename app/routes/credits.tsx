@@ -89,17 +89,23 @@ export default function Credits() {
           />
         </p>
       </LegalSection>
+      <LegalSection title={t("credits.tvmaze.title")}>
+        <p>
+          <Trans
+            i18nKey="credits.tvmaze.body"
+            components={{
+              site: <SourceLink href="https://www.tvmaze.com/" />,
+              license: (
+                <SourceLink href="https://www.tvmaze.com/api#licensing" />
+              ),
+            }}
+          />
+        </p>
+      </LegalSection>
       <LegalSection title={t("credits.soon.title")}>
         <p>{t("credits.soon.intro")}</p>
         <LegalList
           items={[
-            <Trans
-              key="tvmaze"
-              i18nKey="credits.soon.tvmaze"
-              components={{
-                site: <SourceLink href="https://www.tvmaze.com/" />,
-              }}
-            />,
             <Trans
               key="googleBooks"
               i18nKey="credits.soon.googleBooks"

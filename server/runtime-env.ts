@@ -7,6 +7,7 @@ import {
 } from "./auth/clerk-options";
 import { parseEnv, type AppEnv } from "./env";
 import { buildProviders } from "./providers/registry";
+import { getTvmazeClient } from "./providers/tvmaze";
 import { getWikidataClient } from "./providers/wikidata";
 import { createSearchCache } from "./search/cache";
 
@@ -98,6 +99,11 @@ export function getMediaProviders() {
 /** The Wikidata client, or null when this deployment has not switched it on (WIKIDATA_ENABLED). */
 export function getWikidata() {
   return getEnv().WIKIDATA_ENABLED === "true" ? getWikidataClient() : null;
+}
+
+/** The TVmaze client, or null when this deployment has not switched it on (TVMAZE_ENABLED). */
+export function getTvmaze() {
+  return getEnv().TVMAZE_ENABLED === "true" ? getTvmazeClient() : null;
 }
 
 /** The Clerk webhook signing secret, or null when this deployment has none. */

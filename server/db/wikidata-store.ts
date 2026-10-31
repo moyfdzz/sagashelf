@@ -44,7 +44,12 @@ export async function findTitlesToLookUp(
       AND e.provider IN ('tmdb', 'open_library', 'mangadex')
       AND (e.provider <> 'mangadex' OR m.cross_ids IS NOT NULL)
       AND (w.media_id IS NULL
-           OR (w.qid IS NULL AND w.checked_at < now() - make_interval(days => ${retryAfterDays})))
+           OR (w.qid IS NULL AND w.checked_at < now() - make_interval(days => ${retryAfterDays}))
+           -- A series found before the id of its show in TVmaze was read is looked up once more
+           -- (SAG-90): the lookup now brings that id.
+           OR (w.qid IS NOT NULL AND w.tvmaze_checked_at IS NULL
+               AND m.type IN ('series', 'anime') AND e.provider = 'tmdb'
+               AND e.external_id LIKE 'tv/%'))
     ORDER BY EXISTS (SELECT 1 FROM library_entries le WHERE le.media_id = m.id) DESC,
              w.checked_at NULLS FIRST, m.id
     LIMIT ${limit}
@@ -81,7 +86,7 @@ export async function findTitlesToLookUp(
 
 export type WikidataSave = {
   /** What was found for each title: its item, or null when Wikidata does not know it. */
-  titles: { mediaId: string; qid: string | null }[];
+  titles: { mediaId: string; qid: string | null; tvmazeId?: number | null }[];
   items: readonly WikidataItem[];
 };
 
@@ -120,7 +125,11 @@ export async function saveWikidata(
     ]),
   );
   const titles = JSON.stringify(
-    save.titles.map((title) => ({ media_id: title.mediaId, qid: title.qid })),
+    save.titles.map((title) => ({
+      media_id: title.mediaId,
+      qid: title.qid,
+      tvmaze_id: title.tvmazeId ?? null,
+    })),
   );
   await db.execute(sql`
     WITH saved_items AS (
@@ -150,10 +159,15 @@ export async function saveWikidata(
       ON CONFLICT DO NOTHING
       RETURNING 1
     )
-    INSERT INTO media_wikidata (media_id, qid, checked_at)
-    SELECT media_id, qid, now()
-    FROM jsonb_to_recordset(${titles}::jsonb) AS x(media_id uuid, qid text)
-    ON CONFLICT (media_id) DO UPDATE SET qid = EXCLUDED.qid, checked_at = now()
+    INSERT INTO media_wikidata (media_id, qid, checked_at, tvmaze_id, tvmaze_checked_at)
+    SELECT media_id, qid, now(), tvmaze_id, now()
+    FROM jsonb_to_recordset(${titles}::jsonb)
+      AS x(media_id uuid, qid text, tvmaze_id int)
+    ON CONFLICT (media_id) DO UPDATE SET
+      qid = EXCLUDED.qid, checked_at = now(),
+      -- An answer that carries no id (Wikidata does not have it) never erases one we hold.
+      tvmaze_id = coalesce(EXCLUDED.tvmaze_id, media_wikidata.tvmaze_id),
+      tvmaze_checked_at = now()
   `);
 }
 

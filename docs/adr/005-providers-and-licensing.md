@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)) and the credits page is live (SAG-31); the title pages and the image proxy are live (SAG-17, [ADR-017](017-media-pages-and-image-proxy.md)); Open Library (SAG-14, [ADR-021](021-books-open-library.md)) and MangaDex (SAG-66, [ADR-022](022-manga-mangadex.md)) are built; Google Books (SAG-67) is planned; Wikidata is built (SAG-16, [ADR-025](025-wikidata.md)) and TVmaze is SAG-90
+- **Implementation:** Partial: the interface and TMDB are built (SAG-13, see [ADR-016](016-provider-layer-and-tmdb.md)) and the credits page is live (SAG-31); the title pages and the image proxy are live (SAG-17, [ADR-017](017-media-pages-and-image-proxy.md)); Open Library (SAG-14, [ADR-021](021-books-open-library.md)) and MangaDex (SAG-66, [ADR-022](022-manga-mangadex.md)) are built; Google Books (SAG-67) is planned; Wikidata is built (SAG-16, [ADR-025](025-wikidata.md)) and TVmaze is built (SAG-90, [ADR-027](027-tvmaze-next-episode.md))
 - **Tickets:** SAG-13, SAG-14, SAG-66, SAG-67, SAG-68, SAG-16, SAG-17, SAG-31, SAG-33
 
 ## Context

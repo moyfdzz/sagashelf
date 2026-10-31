@@ -54,8 +54,8 @@ describe("enrichWithWikidata", () => {
     expect(mocks.saveWikidata).toHaveBeenCalledTimes(1);
     const saved = mocks.saveWikidata.mock.calls[0]?.[1];
     expect(saved.titles).toEqual([
-      { mediaId: "media-anime", qid: animeQid },
-      { mediaId: "media-unknown", qid: null },
+      { mediaId: "media-anime", qid: animeQid, tvmazeId: 919 },
+      { mediaId: "media-unknown", qid: null, tvmazeId: null },
     ]);
     const byQid = new Map(
       saved.items.map((item: { qid: string }) => [item.qid, item]),
@@ -99,7 +99,7 @@ describe("enrichWithWikidata", () => {
     expect(summary).toMatchObject({ found: 1, matched: 0, unknown: 1 });
     expect(seen).toHaveLength(0);
     expect(mocks.saveWikidata).toHaveBeenCalledWith(db, {
-      titles: [{ mediaId: "media-manga", qid: null }],
+      titles: [{ mediaId: "media-manga", qid: null, tvmazeId: null }],
       items: [],
     });
   });

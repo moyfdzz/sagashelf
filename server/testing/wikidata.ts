@@ -30,6 +30,7 @@ export const lookupAnswer: SparqlResult = {
         labelEn: cell("Attack on Titan"),
         franchises: cell(franchiseQid),
         basedOn: cell(mangaQid),
+        idTvmaze: cell("919"),
       },
     ],
   },

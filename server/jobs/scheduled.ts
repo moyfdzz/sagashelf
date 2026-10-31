@@ -1,8 +1,21 @@
 import { proposeSagaDrafts } from "../db/saga-drafts";
-import { getDb, getMediaProviders, getWikidata } from "../runtime-env";
+import {
+  getDb,
+  getMediaProviders,
+  getTvmaze,
+  getWikidata,
+} from "../runtime-env";
+import { refreshNextEpisodes } from "./refresh-next-episodes";
 import { enrichWithWikidata } from "./enrich-wikidata";
 import { refreshStaleMedia } from "./refresh-stale-media";
 import { syncSagas } from "./sync-sagas";
+
+/**
+ * The second Cron Trigger (SAG-90, ADR-027): the next episodes. It has an invocation of its own, so
+ * it has its own 50 subrequests, which the first one has used. It must be the string of
+ * `triggers.crons` in wrangler.jsonc; a test keeps the two equal.
+ */
+export const tvmazeCron = "30 */6 * * *";
 
 const logJobFailed = (job: string, error: unknown) =>
   console.log(
@@ -68,5 +81,17 @@ export async function runScheduledJobs(): Promise<void> {
     } catch (error) {
       logJobFailed("propose-saga-drafts", error);
     }
+  }
+}
+
+/** What the second Cron Trigger runs: the next episode of the series that are due. */
+export async function runTvmazeJobs(): Promise<void> {
+  try {
+    const tvmaze = getTvmaze();
+    if (!tvmaze) return;
+    const summary = await refreshNextEpisodes({ db: await getDb(), tvmaze });
+    console.log(JSON.stringify({ event: "tvmaze.batch", ...summary }));
+  } catch (error) {
+    logJobFailed("refresh-next-episodes", error);
   }
 }
