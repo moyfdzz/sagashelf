@@ -866,5 +866,70 @@
     "entry": "{{status}} · {{percent}} %",
     "notHeld": "Las obras sin enlace todavía no están en el catálogo de SagaShelf: ábrelas desde la búsqueda para seguirlas.",
     "signIn": "Inicia sesión para ver tu progreso en esta saga"
+  },
+  "admin": {
+    "sagas": {
+      "title": "Sagas",
+      "description": "Crea, edita y publica las sagas. Un borrador solo lo ves tú; los visitantes ven las publicadas.",
+      "create": {
+        "title": "Crear una saga",
+        "titleEs": "Nombre en español",
+        "titleEn": "Nombre en inglés",
+        "hint": "La dirección de la página se arma con el nombre en inglés y ya no cambia.",
+        "submit": "Crear borrador"
+      },
+      "list": {
+        "title": "Todas las sagas",
+        "empty": "Todavía no hay sagas.",
+        "works_one": "{{count}} obra",
+        "works_other": "{{count}} obras",
+        "described": "{{described}} de {{total}} descritas"
+      },
+      "status": {
+        "draft": "Borrador",
+        "published": "Publicada"
+      },
+      "origin": {
+        "file": "Del archivo",
+        "admin": "Editada aquí",
+        "wikidata": "Sugerida por Wikidata"
+      },
+      "edit": {
+        "back": "← Todas las sagas",
+        "state": "Estado",
+        "draftNote": "Es un borrador: los visitantes no la ven.",
+        "publishedNote": "Está publicada: cualquiera puede verla.",
+        "publish": "Publicar",
+        "unpublish": "Despublicar",
+        "viewPublic": "Ver la página pública",
+        "names": "Nombres",
+        "saveNames": "Guardar nombres",
+        "slug": "Dirección de la página: /sagas/{{slug}}",
+        "members": {
+          "title": "Obras, en el orden de la historia",
+          "empty": "Todavía no tiene obras.",
+          "pending": "Wikidata aún no la describe (el sistema lo hace en unas horas)",
+          "up": "Subir",
+          "down": "Bajar",
+          "remove": "Quitar",
+          "upLabel": "Subir {{name}}",
+          "downLabel": "Bajar {{name}}",
+          "removeLabel": "Quitar {{name}}"
+        },
+        "add": {
+          "title": "Agregar una obra",
+          "qid": "Código de Wikidata (por ejemplo Q22126305)",
+          "hint": "Pega el código o la dirección de la obra en Wikidata. Aparece en la página cuando Wikidata la describa.",
+          "submit": "Agregar"
+        }
+      }
+    },
+    "errors": {
+      "invalid_request": "Los datos no son válidos. Revisa los campos e inténtalo de nuevo.",
+      "slug_taken": "Ya existe una saga con esa dirección. Cambia el nombre en inglés.",
+      "not_found": "No se encontró lo que querías cambiar.",
+      "already_there": "Esa obra ya está en la saga.",
+      "nothing_to_move": "Esa obra ya no se puede mover en esa dirección."
+    }
   }
 }

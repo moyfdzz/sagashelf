@@ -21,6 +21,8 @@
     "server/db/stats.ts",
     "server/db/wikidata-store.ts",
     "server/db/sagas.ts",
+    "server/db/sagas-admin.ts",
+    "server/db/saga-drafts.ts",
     "server/providers/wikidata/map.ts",
     "server/db/import.ts",
     "server/media/import.ts",

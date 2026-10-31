@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   refreshStaleMedia: vi.fn(),
   enrichWithWikidata: vi.fn(),
   syncSagas: vi.fn(),
+  proposeSagaDrafts: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -17,6 +18,9 @@ vi.mock("../runtime-env", () => ({
   getWikidata: mocks.getWikidata,
 }));
 vi.mock("./sync-sagas", () => ({ syncSagas: mocks.syncSagas }));
+vi.mock("../db/saga-drafts", () => ({
+  proposeSagaDrafts: mocks.proposeSagaDrafts,
+}));
 vi.mock("./enrich-wikidata", () => ({
   enrichWithWikidata: mocks.enrichWithWikidata,
 }));
@@ -187,5 +191,63 @@ describe("runScheduledJobs", () => {
     await runScheduledJobs();
 
     expect(mocks.syncSagas).not.toHaveBeenCalled();
+  });
+
+  describe("the drafts of sagas (SAG-92)", () => {
+    const db = { execute: vi.fn() };
+    const setUp = (sync: { sagas: number; items: number }) => {
+      mocks.getMediaProviders.mockReturnValue([]);
+      mocks.getWikidata.mockReturnValue({});
+      mocks.getDb.mockResolvedValue(db);
+      mocks.enrichWithWikidata.mockResolvedValue({});
+      mocks.syncSagas.mockResolvedValue(sync);
+    };
+
+    it("proposes drafts in a run where the sync had nothing to do, and logs how many", async () => {
+      setUp({ sagas: 0, items: 0 });
+      mocks.proposeSagaDrafts.mockResolvedValue(2);
+
+      await runScheduledJobs();
+
+      expect(mocks.proposeSagaDrafts).toHaveBeenCalledWith(db);
+      expect(console.log).toHaveBeenCalledWith(
+        JSON.stringify({ event: "sagas.drafts", created: 2 }),
+      );
+    });
+
+    it("says nothing when no draft was made", async () => {
+      setUp({ sagas: 0, items: 0 });
+      mocks.proposeSagaDrafts.mockResolvedValue(0);
+
+      await runScheduledJobs();
+
+      expect(console.log).not.toHaveBeenCalledWith(
+        expect.stringContaining("sagas.drafts"),
+      );
+    });
+
+    it("waits for a quiet run, so the subrequests of a busy one are not passed", async () => {
+      setUp({ sagas: 21, items: 0 });
+      await runScheduledJobs();
+      setUp({ sagas: 0, items: 160 });
+      await runScheduledJobs();
+
+      expect(mocks.proposeSagaDrafts).not.toHaveBeenCalled();
+    });
+
+    it("logs a failure by name and does not throw", async () => {
+      setUp({ sagas: 0, items: 0 });
+      mocks.proposeSagaDrafts.mockRejectedValue(new RangeError("slow"));
+
+      await expect(runScheduledJobs()).resolves.toBeUndefined();
+
+      expect(console.log).toHaveBeenCalledWith(
+        JSON.stringify({
+          event: "job.failed",
+          job: "propose-saga-drafts",
+          error: "RangeError",
+        }),
+      );
+    });
   });
 });

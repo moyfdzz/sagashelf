@@ -85,7 +85,8 @@ The reasons are in [ADR-003](adr/003-auth-clerk.md). Clerk has two instances: **
 - [x] The production publishable key and JWT public key are in `vars` of `wrangler.jsonc`, and the secret key is a Workers secret in Production (`wrangler secret put`, 2026-10-23). Before this, `/sign-in` answered 503 on `sagashelf.app`, which is the designed answer without keys.
 - [x] The Clerk instance, its webhook endpoint (section 9) and its Svix signing secret are separate for each instance.
 - [x] Checked in a browser by the owner on 2026-10-23: sign-up and sign-in with Google with an account outside the test users after publishing, and the new user appeared in the production database. The grades of securityheaders.com and the Observatory were not run again after this change.
-- [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification. **Open:** it has not been done, and no administrator exists in production; the admin guard needs a verified Google login. Whether Google stays the way to protect the administrator is undecided (see the notes of SAG-12).
+- [x] **Decision (2026-10-31): the administrator signs in with Google, with 2-step verification on the Google account** (the owner turned it on that day). The admin guard needs a verified Google login, and Cloudflare Access can still be put in front of `/admin` later without changing the code.
+- [ ] Set the first administrator by hand in the database after their mirror row exists (SAG-11): the account must be the one with the Google login and 2-step verification. **Open:** it has not been done, and no administrator exists in production. It is done after the deploy of SAG-92 (see "Saga curation screen" below), because that is the first route that asks for the role.
 
 ## 9. Clerk webhook (SAG-11)
 
@@ -173,3 +174,13 @@ The sagas need nothing new in the dashboard: they use `WIKIDATA_ENABLED` and the
 - [ ] Check after the migration: `SELECT table_name FROM information_schema.tables WHERE table_name = 'saga_wikidata_members'` (one row) and `SELECT column_name FROM information_schema.columns WHERE table_name = 'wikidata_items' AND column_name IN ('year', 'details_at')` (two rows).
 - [ ] Check after the first cron run that follows the deploy: the Worker logs show `sagas.sync` with `sagas: 21` and an `items` count near 160, and no `job.failed` for `sync-sagas`. Then `SELECT count(*) FROM sagas` is 21, and `https://sagashelf.app/sagas/attack-on-titan` opens.
 - [ ] Watch the first runs: the scheduled invocation shares 50 subrequests (ADR-026 counts at most 49). If `job.failed` appears for the subrequest limit or the CPU time, tell the owner before changing anything.
+
+### Saga curation screen (SAG-92)
+
+`/admin/sagas` is for the administrator only: a Google login that Clerk says is verified **and** the role `admin` in our `users` table. The migration is `0015_saga_curation` (additive: three columns of `sagas`, with checks, and a unique constraint on `franchise_qid`). It is applied by the owner with the PR open and **before** the merge, because the new code reads `sagas.status` on every page of a saga.
+
+- [ ] Check after the migration: `SELECT column_name FROM information_schema.columns WHERE table_name = 'sagas' AND column_name IN ('status', 'origin', 'franchise_qid')` (three rows) and `SELECT status, origin, count(*) FROM sagas GROUP BY 1, 2` (every saga `published` and `file`).
+- [ ] After the deploy, give the role to the owner's row: first `SELECT id, username, role FROM users` (no emails), then `UPDATE users SET role = 'admin' WHERE id = '<the id of the owner>'`, and check that one row changed.
+- [ ] Open `https://sagashelf.app/admin/sagas` signed in with Google: the list of sagas shows. **This is the first time the guard asks Clerk for the Google login of a real account** (ADR-003, "not tested"): if the page answers 403, the role or the verified Google login is missing, and a 503 says Clerk's keys are missing.
+- [ ] Try it: create a draft, add a work (for example `Q22126305`), move it, publish it, open its public page, unpublish it, and check that the public page answers 404 again. Every change is a row of `audit_log` (`SELECT action, metadata FROM audit_log ORDER BY created_at DESC LIMIT 10`).
+- [ ] Watch the first runs of the cron: `sagas.drafts` in the Worker logs says drafts were proposed, and `job.failed` with `propose-saga-drafts` is the one to tell the owner about. The drafts wait for a run in which the sync had nothing to do.

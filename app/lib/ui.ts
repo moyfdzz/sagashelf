@@ -58,3 +58,7 @@ export const segmentClass = (selected: boolean) =>
 
 export const segmentedGroupClass =
   "border-border inline-flex overflow-hidden rounded-md border";
+
+/** A text field of a form: the same edge as the buttons, with the label above it. */
+export const inputClass =
+  "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";

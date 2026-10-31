@@ -12,7 +12,7 @@ import { SettingsNav } from "~/components/SettingsNav";
 import { StatusToast } from "~/components/StatusToast";
 import { formatDate } from "~/lib/format";
 import { localeNames, supportedLanguages } from "~/locales";
-import { secondaryButtonClass, secondaryLinkClass } from "~/lib/ui";
+import { inputClass, secondaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
   bioMaxLength,
@@ -179,9 +179,6 @@ export async function action(args: Route.ActionArgs) {
   }
   return data({ ok: true as const, profile, savedAt: Date.now() }, { headers });
 }
-
-const inputClass =
-  "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export default function ProfileSettings({
   loaderData,

@@ -15,6 +15,8 @@ export default [
   route("credits", "routes/credits.tsx"),
   route("library", "routes/library.tsx"),
   route("stats", "routes/stats.tsx"),
+  route("admin/sagas", "routes/admin.sagas.tsx"),
+  route("admin/sagas/:id", "routes/admin.sagas.$id.tsx"),
   route("sagas/:slug", "routes/sagas.$slug.tsx"),
   route("library/add", "routes/library.add.ts"),
   route("library/add-external", "routes/library.add-external.ts"),
