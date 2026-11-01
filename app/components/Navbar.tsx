@@ -13,9 +13,12 @@ const linkClass =
 export function Navbar({
   savedTheme,
   signedIn,
+  isAdmin = false,
 }: {
   savedTheme: Theme | null;
   signedIn: boolean;
+  /** An administrator also finds the administration in the account menu (SAG-95). */
+  isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
   const navItems = [
@@ -53,7 +56,7 @@ export function Navbar({
           <LanguageSwitcher />
           <ThemeSwitch saved={savedTheme} />
           {signedIn ? (
-            <AccountMenu />
+            <AccountMenu isAdmin={isAdmin} />
           ) : (
             // Plain anchors: the sign-in and sign-up pages have their own, wider security policy,
             // which only a new document gets.

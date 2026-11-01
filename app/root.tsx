@@ -19,6 +19,7 @@ import { Navbar } from "~/components/Navbar";
 import { authMiddleware } from "~/middleware/clerk";
 import { readTheme } from "~/lib/theme";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
+import { isAdministrator } from "~server/auth/is-admin";
 import { isSignedIn } from "~server/auth/signed-in";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
@@ -33,12 +34,16 @@ export const links: Route.LinksFunction = () => [
 
 export async function loader(args: Route.LoaderArgs) {
   const { context, request } = args;
+  const signedIn = await isSignedIn(args);
   return data({
     locale: getLocale(context),
     // The mode the person chose with the switch. With none, the page follows the system.
     theme: readTheme(request.headers.get("Cookie")),
     // Only a yes or no for the header. Who the person is stays in the pages that need it.
-    signedIn: await isSignedIn(args),
+    signedIn,
+    // Also a yes or no: the link to the administration is for an administrator (SAG-95). It is read
+    // only for a person with a session, and the pages of the administration check the role again.
+    isAdmin: signedIn ? await isAdministrator(args) : false,
   });
 }
 
@@ -47,6 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const rootData = useRouteLoaderData<typeof loader>("root");
   const theme = rootData?.theme ?? null;
   const signedIn = rootData?.signedIn ?? false;
+  const isAdmin = rootData?.isAdmin ?? false;
 
   return (
     <html
@@ -61,7 +67,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <Navbar savedTheme={theme} signedIn={signedIn} />
+        <Navbar savedTheme={theme} signedIn={signedIn} isAdmin={isAdmin} />
         {children}
         <Footer />
         <ScrollRestoration />

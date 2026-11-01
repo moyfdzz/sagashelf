@@ -13,7 +13,8 @@
     "signOut": "Sign out",
     "search": "Search",
     "library": "My library",
-    "stats": "Statistics"
+    "stats": "Statistics",
+    "admin": "Administration"
   },
   "language": {
     "label": "Language"
