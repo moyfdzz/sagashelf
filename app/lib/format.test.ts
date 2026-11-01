@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatNumber, formatRelativeTime } from "./format";
+import {
+  formatDate,
+  formatList,
+  formatNumber,
+  formatRelativeTime,
+} from "./format";
 
 const date = new Date("2026-10-20T23:30:00Z");
 
@@ -48,5 +53,23 @@ describe("formatRelativeTime", () => {
     expect(
       formatRelativeTime(new Date("2026-10-19T12:00:00Z"), "es", now),
     ).toBe("ayer");
+  });
+});
+
+describe("formatList", () => {
+  it("writes a list the way the language does", () => {
+    expect(formatList(["Acción", "Drama", "Misterio"], "es")).toBe(
+      "Acción, Drama y Misterio",
+    );
+    expect(formatList(["Action", "Drama", "Mystery"], "en")).toBe(
+      "Action, Drama, and Mystery",
+    );
+  });
+
+  it("says two with a word, one alone, and an empty list as nothing", () => {
+    expect(formatList(["Acción", "Drama"], "es")).toBe("Acción y Drama");
+    expect(formatList(["Action", "Drama"], "en")).toBe("Action and Drama");
+    expect(formatList(["Acción"], "es")).toBe("Acción");
+    expect(formatList([], "es")).toBe("");
   });
 });

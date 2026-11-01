@@ -25,6 +25,7 @@
     "server/auth/authorize.ts",
     "server/db/sagas-admin.ts",
     "server/db/saga-drafts.ts",
+    "server/db/recommendations.ts",
     "server/db/next-episodes.ts",
     "server/providers/wikidata/map.ts",
     "server/db/import.ts",
