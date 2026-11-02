@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  dangerButtonClass,
   externalLinkClass,
   forwardLinkClass,
   linkClass,
@@ -33,6 +34,7 @@ describe("the look of what is pressed", () => {
     for (const className of [
       primaryButtonClass,
       secondaryButtonClass,
+      dangerButtonClass,
       secondaryLinkClass,
       tabClass(false),
       segmentClass(false),
@@ -40,6 +42,43 @@ describe("the look of what is pressed", () => {
       expect(className).not.toContain("underline");
       expect(className).toContain("focus-visible:outline-2");
     }
+  });
+});
+
+describe("the button that deletes (SAG-98)", () => {
+  const tokens = (className: string) => className.split(/\s+/);
+
+  it("is the same size as the other buttons, so a row of them is even", () => {
+    for (const token of [
+      "px-4",
+      "py-2",
+      "rounded-md",
+      "border",
+      "font-semibold",
+    ]) {
+      expect(tokens(dangerButtonClass)).toContain(token);
+      expect(tokens(secondaryButtonClass)).toContain(token);
+    }
+    // And not the small one, which is what made it look out of place.
+    for (const small of ["px-2.5", "py-0.5", "text-sm"]) {
+      expect(tokens(dangerButtonClass)).not.toContain(small);
+    }
+  });
+
+  it("is told apart by the danger colors, as the button that deletes the account is", () => {
+    for (const token of [
+      "border-danger-edge",
+      "bg-danger-bg",
+      "text-danger-fg",
+    ]) {
+      expect(tokens(dangerButtonClass)).toContain(token);
+    }
+    expect(tokens(dangerButtonClass)).not.toContain("bg-accent");
+  });
+
+  it("keeps the focus outline and dims when it is disabled", () => {
+    expect(dangerButtonClass).toContain("focus-visible:outline-2");
+    expect(dangerButtonClass).toContain("disabled:opacity-60");
   });
 });
 
