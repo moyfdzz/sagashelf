@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-31
 - **Implementation:** Done (SAG-87). The signals that need other people's data or a provider's recommendations are left for later.
-- **Tickets:** SAG-87, SAG-71, SAG-25, SAG-21, SAG-23
+- **Tickets:** SAG-87, SAG-97, SAG-71, SAG-25, SAG-21, SAG-23
 - **Related:** [ADR-024](024-genres.md), [ADR-026](026-sagas.md), [ADR-018](018-personal-library.md), [ADR-016](016-provider-layer-and-tmdb.md)
 
 ## Context
@@ -21,6 +21,8 @@ What is in the database that serves (all of it already there since SAG-71 and SA
 **Signal 2: what is missing of the sagas a person started** (`getSagaSuggestions`). For each **published** saga (ADR-026; a draft is never read) in which the person has at least one entry, in any status, the works they do not have in their library, in the order of the story. A work is matched to the catalog like on the page of the saga (`mediaMatchesItem`), so one the catalog holds links to its page, and one only Wikidata knows is a name, because no library can hold it. The page lists up to five sagas, the nearest to be finished first, and up to six works of each, and counts the rest.
 
 **Privacy.** The candidates come from the **catalog**, which holds the data of the providers and **no one's library**, and the person is the one of the verified session: a title appears because of its genres or its saga and never because of what somebody else has. The library of another person does not say what this person likes, does not start their sagas and does not hide a title from them; an integration test of each is written. No count or ranking is made from other people's data.
+
+**Tabs by type (SAG-97).** The page has tabs for all of them, movies, series, anime, books and manga (`?type=`, plain addresses like the statistics tabs of SAG-91, which gave the list of types: `isStatsType`). Anything else in the address means all of them. A tab narrows **what is offered, not the taste**: the genres a person likes are still read from the whole library, so someone who loves fantasy anime and has no book yet gets fantasy books in the Books tab, and `likedGenres` is the same on every tab. The type is a condition on the candidates inside the same query (`m.type = $type::media_type`, a bound value), so the limit of 20 applies to the titles of that type and ten popular anime cannot fill the list of the books. The saga suggestions keep only the works of the format (what the catalog says the title is, else what Wikidata says of the work), count "and N more" after that, and hide a saga with no work of the format; it is done on the view, so the query of the sagas is the same. A type with nothing to offer says so with its own word ("there are no new books in your genres") and links to the search.
 
 ## What is not in this ticket, and why
 

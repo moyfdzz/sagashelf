@@ -38,6 +38,7 @@ const props = (extra: Record<string, unknown> = {}) =>
   ({
     loaderData: {
       title: "Recomendaciones | SagaShelf",
+      type: null,
       likedGenres: 2,
       genres: [
         {
@@ -185,5 +186,107 @@ describe("the recommendations page (SAG-87)", () => {
     );
 
     expect(html).not.toMatch(/obras? más/);
+  });
+});
+
+describe("the tabs by type (SAG-97)", () => {
+  const tabs = (html: string) =>
+    [
+      ...(
+        html.match(
+          /<nav [^>]*aria-label="Tipos de contenido"[\s\S]*?<\/nav>/,
+        )?.[0] ?? ""
+      ).matchAll(/<a ([^>]*)>([^<]+)<\/a>/g),
+    ].map((match) => ({
+      label: match[2],
+      href: match[1]?.match(/href="([^"]+)"/)?.[1],
+      current: match[1]?.includes('aria-current="page"'),
+    }));
+
+  it("has a tab for all of them and one for each type, as plain addresses", async () => {
+    const html = await render(<Recommendations {...props()} />);
+
+    expect(tabs(html).map(({ label, href }) => [label, href])).toEqual([
+      ["Todos", "/recommendations"],
+      ["Películas", "/recommendations?type=movie"],
+      ["Series", "/recommendations?type=series"],
+      ["Anime", "/recommendations?type=anime"],
+      ["Libros", "/recommendations?type=book"],
+      ["Manga", "/recommendations?type=manga"],
+    ]);
+  });
+
+  it("marks the tab of all of them as the current one when no type is asked", async () => {
+    const html = await render(<Recommendations {...props()} />);
+
+    expect(tabs(html).filter((tab) => tab.current)).toEqual([
+      { label: "Todos", href: "/recommendations", current: true },
+    ]);
+  });
+
+  it("marks only the tab of the type that is asked", async () => {
+    const html = await render(<Recommendations {...props({ type: "book" })} />);
+
+    expect(tabs(html).filter((tab) => tab.current)).toEqual([
+      { label: "Libros", href: "/recommendations?type=book", current: true },
+    ]);
+  });
+
+  it("keeps the tabs for a person with no taste yet, so the page does not change shape", async () => {
+    const html = await render(
+      <Recommendations
+        {...props({ likedGenres: 0, genres: [], sagas: [], type: "movie" })}
+      />,
+    );
+
+    expect(tabs(html)).toHaveLength(6);
+    expect(html).toContain("Todavía no sabemos qué géneros te gustan");
+  });
+
+  it("says the tabs in English", async () => {
+    const html = await render(<Recommendations {...props()} />, "en");
+
+    expect(html).toContain('aria-label="Types of content"');
+    expect(html).toContain(">Movies<");
+    expect(html).toContain(">Books<");
+  });
+
+  it("says there is nothing new of the type, with its own word, when the person has a taste", async () => {
+    const cases = {
+      movie: "no hay películas nuevas",
+      series: "no hay series nuevas",
+      anime: "no hay anime nuevo",
+      book: "no hay libros nuevos",
+      manga: "no hay manga nuevo",
+    } as const;
+
+    for (const [type, text] of Object.entries(cases)) {
+      const html = await render(
+        <Recommendations {...props({ likedGenres: 3, genres: [], type })} />,
+      );
+
+      expect(html, type).toContain(text);
+      expect(html, type).not.toContain("no hay títulos nuevos");
+      expect(html, type).toMatch(/<a [^>]*href="\/search"/);
+    }
+  });
+
+  it("says it in English too", async () => {
+    const html = await render(
+      <Recommendations
+        {...props({ likedGenres: 3, genres: [], type: "book" })}
+      />,
+      "en",
+    );
+
+    expect(html).toContain("there are no new books in your genres");
+  });
+
+  it("keeps the general message when no type is asked", async () => {
+    const html = await render(
+      <Recommendations {...props({ likedGenres: 3, genres: [] })} />,
+    );
+
+    expect(html).toContain("no hay títulos nuevos en tus géneros");
   });
 });

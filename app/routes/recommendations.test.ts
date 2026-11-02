@@ -59,9 +59,9 @@ beforeEach(() => {
   ]);
 });
 
-const load = () =>
+const load = (query = "") =>
   loader({
-    request: new Request("https://sagashelf.app/recommendations"),
+    request: new Request(`https://sagashelf.app/recommendations${query}`),
     params: {},
     context: {},
   } as unknown as Route.LoaderArgs);
@@ -74,6 +74,7 @@ describe("the recommendations loader (SAG-87)", () => {
       { fake: "database" },
       "user-1",
       "es",
+      { type: undefined },
     );
     expect(mocks.getSagaSuggestions).toHaveBeenCalledWith(
       { fake: "database" },
@@ -123,6 +124,7 @@ describe("the recommendations loader (SAG-87)", () => {
       { fake: "database" },
       "user-1",
       "en",
+      { type: undefined },
     );
   });
 
@@ -141,6 +143,53 @@ describe("the recommendations loader (SAG-87)", () => {
     await expect(load()).rejects.toBe(redirect);
     expect(mocks.getGenreRecommendations).not.toHaveBeenCalled();
     expect(mocks.getSagaSuggestions).not.toHaveBeenCalled();
+  });
+
+  it("asks only for the type of the tab, and still reads the saga suggestions of the whole library (SAG-97)", async () => {
+    const all = await load();
+    const books = await load("?type=book");
+
+    expect(all.type).toBeNull();
+    expect(books.type).toBe("book");
+    expect(mocks.getGenreRecommendations).toHaveBeenLastCalledWith(
+      { fake: "database" },
+      "user-1",
+      "es",
+      { type: "book" },
+    );
+    expect(mocks.getSagaSuggestions).toHaveBeenLastCalledWith(
+      { fake: "database" },
+      "user-1",
+    );
+  });
+
+  it("keeps in the sagas of a tab only the works of its format (SAG-97)", async () => {
+    const manga = await load("?type=manga");
+    const movies = await load("?type=movie");
+
+    expect(manga.sagas.map((saga) => saga.slug)).toEqual(["berserk"]);
+    expect(movies.sagas).toEqual([]);
+  });
+
+  it("takes any other type as the tab of all of them (SAG-97)", async () => {
+    for (const query of [
+      "?type=nonsense",
+      "?type=",
+      "?type=custom",
+      "?type=BOOK",
+    ]) {
+      expect((await load(query)).type, query).toBeNull();
+      expect(mocks.getGenreRecommendations).toHaveBeenLastCalledWith(
+        { fake: "database" },
+        "user-1",
+        "es",
+        { type: undefined },
+      );
+    }
+  });
+
+  it("reads the first type when the address has two (SAG-97)", async () => {
+    expect((await load("?type=book&type=movie")).type).toBe("book");
   });
 
   it("is private and not indexed", () => {

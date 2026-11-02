@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import type { SagaMember } from "./sagas";
 import type { LocalizedText } from "./schema/shared";
+import type { StatsType } from "./stats";
 import { mediaMatchesItem } from "./wikidata-store";
 import { type Genre, isGenre } from "../providers/genres";
 import { isWikidataFormat } from "../providers/wikidata/map";
@@ -43,12 +44,16 @@ export type GenreRecommendations = {
  * when dropped. A genre whose sum is not above zero is not liked. A title's affinity is the sum of the
  * liked genres it has divided by the square root of its genres, so a title with many genres does not
  * win only for having them. Ties go to the more popular title.
+ *
+ * With a `type` (SAG-97) only the titles of that type are offered, but the taste is still read from
+ * the whole library: a person who loves fantasy anime gets fantasy books even with no book yet.
+ * `likedGenres` is the same with or without a type.
  */
 export async function getGenreRecommendations(
   db: SqlExecutor,
   userId: string,
   locale: Locale,
-  limit: number = genreLimit,
+  { limit = genreLimit, type }: { limit?: number; type?: StatsType } = {},
 ): Promise<GenreRecommendations> {
   const { rows } = await db.execute(sql`
     WITH weighed AS (
@@ -72,6 +77,7 @@ export async function getGenreRecommendations(
       FROM media_items m
       JOIN liked l ON jsonb_exists(m.genres, l.genre)
       WHERE m.type <> 'custom'
+        ${type ? sql`AND m.type = ${type}::media_type` : sql``}
         AND NOT EXISTS (
           SELECT 1 FROM library_entries own
           WHERE own.user_id = ${userId}::uuid AND own.media_id = m.id

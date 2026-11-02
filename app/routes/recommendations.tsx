@@ -3,13 +3,14 @@ import { Link } from "react-router";
 
 import type { Route } from "./+types/recommendations";
 import { useFormatters } from "~/lib/format";
-import { forwardLinkClass, textLinkClass } from "~/lib/ui";
+import { forwardLinkClass, tabClass, textLinkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
   getGenreRecommendations,
   getSagaSuggestions,
 } from "~server/db/recommendations";
+import { isStatsType } from "~server/db/stats";
 import {
   viewGenreItems,
   viewSagaSuggestions,
@@ -21,16 +22,21 @@ export async function loader(args: Route.LoaderArgs) {
   const { t } = getInstance(args.context);
   const locale = getLocale(args.context) === "en" ? "en" : "es";
   const db = await getDb();
-  // Both read the library of the person of the verified session, and nobody else's.
+  // The tab asked for (SAG-97). Anything that is not one of the types means all of them.
+  const asked = new URL(args.request.url).searchParams.get("type");
+  const type = isStatsType(asked) ? asked : undefined;
+  // Both read the library of the person of the verified session, and nobody else's. The type only
+  // narrows what is offered: the taste is always read from the whole library.
   const [genres, sagas] = await Promise.all([
-    getGenreRecommendations(db, user.id, locale),
+    getGenreRecommendations(db, user.id, locale, { type }),
     getSagaSuggestions(db, user.id),
   ]);
   return {
     title: t("app.pageTitle", { title: t("recommendations.title") }),
+    type: type ?? null,
     likedGenres: genres.likedGenres,
     genres: viewGenreItems(genres.items),
-    sagas: viewSagaSuggestions(sagas, locale),
+    sagas: viewSagaSuggestions(sagas, locale, type),
   };
 }
 
@@ -49,10 +55,43 @@ export function meta({ loaderData }: Route.MetaArgs) {
 // The kinds that have a name of their own in the texts; a game or another format has none.
 const kinds = new Set(["anime", "movie", "series", "book", "manga"]);
 
+// The tabs (SAG-97): all of them, then one per type, as on the statistics page. Each is a plain
+// address, so it works without JavaScript and can be kept as a bookmark. The labels are the ones of
+// the library tabs.
+const tabTypes = [null, "movie", "series", "anime", "book", "manga"] as const;
+
+/**
+ * The row of tabs. The recommendations are not a session page, so a move between the tabs is a
+ * router link, which keeps the back button honest and asks only for the data of the page.
+ */
+function RecommendationTabs({ type }: { type: (typeof tabTypes)[number] }) {
+  const { t } = useTranslation();
+  return (
+    <nav aria-label={t("library.tabs.label")} className="mt-6">
+      <ul className="flex flex-wrap gap-2">
+        {tabTypes.map((tab) => {
+          const active = type === tab;
+          return (
+            <li key={tab ?? "all"}>
+              <Link
+                to={tab ? `/recommendations?type=${tab}` : "/recommendations"}
+                aria-current={active ? "page" : undefined}
+                className={tabClass(active)}
+              >
+                {t(`library.tabs.${tab ?? "all"}`)}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 export default function Recommendations({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { formatList } = useFormatters();
-  const { genres, sagas, likedGenres } = loaderData;
+  const { genres, sagas, likedGenres, type } = loaderData;
 
   const kindLabel = (format: string) =>
     kinds.has(format)
@@ -65,6 +104,7 @@ export default function Recommendations({ loaderData }: Route.ComponentProps) {
     <main className="container mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-3xl font-bold">{t("recommendations.title")}</h1>
       <p className="text-fg-muted mt-2">{t("recommendations.description")}</p>
+      <RecommendationTabs type={type} />
 
       <section aria-labelledby="recommendations-genres" className="mt-8">
         <h2 id="recommendations-genres" className="text-xl font-semibold">
@@ -105,7 +145,9 @@ export default function Recommendations({ loaderData }: Route.ComponentProps) {
           <p className="mt-4">
             {likedGenres === 0
               ? t("recommendations.genres.noTaste")
-              : t("recommendations.genres.empty")}{" "}
+              : type
+                ? t(`recommendations.genres.emptyByType.${type}`)
+                : t("recommendations.genres.empty")}{" "}
             <Link to="/search" className={forwardLinkClass}>
               {t("recommendations.searchLink")}
             </Link>

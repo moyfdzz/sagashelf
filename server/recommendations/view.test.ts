@@ -180,4 +180,74 @@ describe("viewSagaSuggestions (SAG-87)", () => {
     ).toEqual([]);
     expect(viewSagaSuggestions([], "en")).toEqual([]);
   });
+
+  describe("by type (SAG-97)", () => {
+    const held = (type: "movie" | "book") =>
+      work(`H-${type}`, {
+        format: "other",
+        labels: {},
+        media: {
+          id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
+          type,
+          title: `A ${type}`,
+          titles: {},
+        },
+      });
+
+    it("keeps only the works of the format, and every work with no type", () => {
+      const sagas = [
+        saga("mixed", [
+          work("Q1", { format: "manga" }),
+          work("Q2", { format: "anime" }),
+          work("Q3", { format: "manga" }),
+        ]),
+      ];
+
+      const [view] = viewSagaSuggestions(sagas, "en", "manga");
+
+      expect(view?.items.map((entry) => entry.qid)).toEqual(["Q1", "Q3"]);
+      expect(
+        viewSagaSuggestions(sagas, "en")[0]?.items.map((entry) => entry.qid),
+      ).toEqual(["Q1", "Q2", "Q3"]);
+    });
+
+    it("trusts what the catalog says the title is over what Wikidata says of the work", () => {
+      // Wikidata could not tell the format ("other"), but the catalog holds it as a movie.
+      const sagas = [saga("s", [held("movie"), held("book")])];
+
+      expect(
+        viewSagaSuggestions(sagas, "en", "movie")[0]?.items.map(
+          (entry) => entry.qid,
+        ),
+      ).toEqual(["H-movie"]);
+      expect(
+        viewSagaSuggestions(sagas, "en", "book")[0]?.items.map(
+          (entry) => entry.qid,
+        ),
+      ).toEqual(["H-book"]);
+    });
+
+    it("leaves out a saga with no work of the format, and counts the rest after the filter", () => {
+      const many = Array.from({ length: worksPerSaga + 2 }, (_, index) =>
+        work(`B${index}`, { format: "book" }),
+      );
+      const sagas = [
+        saga("only-anime", [work("Q1", { format: "anime" })]),
+        saga("books", [...many, work("Q2", { format: "anime" })]),
+      ];
+
+      const view = viewSagaSuggestions(sagas, "en", "book");
+
+      expect(view.map((entry) => entry.slug)).toEqual(["books"]);
+      expect(view[0]?.items).toHaveLength(worksPerSaga);
+      // The anime does not count as one more work: the count is of the books left.
+      expect(view[0]?.more).toBe(2);
+    });
+
+    it("gives nothing for a type that no saga has", () => {
+      expect(
+        viewSagaSuggestions([saga("s", [work("Q1")])], "en", "book"),
+      ).toEqual([]);
+    });
+  });
 });
