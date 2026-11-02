@@ -63,12 +63,14 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
     expect(without).toEqual([
       "/library",
       "/stats",
+      "/recommendations",
       "/settings/profile",
       "/sign-out",
     ]);
     expect(withAdmin).toEqual([
       "/library",
       "/stats",
+      "/recommendations",
       "/settings/profile",
       "/admin/sagas",
       "/sign-out",

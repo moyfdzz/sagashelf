@@ -14,7 +14,8 @@
     "search": "Search",
     "library": "My library",
     "stats": "Statistics",
-    "admin": "Administration"
+    "admin": "Administration",
+    "recommendations": "Recommendations"
   },
   "language": {
     "label": "Language"
@@ -938,6 +939,24 @@
       "not_found": "What you wanted to change was not found.",
       "already_there": "That work is already in the saga.",
       "nothing_to_move": "That work cannot move any further that way."
+    }
+  },
+  "recommendations": {
+    "title": "Recommendations",
+    "description": "Ideas of what to watch or read next, from what you have already scored or finished. Only titles of our catalog appear, which grows with what is searched and saved.",
+    "searchLink": "Go to search",
+    "genres": {
+      "title": "By your genres",
+      "description": "Titles of the catalog that you do not have in your library and that share genres with what you liked most.",
+      "because": "Because you like: {{genres}}",
+      "noTaste": "We do not know yet which genres you like. Score or finish some titles and come back.",
+      "empty": "For now there are no new titles in your genres in the catalog. Search for more titles and they will show up here."
+    },
+    "sagas": {
+      "title": "What you are missing of your sagas",
+      "description": "Works of the sagas you already started that you do not have in your library, in the order of the story.",
+      "more_one": "and {{count}} more work",
+      "more_other": "and {{count}} more works"
     }
   }
 }

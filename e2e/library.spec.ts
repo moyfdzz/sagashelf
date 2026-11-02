@@ -8,6 +8,7 @@ test.describe("the library without a session", () => {
     "/library",
     "/library/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
     "/stats",
+    "/recommendations",
   ]) {
     test(`${path} is not shown to a visitor`, async ({ request }) => {
       const response = await request.get(path, { maxRedirects: 0 });
@@ -20,6 +21,8 @@ test.describe("the library without a session", () => {
       const body = await response.text();
       expect(body).not.toContain("Mi biblioteca");
       expect(body).not.toContain("Estadísticas");
+      expect(body).not.toContain("Te falta de tus sagas");
+      expect(body).not.toContain("Por tus géneros");
     });
   }
 });

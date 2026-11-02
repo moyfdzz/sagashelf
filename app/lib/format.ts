@@ -23,6 +23,14 @@ export function formatNumber(
   return new Intl.NumberFormat(locale, options).format(value);
 }
 
+/** "Action, Drama and Mystery" / "Acción, Drama y Misterio": a list written the way the language writes it. */
+export function formatList(values: readonly string[], locale: string): string {
+  return new Intl.ListFormat(locale, {
+    style: "long",
+    type: "conjunction",
+  }).format(values);
+}
+
 const relativeUnits: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ["year", 60 * 60 * 24 * 365],
   ["month", 60 * 60 * 24 * 30],
@@ -62,5 +70,6 @@ export function useFormatters() {
       formatNumber(value, locale, options),
     formatRelativeTime: (value: Date | number) =>
       formatRelativeTime(value, locale),
+    formatList: (values: readonly string[]) => formatList(values, locale),
   };
 }

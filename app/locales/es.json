@@ -14,7 +14,8 @@
     "search": "Buscar",
     "library": "Mi biblioteca",
     "stats": "Estadísticas",
-    "admin": "Administración"
+    "admin": "Administración",
+    "recommendations": "Recomendaciones"
   },
   "language": {
     "label": "Idioma"
@@ -938,6 +939,24 @@
       "not_found": "No se encontró lo que querías cambiar.",
       "already_there": "Esa obra ya está en la saga.",
       "nothing_to_move": "Esa obra ya no se puede mover en esa dirección."
+    }
+  },
+  "recommendations": {
+    "title": "Recomendaciones",
+    "description": "Ideas de qué ver o leer a continuación, según lo que ya puntuaste o terminaste. Solo salen títulos de nuestro catálogo, que crece con lo que se busca y se guarda.",
+    "searchLink": "Ir a buscar",
+    "genres": {
+      "title": "Por tus géneros",
+      "description": "Títulos del catálogo que no tienes en tu biblioteca y que comparten géneros con lo que más te ha gustado.",
+      "because": "Porque te gustan: {{genres}}",
+      "noTaste": "Todavía no sabemos qué géneros te gustan. Puntúa o termina algunos títulos y vuelve.",
+      "empty": "Por ahora no hay títulos nuevos en tus géneros dentro del catálogo. Busca más títulos y aparecerán aquí."
+    },
+    "sagas": {
+      "title": "Te falta de tus sagas",
+      "description": "Obras de las sagas que ya empezaste y que no tienes en tu biblioteca, en el orden de la historia.",
+      "more_one": "y {{count}} obra más",
+      "more_other": "y {{count}} obras más"
     }
   }
 }

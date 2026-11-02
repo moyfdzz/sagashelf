@@ -85,6 +85,11 @@ export function AccountMenu({ isAdmin = false }: { isAdmin?: boolean }) {
           </a>
         </li>
         <li>
+          <a href="/recommendations" className={itemClass}>
+            {t("nav.recommendations")}
+          </a>
+        </li>
+        <li>
           <a href="/settings/profile" className={itemClass}>
             {t("nav.settings")}
           </a>
