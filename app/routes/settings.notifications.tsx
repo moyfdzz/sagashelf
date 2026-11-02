@@ -7,11 +7,11 @@ import type { Route } from "./+types/settings.notifications";
 import { ClerkSession } from "~/components/ClerkSession";
 import { useFormatters } from "~/lib/format";
 import {
+  dangerButtonClass,
   inputClass,
   primaryButtonClass,
   secondaryButtonClass,
   secondaryLinkClass,
-  smallButtonClass,
 } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -466,7 +466,7 @@ export default function NotificationSettings({
                               "settings.notifications.list.removeLabel",
                               { url: endpoint.maskedUrl },
                             )}
-                            className={smallButtonClass}
+                            className={dangerButtonClass}
                           >
                             {t("settings.notifications.list.remove")}
                           </button>

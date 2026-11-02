@@ -36,6 +36,12 @@ export const externalLinkClass = `${linkClass} after:ml-1 after:inline-block aft
 
 export const secondaryButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-4 py-2 font-semibold hover:brightness-95`;
 
+/**
+ * An action that deletes something (SAG-98): the same size as every other button, so a row of
+ * buttons is even, and told apart by its color, the danger one, not by being smaller.
+ */
+export const dangerButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} rounded-md border px-4 py-2 font-semibold hover:brightness-95 disabled:opacity-60`;
+
 /** A small button inside a line or a card, like the "+1": the same edge as the others, less padding. */
 export const smallButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 disabled:opacity-60`;
 

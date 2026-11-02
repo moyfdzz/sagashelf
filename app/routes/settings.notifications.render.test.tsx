@@ -124,6 +124,41 @@ describe("the notifications page (SAG-27)", () => {
     expect(html).toContain(`aria-label="Quitar el webhook ${masked}"`);
   });
 
+  it("draws the three buttons of a webhook the same size, with the one that removes in the danger colors (SAG-98)", async () => {
+    const html = await render(page({ endpoints: [on, off] }));
+    const buttonClasses = (label: string) =>
+      [...html.matchAll(/<button ([^>]*)>([^<]*)<\/button>/g)]
+        .filter((match) => match[2]?.includes(label))
+        .map((match) => match[1]?.match(/class="([^"]*)"/)?.[1] ?? "");
+    const size = (classes: string) =>
+      classes
+        .split(" ")
+        .filter((token) => /^(px|py)-/.test(token))
+        .sort()
+        .join(" ");
+
+    const test = buttonClasses("Enviar mensaje de prueba");
+    const enable = buttonClasses("Reactivar");
+    const remove = buttonClasses("Quitar");
+
+    expect(test).toHaveLength(1);
+    expect(enable).toHaveLength(1);
+    expect(remove).toHaveLength(2);
+    // Every button has the padding of the test button: none is smaller than the others.
+    for (const classes of [...enable, ...remove]) {
+      expect(size(classes)).toBe(size(test[0] ?? ""));
+      expect(size(classes)).toBe("px-4 py-2");
+    }
+    for (const classes of remove) {
+      expect(classes).toContain("border-danger-edge");
+      expect(classes).toContain("text-danger-fg");
+      expect(classes).not.toContain("text-sm");
+    }
+    // The ones that are not for deleting are not in the danger colors.
+    expect(test[0]).not.toContain("danger");
+    expect(enable[0]).not.toContain("danger");
+  });
+
   it("never has the token in the page, only its last characters", async () => {
     const html = await render(
       page({
