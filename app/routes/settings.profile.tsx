@@ -12,7 +12,12 @@ import { SettingsNav } from "~/components/SettingsNav";
 import { StatusToast } from "~/components/StatusToast";
 import { formatDate } from "~/lib/format";
 import { localeNames, supportedLanguages } from "~/locales";
-import { inputClass, secondaryButtonClass, secondaryLinkClass } from "~/lib/ui";
+import {
+  dangerButtonClass,
+  inputClass,
+  secondaryButtonClass,
+  secondaryLinkClass,
+} from "~/lib/ui";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
   bioMaxLength,
@@ -512,7 +517,7 @@ export default function ProfileSettings({
             <button
               type="submit"
               disabled={deleting}
-              className="border-danger-edge bg-danger-bg text-danger-fg focus-visible:outline-accent rounded-md border px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
+              className={dangerButtonClass}
             >
               {deleting
                 ? t("settings.delete.submitting")

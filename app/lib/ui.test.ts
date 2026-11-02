@@ -126,6 +126,47 @@ describe("the look of a link", () => {
   });
 });
 
+describe("the button that deletes, in the pages (SAG-99)", () => {
+  const sources = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sources(path);
+      return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)
+        ? [path]
+        : [];
+    });
+
+  // A button is `<button` up to the `>` that closes its tag. The alert boxes use the same colors on
+  // a `<p>`, and are not buttons.
+  const handWritten =
+    /<button\b[^>]*\b(?:bg-danger-bg|text-danger-fg|border-danger-edge)\b/;
+
+  it("all use the shared button, and none writes its colors by hand", () => {
+    const own = sources(join(__dirname, ".."))
+      .filter((path) => !path.endsWith(join("lib", "ui.ts")))
+      .filter((path) => handWritten.test(readFileSync(path, "utf8")));
+
+    expect(own).toEqual([]);
+  });
+
+  it("would notice one that does", () => {
+    expect(
+      handWritten.test(
+        '<button type="submit" className="bg-danger-bg text-danger-fg">',
+      ),
+    ).toBe(true);
+    expect(
+      handWritten.test('<button type="submit" className={dangerButtonClass}>'),
+    ).toBe(false);
+    // An alert box, which is not a button.
+    expect(
+      handWritten.test(
+        '<p role="alert" className="border-danger-edge bg-danger-bg text-danger-fg">',
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("the links of the site", () => {
   const sources = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

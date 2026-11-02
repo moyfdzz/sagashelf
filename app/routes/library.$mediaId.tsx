@@ -10,6 +10,7 @@ import { StatusToast } from "~/components/StatusToast";
 import { useFormatters } from "~/lib/format";
 import { readingContext } from "~/lib/media";
 import {
+  dangerButtonClass,
   forwardLinkClass,
   linkClass,
   primaryButtonClass,
@@ -919,10 +920,7 @@ export default function LibraryEntry({
           <Form method="post" className="border-border space-y-3 border-t p-4">
             <input type="hidden" name="intent" value="remove" />
             <p>{t("library.editor.remove.warning")}</p>
-            <button
-              type="submit"
-              className="bg-danger-bg text-danger-fg border-danger-edge focus-visible:outline-accent rounded-md border px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
+            <button type="submit" className={dangerButtonClass}>
               {t("library.editor.remove.confirm")}
             </button>
           </Form>
