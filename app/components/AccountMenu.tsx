@@ -1,18 +1,19 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AccountLinks } from "~/components/AccountLinks";
 import { menuAlign } from "~/lib/menu";
 
 const itemClass =
   "text-fg hover:bg-fg/10 focus-visible:outline-accent block rounded-md px-3 py-2 font-semibold focus-visible:outline-2 focus-visible:-outline-offset-2";
 
 /**
- * The account menu of a signed-in person: a button that shows or hides a list of links. The links
- * are plain anchors, so each one loads a whole new page (the settings and sign-out pages have
- * their own security policy, which only a new document gets) and the menu starts closed there.
- * Escape and a click outside close it, and Escape gives the focus back to the button. An administrator
- * also has a link to the administration (SAG-95), which is a plain anchor like the rest because
- * `/admin` has a security policy of its own too.
+ * The account menu of a signed-in person on a wide screen: a button that shows or hides a list of
+ * links (`AccountLinks`: settings, the administration for an administrator, and sign-out). The links
+ * are plain anchors, so each one loads a whole new page and the menu starts closed there. Escape and
+ * a click outside close it, and Escape gives the focus back to the button. The navigation links
+ * (library, statistics, recommendations) are in the header itself since SAG-96, and on a phone all
+ * of it is in the panel of the header's menu instead.
  */
 export function AccountMenu({ isAdmin = false }: { isAdmin?: boolean }) {
   const { t } = useTranslation();
@@ -74,38 +75,7 @@ export function AccountMenu({ isAdmin = false }: { isAdmin?: boolean }) {
           align === "right" ? "right-0" : "left-0"
         }`}
       >
-        <li>
-          <a href="/library" className={itemClass}>
-            {t("nav.library")}
-          </a>
-        </li>
-        <li>
-          <a href="/stats" className={itemClass}>
-            {t("nav.stats")}
-          </a>
-        </li>
-        <li>
-          <a href="/recommendations" className={itemClass}>
-            {t("nav.recommendations")}
-          </a>
-        </li>
-        <li>
-          <a href="/settings/profile" className={itemClass}>
-            {t("nav.settings")}
-          </a>
-        </li>
-        {isAdmin ? (
-          <li>
-            <a href="/admin/sagas" className={itemClass}>
-              {t("nav.admin")}
-            </a>
-          </li>
-        ) : null}
-        <li>
-          <a href="/sign-out" className={itemClass}>
-            {t("nav.signOut")}
-          </a>
-        </li>
+        <AccountLinks isAdmin={isAdmin} itemClass={itemClass} />
       </ul>
     </div>
   );

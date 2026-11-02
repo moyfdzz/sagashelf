@@ -60,17 +60,8 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
     const without = hrefs(await render(<AccountMenu />));
     const withAdmin = hrefs(await render(<AccountMenu isAdmin />));
 
-    expect(without).toEqual([
-      "/library",
-      "/stats",
-      "/recommendations",
-      "/settings/profile",
-      "/sign-out",
-    ]);
+    expect(without).toEqual(["/settings/profile", "/sign-out"]);
     expect(withAdmin).toEqual([
-      "/library",
-      "/stats",
-      "/recommendations",
       "/settings/profile",
       "/admin/sagas",
       "/sign-out",
@@ -91,6 +82,80 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
 
     expect(link).not.toContain("tabindex");
     expect(link).not.toContain("aria-hidden");
+  });
+});
+
+describe("the navigation of the header (SAG-96)", () => {
+  const navHrefs = (html: string) =>
+    hrefs(html.match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? "");
+
+  it("lists home, search, library, statistics and recommendations for a signed-in person", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+
+    expect(navHrefs(html)).toEqual([
+      "/",
+      "/search",
+      "/library",
+      "/stats",
+      "/recommendations",
+    ]);
+  });
+
+  it("lists only home and search for a visitor, who has no session links anywhere", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn={false} />);
+
+    expect(navHrefs(html)).toEqual(["/", "/search"]);
+    for (const path of ["/library", "/stats", "/recommendations", "/settings"])
+      expect(html).not.toContain(`href="${path}`);
+  });
+
+  it("keeps the library a plain anchor, and the other pages the router's", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const anchor = (path: string) =>
+      html.match(new RegExp(`<a [^>]*href="${path}"[^>]*>`))?.[0] ?? "";
+
+    expect(anchor("/library")).not.toContain("data-discover");
+    expect(anchor("/stats")).toContain("data-discover");
+    expect(anchor("/recommendations")).toContain("data-discover");
+  });
+
+  it("has a menu button for phones that names the panel it opens, closed at first", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const button = html.match(/<button [^>]*aria-expanded[^>]*>/)?.[0] ?? "";
+    const id = button.match(/aria-controls="([^"]+)"/)?.[1] ?? "";
+
+    expect(button).toContain('aria-expanded="false"');
+    expect(button).toContain("xl:hidden");
+    expect(id).not.toBe("");
+    expect(html).toMatch(
+      new RegExp(`<div [^>]*id="${id}"[^>]*class="[^"]*hidden`),
+    );
+    expect(html).toContain("Menú");
+  });
+
+  it("puts the account links in the panel of a phone and in the menu of a wide screen", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn isAdmin />);
+    const count = (path: string) => html.split(`href="${path}"`).length - 1;
+
+    for (const path of ["/settings/profile", "/admin/sagas", "/sign-out"])
+      expect(count(path)).toBe(2);
+  });
+
+  it("puts sign in and sign up in the panel of a phone too, for a visitor", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn={false} />);
+
+    expect(html.split('href="/sign-in"').length - 1).toBe(2);
+    expect(html.split('href="/sign-up"').length - 1).toBe(2);
+  });
+
+  it("says the menu button in English", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn={false} />,
+      "en",
+    );
+
+    expect(html).toContain("Menu");
+    expect(html).toContain("Home");
   });
 });
 

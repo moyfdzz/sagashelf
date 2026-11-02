@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+import { openMenuIfCollapsed } from "./header";
+
 test.use({ locale: "es-MX" });
 
 test("the search page asks for a term and has the type tabs", async ({
@@ -114,6 +116,7 @@ test("the search page does not scroll sideways", async ({ page }) => {
 
 test("the header links to the search", async ({ page }) => {
   await page.goto("/");
+  await openMenuIfCollapsed(page);
 
   await page
     .getByRole("navigation", { name: "Principal" })
