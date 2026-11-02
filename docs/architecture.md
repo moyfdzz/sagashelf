@@ -17,14 +17,14 @@ flowchart LR
     subgraph worker["Worker: sagashelf"]
       ssr["Server-rendered pages and resource routes<br/>app/routes"]
       srv["server/: env, database, providers, services"]
-      cron["scheduled handler<br/>Cron, every 6 hours"]
+      cron["scheduled handler<br/>3 Cron Triggers"]
     end
   end
 
   neon[("Neon Postgres<br/>Drizzle, SAG-9")]
   clerk["Clerk accounts<br/>sessions (SAG-10), user webhook (SAG-11)"]
   providers["Data providers<br/>TMDB, Open Library, MangaDex and Wikidata built<br/>(SAG-13, 14, 66, 16)<br/>TVmaze, Google Books<br/>planned (SAG-90, 67)"]
-  discord["Discord webhooks<br/>planned, SAG-27"]
+  discord["Discord webhooks<br/>SAG-27"]
   gh["GitHub<br/>repository, Actions, ruleset"]
 
   user --> edge --> ssr
@@ -39,11 +39,11 @@ flowchart LR
 
   classDef built fill:#d1fae5,stroke:#047857,color:#064e3b
   classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:4 3,color:#374151
-  class user,edge,ssr,srv,cron,neon,clerk,gh built
-  class providers,discord planned
+  class user,edge,ssr,srv,cron,neon,clerk,gh,discord built
+  class providers planned
 ```
 
-The Worker serves the pages (search, title pages, the sagas and their curation screen for the administrator, the recommendations, the library, the statistics, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime), Open Library (books) and MangaDex (manga) are the data providers built; the last two are switched on by a variable. Wikidata is not a provider of titles: a job looks each title up and keeps which other formats of the same story it has ([ADR-025](adr/025-wikidata.md), SAG-16, switched on by `WIKIDATA_ENABLED`). The others are planned. The `scheduled` handler has two Cron Triggers: the first runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54), then looks up to 20 titles up in Wikidata and brings the curated sagas into the database ([ADR-026](adr/026-sagas.md), SAG-25), and the second, half an hour later, asks TVmaze for the next episode of the series ([ADR-027](adr/027-tvmaze-next-episode.md), SAG-90, switched on by `TVMAZE_ENABLED`); the outbox that would need it every minute is still planned.
+The Worker serves the pages (search, title pages, the sagas and their curation screen for the administrator, the recommendations, the library, the statistics, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime), Open Library (books) and MangaDex (manga) are the data providers built; the last two are switched on by a variable. Wikidata is not a provider of titles: a job looks each title up and keeps which other formats of the same story it has ([ADR-025](adr/025-wikidata.md), SAG-16, switched on by `WIKIDATA_ENABLED`). The others are planned. The `scheduled` handler has three Cron Triggers: the first runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54), then looks up to 20 titles up in Wikidata and brings the curated sagas into the database ([ADR-026](adr/026-sagas.md), SAG-25), and the second, half an hour later, asks TVmaze for the next episode of the series ([ADR-027](adr/027-tvmaze-next-episode.md), SAG-90, switched on by `TVMAZE_ENABLED`); and the third, at a quarter past every hour, delivers the events of the outbox to the Discord webhooks that people connect in their settings ([ADR-029](adr/029-discord-webhooks.md), SAG-27, switched on by `WEBHOOKS_ENABLED`).
 
 ## 2. Life of a request
 
@@ -98,12 +98,12 @@ Providers by type: movies, series and anime use TMDB. Books use Open Library wit
 sequenceDiagram
   participant U as User action
   participant DB as Postgres
-  participant C as Cron handler, every minute
+  participant C as Cron handler, hourly (a test is sent at once)
   participant D as Discord webhook
 
   U->>DB: change plus outbox event in one transaction
   C->>DB: read pending events
-  C->>D: POST the event, signed, with an idempotency key
+  C->>D: POST the message, never following a redirect
   alt delivered
     D-->>C: 2xx
     C->>DB: mark delivered and log the delivery
@@ -111,12 +111,12 @@ sequenceDiagram
     D-->>C: 429 or 5xx
     C->>DB: schedule a retry with backoff and jitter
   else permanent failure
-    D-->>C: other 4xx
-    C->>DB: log it and disable the endpoint after N failures
+    D-->>C: 401, 403, 404 or 410
+    C->>DB: log it and turn the endpoint off at once (5 other failures in a row also do)
   end
 ```
 
-See [ADR-007](adr/007-background-work-cron-and-outbox.md).
+See [ADR-007](adr/007-background-work-cron-and-outbox.md) and [ADR-029](adr/029-discord-webhooks.md).
 
 ## 5. Data model
 

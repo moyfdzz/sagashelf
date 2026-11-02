@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readFileSync } from "node:fs";
 
-import { runScheduledJobs, runTvmazeJobs, tvmazeCron } from "./scheduled";
+import {
+  jobsForCron,
+  outboxCron,
+  runOutboxJobs,
+  runScheduledJobs,
+  runTvmazeJobs,
+  tvmazeCron,
+} from "./scheduled";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
@@ -14,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   proposeSagaDrafts: vi.fn(),
   getTvmaze: vi.fn(),
   refreshNextEpisodes: vi.fn(),
+  getWebhooksEnabled: vi.fn(),
+  deliverDueEvents: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -21,6 +30,10 @@ vi.mock("../runtime-env", () => ({
   getMediaProviders: mocks.getMediaProviders,
   getWikidata: mocks.getWikidata,
   getTvmaze: mocks.getTvmaze,
+  getWebhooksEnabled: mocks.getWebhooksEnabled,
+}));
+vi.mock("./deliver-outbox", () => ({
+  deliverDueEvents: mocks.deliverDueEvents,
 }));
 vi.mock("./refresh-next-episodes", () => ({
   refreshNextEpisodes: mocks.refreshNextEpisodes,
@@ -330,5 +343,100 @@ describe("the second Cron Trigger (SAG-90)", () => {
     expect(mocks.getMediaProviders).not.toHaveBeenCalled();
     expect(mocks.enrichWithWikidata).not.toHaveBeenCalled();
     expect(mocks.syncSagas).not.toHaveBeenCalled();
+  });
+});
+
+describe("the third Cron Trigger (SAG-27)", () => {
+  it("is declared in wrangler.jsonc next to the other two, and is not the same as either", () => {
+    const config = readFileSync("wrangler.jsonc", "utf8");
+
+    expect(config).toContain(`"${outboxCron}"`);
+    expect(config).toContain(`"${tvmazeCron}"`);
+    expect(config).toContain('"0 */6 * * *"');
+    expect(new Set([outboxCron, tvmazeCron, "0 */6 * * *"]).size).toBe(3);
+  });
+
+  it("is hourly, not every minute, so the database can sleep between runs", () => {
+    // `15 * * * *`: minute 15 of every hour. A cron that fires every minute starts with `*`.
+    expect(outboxCron).toBe("15 * * * *");
+    expect(outboxCron.startsWith("*")).toBe(false);
+    expect(outboxCron.split(" ")[1]).toBe("*");
+  });
+
+  it("delivers the events that are due and logs the summary", async () => {
+    const db = { execute: vi.fn() };
+    const summary = {
+      found: 3,
+      delivered: 2,
+      retried: 1,
+      failed: 0,
+      paused: 0,
+      disabled: 0,
+      skipped: 0,
+      errors: 0,
+    };
+    mocks.getWebhooksEnabled.mockReturnValue(true);
+    mocks.getDb.mockResolvedValue(db);
+    mocks.deliverDueEvents.mockResolvedValue(summary);
+
+    await runOutboxJobs();
+
+    expect(mocks.deliverDueEvents).toHaveBeenCalledWith({ db });
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "webhooks.batch", ...summary }),
+    );
+  });
+
+  it("leaves the database asleep, and sends nothing, when the webhooks are off", async () => {
+    mocks.getWebhooksEnabled.mockReturnValue(false);
+
+    await runOutboxJobs();
+
+    expect(mocks.getDb).not.toHaveBeenCalled();
+    expect(mocks.deliverDueEvents).not.toHaveBeenCalled();
+  });
+
+  it("logs a failure by name, with nothing else, and does not throw", async () => {
+    mocks.getWebhooksEnabled.mockReturnValue(true);
+    mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+    mocks.deliverDueEvents.mockRejectedValue(
+      new TypeError("https://discord.com/api/webhooks/1/secret"),
+    );
+
+    await expect(runOutboxJobs()).resolves.toBeUndefined();
+
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "job.failed",
+        job: "deliver-outbox",
+        error: "TypeError",
+      }),
+    );
+    expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain(
+      "secret",
+    );
+  });
+
+  it("does not run the jobs of the other two triggers", async () => {
+    mocks.getWebhooksEnabled.mockReturnValue(false);
+
+    await runOutboxJobs();
+
+    expect(mocks.getMediaProviders).not.toHaveBeenCalled();
+    expect(mocks.getTvmaze).not.toHaveBeenCalled();
+    expect(mocks.enrichWithWikidata).not.toHaveBeenCalled();
+  });
+});
+
+describe("jobsForCron (SAG-27)", () => {
+  it("gives each Cron Trigger its own job, told apart by the string it fired with", () => {
+    expect(jobsForCron("0 */6 * * *")).toBe(runScheduledJobs);
+    expect(jobsForCron(tvmazeCron)).toBe(runTvmazeJobs);
+    expect(jobsForCron(outboxCron)).toBe(runOutboxJobs);
+  });
+
+  it("runs the jobs of the first trigger for a string it does not know, as before", () => {
+    expect(jobsForCron("* * * * *")).toBe(runScheduledJobs);
+    expect(jobsForCron("")).toBe(runScheduledJobs);
   });
 });

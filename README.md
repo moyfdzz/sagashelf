@@ -11,6 +11,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 - A private statistics page: titles completed, episodes watched, days of content (watched and pending), scores, years, types, statuses, the best scored, your activity by month, the titles you spent the most time on, what you watched again, time and score by type, your best year and month, how long you take to finish something what has been planned the longest, and the time, the titles and the best scores of each genre (with a link to the titles of that genre in your library), and the same numbers for one type only (tabs for movies, series, anime, books and manga), drawn as charts that also have a table of numbers or write their numbers.
 - Accounts with Clerk (email or Google), a profile with a privacy level, and a username you can change.
 - Your data is yours: download a copy of it, restore your library from that copy, or delete your account and everything in it.
+- Alerts in Discord: connect a webhook of a channel in your settings and send a test message to check it (the alerts themselves, such as a new episode, come next). A webhook that fails turns itself off and says why.
 - Spanish (default) and English, light and dark mode, responsive on phone, tablet and desktop.
 
 ## Planned
@@ -19,7 +20,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 - Google Books as a fallback for books, the volumes of a manga, and more sources for series and anime
 - Social layer: follow, friends (mutual follows), block, public/friends/private profiles
 - Custom entries for titles missing from the catalog
-- Trending pages, an admin dashboard, and incoming/outgoing webhooks
+- Trending pages, an admin dashboard, and signed webhooks for developers
 
 The design behind each of them is in the [decision records](docs/adr/README.md).
 

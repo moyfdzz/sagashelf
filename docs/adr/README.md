@@ -32,6 +32,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [026](026-sagas.md)                              | Sagas, curated in code and built on Wikidata, with a page, a badge and your progress      | Accepted | Partial (SAG-25, SAG-92)              |
 | [027](027-tvmaze-next-episode.md)                | The next episode of a series through TVmaze, in a Cron Trigger of its own                 | Accepted | Done (SAG-90)                         |
 | [028](028-recommendations.md)                    | Recommendations from the genres a person likes and the sagas they started                 | Accepted | Done (SAG-87)                         |
+| [029](029-discord-webhooks.md)                   | Outgoing webhooks to Discord: the outbox, the delivery and the settings page              | Accepted | Done (SAG-27)                         |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

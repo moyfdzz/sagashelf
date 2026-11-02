@@ -106,6 +106,11 @@ export function getTvmaze() {
   return getEnv().TVMAZE_ENABLED === "true" ? getTvmazeClient() : null;
 }
 
+/** Whether this deployment lets people connect a Discord webhook and delivers their events (WEBHOOKS_ENABLED). */
+export function getWebhooksEnabled(): boolean {
+  return getEnv().WEBHOOKS_ENABLED === "true";
+}
+
 /** The Clerk webhook signing secret, or null when this deployment has none. */
 export function getClerkWebhookSecret(): string | null {
   return webhookSecretFromEnv(env as unknown as Record<string, unknown>);

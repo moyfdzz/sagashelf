@@ -40,6 +40,10 @@ const envSchema = z.object({
   WIKIDATA_ENABLED: z.enum(["true", "false"]).optional(),
   // The same for TVmaze (SAG-90): no key, a plain variable, unset in CI and in previews.
   TVMAZE_ENABLED: z.enum(["true", "false"]).optional(),
+  // Switches the webhooks to Discord on (SAG-27): the settings page that saves an address, the test
+  // button and the delivery job. It needs no key (the address is the person's, kept in their row), so
+  // it is a plain variable, unset in CI and in previews, where nothing is ever sent.
+  WEBHOOKS_ENABLED: z.enum(["true", "false"]).optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
