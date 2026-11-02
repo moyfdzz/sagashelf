@@ -951,7 +951,14 @@
       "description": "Títulos del catálogo que no tienes en tu biblioteca y que comparten géneros con lo que más te ha gustado.",
       "because": "Porque te gustan: {{genres}}",
       "noTaste": "Todavía no sabemos qué géneros te gustan. Puntúa o termina algunos títulos y vuelve.",
-      "empty": "Por ahora no hay títulos nuevos en tus géneros dentro del catálogo. Busca más títulos y aparecerán aquí."
+      "empty": "Por ahora no hay títulos nuevos en tus géneros dentro del catálogo. Busca más títulos y aparecerán aquí.",
+      "emptyByType": {
+        "movie": "Por ahora no hay películas nuevas en tus géneros dentro del catálogo. Busca más películas y aparecerán aquí.",
+        "series": "Por ahora no hay series nuevas en tus géneros dentro del catálogo. Busca más series y aparecerán aquí.",
+        "anime": "Por ahora no hay anime nuevo en tus géneros dentro del catálogo. Busca más anime y aparecerá aquí.",
+        "book": "Por ahora no hay libros nuevos en tus géneros dentro del catálogo. Busca más libros y aparecerán aquí.",
+        "manga": "Por ahora no hay manga nuevo en tus géneros dentro del catálogo. Busca más manga y aparecerá aquí."
+      }
     },
     "sagas": {
       "title": "Te falta de tus sagas",

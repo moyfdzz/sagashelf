@@ -9,6 +9,8 @@ test.describe("the library without a session", () => {
     "/library/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
     "/stats",
     "/recommendations",
+    "/recommendations?type=book",
+    "/recommendations?type=nonsense",
   ]) {
     test(`${path} is not shown to a visitor`, async ({ request }) => {
       const response = await request.get(path, { maxRedirects: 0 });

@@ -236,7 +236,7 @@ describe("getGenreRecommendations (SAG-87)", () => {
     await addTitle("Middle", ["action"], { popularity: 50 });
 
     const all = await getGenreRecommendations(db, user.id, "es");
-    const one = await getGenreRecommendations(db, user.id, "es", 1);
+    const one = await getGenreRecommendations(db, user.id, "es", { limit: 1 });
 
     expect(titlesOf(all)).toEqual(["Famous", "Middle", "Quiet"]);
     expect(titlesOf(one)).toEqual(["Famous"]);
@@ -301,6 +301,103 @@ describe("getGenreRecommendations (SAG-87)", () => {
     expect(titlesOf(result)).toEqual(["Shared"]);
     expect(result.likedGenres).toBe(1);
     expect(JSON.stringify(result)).not.toContain(other.id);
+  });
+});
+
+describe("getGenreRecommendations by type (SAG-97)", () => {
+  it("offers only the titles of the type, with the taste read from the whole library", async () => {
+    // The person only has anime, and likes action: the books still come from that taste.
+    const user = await fanOf(["action"]);
+    await addTitle("An anime", ["action"]);
+    await addTitle("A book", ["action"], { type: "book" });
+    await addTitle("A movie", ["action"], { type: "movie" });
+
+    const books = await getGenreRecommendations(db, user.id, "es", {
+      type: "book",
+    });
+
+    expect(titlesOf(books)).toEqual(["A book"]);
+    expect(books.items[0]).toMatchObject({
+      type: "book",
+      because: ["action"],
+    });
+    expect(books.likedGenres).toBe(1);
+  });
+
+  it("gives every type its own titles, and the types together are what no type gives", async () => {
+    const user = await fanOf(["action"]);
+    for (const type of ["movie", "series", "anime", "book", "manga"] as const) {
+      await addTitle(`A ${type}`, ["action"], { type });
+    }
+
+    const all = await getGenreRecommendations(db, user.id, "es");
+    const parts = [];
+    for (const type of ["movie", "series", "anime", "book", "manga"] as const) {
+      const part = await getGenreRecommendations(db, user.id, "es", { type });
+      expect(titlesOf(part)).toEqual([`A ${type}`]);
+      parts.push(...titlesOf(part));
+    }
+
+    expect([...parts].sort()).toEqual([...titlesOf(all)].sort());
+    expect(await getGenreRecommendations(db, user.id, "es", {})).toEqual(all);
+  });
+
+  it("is empty for a type the catalog has nothing of, and still says how many genres the person likes", async () => {
+    const user = await fanOf(["action", "drama"]);
+    await addTitle("An anime", ["action"]);
+
+    expect(
+      await getGenreRecommendations(db, user.id, "es", { type: "manga" }),
+    ).toEqual({ likedGenres: 2, items: [] });
+  });
+
+  it("does not offer what the person has, in the type of the tab either", async () => {
+    const user = await fanOf(["action"]);
+    await hold(
+      user.id,
+      await addTitle("Had it", ["action"], { type: "book" }),
+      { status: "planned" },
+    );
+    await addTitle("New book", ["action"], { type: "book" });
+
+    expect(
+      titlesOf(
+        await getGenreRecommendations(db, user.id, "es", { type: "book" }),
+      ),
+    ).toEqual(["New book"]);
+  });
+
+  it("applies the limit to the titles of the type, not to the whole catalog", async () => {
+    const user = await fanOf(["action"]);
+    // Ten famous anime would fill a limit of two if the type was applied afterwards.
+    for (let index = 0; index < 10; index += 1) {
+      await addTitle(`Famous ${index}`, ["action"], { popularity: 900 });
+    }
+    await addTitle("Quiet book", ["action"], { type: "book", popularity: 1 });
+
+    const result = await getGenreRecommendations(db, user.id, "es", {
+      limit: 2,
+      type: "book",
+    });
+
+    expect(titlesOf(result)).toEqual(["Quiet book"]);
+  });
+
+  it("never offers what people made themselves, whatever the tab", async () => {
+    const user = await fanOf(["action"]);
+    await addTitle("Mine", ["action"], { type: "book" });
+    await db.execute(
+      sql`UPDATE media_items SET type = 'custom' WHERE title = 'Mine'`,
+    );
+
+    expect(
+      titlesOf(
+        await getGenreRecommendations(db, user.id, "es", { type: "book" }),
+      ),
+    ).toEqual([]);
+    expect(titlesOf(await getGenreRecommendations(db, user.id, "es"))).toEqual(
+      [],
+    );
   });
 });
 

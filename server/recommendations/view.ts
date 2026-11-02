@@ -2,6 +2,7 @@ import type {
   GenreRecommendation,
   SagaSuggestion,
 } from "../db/recommendations";
+import type { StatsType } from "../db/stats";
 import type { Genre } from "../providers/genres";
 import type { Locale } from "../providers/types";
 import { mediaPath } from "../media/slug";
@@ -60,22 +61,26 @@ export type SagaSuggestionView = {
  * The sagas as the page lists them: the ones with the fewest works left first (the nearest to be
  * finished), then by address, at most `sagasShown`; each with its works in the order of the story,
  * at most `worksPerSaga`, named in the language of the visitor. A work with no name in either
- * language is left out: there is nothing to show.
+ * language is left out: there is nothing to show. With a `type` (SAG-97) only the works of that
+ * format are kept, and a saga left with none is not listed; the count of the rest is made after it.
  */
 export function viewSagaSuggestions(
   suggestions: readonly SagaSuggestion[],
   locale: Locale,
+  type?: StatsType,
 ): SagaSuggestionView[] {
   return suggestions
     .map((saga) => {
       const items = saga.missing.flatMap((work) => {
         const label = memberLabel(work, locale);
-        return label
+        // What the catalog says the title is wins over what Wikidata says of the work.
+        const format = work.media?.type ?? work.format;
+        return label && (!type || format === type)
           ? [
               {
                 qid: work.qid,
                 label,
-                format: work.media?.type ?? work.format,
+                format,
                 year: work.year,
                 href: work.media
                   ? mediaPath(work.media.type, label, work.media.id)

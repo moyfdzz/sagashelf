@@ -951,7 +951,14 @@
       "description": "Titles of the catalog that you do not have in your library and that share genres with what you liked most.",
       "because": "Because you like: {{genres}}",
       "noTaste": "We do not know yet which genres you like. Score or finish some titles and come back.",
-      "empty": "For now there are no new titles in your genres in the catalog. Search for more titles and they will show up here."
+      "empty": "For now there are no new titles in your genres in the catalog. Search for more titles and they will show up here.",
+      "emptyByType": {
+        "movie": "For now there are no new movies in your genres in the catalog. Search for more movies and they will show up here.",
+        "series": "For now there are no new series in your genres in the catalog. Search for more series and they will show up here.",
+        "anime": "For now there is no new anime in your genres in the catalog. Search for more anime and it will show up here.",
+        "book": "For now there are no new books in your genres in the catalog. Search for more books and they will show up here.",
+        "manga": "For now there is no new manga in your genres in the catalog. Search for more manga and it will show up here."
+      }
     },
     "sagas": {
       "title": "What you are missing of your sagas",
