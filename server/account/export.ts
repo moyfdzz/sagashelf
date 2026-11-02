@@ -9,7 +9,9 @@ import {
   lists,
   mediaItems,
   users,
+  webhookEndpoints,
 } from "../db/schema";
+import { maskWebhookUrl } from "../webhooks/discord-url";
 import { timesWatched } from "../library/rules";
 
 /** Everything SagaShelf holds about one person, in a shape they can read and keep. */
@@ -29,6 +31,17 @@ export type AccountExport = {
   libraryEntries: Record<string, unknown>[];
   customEntries: Record<string, unknown>[];
   lists: Record<string, unknown>[];
+  /**
+   * The webhooks the person connected (SAG-27). The address is masked: it holds the token that lets
+   * anyone post in the channel, and a file that is downloaded can be sent, stored or shared.
+   */
+  webhooks: {
+    kind: string;
+    maskedUrl: string;
+    eventTypes: string[];
+    enabled: boolean;
+    createdAt: string;
+  }[];
 };
 
 /**
@@ -160,6 +173,18 @@ export async function exportAccount(
         )
     : [];
 
+  const endpoints = await db
+    .select({
+      kind: webhookEndpoints.kind,
+      url: webhookEndpoints.url,
+      eventTypes: webhookEndpoints.eventTypes,
+      enabled: webhookEndpoints.enabled,
+      createdAt: webhookEndpoints.createdAt,
+    })
+    .from(webhookEndpoints)
+    .where(eq(webhookEndpoints.userId, userId))
+    .orderBy(webhookEndpoints.createdAt, webhookEndpoints.id);
+
   return {
     schemaVersion: 1,
     exportedAt: now.toISOString(),
@@ -184,6 +209,13 @@ export async function exportAccount(
           position: item.position,
           note: item.note,
         })),
+    })),
+    webhooks: endpoints.map((endpoint) => ({
+      kind: endpoint.kind,
+      maskedUrl: maskWebhookUrl(endpoint.url),
+      eventTypes: endpoint.eventTypes,
+      enabled: endpoint.enabled,
+      createdAt: endpoint.createdAt.toISOString(),
     })),
   };
 }

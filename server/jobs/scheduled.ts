@@ -3,8 +3,10 @@ import {
   getDb,
   getMediaProviders,
   getTvmaze,
+  getWebhooksEnabled,
   getWikidata,
 } from "../runtime-env";
+import { deliverDueEvents } from "./deliver-outbox";
 import { refreshNextEpisodes } from "./refresh-next-episodes";
 import { enrichWithWikidata } from "./enrich-wikidata";
 import { refreshStaleMedia } from "./refresh-stale-media";
@@ -16,6 +18,15 @@ import { syncSagas } from "./sync-sagas";
  * `triggers.crons` in wrangler.jsonc; a test keeps the two equal.
  */
 export const tvmazeCron = "30 */6 * * *";
+
+/**
+ * The third Cron Trigger (SAG-27, ADR-029): the delivery of webhook events. It is hourly and not every
+ * minute: the Neon Free plan pauses the compute after 5 minutes without a query and gives 100
+ * compute hours a month (ADR-012, read again 2026-11-02), so a query every minute would keep it
+ * awake and use them up. It has an invocation of its own, so its own 50 subrequests. It must be the
+ * string of `triggers.crons` in wrangler.jsonc; a test keeps the three equal.
+ */
+export const outboxCron = "15 * * * *";
 
 const logJobFailed = (job: string, error: unknown) =>
   console.log(
@@ -94,4 +105,28 @@ export async function runTvmazeJobs(): Promise<void> {
   } catch (error) {
     logJobFailed("refresh-next-episodes", error);
   }
+}
+
+/**
+ * What the third Cron Trigger runs: the webhook events that are due (ADR-029). With the webhooks
+ * switched off it does not even open the database, so a deployment without them costs nothing.
+ */
+export async function runOutboxJobs(): Promise<void> {
+  try {
+    if (!getWebhooksEnabled()) return;
+    const summary = await deliverDueEvents({ db: await getDb() });
+    console.log(JSON.stringify({ event: "webhooks.batch", ...summary }));
+  } catch (error) {
+    logJobFailed("deliver-outbox", error);
+  }
+}
+
+/**
+ * The job a Cron Trigger runs, told apart by the string it fired with. Anything that is not one of
+ * the other two runs the first one's jobs, as it did before there were more.
+ */
+export function jobsForCron(cron: string): () => Promise<void> {
+  if (cron === tvmazeCron) return runTvmazeJobs;
+  if (cron === outboxCron) return runOutboxJobs;
+  return runScheduledJobs;
 }

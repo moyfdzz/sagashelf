@@ -195,7 +195,75 @@
       "label": "Secciones de los ajustes",
       "profile": "Perfil",
       "data": "Mis datos",
-      "delete": "Eliminar cuenta"
+      "delete": "Eliminar cuenta",
+      "notifications": "Notificaciones"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Recibe avisos de SagaShelf en un canal de Discord.",
+      "back": "Volver a los ajustes",
+      "unavailable": "Los avisos a Discord todavía no están disponibles en este servidor.",
+      "connect": {
+        "title": "Conectar un canal de Discord",
+        "step1": "En Discord, abre los ajustes del canal, entra a Integraciones y luego a Webhooks.",
+        "step2": "Crea un webhook nuevo y copia su URL.",
+        "step3": "Pégala aquí y guarda.",
+        "privacy": "Lo que se publique lo verá cualquiera que pueda leer ese canal. Para que sea solo para ti, crea tu propio servidor con un canal solo tuyo.",
+        "secret": "Quien tenga la URL puede publicar en ese canal, así que no la compartas. Después de guardarla solo mostramos sus últimos caracteres.",
+        "label": "URL del webhook",
+        "hint": "Empieza con https://discord.com/api/webhooks/",
+        "submit": "Guardar webhook",
+        "submitting": "Un momento…"
+      },
+      "list": {
+        "title": "Tus webhooks",
+        "events": "Por ahora solo se envía el mensaje de prueba. Los avisos de episodios nuevos y de tu biblioteca llegarán más adelante.",
+        "empty": "Todavía no has conectado ningún canal.",
+        "kind": "Discord",
+        "on": "Activo",
+        "off": "Desactivado",
+        "since": "Se desactivó el {{date}}.",
+        "reason": {
+          "unauthorized": "Discord rechazó la URL. Crea un webhook nuevo y pégalo aquí.",
+          "not_found": "Ese webhook ya no existe en Discord. Crea uno nuevo y pégalo aquí.",
+          "too_many_failures": "Falló varias veces seguidas, así que dejamos de enviarle avisos. Reactívalo cuando el canal funcione."
+        },
+        "test": "Enviar mensaje de prueba",
+        "testing": "Enviando…",
+        "enable": "Reactivar",
+        "remove": "Quitar",
+        "removeLabel": "Quitar el webhook {{url}}"
+      },
+      "result": {
+        "added": "Webhook guardado. Envía un mensaje de prueba para comprobarlo.",
+        "removed": "Webhook quitado.",
+        "enabled": "Webhook reactivado.",
+        "testOk": "Mensaje enviado. Revisa tu canal de Discord.",
+        "testFailed": "No se pudo enviar el mensaje: {{reason}}.",
+        "testOff": "El webhook se desactivó."
+      },
+      "reason": {
+        "timeout": "Discord no respondió a tiempo",
+        "network": "no se pudo conectar con Discord",
+        "redirect": "Discord respondió con una redirección",
+        "http": "Discord respondió con el código {{status}}"
+      },
+      "log": {
+        "title": "Últimos envíos",
+        "times": "Las horas están en UTC.",
+        "empty": "Todavía no hay envíos.",
+        "delivered": "Entregado",
+        "failed": "No entregado",
+        "details": "Intento {{attempt}} · respuesta {{code}} · {{ms}} ms"
+      },
+      "errors": {
+        "invalid_url": "Esa no es la URL de un webhook de Discord. Debe empezar con https://discord.com/api/webhooks/ y no llevar nada más.",
+        "duplicate": "Ya tienes ese webhook.",
+        "limit": "Puedes conectar hasta {{max}} webhooks. Quita uno para agregar otro.",
+        "not_found": "No encontramos ese webhook.",
+        "unavailable": "Los avisos a Discord no están disponibles por ahora.",
+        "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
+      }
     },
     "import": {
       "title": "Importar tu biblioteca",

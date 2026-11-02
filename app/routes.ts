@@ -25,6 +25,7 @@ export default [
   route("library/:mediaId/step", "routes/library.$mediaId.step.ts"),
   route("library/:mediaId/status", "routes/library.$mediaId.status.ts"),
   route("settings/profile", "routes/settings.profile.tsx"),
+  route("settings/notifications", "routes/settings.notifications.tsx"),
   route("settings/export", "routes/settings.export.ts"),
   route("settings/import", "routes/settings.import.tsx"),
   route("settings/delete", "routes/settings.delete.ts"),

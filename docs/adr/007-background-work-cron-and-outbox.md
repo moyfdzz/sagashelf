@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** The handler and the first job (refreshing titles, SAG-54) are done. The outbox, the alert checks and the rollups are planned (SAG-27, SAG-24, SAG-28).
+- **Implementation:** The handler and the first job (refreshing titles, SAG-54) are done, and so are the outbox and its delivery to Discord (SAG-27, [ADR-029](029-discord-webhooks.md)). The alert checks and the rollups are planned (SAG-24, SAG-28).
 - **Tickets:** SAG-54, SAG-27, SAG-24, SAG-28
 
 ## Context
@@ -11,7 +11,7 @@ Some work must happen outside a request: delivering webhooks to Discord with ret
 
 ## Decision
 
-- **One `scheduled` handler** in the Worker is the only scheduled entry point. It runs every minute and dispatches small jobs: deliver pending outbox events, run due alert checks (SAG-28), and, on their own cadence, the daily analytics rollups (SAG-24). The cron expression lives in `wrangler.jsonc`.
+- **One `scheduled` handler** in the Worker is the only scheduled entry point. It runs every minute and dispatches small jobs: deliver pending outbox events, run due alert checks (SAG-28), and, on their own cadence, the daily analytics rollups (SAG-24). The cron expression lives in `wrangler.jsonc`. (Correction, SAG-27: the delivery runs **hourly**, not every minute, so the Neon compute can sleep; the reasons and the numbers are in ADR-029.)
 - **A transactional outbox** (the `outbox` table exists since SAG-9, with a unique idempotency key, a status, an attempt count and a next-attempt time, and an index on the pending events that are due; an integration test checks that the event and the change are saved together or not at all). An event (for example "user finished a series") is written to the `outbox` table **in the same database transaction** as the change that caused it. The handler reads pending rows and delivers them, so an event is never lost if the delivery fails and never sent for a change that was rolled back.
 - **Delivery rules:** a timeout per call, retries with exponential backoff and jitter (for example 1 minute, 5 minutes, 30 minutes, 2 hours, 12 hours), a stop after a number of failures with the endpoint disabled and the owner notified, respect for Discord rate-limit headers, and an **idempotency key per event** so a retry does not post twice.
 - **Small batches.** Each run handles a limited number of events and jobs so it finishes quickly, and one failing job never blocks the others.

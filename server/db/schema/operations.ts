@@ -35,6 +35,12 @@ export const outbox = pgTable(
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     // Makes a retry safe: the same event cannot be queued, or delivered, twice.
     idempotencyKey: text("idempotency_key").notNull().unique(),
+    // The endpoint a webhook delivery is for (SAG-27): one row per event and endpoint, so a dead
+    // endpoint cannot hold back the others. Deleting the endpoint, or the account, takes its pending
+    // events with it. An event that is not a delivery (`clerk.user_rejected`) has none.
+    endpointId: uuid("endpoint_id").references(() => webhookEndpoints.id, {
+      onDelete: "cascade",
+    }),
     status: outboxStatus("status").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
     nextAttemptAt: timestamp("next_attempt_at", {
@@ -51,6 +57,11 @@ export const outbox = pgTable(
     index("outbox_due_idx")
       .on(t.nextAttemptAt)
       .where(sql`${t.status} = 'pending'`),
+    // What the delivery job reads: the webhook deliveries that are due, and not the other events.
+    index("outbox_delivery_due_idx")
+      .on(t.nextAttemptAt)
+      .where(sql`${t.status} = 'pending' and ${t.endpointId} is not null`),
+    index("outbox_endpoint_idx").on(t.endpointId),
   ],
 );
 
@@ -76,12 +87,25 @@ export const webhookEndpoints = pgTable(
     secretEncrypted: text("secret_encrypted"),
     failureCount: integer("failure_count").notNull().default(0),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    // Why the delivery job turned the endpoint off (SAG-27), so the settings page can say it.
+    disabledReason: text("disabled_reason"),
     ...timestamps,
   },
   (t) => [
     check("webhook_endpoints_https_check", sql`${t.url} like 'https://%'`),
     check("webhook_endpoints_failure_count_check", sql`${t.failureCount} >= 0`),
+    // An endpoint that is off says when, and the reason is one the page has a text for.
+    check(
+      "webhook_endpoints_disabled_check",
+      sql`${t.enabled} or ${t.disabledAt} is not null`,
+    ),
+    check(
+      "webhook_endpoints_disabled_reason_check",
+      sql`${t.disabledReason} is null or ${t.disabledReason} in ('unauthorized', 'not_found', 'too_many_failures')`,
+    ),
     index("webhook_endpoints_user_idx").on(t.userId),
+    // The same address cannot be added twice by one person.
+    unique("webhook_endpoints_user_url_unique").on(t.userId, t.url),
   ],
 );
 

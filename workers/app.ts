@@ -2,11 +2,7 @@ import { createRequestHandler } from "react-router";
 
 import { answerAndDrain } from "~server/http/drain-after";
 import { apexRedirectUrl } from "~server/host";
-import {
-  runScheduledJobs,
-  runTvmazeJobs,
-  tvmazeCron,
-} from "~server/jobs/scheduled";
+import { jobsForCron } from "~server/jobs/scheduled";
 import { applySecurityHeaders } from "~server/security-headers";
 
 const requestHandler = createRequestHandler(
@@ -29,9 +25,7 @@ export default {
   },
   // The trigger lives in wrangler.jsonc. Each job is a small function in server/jobs (ADR-007).
   async scheduled(controller, _env, ctx) {
-    // Each Cron Trigger is an invocation with its own subrequests (ADR-027).
-    ctx.waitUntil(
-      controller.cron === tvmazeCron ? runTvmazeJobs() : runScheduledJobs(),
-    );
+    // Each Cron Trigger is an invocation with its own subrequests (ADR-027, ADR-029).
+    ctx.waitUntil(jobsForCron(controller.cron)());
   },
 } satisfies ExportedHandler<Env>;

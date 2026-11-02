@@ -36,6 +36,7 @@ const account = {
   libraryEntries: [],
   customEntries: [],
   lists: [],
+  webhooks: [],
 };
 
 beforeEach(() => {
