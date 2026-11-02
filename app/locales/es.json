@@ -15,7 +15,8 @@
     "library": "Mi biblioteca",
     "stats": "Estadísticas",
     "admin": "Administración",
-    "recommendations": "Recomendaciones"
+    "recommendations": "Recomendaciones",
+    "menu": "Menú"
   },
   "language": {
     "label": "Idioma"

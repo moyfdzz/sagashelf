@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { openMenuIfCollapsed } from "./header";
+
 test.describe("language detection", () => {
   test.describe("browser in Mexican Spanish", () => {
     test.use({ locale: "es-MX" });
@@ -8,6 +10,7 @@ test.describe("language detection", () => {
       await page.goto("/");
 
       await expect(page.locator("html")).toHaveAttribute("lang", "es");
+      await openMenuIfCollapsed(page);
       await expect(page.getByRole("link", { name: "Inicio" })).toBeVisible();
     });
   });
@@ -19,6 +22,7 @@ test.describe("language detection", () => {
       await page.goto("/");
 
       await expect(page.locator("html")).toHaveAttribute("lang", "en");
+      await openMenuIfCollapsed(page, "Menu");
       await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
     });
   });
@@ -47,11 +51,13 @@ test.describe("language selector", () => {
 
   test("switches the whole page and remembers the choice", async ({ page }) => {
     await page.goto("/");
+    await openMenuIfCollapsed(page);
     await expect(page.getByRole("link", { name: "Inicio" })).toBeVisible();
 
     await page.getByRole("button", { name: "English" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await openMenuIfCollapsed(page, "Menu");
     await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
     await expect(page.getByRole("button", { name: "English" })).toHaveAttribute(
       "aria-pressed",
