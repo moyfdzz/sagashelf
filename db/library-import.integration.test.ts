@@ -3,7 +3,12 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { exportAccount } from "../server/account/export";
 import { eraseAccount } from "../server/db/erase-user";
-import { addEntry, getEntry, saveEntry } from "../server/db/library";
+import {
+  addEntry,
+  getEntry,
+  saveEntry,
+  setEntryNotifyNewEpisodes,
+} from "../server/db/library";
 import { saveMedia, saveParts } from "../server/db/media-store";
 import {
   libraryEntries,
@@ -588,5 +593,73 @@ describe("export, delete the account, create another, import", () => {
       }),
     ]);
     expect(await db.select().from(libraryViewings)).toHaveLength(1);
+  });
+});
+
+describe("the alerts switch of an entry in an import (SAG-101)", () => {
+  const notifyOf = async (userId: string, mediaId: string) =>
+    (await getEntry(db, userId, mediaId, "es"))?.notifyNewEpisodes;
+
+  it("gives a new entry the switch of the file, and one with none is on", async () => {
+    const ana = await newUser();
+    const silenced = await saveMedia(db, series(1));
+    const plain = await saveMedia(db, series(2));
+
+    await run(ana.id, [
+      entry("tv/1", { notifyNewEpisodes: false }),
+      entry("tv/2"),
+    ]);
+
+    expect(await notifyOf(ana.id, silenced)).toBe(false);
+    expect(await notifyOf(ana.id, plain)).toBe(true);
+  });
+
+  it("never changes the switch of an entry the person already has, even replacing it", async () => {
+    const ana = await newUser();
+    const on = await saveMedia(db, series(1));
+    const off = await saveMedia(db, series(2));
+    await addEntry(db, ana.id, on);
+    await addEntry(db, ana.id, off);
+    await setEntryNotifyNewEpisodes(db, ana.id, off, false);
+
+    const result = await run(
+      ana.id,
+      [
+        entry("tv/1", { notifyNewEpisodes: false }),
+        entry("tv/2", { notifyNewEpisodes: true }),
+      ],
+      { replace: true },
+    );
+
+    expect(result).toMatchObject({ added: 0, replaced: 2 });
+    expect(await notifyOf(ana.id, on)).toBe(true);
+    expect(await notifyOf(ana.id, off)).toBe(false);
+  });
+
+  it("brings a title that was silenced back silenced, from an export, after the account was deleted", async () => {
+    const ana = await newUser({ clerkId: "user_switch_round_trip" });
+    const loud = await saveMedia(db, series(1));
+    const quiet = await saveMedia(db, series(2));
+    for (const media of [loud, quiet]) await addEntry(db, ana.id, media);
+    await setEntryNotifyNewEpisodes(db, ana.id, quiet, false);
+
+    const exported = JSON.parse(
+      JSON.stringify(await exportAccount(db, ana.id)),
+    ) as { libraryEntries: { notifyNewEpisodes?: boolean }[] };
+    expect(
+      exported.libraryEntries.map((e) => e.notifyNewEpisodes).sort(),
+    ).toEqual([false, true]);
+    await eraseAccount(db, "user_switch_round_trip");
+
+    const again = await newUser();
+    const parsed = parseImportFile(JSON.stringify(exported));
+    if (!parsed.ok) throw new Error(parsed.error);
+    await runImport({ db, providers: [provider()] }, again.id, parsed.value, {
+      replace: false,
+      locale: "es",
+    });
+
+    expect(await notifyOf(again.id, loud)).toBe(true);
+    expect(await notifyOf(again.id, quiet)).toBe(false);
   });
 });

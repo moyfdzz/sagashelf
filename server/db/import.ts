@@ -69,6 +69,8 @@ export type EntryToWrite = {
   notes: string | null;
   /** Used only when the entry is new; an existing entry keeps its own. */
   visibility: "public" | "friends" | "private";
+  /** Used only when the entry is new, like the visibility; an existing entry keeps its own (SAG-101). */
+  notifyNewEpisodes: boolean;
   viewings: {
     startedOn: string | null;
     finishedOn: string | null;
@@ -104,6 +106,7 @@ export async function writeEntries(
       finished_at: entry.finishedAt,
       notes: entry.notes,
       visibility: entry.visibility,
+      notify_new_episodes: entry.notifyNewEpisodes,
       viewings: entry.viewings.map((viewing) => ({
         started_on: viewing.startedOn,
         finished_on: viewing.finishedOn,
@@ -121,15 +124,17 @@ export async function writeEntries(
     WITH input AS (
       SELECT * FROM jsonb_to_recordset(${payload}::jsonb) AS x(
         media_id uuid, status text, progress int, progress_unit text, progress_total int,
-        score int, started_at date, finished_at date, notes text, visibility text, viewings jsonb
+        score int, started_at date, finished_at date, notes text, visibility text,
+        notify_new_episodes boolean, viewings jsonb
       )
     ),
     written AS (
       INSERT INTO library_entries
         (user_id, media_id, status, progress, progress_unit, progress_total, score, started_at,
-         finished_at, notes, visibility)
+         finished_at, notes, visibility, notify_new_episodes)
       SELECT ${userId}::uuid, media_id, status::library_status, progress, progress_unit,
-             progress_total, score, started_at, finished_at, notes, visibility::privacy_level
+             progress_total, score, started_at, finished_at, notes, visibility::privacy_level,
+             coalesce(notify_new_episodes, true)
       FROM input
       ON CONFLICT ON CONSTRAINT library_entries_user_media_unique ${onConflict}
       RETURNING id, media_id, (xmax = 0) AS added

@@ -75,6 +75,9 @@ const entrySchema = z.object({
   notes: shortText(notesMaxLength).nullable(),
   // Missing or unknown (a file from an older export, or edited by hand) reads as private.
   visibility: z.enum(["public", "friends", "private"]).catch("private"),
+  // Missing (a file from before the switch existed) or anything but false reads as on, which is what
+  // an entry did before there was a switch (SAG-101).
+  notifyNewEpisodes: z.boolean().catch(true),
   viewings: z.array(viewingSchema).max(maxViewings).catch([]),
 });
 
@@ -205,6 +208,7 @@ export function normalizeImported(
   finishedAt: string | null;
   notes: string | null;
   visibility: ImportEntry["visibility"];
+  notifyNewEpisodes: boolean;
 } {
   let { status, progress } = entry;
   const allowed = progressUnitsFor(title.type);
@@ -226,5 +230,6 @@ export function normalizeImported(
     finishedAt: status === "completed" ? entry.finishedAt : null,
     notes: entry.notes,
     visibility: keepVisibility ? entry.visibility : "private",
+    notifyNewEpisodes: entry.notifyNewEpisodes,
   };
 }

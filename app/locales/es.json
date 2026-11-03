@@ -712,6 +712,14 @@
         "count_read_one": "Lo has leído {{count}} vez.",
         "count_read_other": "Lo has leído {{count}} veces."
       },
+      "alerts": {
+        "title": "Avisos de este título",
+        "label": "Avisarme de episodios nuevos de este título",
+        "hint": "Solo recibes avisos de lo que tienes en «En curso», y si tu webhook de Discord tiene marcada la casilla de episodios nuevos.",
+        "link": "Ir a Notificaciones",
+        "save": "Guardar avisos",
+        "saved": "Avisos guardados."
+      },
       "remove": {
         "summary": "Quitar de mi biblioteca",
         "warning": "Se borran tu estado, tu progreso, tu puntuación y tus notas de este título. No se puede deshacer.",

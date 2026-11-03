@@ -50,6 +50,8 @@ export type StoredEntry = EntryState & {
   type: string;
   year: number | null;
   imageUrl: string | null;
+  /** Whether the person is told about the new episodes of this title (SAG-101). */
+  notifyNewEpisodes: boolean;
   updatedAt: Date;
 };
 
@@ -64,6 +66,7 @@ const entryColumns = (locale: Locale) => ({
   finishedAt: libraryEntries.finishedAt,
   notes: libraryEntries.notes,
   visibility: libraryEntries.visibility,
+  notifyNewEpisodes: libraryEntries.notifyNewEpisodes,
   updatedAt: libraryEntries.updatedAt,
   title: localizedTitleSql("media_items", locale),
   type: mediaItems.type,
@@ -159,6 +162,34 @@ export async function saveEntry(
       notes: next.notes,
       visibility: next.visibility,
       updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(libraryEntries.userId, userId),
+        eq(libraryEntries.mediaId, mediaId),
+      ),
+    )
+    .returning({ id: libraryEntries.id });
+  return updated.length > 0;
+}
+
+/**
+ * Turns the alerts of new episodes of one title on or off for this person (SAG-101, ADR-030). It does
+ * not change `updated_at`, so silencing a title does not move it up the list of what was changed
+ * lately: the column is set to itself, because Drizzle would otherwise stamp it (`$onUpdate`). The
+ * id of the person is the one of the session. False when they have no such entry.
+ */
+export async function setEntryNotifyNewEpisodes(
+  db: ProfileDb,
+  userId: string,
+  mediaId: string,
+  notify: boolean,
+): Promise<boolean> {
+  const updated = await db
+    .update(libraryEntries)
+    .set({
+      notifyNewEpisodes: notify,
+      updatedAt: sql`${libraryEntries.updatedAt}`,
     })
     .where(
       and(

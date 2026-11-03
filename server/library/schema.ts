@@ -123,6 +123,12 @@ export const libraryActionSchema = z.discriminatedUnion("intent", [
   saveSchema,
   z.strictObject({ intent: z.literal("remove") }),
   z.strictObject({ intent: z.literal("rewatch") }),
+  // The alerts of new episodes of this title (SAG-101). A ticked box is sent and an unticked one is
+  // not, so `notify` is "on" or it is missing.
+  z.strictObject({
+    intent: z.literal("notify"),
+    notify: z.literal("on").optional(),
+  }),
   z
     .strictObject({ intent: z.literal("viewing_add"), ...viewingFields })
     .superRefine(datesInOrder),

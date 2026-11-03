@@ -12,6 +12,7 @@ import {
   outbox,
   webhookEndpoints,
 } from "../server/db/schema";
+import { setEntryNotifyNewEpisodes } from "../server/db/library";
 import { claimDueEvents, setEndpointEvents } from "../server/db/webhooks";
 import { fakeWebhookUrl, otherWebhookUrl } from "../server/testing/discord";
 import { discordMessage } from "../server/webhooks/message";
@@ -514,5 +515,98 @@ describe("setEndpointEvents (SAG-28)", () => {
 
     expect(before.messages).toBe(0);
     expect(after.messages).toBe(1);
+  });
+});
+
+describe("the switch of a title (SAG-101)", () => {
+  const silence = (userId: string, mediaId: string) =>
+    setEntryNotifyNewEpisodes(db, userId, mediaId, false);
+
+  it("does not tell a person who turned the alerts of a title off, and still tells them about the others", async () => {
+    const person = await newUser();
+    await endpoint(person.id);
+    const quiet = await series("Quiet", { airStamp: hoursAgo(1) });
+    const loud = await series("Loud", { airStamp: hoursAgo(1) });
+    await watching(person.id, quiet.id);
+    await watching(person.id, loud.id);
+    await silence(person.id, quiet.id);
+
+    const summary = await announceNewEpisodes(db, now);
+
+    expect(summary).toEqual({ episodes: 2, messages: 1 });
+    const [row] = await queued();
+    const digest = digestOf(row ?? { payload: null });
+    expect(digest.total).toBe(1);
+    expect(digest.episodes).toEqual([{ title: "Loud", season: 1, number: 1 }]);
+  });
+
+  it("sends nothing at all to a person whose only title is silenced", async () => {
+    const person = await newUser();
+    await endpoint(person.id);
+    const quiet = await series("Quiet", { airStamp: hoursAgo(1) });
+    await watching(person.id, quiet.id);
+    await silence(person.id, quiet.id);
+
+    expect(await announceNewEpisodes(db, now)).toEqual({
+      episodes: 1,
+      messages: 0,
+    });
+    expect(await queued()).toHaveLength(0);
+  });
+
+  it("still marks the episode as told, so turning the alerts back on does not bring old news", async () => {
+    const person = await newUser();
+    await endpoint(person.id);
+    const quiet = await series("Quiet", { airStamp: hoursAgo(1) });
+    await watching(person.id, quiet.id);
+    await silence(person.id, quiet.id);
+
+    await announceNewEpisodes(db, now);
+    await setEntryNotifyNewEpisodes(db, person.id, quiet.id, true);
+    const later = await announceNewEpisodes(db, now);
+
+    expect(later).toEqual({ episodes: 0, messages: 0 });
+    expect(await queued()).toHaveLength(0);
+  });
+
+  it("tells the next episode once the alerts are back on", async () => {
+    const person = await newUser();
+    await endpoint(person.id);
+    const quiet = await series("Quiet", {
+      airStamp: hoursAgo(30),
+      season: 1,
+      number: 1,
+    });
+    await watching(person.id, quiet.id);
+    await silence(person.id, quiet.id);
+    await announceNewEpisodes(db, hoursAgo(29));
+
+    await setEntryNotifyNewEpisodes(db, person.id, quiet.id, true);
+    await db
+      .update(mediaNextEpisode)
+      .set({ airStamp: hoursAgo(1), season: 1, number: 2 })
+      .where(eq(mediaNextEpisode.mediaId, quiet.id));
+    const next = await announceNewEpisodes(db, now);
+
+    expect(next).toEqual({ episodes: 1, messages: 1 });
+  });
+
+  it("only silences the person who did: another one who follows the same title is still told", async () => {
+    const ana = await newUser();
+    const ben = await newUser();
+    const anaEndpoint = await endpoint(ana.id);
+    const benEndpoint = await endpoint(ben.id, { url: otherWebhookUrl });
+    const show = await series("Shared", { airStamp: hoursAgo(1) });
+    await watching(ana.id, show.id);
+    await watching(ben.id, show.id);
+    await silence(ana.id, show.id);
+
+    const summary = await announceNewEpisodes(db, now);
+
+    expect(summary).toEqual({ episodes: 1, messages: 1 });
+    const rows = await queued();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.endpointId).toBe(benEndpoint.id);
+    expect(rows[0]?.endpointId).not.toBe(anaEndpoint.id);
   });
 });

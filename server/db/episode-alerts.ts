@@ -29,8 +29,10 @@ export type AnnounceSummary = {
  * messages together, so a title is told once however many times this runs, and two runs at the same
  * time cannot both tell it (the second waits for the row and then finds it marked).
  *
- * Who hears: a person with the title in their library as "in progress" and an endpoint that is on and
- * has asked for `episode.aired`. Each endpoint gets ONE message with all its episodes, a digest and
+ * Who hears: a person with the title in their library as "in progress", who has not turned off the
+ * alerts of that title (`notify_new_episodes`, SAG-101), and an endpoint that is on and has asked for
+ * `episode.aired`. An episode nobody hears is still marked as told, so turning the switch on later
+ * does not bring an old one. Each endpoint gets ONE message with all its episodes, a digest and
  * not one per series, with the title in the language of the person. The key of a message is made from
  * what it tells, so even a repeat of the same statement could not queue it twice.
  */
@@ -56,7 +58,8 @@ export async function announceNewEpisodes(
              coalesce(nullif(m.titles ->> u.locale, ''), m.title) AS title
       FROM due
       JOIN media_items m ON m.id = due.media_id
-      JOIN library_entries le ON le.media_id = due.media_id AND le.status = 'in_progress'
+      JOIN library_entries le
+        ON le.media_id = due.media_id AND le.status = 'in_progress' AND le.notify_new_episodes
       JOIN users u ON u.id = le.user_id
       JOIN webhook_endpoints e
         ON e.user_id = u.id AND e.enabled
