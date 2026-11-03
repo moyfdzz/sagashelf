@@ -134,6 +134,13 @@
       "when": 1793727767636,
       "tag": "0018_episode_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793735785098,
+      "tag": "0019_notify_new_episodes",
+      "breakpoints": true
     }
   ]
 }

@@ -282,3 +282,26 @@ describe("libraryQuerySchema", () => {
     );
   });
 });
+
+describe("the alerts switch of a title (SAG-101)", () => {
+  it("reads a ticked box and an unticked one, which is not sent at all", () => {
+    expect(
+      libraryActionSchema.parse({ intent: "notify", notify: "on" }),
+    ).toEqual({ intent: "notify", notify: "on" });
+    expect(libraryActionSchema.parse({ intent: "notify" })).toEqual({
+      intent: "notify",
+    });
+  });
+
+  it.each([
+    ["a value other than the one of the box", { notify: "off" }],
+    ["a yes written out", { notify: "true" }],
+    ["a number", { notify: "1" }],
+    ["a field the form does not have", { status: "completed" }],
+    ["the person", { userId: "someone-else" }],
+  ])("refuses %s", (_name, extra) => {
+    expect(
+      libraryActionSchema.safeParse({ intent: "notify", ...extra }).success,
+    ).toBe(false);
+  });
+});

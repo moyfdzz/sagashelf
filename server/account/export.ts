@@ -92,6 +92,8 @@ export async function exportAccount(
       finishedAt: libraryEntries.finishedAt,
       notes: libraryEntries.notes,
       visibility: libraryEntries.visibility,
+      // Whether the person is told about the new episodes of the title (SAG-101).
+      notifyNewEpisodes: libraryEntries.notifyNewEpisodes,
       createdAt: libraryEntries.createdAt,
     })
     .from(libraryEntries)

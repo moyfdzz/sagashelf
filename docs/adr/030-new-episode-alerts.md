@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-03
-- **Implementation:** Done (SAG-28) for the episodes of series and anime, delivered to Discord. New volumes of manga and books, a notification inside the app, and "do not tell me about this series" are left out (see "What is not here").
+- **Implementation:** Done (SAG-28) for the episodes of series and anime, delivered to Discord. New volumes of manga and books, and a notification inside the app, are left out (see "What is not here"). "Do not tell me about this series" was added by SAG-101.
 - **Tickets:** SAG-28, SAG-27, SAG-90
 - **Related:** [ADR-007](007-background-work-cron-and-outbox.md), [ADR-018](018-personal-library.md), [ADR-027](027-tvmaze-next-episode.md), [ADR-029](029-discord-webhooks.md), [ADR-012](012-neon-over-supabase.md)
 
@@ -23,7 +23,9 @@ Four things in the ticket did not match what exists, and are decided here:
 
 **The window of 3 days** keeps the first run after the alerts are switched on, or after a long stop, from telling news that is days old. An episode that came out longer ago is not told, and nothing is queued for it.
 
-**Who hears it:** a person who has the title in their library as **"in progress"** (`library_entries.status`) and has an endpoint that is on and asked for `episode.aired`. An episode nobody follows is still marked, so someone who starts the series later is not told old news.
+**Who hears it:** a person who has the title in their library as **"in progress"** (`library_entries.status`), has not turned off the alerts of that title, and has an endpoint that is on and asked for `episode.aired`. An episode nobody hears is still marked, so someone who starts the series later, or turns the alerts of a title back on, is not told old news.
+
+**A switch for each title (SAG-101, migration `0019`).** `library_entries.notify_new_episodes` is on by default, which is what an entry did before there was a switch, so the migration changes nothing for anybody. The page of a series or an anime in the library has a small form of its own, "Alerts for this title", with a box and its own button (`setEntryNotifyNewEpisodes`: one statement, the id of the session in its `WHERE`, and it does not change `updated_at`, because the column is set to itself: Drizzle would otherwise stamp it with `$onUpdate` and silencing a title would move it up the list of what was changed lately). The statement of the alerts only joins entries that have it on. It is part of the export of the account, and an import gives it to a **new** entry as the file says (a file from before the switch reads as on, and only a real `false` turns it off) while an entry the person already has keeps its own, even when it is replaced, like the visibility.
 
 **One message per endpoint, a digest.** All the episodes of the moment for that endpoint go in one `episode.aired` event: the first 10 titles (in order of title) and how many there were, so a Sunday night with eight series is one message. The title is in the language of the person (`titles ->> locale`, else the title saved). The key of the event is made from what it tells (the endpoint and a hash of the titles and moments), so even a repeat of the same statement could not queue it twice.
 
@@ -37,7 +39,6 @@ Four things in the ticket did not match what exists, and are decided here:
 
 - **New volumes of manga and books.** No data says when a volume comes out (SAG-68 is the ticket for volumes by ISBN). The same statement and event type can take it when there is a source.
 - **A notification inside the app.** There is no table, no page and no erasure or export for it; that is a feature of its own. Today the only destination is a Discord channel.
-- **"Do not tell me about this series".** It needs a column on the library and a control on its page. For now a person controls it by the status they give the title ("in progress") and by the box of the webhook.
 - **A time zone and an hour.** See above.
 
 ## Alternatives considered

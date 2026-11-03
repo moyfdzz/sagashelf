@@ -151,6 +151,7 @@ describe("parseImportFile", () => {
       [
         "finishedAt",
         "notes",
+        "notifyNewEpisodes",
         "progress",
         "progressTotal",
         "progressUnit",
@@ -377,5 +378,38 @@ describe("normalizeImported", () => {
         visibility,
       );
     }
+  });
+});
+
+describe("the alerts switch of an entry (SAG-101)", () => {
+  const series = { episodes: 12, type: "series" };
+  const read = (overrides: Record<string, unknown> = {}) => {
+    const [first] = parsed(file([entry(overrides)])).entries;
+    if (!first) throw new Error("Expected an entry");
+    return first.entry;
+  };
+
+  it("reads it as the file says", () => {
+    expect(read({ notifyNewEpisodes: false }).notifyNewEpisodes).toBe(false);
+    expect(read({ notifyNewEpisodes: true }).notifyNewEpisodes).toBe(true);
+  });
+
+  it("reads it as on when the file does not say, as in a file from before the switch existed", () => {
+    expect(read().notifyNewEpisodes).toBe(true);
+  });
+
+  it.each([["no"], ["false"], [0], [null], [[]]])(
+    "reads %j as on: only a real false turns it off",
+    (value) => {
+      expect(read({ notifyNewEpisodes: value }).notifyNewEpisodes).toBe(true);
+    },
+  );
+
+  it("goes through the rules of an import as it is", () => {
+    expect(
+      normalizeImported(read({ notifyNewEpisodes: false }), series)
+        .notifyNewEpisodes,
+    ).toBe(false);
+    expect(normalizeImported(read(), series).notifyNewEpisodes).toBe(true);
   });
 });

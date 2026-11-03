@@ -712,6 +712,14 @@
         "count_read_one": "You have read it {{count}} time.",
         "count_read_other": "You have read it {{count}} times."
       },
+      "alerts": {
+        "title": "Alerts for this title",
+        "label": "Tell me about new episodes of this title",
+        "hint": "You only get alerts for what you have as \"In progress\", and when your Discord webhook has the new episodes box ticked.",
+        "link": "Go to Notifications",
+        "save": "Save alerts",
+        "saved": "Alerts saved."
+      },
       "remove": {
         "summary": "Remove from my library",
         "warning": "Your status, progress, score and notes for this title are deleted. This cannot be undone.",

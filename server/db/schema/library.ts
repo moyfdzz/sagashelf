@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   index,
@@ -41,6 +42,10 @@ export const libraryEntries = pgTable(
     notes: text("notes"),
     // Private until the person chooses otherwise.
     visibility: privacyLevel("visibility").notNull().default("private"),
+    // Whether the person is told when a new episode of this title comes out (SAG-101, ADR-030). On
+    // by default, which is what it did before there was a switch. It only matters for a series or an
+    // anime that is "in progress", and for a person with a webhook that asked for the alert.
+    notifyNewEpisodes: boolean("notify_new_episodes").notNull().default(true),
     ...timestamps,
   },
   (t) => [

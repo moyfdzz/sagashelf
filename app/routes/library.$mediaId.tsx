@@ -25,6 +25,7 @@ import {
   removeEntry,
   rewatchEntry,
   saveEntry,
+  setEntryNotifyNewEpisodes,
   totalEpisodes,
 } from "~server/db/library";
 import {
@@ -176,6 +177,7 @@ export async function loader(args: Route.LoaderArgs) {
       finishedAt: entry.finishedAt,
       notes: entry.notes,
       visibility: entry.visibility,
+      notifyNewEpisodes: entry.notifyNewEpisodes,
     },
     media: {
       title: entry.title,
@@ -259,6 +261,23 @@ export async function action(args: Route.ActionArgs) {
   if (parsed.data.intent === "remove") {
     await removeEntry(db, user.id, mediaId.data);
     return redirect("/library", { status: 303, headers: privateHeaders });
+  }
+
+  if (parsed.data.intent === "notify") {
+    // The alerts of new episodes of this title (SAG-101): on when the box was ticked, off when it was
+    // not, since an unticked box is not sent at all.
+    const saved = await setEntryNotifyNewEpisodes(
+      db,
+      user.id,
+      mediaId.data,
+      parsed.data.notify === "on",
+    );
+    // Somebody else's entry and no entry at all look the same.
+    if (!saved) throw data(null, { status: 404 });
+    return data(
+      { ok: true as const, saved: "notify" as const, savedAt: Date.now() },
+      { headers: privateHeaders },
+    );
   }
 
   const intent = parsed.data.intent;
@@ -467,11 +486,13 @@ export default function LibraryEntry({
             <StatusToast key={actionData.savedAt}>
               {actionData.saved === "rewatch"
                 ? t("library.editor.rewatched", { context })
-                : actionData.saved === "viewing_add" ||
-                    actionData.saved === "viewing_save" ||
-                    actionData.saved === "viewing_remove"
-                  ? t(`library.editor.viewings.toast.${actionData.saved}`)
-                  : t("library.editor.saved")}
+                : actionData.saved === "notify"
+                  ? t("library.editor.alerts.saved")
+                  : actionData.saved === "viewing_add" ||
+                      actionData.saved === "viewing_save" ||
+                      actionData.saved === "viewing_remove"
+                    ? t(`library.editor.viewings.toast.${actionData.saved}`)
+                    : t("library.editor.saved")}
             </StatusToast>
           ) : null}
         </div>
@@ -912,6 +933,62 @@ export default function LibraryEntry({
             </Form>
           ) : null}
         </section>
+
+        {/* Only a series or an anime has episodes to be told about (SAG-101). */}
+        {media.type === "series" || media.type === "anime" ? (
+          <section aria-labelledby="alerts-title" className="mt-8">
+            <h2 id="alerts-title" className="text-2xl font-bold">
+              {t("library.editor.alerts.title")}
+            </h2>
+            <Form
+              method="post"
+              // A key with the saved state puts the box back as it was saved after a save.
+              key={String(entry.notifyNewEpisodes)}
+              className="mt-3 space-y-3"
+            >
+              <input type="hidden" name="intent" value="notify" />
+              <div className="flex items-start gap-3">
+                <input
+                  id="notify-new-episodes"
+                  name="notify"
+                  value="on"
+                  type="checkbox"
+                  defaultChecked={entry.notifyNewEpisodes}
+                  className="mt-1 h-5 w-5 shrink-0"
+                  aria-describedby="notify-new-episodes-hint"
+                />
+                <div>
+                  <label
+                    htmlFor="notify-new-episodes"
+                    className="font-semibold"
+                  >
+                    {t("library.editor.alerts.label")}
+                  </label>
+                  <p
+                    id="notify-new-episodes-hint"
+                    className="text-fg-muted text-sm"
+                  >
+                    {t("library.editor.alerts.hint")}
+                    {/* A plain link: the settings pages have a security policy of their own (ADR-018). */}
+                    <a
+                      href="/settings/notifications"
+                      className="ml-1 underline"
+                    >
+                      {t("library.editor.alerts.link")}
+                    </a>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={saving}
+                className={secondaryButtonClass}
+              >
+                {t("library.editor.alerts.save")}
+              </button>
+            </Form>
+          </section>
+        ) : null}
 
         <details className="border-border mt-8 rounded-md border">
           <summary className="cursor-pointer px-4 py-3 font-semibold">

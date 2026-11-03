@@ -1,0 +1,1 @@
+ALTER TABLE "library_entries" ADD COLUMN "notify_new_episodes" boolean DEFAULT true NOT NULL;

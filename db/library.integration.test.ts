@@ -9,6 +9,7 @@ import {
   listLibrary,
   removeEntry,
   saveEntry,
+  setEntryNotifyNewEpisodes,
   totalEpisodes,
   type Library,
 } from "../server/db/library";
@@ -1090,5 +1091,89 @@ describe("titles by language", () => {
     expect(data?.libraryEntries[0]).toMatchObject({
       titles: { es: "Interestelar", en: "Interstellar" },
     });
+  });
+});
+
+describe("setEntryNotifyNewEpisodes (SAG-101)", () => {
+  const notifyOf = async (userId: string, mediaId: string) =>
+    (await getEntry(db, userId, mediaId, "es"))?.notifyNewEpisodes;
+
+  it("is on for a new entry, which is what an entry did before there was a switch", async () => {
+    const ana = await newUser();
+    const mediaId = await addMedia("Ataque a los Titanes");
+
+    await addEntry(db, ana.id, mediaId);
+
+    expect(await notifyOf(ana.id, mediaId)).toBe(true);
+  });
+
+  it("turns the alerts of one title off and on again", async () => {
+    const ana = await newUser();
+    const mediaId = await addMedia("Ataque a los Titanes");
+    await addEntry(db, ana.id, mediaId);
+
+    expect(await setEntryNotifyNewEpisodes(db, ana.id, mediaId, false)).toBe(
+      true,
+    );
+    expect(await notifyOf(ana.id, mediaId)).toBe(false);
+    expect(await setEntryNotifyNewEpisodes(db, ana.id, mediaId, true)).toBe(
+      true,
+    );
+    expect(await notifyOf(ana.id, mediaId)).toBe(true);
+  });
+
+  it("does not move the entry up the list of what was changed lately", async () => {
+    const ana = await newUser();
+    const mediaId = await addMedia("Ataque a los Titanes");
+    await addEntry(db, ana.id, mediaId);
+    const before = (await getEntry(db, ana.id, mediaId, "es"))?.updatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    await setEntryNotifyNewEpisodes(db, ana.id, mediaId, false);
+
+    const after = (await getEntry(db, ana.id, mediaId, "es"))?.updatedAt;
+    expect(after?.getTime()).toBe(before?.getTime());
+  });
+
+  it("changes only the entry of that person for that title", async () => {
+    const ana = await newUser();
+    const ben = await newUser();
+    const first = await addMedia("Uno");
+    const second = await addMedia("Dos");
+    for (const media of [first, second]) {
+      await addEntry(db, ana.id, media);
+      await addEntry(db, ben.id, media);
+    }
+
+    await setEntryNotifyNewEpisodes(db, ana.id, first, false);
+
+    expect(await notifyOf(ana.id, first)).toBe(false);
+    expect(await notifyOf(ana.id, second)).toBe(true);
+    expect(await notifyOf(ben.id, first)).toBe(true);
+    expect(await notifyOf(ben.id, second)).toBe(true);
+  });
+
+  it("says there is no such entry, and changes nothing, for a title the person does not have", async () => {
+    const ana = await newUser();
+    const ben = await newUser();
+    const mediaId = await addMedia("Ataque a los Titanes");
+    await addEntry(db, ben.id, mediaId);
+
+    expect(await setEntryNotifyNewEpisodes(db, ana.id, mediaId, false)).toBe(
+      false,
+    );
+    expect(await notifyOf(ben.id, mediaId)).toBe(true);
+    expect(await notifyOf(ana.id, mediaId)).toBeUndefined();
+  });
+
+  it("is in the data export, so a copy of the library keeps it", async () => {
+    const ana = await newUser();
+    const mediaId = await addMedia("Ataque a los Titanes");
+    await addEntry(db, ana.id, mediaId);
+    await setEntryNotifyNewEpisodes(db, ana.id, mediaId, false);
+
+    const data = await exportAccount(db, ana.id);
+
+    expect(data?.libraryEntries[0]).toMatchObject({ notifyNewEpisodes: false });
   });
 });

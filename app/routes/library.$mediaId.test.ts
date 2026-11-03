@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   saveEntry: vi.fn(),
   removeEntry: vi.fn(),
   rewatchEntry: vi.fn(),
+  setEntryNotifyNewEpisodes: vi.fn(),
   listViewings: vi.fn(),
   addViewing: vi.fn(),
   saveViewing: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("~server/db/library", () => ({
   saveEntry: mocks.saveEntry,
   removeEntry: mocks.removeEntry,
   rewatchEntry: mocks.rewatchEntry,
+  setEntryNotifyNewEpisodes: mocks.setEntryNotifyNewEpisodes,
   totalEpisodes: (seasons: { episodes: number }[]) =>
     seasons.reduce((sum, season) => sum + season.episodes, 0),
 }));
@@ -66,6 +68,7 @@ const stored = {
   finishedAt: null,
   notes: "nota",
   visibility: "private",
+  notifyNewEpisodes: true,
   updatedAt: new Date(),
 };
 
@@ -81,6 +84,7 @@ beforeEach(() => {
   mocks.saveEntry.mockReset().mockResolvedValue(true);
   mocks.removeEntry.mockReset().mockResolvedValue(true);
   mocks.rewatchEntry.mockReset().mockResolvedValue(true);
+  mocks.setEntryNotifyNewEpisodes.mockReset().mockResolvedValue(true);
   mocks.listViewings.mockReset().mockResolvedValue([]);
   mocks.addViewing.mockReset().mockResolvedValue("ok");
   mocks.saveViewing.mockReset().mockResolvedValue(true);
@@ -567,6 +571,100 @@ describe("removing an entry", () => {
     );
     expect(response.status).toBe(303);
     expect(response.headers.get("Location")).toBe("/library");
+  });
+});
+
+describe("the alerts of new episodes of a title (SAG-101)", () => {
+  type Answer = {
+    data: Record<string, unknown>;
+    init?: { headers?: Record<string, string> };
+  };
+
+  it("gives the page the switch of the entry", async () => {
+    const on = (await load()) as unknown as {
+      entry: { notifyNewEpisodes: boolean };
+    };
+    mocks.getEntry.mockResolvedValue({ ...stored, notifyNewEpisodes: false });
+    const off = (await load()) as unknown as {
+      entry: { notifyNewEpisodes: boolean };
+    };
+
+    expect(on.entry.notifyNewEpisodes).toBe(true);
+    expect(off.entry.notifyNewEpisodes).toBe(false);
+  });
+
+  it("turns them on when the box is ticked, for the person of the session and the title of the page", async () => {
+    await send({ intent: "notify", notify: "on" });
+
+    expect(mocks.setEntryNotifyNewEpisodes).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      true,
+    );
+  });
+
+  it("turns them off when the box is not ticked, since an unticked box is not sent at all", async () => {
+    await send({ intent: "notify" });
+
+    expect(mocks.setEntryNotifyNewEpisodes).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      false,
+    );
+  });
+
+  it("answers privately with what was saved, and changes nothing else of the entry", async () => {
+    const result = (await send({
+      intent: "notify",
+      notify: "on",
+    })) as unknown as Answer;
+
+    expect(result.data).toMatchObject({ ok: true, saved: "notify" });
+    expect(typeof result.data.savedAt).toBe("number");
+    expect(result.init?.headers?.["Cache-Control"]).toBe("private, no-store");
+    expect(mocks.getEntry).not.toHaveBeenCalled();
+    expect(mocks.saveEntry).not.toHaveBeenCalled();
+    expect(mocks.rewatchEntry).not.toHaveBeenCalled();
+    expect(mocks.removeEntry).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 when the person has no such entry, which is also what somebody else's looks like", async () => {
+    mocks.setEntryNotifyNewEpisodes.mockResolvedValue(false);
+
+    expect(await statusOf(send({ intent: "notify", notify: "on" }))).toBe(404);
+  });
+
+  it.each([
+    ["a value other than the one of the box", { notify: "off" }],
+    ["a yes written out", { notify: "true" }],
+    ["a field the form does not have", { status: "completed" }],
+    ["the person in the form", { userId: "someone-else" }],
+  ])("refuses %s and saves nothing", async (_name, extra) => {
+    expect(await statusOf(send({ intent: "notify", ...extra }))).toBe(400);
+    expect(mocks.setEntryNotifyNewEpisodes).not.toHaveBeenCalled();
+  });
+
+  it("is refused from another site, without a session and over the limit, like every other write", async () => {
+    expect(
+      await statusOf(
+        send(
+          { intent: "notify", notify: "on" },
+          { Origin: "https://evil.example" },
+        ),
+      ),
+    ).toBe(403);
+
+    mocks.limit.mockResolvedValue({ success: false });
+    expect(await statusOf(send({ intent: "notify", notify: "on" }))).toBe(429);
+    mocks.limit.mockResolvedValue({ success: true });
+
+    mocks.requireUser.mockRejectedValue(
+      new Response(null, { status: 302, headers: { Location: "/sign-in" } }),
+    );
+    expect(await statusOf(send({ intent: "notify", notify: "on" }))).toBe(302);
+    expect(mocks.setEntryNotifyNewEpisodes).not.toHaveBeenCalled();
   });
 });
 

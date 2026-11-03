@@ -66,6 +66,7 @@ const entryProps = (
         finishedAt: null,
         notes: "una nota",
         visibility: "private",
+        notifyNewEpisodes: true,
         ...entry,
       },
       media: {
@@ -670,5 +671,98 @@ describe("the library block of the title page while a change is on its way", () 
       /<button[^>]*value="completed"[^>]*aria-pressed="true"/,
     );
     expect(html).not.toContain('aria-label="+1');
+  });
+});
+
+describe("the alerts of new episodes of a title (SAG-101)", () => {
+  const mediaOf = (type: string) => ({
+    title: "Un título",
+    type,
+    year: 2013,
+    poster: "/img/tmdb/w185/x.jpg",
+    detailPath: `/media/${type}/un-titulo-${mediaId}`,
+  });
+  const page = (
+    type: string,
+    entry: Record<string, unknown> = {},
+    actionData?: unknown,
+  ) => (
+    <LibraryEntry
+      {...entryProps(entry, actionData, { media: mediaOf(type) })}
+    />
+  );
+  const box = (html: string) =>
+    html.match(/<input [^>]*name="notify"[^>]*>/)?.[0] ?? "";
+
+  it.each(["series", "anime"])(
+    "offers the switch for a %s, which has episodes to be told about",
+    async (type) => {
+      const html = await render("es", page(type));
+
+      expect(html).toContain('name="intent" value="notify"');
+      expect(html).toContain("Avisos de este título");
+      expect(html).toContain("Avisarme de episodios nuevos de este título");
+      expect(html).toContain("Guardar avisos");
+      expect(html).toContain(
+        "Solo recibes avisos de lo que tienes en «En curso»",
+      );
+    },
+  );
+
+  it.each(["movie", "book", "manga"])(
+    "does not offer it for a %s, which has no episodes to be told about",
+    async (type) => {
+      const html = await render("es", page(type));
+
+      expect(html).not.toContain('name="intent" value="notify"');
+      expect(html).not.toContain("Avisos de este título");
+    },
+  );
+
+  it("has the box ticked while the alerts are on, and unticked once they are off", async () => {
+    const on = await render("es", page("series", { notifyNewEpisodes: true }));
+    const off = await render(
+      "es",
+      page("series", { notifyNewEpisodes: false }),
+    );
+
+    expect(box(on)).toContain('type="checkbox"');
+    expect(box(on)).toContain("checked");
+    expect(box(off)).not.toContain("checked");
+  });
+
+  it("names the box with a label, describes it with its hint, and links to the settings with a plain anchor", async () => {
+    const html = await render("es", page("series"));
+
+    expect(box(html)).toContain('id="notify-new-episodes"');
+    expect(box(html)).toContain('aria-describedby="notify-new-episodes-hint"');
+    expect(html).toMatch(
+      /<label [^>]*for="notify-new-episodes"[^>]*>Avisarme de episodios nuevos de este título<\/label>/,
+    );
+    expect(html).toContain('id="notify-new-episodes-hint"');
+    // A plain anchor: the settings pages have a security policy of their own (ADR-018).
+    const link =
+      html.match(/<a [^>]*href="\/settings\/notifications"[^>]*>/)?.[0] ?? "";
+    expect(link).not.toBe("");
+    expect(link).not.toContain("data-discover");
+  });
+
+  it("tells the person that it was saved", async () => {
+    const html = await render(
+      "es",
+      page("series", {}, { ok: true, saved: "notify", savedAt: 1 }),
+    );
+
+    expect(html).toContain("Avisos guardados.");
+  });
+
+  it("says the same in English", async () => {
+    const html = await render("en", page("anime"));
+
+    expect(html).toContain("Alerts for this title");
+    expect(html).toContain("Tell me about new episodes of this title");
+    expect(html).toContain("Save alerts");
+    // The quotes of the text are escaped in the markup.
+    expect(html).toContain("as &quot;In progress&quot;");
   });
 });
