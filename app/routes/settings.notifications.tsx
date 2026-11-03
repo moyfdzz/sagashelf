@@ -78,6 +78,7 @@ type ErrorCode =
   | "duplicate"
   | "limit"
   | "not_found"
+  | "cannot_reenable"
   | "unavailable"
   | "invalid_request";
 
@@ -209,9 +210,11 @@ export async function action(args: Route.ActionArgs) {
       );
     }
     case "enable": {
-      if (!(await reenableEndpoint(db, user.id, form.id))) {
-        return fail("not_found", 404);
-      }
+      const turnedOn = await reenableEndpoint(db, user.id, form.id);
+      if (turnedOn === "not_found") return fail("not_found", 404);
+      // The page offers the button only for an endpoint that failed several times in a row (SAG-105);
+      // this is what a form sent by hand for a webhook that Discord says is gone gets.
+      if (turnedOn === "not_allowed") return fail("cannot_reenable", 409);
       return data(
         { ok: true as const, intent: "enable" as const },
         { headers: privateHeaders },
@@ -512,7 +515,10 @@ export default function NotificationSettings({
                                 : t("settings.notifications.list.test")}
                             </button>
                           </Form>
-                        ) : (
+                        ) : endpoint.disabledReason === "too_many_failures" ? (
+                          // Only for several failures in a row, which can pass. A webhook that
+                          // Discord says is gone, or whose token it refuses, would fail again: it is
+                          // removed and a new one is pasted, as the text above says (SAG-105).
                           <Form method="post">
                             <input type="hidden" name="intent" value="enable" />
                             <input
@@ -528,7 +534,7 @@ export default function NotificationSettings({
                               {t("settings.notifications.list.enable")}
                             </button>
                           </Form>
-                        )}
+                        ) : null}
                         <Form method="post">
                           <input type="hidden" name="intent" value="remove" />
                           <input type="hidden" name="id" value={endpoint.id} />

@@ -269,6 +269,7 @@
         "duplicate": "You already have that webhook.",
         "limit": "You can connect up to {{max}} webhooks. Remove one to add another.",
         "not_found": "We could not find that webhook.",
+        "cannot_reenable": "That webhook cannot be turned back on because Discord no longer recognizes it. Remove it and paste a new one.",
         "unavailable": "Discord alerts are not available right now.",
         "invalid_request": "We could not read the form. Reload the page and try again."
       }

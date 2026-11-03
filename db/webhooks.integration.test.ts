@@ -331,10 +331,10 @@ describe("addDiscordEndpoint, listEndpoints, removeEndpoint and reenableEndpoint
       failureCount: 5,
     });
 
-    expect(await reenableEndpoint(db, ben.id, off.id)).toBe(false);
+    expect(await reenableEndpoint(db, ben.id, off.id)).toBe("not_found");
     expect(await endpointRow(off.id)).toMatchObject({ enabled: false });
 
-    expect(await reenableEndpoint(db, ana.id, off.id)).toBe(true);
+    expect(await reenableEndpoint(db, ana.id, off.id)).toBe("enabled");
     expect(await endpointRow(off.id)).toMatchObject({
       enabled: true,
       disabledAt: null,
@@ -342,7 +342,72 @@ describe("addDiscordEndpoint, listEndpoints, removeEndpoint and reenableEndpoint
       failureCount: 0,
     });
     // It was already on: nothing to do.
-    expect(await reenableEndpoint(db, ana.id, off.id)).toBe(false);
+    expect(await reenableEndpoint(db, ana.id, off.id)).toBe("not_found");
+  });
+
+  it.each(["not_found", "unauthorized"] as const)(
+    "refuses to turn back on an endpoint that was turned off for %s, and changes nothing (SAG-105)",
+    async (reason) => {
+      const ana = await newUser();
+      const disabledAt = new Date("2026-11-03T19:15:00Z");
+      const gone = await endpointOf(ana.id, {
+        enabled: false,
+        disabledAt,
+        disabledReason: reason,
+        failureCount: 1,
+      });
+
+      expect(await reenableEndpoint(db, ana.id, gone.id)).toBe("not_allowed");
+      expect(await endpointRow(gone.id)).toMatchObject({
+        enabled: false,
+        disabledReason: reason,
+        failureCount: 1,
+        disabledAt,
+      });
+    },
+  );
+
+  it("does not say that an endpoint of somebody else cannot be turned on, only that it is not there", async () => {
+    const ana = await newUser();
+    const ben = await newUser();
+    const gone = await endpointOf(ana.id, {
+      enabled: false,
+      disabledAt: new Date(),
+      disabledReason: "not_found",
+    });
+
+    expect(await reenableEndpoint(db, ben.id, gone.id)).toBe("not_found");
+    expect(await endpointRow(gone.id)).toMatchObject({ enabled: false });
+  });
+
+  it("answers an endpoint that does not exist as not found", async () => {
+    const ana = await newUser();
+
+    expect(
+      await reenableEndpoint(
+        db,
+        ana.id,
+        "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
+      ),
+    ).toBe("not_found");
+  });
+
+  it("turns it on once when two clicks arrive at the same time, and the second finds it on", async () => {
+    const ana = await newUser();
+    const off = await endpointOf(ana.id, {
+      enabled: false,
+      disabledAt: new Date(),
+      disabledReason: "too_many_failures",
+      failureCount: 5,
+    });
+
+    const results = await Promise.all([
+      reenableEndpoint(db, ana.id, off.id),
+      reenableEndpoint(db, ana.id, off.id),
+    ]);
+
+    expect([...results].sort()).toEqual(["enabled", "not_found"]);
+    expect(await endpointRow(off.id)).toMatchObject({ enabled: true });
   });
 });
 
