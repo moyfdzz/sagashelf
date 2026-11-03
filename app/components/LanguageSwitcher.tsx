@@ -27,6 +27,8 @@ export function LanguageSwitcher() {
           name="locale"
           value={locale}
           lang={locale}
+          // The visible text is `ES` or `EN` below 1280 px, so the name says the whole word.
+          aria-label={localeNames[locale]}
           aria-pressed={i18n.language === locale}
           className={`rounded-md px-2 py-1 text-sm font-semibold transition-colors ${
             i18n.language === locale
@@ -34,7 +36,14 @@ export function LanguageSwitcher() {
               : "text-fg-muted hover:bg-fg/10 hover:text-accent"
           }`}
         >
-          {localeNames[locale]}
+          {/* The code on a phone, where there is no room for the word (SAG-104); the name from
+              1280 px up. Both are hidden from a screen reader, which reads the label above. */}
+          <span aria-hidden="true" className="xl:hidden">
+            {locale.toUpperCase()}
+          </span>
+          <span aria-hidden="true" className="hidden xl:inline">
+            {localeNames[locale]}
+          </span>
         </button>
       ))}
     </form>

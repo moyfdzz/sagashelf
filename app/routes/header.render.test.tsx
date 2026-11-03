@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import { AccountMenu } from "~/components/AccountMenu";
+import { LanguageSwitcher } from "~/components/LanguageSwitcher";
 import { Navbar } from "~/components/Navbar";
 import { resources } from "~/locales";
 
@@ -181,5 +182,151 @@ describe("the header and the administration (SAG-95)", () => {
 
     expect(html).not.toContain("/admin");
     expect(html).toContain('href="/sign-in"');
+  });
+});
+
+describe("the language switch (SAG-104)", () => {
+  const buttons = (html: string) => [
+    ...html.matchAll(/<button [^>]*lang="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g),
+  ];
+
+  it("shows the code on a phone and the name on a wide screen, in each button", async () => {
+    const html = await render(<LanguageSwitcher />);
+    const [es, en] = buttons(html);
+
+    expect(es?.[2]).toMatch(/<span[^>]*xl:hidden[^>]*>ES<\/span>/);
+    expect(es?.[2]).toMatch(/<span[^>]*hidden xl:inline[^>]*>Español<\/span>/);
+    expect(en?.[2]).toMatch(/<span[^>]*xl:hidden[^>]*>EN<\/span>/);
+    expect(en?.[2]).toMatch(/<span[^>]*hidden xl:inline[^>]*>English<\/span>/);
+  });
+
+  it("names each button with the whole word, whatever is drawn, and keeps its language", async () => {
+    const html = await render(<LanguageSwitcher />);
+    const [es, en] = buttons(html);
+
+    expect(es?.[0]).toContain('aria-label="Español"');
+    expect(es?.[1]).toBe("es");
+    expect(en?.[0]).toContain('aria-label="English"');
+    expect(en?.[1]).toBe("en");
+    // What is drawn is hidden from a screen reader, so it reads the name once and not the code.
+    expect(es?.[2]?.match(/aria-hidden="true"/g)).toHaveLength(2);
+  });
+
+  it("says which language is on, and stays a form that works without JavaScript", async () => {
+    const html = await render(<LanguageSwitcher />, "en");
+
+    expect(html).toMatch(/<form [^>]*action="\/api\/locale"[^>]*method="post"/);
+    expect(html).toMatch(/aria-label="English"[^>]*aria-pressed="true"/);
+    expect(html).toMatch(/aria-label="Español"[^>]*aria-pressed="false"/);
+  });
+});
+
+describe("the header on a phone (SAG-104)", () => {
+  const tag = (html: string, pattern: RegExp) => html.match(pattern)?.[0] ?? "";
+  const classesOf = (element: string) =>
+    element.match(/class="([^"]*)"/)?.[1]?.split(" ") ?? [];
+
+  it("puts the language, the theme and the menu in that order, after the name of the app", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const at = (text: string) => html.indexOf(text);
+
+    expect(at("SagaShelf")).toBeGreaterThan(-1);
+    expect(at("SagaShelf")).toBeLessThan(at('action="/api/locale"'));
+    expect(at('action="/api/locale"')).toBeLessThan(at('role="switch"'));
+    expect(at('role="switch"')).toBeLessThan(at("aria-expanded"));
+  });
+
+  it("never gives the logo an order of its own on a phone, or the switches would be drawn before it", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const logo = classesOf(tag(html, /<a [^>]*href="\/"[^>]*>/));
+
+    expect(logo.filter((name) => /^order-/.test(name))).toEqual([]);
+    expect(logo).toContain("xl:order-1");
+    // The name of the app keeps its size, and never shrinks or breaks, at any width.
+    expect(logo).toContain("shrink-0");
+    expect(logo).toContain("whitespace-nowrap");
+    expect(logo).toContain("text-2xl");
+  });
+
+  it("opens the panel under the button: both are in one box, and the panel hangs from its bottom, right-aligned", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const button = tag(html, /<button [^>]*aria-expanded[^>]*>/);
+    const id = button.match(/aria-controls="([^"]+)"/)?.[1] ?? "";
+    const box = html.match(
+      /<div class="relative[^"]*">(<button [^>]*aria-expanded[\s\S]*?<div [^>]*id="([^"]+)")/,
+    );
+    const panel = classesOf(
+      tag(html, new RegExp(`<div [^>]*id="${id}"[^>]*>`)),
+    );
+
+    expect(id).not.toBe("");
+    expect(box?.[2]).toBe(id);
+    for (const name of ["absolute", "top-full", "right-0", "z-50", "shadow-lg"])
+      expect(panel).toContain(name);
+    expect(panel).toContain("border");
+    expect(panel).toContain("rounded-md");
+    // It never gets wider than the screen allows, so it is not cut by the edge.
+    expect(panel).toContain("w-[min(20rem,calc(100vw-2rem))]");
+  });
+
+  it("draws the panel as if it were not there on a wide screen, and keeps the order of the row", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const box = classesOf(tag(html, /<div class="relative[^"]*">/));
+    const panel = classesOf(
+      tag(
+        html,
+        new RegExp(
+          `<div [^>]*id="${html.match(/aria-controls="([^"]+)"/)?.[1]}"[^>]*>`,
+        ),
+      ),
+    );
+    const nav = classesOf(tag(html, /<nav [^>]*>/));
+    const switches = classesOf(
+      tag(html, /<div class="[^"]*">(?=<form [^>]*\/api\/locale)/),
+    );
+    const account = classesOf(
+      tag(html, /<div class="hidden[^"]*xl:block[^"]*">/),
+    );
+
+    expect(box).toContain("xl:contents");
+    expect(panel).toContain("xl:contents");
+    expect(nav).toContain("xl:order-2");
+    expect(switches).toContain("xl:order-3");
+    expect(account).toContain("xl:order-4");
+  });
+
+  it("keeps the row whole from 360 px, and puts the switches on a second row below it", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const switches = classesOf(
+      tag(html, /<div class="[^"]*">(?=<form [^>]*\/api\/locale)/),
+    );
+    const box = classesOf(tag(html, /<div class="relative[^"]*">/));
+
+    expect(switches).toContain("max-[360px]:basis-full");
+    expect(switches).toContain("max-[360px]:order-3");
+    expect(box).toContain("max-[360px]:order-2");
+  });
+
+  it("draws the word of the menu button from 420 px, and only the icon below it, keeping the word as its name", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const button = tag(html, /<button [^>]*aria-expanded[^>]*>/);
+    const label = html.match(/<span class="([^"]*)">Menú<\/span>/);
+
+    expect(label?.[1]).toContain("max-[420px]:sr-only");
+    expect(classesOf(button)).toContain("min-[420px]:px-3");
+    // The padding is the small one below 420 px, so the icon alone is not wide.
+    expect(classesOf(button)).toContain("px-2");
+  });
+
+  it("says the same in English", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn={false} />,
+      "en",
+    );
+
+    expect(html).toMatch(
+      /<span class="[^"]*max-\[420px\]:sr-only">Menu<\/span>/,
+    );
+    expect(html).toContain('aria-label="English"');
   });
 });
