@@ -59,6 +59,12 @@ const off = {
   disabledReason: "not_found",
   episodeAlerts: false,
 };
+// Off after several failures in a row: the only kind that can be turned back on (SAG-105).
+const offAfterFailures = {
+  ...off,
+  id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e71",
+  disabledReason: "too_many_failures",
+};
 
 const props = (loader: Record<string, unknown> = {}, actionData?: unknown) =>
   ({
@@ -184,7 +190,7 @@ describe("the notifications page (SAG-27)", () => {
   });
 
   it("draws the three buttons of a webhook the same size, with the one that removes in the danger colors (SAG-98)", async () => {
-    const html = await render(page({ endpoints: [on, off] }));
+    const html = await render(page({ endpoints: [on, offAfterFailures] }));
     const buttonClasses = (label: string) =>
       [...html.matchAll(/<button ([^>]*)>([^<]*)<\/button>/g)]
         .filter((match) => match[2]?.includes(label))
@@ -241,16 +247,48 @@ describe("the notifications page (SAG-27)", () => {
     expect(html).toContain(fakeWebhookToken.slice(-4));
   });
 
-  it("says why a webhook is off and since when, and offers to turn it back on instead of testing it", async () => {
-    const html = await render(page({ endpoints: [off] }));
+  it("says why a webhook is off and since when, and offers to turn it back on instead of testing it, when it failed several times in a row", async () => {
+    const html = await render(page({ endpoints: [offAfterFailures] }));
 
     expect(html).toContain("Desactivado");
-    expect(html).toContain("Ese webhook ya no existe en Discord");
+    expect(html).toContain("Falló varias veces seguidas");
     expect(html).toContain("Se desactivó el 2 nov 2026, 12:30");
     expect(html).toContain("Reactivar");
     expect(html).toContain('name="intent" value="enable"');
     expect(html).not.toContain("Enviar mensaje de prueba");
   });
+
+  it("offers only to remove a webhook that Discord says is gone, which turning it on would not bring back (SAG-105)", async () => {
+    const html = await render(page({ endpoints: [off] }));
+
+    expect(html).toContain("Desactivado");
+    expect(html).toContain("Ese webhook ya no existe en Discord");
+    expect(html).toContain("Crea uno nuevo y pégalo aquí");
+    expect(html).toContain("Se desactivó el 2 nov 2026, 12:30");
+    expect(html).toContain('name="intent" value="remove"');
+    expect(html).not.toContain("Reactivar");
+    expect(html).not.toContain('name="intent" value="enable"');
+    expect(html).not.toContain("Enviar mensaje de prueba");
+  });
+
+  it.each([
+    ["unauthorized", false],
+    ["not_found", false],
+    ["too_many_failures", true],
+    [null, false],
+  ])(
+    "offers to turn a webhook back on only for the reason %s: %s (SAG-105)",
+    async (reason, offered) => {
+      const html = await render(
+        page({ endpoints: [{ ...off, disabledReason: reason }] }),
+      );
+
+      expect(html.includes('name="intent" value="enable"')).toBe(offered);
+      expect(html.includes("Reactivar")).toBe(offered);
+      // Whatever the reason, the person can always remove it.
+      expect(html).toContain('name="intent" value="remove"');
+    },
+  );
 
   it.each([
     ["unauthorized", "Discord rechazó la URL"],
@@ -467,9 +505,18 @@ describe("the notifications page (SAG-27)", () => {
     expect(html).toContain("Notifications");
     expect(html).toContain("Connect a Discord channel");
     expect(html).toContain("That webhook no longer exists in Discord");
-    expect(html).toContain("Turn back on");
+    expect(html).not.toContain("Turn back on");
     expect(html).toContain("You can connect up to 3 webhooks");
     expect(html).toContain("Back to settings");
+  });
+
+  it("says in English that a webhook that failed in a row can be turned back on, and one that is gone cannot (SAG-105)", async () => {
+    const failed = await render(page({ endpoints: [offAfterFailures] }), "en");
+    const gone = await render(page({ endpoints: [off] }), "en");
+
+    expect(failed).toContain("Turn back on");
+    expect(gone).not.toContain("Turn back on");
+    expect(gone).toContain("Remove");
   });
 
   it("leaves no text of the page untranslated, in either language, and no empty word", async () => {
@@ -477,7 +524,7 @@ describe("the notifications page (SAG-27)", () => {
       const html = await render(
         page(
           {
-            endpoints: [on, off],
+            endpoints: [on, off, offAfterFailures],
             deliveries: [
               {
                 id: "d1",

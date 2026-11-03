@@ -100,7 +100,7 @@ beforeEach(() => {
   ]);
   mocks.addDiscordEndpoint.mockReset().mockResolvedValue("added");
   mocks.removeEndpoint.mockReset().mockResolvedValue(true);
-  mocks.reenableEndpoint.mockReset().mockResolvedValue(true);
+  mocks.reenableEndpoint.mockReset().mockResolvedValue("enabled");
   mocks.setEndpointEvents.mockReset().mockResolvedValue(true);
   mocks.queueTestEvent.mockReset().mockResolvedValue(eventId);
   mocks.claimEvent.mockReset().mockResolvedValue({
@@ -462,7 +462,7 @@ describe("the notifications page (SAG-27)", () => {
 
     it("says not found for a webhook that is not the person's, and does not say whose it is", async () => {
       mocks.removeEndpoint.mockResolvedValue(false);
-      mocks.reenableEndpoint.mockResolvedValue(false);
+      mocks.reenableEndpoint.mockResolvedValue("not_found");
 
       const removed = answer(
         await submit({ intent: "remove", id: endpointId }),
@@ -526,6 +526,37 @@ describe("the notifications page (SAG-27)", () => {
 
       expect(result.init?.status).toBe(400);
       expect(mocks.setEndpointEvents).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("POST enable, for a webhook that Discord says is gone (SAG-105)", () => {
+    it("is refused, with a text of its own and not as if the webhook did not exist", async () => {
+      mocks.reenableEndpoint.mockResolvedValue("not_allowed");
+
+      const result = answer(await submit({ intent: "enable", id: endpointId }));
+
+      expect(mocks.reenableEndpoint).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        endpointId,
+      );
+      expect(result.init?.status).toBe(409);
+      expect(result.data).toEqual({ ok: false, error: "cannot_reenable" });
+      expect(result.init?.headers?.["Cache-Control"]).toBe("private, no-store");
+    });
+
+    it("tells apart a webhook that is not there from one that cannot be turned on", async () => {
+      mocks.reenableEndpoint.mockResolvedValueOnce("not_found");
+      const missing = answer(
+        await submit({ intent: "enable", id: endpointId }),
+      );
+      mocks.reenableEndpoint.mockResolvedValueOnce("not_allowed");
+      const gone = answer(await submit({ intent: "enable", id: endpointId }));
+
+      expect(missing.init?.status).toBe(404);
+      expect(missing.data).toEqual({ ok: false, error: "not_found" });
+      expect(gone.init?.status).toBe(409);
+      expect(gone.data).toEqual({ ok: false, error: "cannot_reenable" });
     });
   });
 

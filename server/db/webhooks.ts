@@ -129,20 +129,50 @@ export async function removeEndpoint(
   return rows.length > 0;
 }
 
-/** Turns an endpoint that was switched off back on, with its count of failures cleared. */
+/**
+ * What `reenableEndpoint` did. `not_allowed` is an endpoint that exists and is off for a reason that
+ * turning it on cannot fix; `not_found` is no such endpoint of the person, or one that is on already
+ * (the answer does not say whose an endpoint is).
+ */
+export type ReenableResult = "enabled" | "not_allowed" | "not_found";
+
+/**
+ * Turns an endpoint that was switched off back on, with its count of failures cleared, but only when
+ * it was switched off for `too_many_failures` (SAG-105): several failures in a row, such as an outage
+ * of Discord, which can pass. An endpoint turned off because Discord says the webhook is gone
+ * (`not_found`) or refuses its token (`unauthorized`) would be sent to again, answered the same, and
+ * turned off again, since turning it on sends nothing and cannot check that the webhook exists; the
+ * person has to remove it and paste a new one. The rule is in the statement and not only on the page,
+ * so a form sent by hand cannot go around it. One statement, so the decision and the change are one.
+ */
 export async function reenableEndpoint(
   db: SqlExecutor,
   userId: string,
   endpointId: string,
-): Promise<boolean> {
+): Promise<ReenableResult> {
   const { rows } = await db.execute(sql`
-    UPDATE webhook_endpoints
-    SET enabled = true, disabled_at = NULL, disabled_reason = NULL,
-        failure_count = 0, updated_at = now()
-    WHERE id = ${endpointId}::uuid AND user_id = ${userId}::uuid AND NOT enabled
-    RETURNING id
+    WITH target AS (
+      SELECT id, enabled, disabled_reason
+      FROM webhook_endpoints
+      WHERE id = ${endpointId}::uuid AND user_id = ${userId}::uuid
+    ),
+    done AS (
+      UPDATE webhook_endpoints
+      SET enabled = true, disabled_at = NULL, disabled_reason = NULL,
+          failure_count = 0, updated_at = now()
+      WHERE id IN (SELECT id FROM target)
+        AND NOT enabled AND disabled_reason = 'too_many_failures'
+      RETURNING id
+    )
+    SELECT (SELECT count(*) FROM done)::int AS done,
+           (SELECT count(*) FROM target
+             WHERE NOT enabled AND disabled_reason IS DISTINCT FROM 'too_many_failures')::int AS refused
   `);
-  return rows.length > 0;
+  if (Number(rows[0]?.done ?? 0) > 0) return "enabled";
+  // Read before the change, so two clicks at once do not make the second one "not allowed": the
+  // second sees a reason that was fine and finds the endpoint on.
+  if (Number(rows[0]?.refused ?? 0) > 0) return "not_allowed";
+  return "not_found";
 }
 
 /**
