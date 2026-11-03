@@ -85,6 +85,57 @@ test.describe("the menu of a phone", () => {
     expect(await overflow()).toBeLessThanOrEqual(0);
   });
 
+  test("keeps the name, the language, the theme and the menu in one row, and opens the panel right under the button (SAG-104)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Only phones have the panel");
+    await page.goto("/");
+
+    const header = page.locator("header");
+    const box = async (locator: ReturnType<typeof header.locator>) => {
+      const found = await locator.boundingBox();
+      if (!found) throw new Error("An element of the header has no box");
+      return found;
+    };
+    const logo = await box(header.getByRole("link", { name: "SagaShelf" }));
+    const language = await box(header.getByRole("group", { name: "Idioma" }));
+    const theme = await box(
+      header.getByRole("switch", { name: "Modo oscuro" }),
+    );
+    const button = header.getByRole("button", { name: "Menú" });
+    const menu = await box(button);
+
+    // One row: the middle of each piece is at the height of the middle of the logo.
+    for (const piece of [language, theme, menu]) {
+      expect(
+        Math.abs(piece.y + piece.height / 2 - (logo.y + logo.height / 2)),
+      ).toBeLessThan(12);
+    }
+    // In order, left to right, and the name of the app is not squeezed.
+    expect(logo.x + logo.width).toBeLessThanOrEqual(language.x);
+    expect(language.x + language.width).toBeLessThanOrEqual(theme.x);
+    expect(theme.x + theme.width).toBeLessThanOrEqual(menu.x);
+    expect(logo.width).toBeGreaterThanOrEqual(145);
+    // A phone of 412 px has room for the icon only; the word stays as the name of the button.
+    expect(menu.width).toBeLessThan(50);
+    expect(menu.height).toBeGreaterThanOrEqual(36);
+
+    await openMenuIfCollapsed(page);
+    const id = await button.getAttribute("aria-controls");
+    const panel = await box(page.locator(`[id="${id}"]`));
+    // Right under the button, as if it came out of it, aligned to its right edge, inside the screen.
+    expect(Math.abs(panel.y - (menu.y + menu.height + 8))).toBeLessThanOrEqual(
+      2,
+    );
+    expect(
+      Math.abs(panel.x + panel.width - (menu.x + menu.width)),
+    ).toBeLessThanOrEqual(2);
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(
+      page.viewportSize()?.width ?? 0,
+    );
+  });
+
   test("is not there on a wide screen, where the links are in the bar", async ({
     page,
   }, testInfo) => {
@@ -95,6 +146,24 @@ test.describe("the menu of a phone", () => {
     await expect(header.getByRole("button", { name: "Menú" })).toBeHidden();
     await expect(header.getByRole("link", { name: "Buscar" })).toBeVisible();
   });
+});
+
+test("the language buttons say ES and EN on a phone and the whole word on a wide screen, and are named by the word (SAG-104)", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+
+  const header = page.locator("header");
+  // `useInnerText`: what a person sees, not the text of the hidden span next to it.
+  const phone = testInfo.project.name === "mobile";
+  await expect(header.getByRole("button", { name: "Español" })).toHaveText(
+    phone ? "ES" : "Español",
+    { useInnerText: true },
+  );
+  await expect(header.getByRole("button", { name: "English" })).toHaveText(
+    phone ? "EN" : "English",
+    { useInnerText: true },
+  );
 });
 
 test.describe("in English", () => {
