@@ -189,12 +189,15 @@ describe("the Open Library provider (contract)", () => {
     });
 
     it("keeps the book, with its original title, when the editions cannot be read", async () => {
+      // The provider's own handlers answer the work and the search; the one added after them
+      // wins, so only the editions fail. Without them these two calls went to the real Open
+      // Library (SAG-100), and the test timed out whenever that site was slow.
+      const provider = setup();
       mswServer.use(
         http.get(`${openLibraryBase}/works/OL20036652W/editions.json`, () =>
           HttpResponse.json({}, { status: 503 }),
         ),
       );
-      const provider = createOpenLibraryProviderWithDefaults(fast);
 
       const book = await provider.getById("OL20036652W", { locale: "es" });
 
