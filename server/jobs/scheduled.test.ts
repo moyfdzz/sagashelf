@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   refreshNextEpisodes: vi.fn(),
   getWebhooksEnabled: vi.fn(),
   deliverDueEvents: vi.fn(),
+  announceNewEpisodes: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -31,6 +32,9 @@ vi.mock("../runtime-env", () => ({
   getWikidata: mocks.getWikidata,
   getTvmaze: mocks.getTvmaze,
   getWebhooksEnabled: mocks.getWebhooksEnabled,
+}));
+vi.mock("../db/episode-alerts", () => ({
+  announceNewEpisodes: mocks.announceNewEpisodes,
 }));
 vi.mock("./deliver-outbox", () => ({
   deliverDueEvents: mocks.deliverDueEvents,
@@ -52,6 +56,8 @@ vi.mock("./refresh-stale-media", () => ({
 beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(console, "log").mockImplementation(() => undefined);
+  // Nothing came out, unless a test says so.
+  mocks.announceNewEpisodes.mockResolvedValue({ episodes: 0, messages: 0 });
 });
 
 describe("runScheduledJobs", () => {
@@ -394,6 +400,77 @@ describe("the third Cron Trigger (SAG-27)", () => {
 
     expect(mocks.getDb).not.toHaveBeenCalled();
     expect(mocks.deliverDueEvents).not.toHaveBeenCalled();
+    expect(mocks.announceNewEpisodes).not.toHaveBeenCalled();
+  });
+
+  describe("the episodes that came out (SAG-28)", () => {
+    it("announces them before it delivers, so a new episode goes in the same run", async () => {
+      const db = { execute: vi.fn() };
+      mocks.getWebhooksEnabled.mockReturnValue(true);
+      mocks.getDb.mockResolvedValue(db);
+      mocks.deliverDueEvents.mockResolvedValue({ found: 0 });
+
+      await runOutboxJobs();
+
+      expect(mocks.announceNewEpisodes).toHaveBeenCalledWith(db);
+      expect(
+        mocks.announceNewEpisodes.mock.invocationCallOrder[0],
+      ).toBeLessThan(mocks.deliverDueEvents.mock.invocationCallOrder[0] ?? 0);
+    });
+
+    it("opens the database once for both, since each open is a subrequest", async () => {
+      mocks.getWebhooksEnabled.mockReturnValue(true);
+      mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+      mocks.deliverDueEvents.mockResolvedValue({ found: 0 });
+
+      await runOutboxJobs();
+
+      expect(mocks.getDb).toHaveBeenCalledTimes(1);
+    });
+
+    it("logs how many came out and how many messages that made, and says nothing when none did", async () => {
+      mocks.getWebhooksEnabled.mockReturnValue(true);
+      mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+      mocks.deliverDueEvents.mockResolvedValue({ found: 0 });
+
+      await runOutboxJobs();
+      expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain(
+        "episodes.announced",
+      );
+
+      mocks.announceNewEpisodes.mockResolvedValue({ episodes: 4, messages: 2 });
+      await runOutboxJobs();
+      expect(console.log).toHaveBeenCalledWith(
+        JSON.stringify({
+          event: "episodes.announced",
+          episodes: 4,
+          messages: 2,
+        }),
+      );
+    });
+
+    it("logs a failure of the announcement by name and still delivers what was waiting", async () => {
+      mocks.getWebhooksEnabled.mockReturnValue(true);
+      mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+      mocks.announceNewEpisodes.mockRejectedValue(
+        new TypeError('column "announced_stamp" does not exist'),
+      );
+      mocks.deliverDueEvents.mockResolvedValue({ found: 1 });
+
+      await expect(runOutboxJobs()).resolves.toBeUndefined();
+
+      expect(console.log).toHaveBeenCalledWith(
+        JSON.stringify({
+          event: "job.failed",
+          job: "announce-episodes",
+          error: "TypeError",
+        }),
+      );
+      expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain(
+        "announced_stamp",
+      );
+      expect(mocks.deliverDueEvents).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("logs a failure by name, with nothing else, and does not throw", async () => {

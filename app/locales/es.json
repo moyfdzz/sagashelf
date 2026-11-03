@@ -217,7 +217,7 @@
       },
       "list": {
         "title": "Tus webhooks",
-        "events": "Por ahora solo se envía el mensaje de prueba. Los avisos de episodios nuevos y de tu biblioteca llegarán más adelante.",
+        "events": "Elige qué avisos recibe cada canal. Sin ninguno marcado, solo se envía el mensaje de prueba. Los avisos de tu biblioteca llegarán más adelante.",
         "empty": "Todavía no has conectado ningún canal.",
         "kind": "Discord",
         "on": "Activo",
@@ -234,7 +234,15 @@
         "remove": "Quitar",
         "removeLabel": "Quitar el webhook {{url}}"
       },
+      "alerts": {
+        "legend": "Avisos de este canal",
+        "episodes": "Episodios nuevos de lo que estás viendo",
+        "hint": "Te avisamos cuando sale un episodio nuevo de los títulos que tienes en «En curso», en un solo mensaje por vez. Puede llegar hasta una hora después de que sale.",
+        "save": "Guardar avisos",
+        "saving": "Guardando…"
+      },
       "result": {
+        "alertsSaved": "Avisos guardados.",
         "added": "Webhook guardado. Envía un mensaje de prueba para comprobarlo.",
         "removed": "Webhook quitado.",
         "enabled": "Webhook reactivado.",

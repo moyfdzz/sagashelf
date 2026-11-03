@@ -24,6 +24,7 @@ import {
   queueTestEvent,
   reenableEndpoint,
   removeEndpoint,
+  setEndpointEvents,
 } from "~server/db/webhooks";
 import { readForm } from "~server/http/body";
 import { deliverEvent } from "~server/jobs/deliver-outbox";
@@ -38,6 +39,10 @@ import {
   maxWebhookUrlLength,
   parseDiscordWebhookUrl,
 } from "~server/webhooks/discord-url";
+import {
+  episodeAiredEvent,
+  type SubscribableEvent,
+} from "~server/webhooks/events";
 
 // The form has one address (up to a few hundred characters) or one id. Anything bigger is not from
 // this page.
@@ -58,6 +63,12 @@ const formSchema = z.discriminatedUnion("intent", [
   z.strictObject({ intent: z.literal("test"), id: entryId }),
   z.strictObject({ intent: z.literal("remove"), id: entryId }),
   z.strictObject({ intent: z.literal("enable"), id: entryId }),
+  // A ticked box is sent and an unticked one is not, so "episodes" is there or it is not.
+  z.strictObject({
+    intent: z.literal("alerts"),
+    id: entryId,
+    episodes: z.literal("on").optional(),
+  }),
 ]);
 
 // Each code has its text in app/locales, under settings.notifications.errors. None of them carries
@@ -108,6 +119,7 @@ export async function loader(args: Route.LoaderArgs) {
       enabled: endpoint.enabled,
       disabledAt: endpoint.disabledAt?.toISOString() ?? null,
       disabledReason: endpoint.disabledReason,
+      episodeAlerts: endpoint.eventTypes.includes(episodeAiredEvent),
     })),
     deliveries: deliveries.map((delivery) => ({
       id: delivery.id,
@@ -205,6 +217,17 @@ export async function action(args: Route.ActionArgs) {
         { headers: privateHeaders },
       );
     }
+    case "alerts": {
+      const types: SubscribableEvent[] =
+        form.episodes === "on" ? [episodeAiredEvent] : [];
+      if (!(await setEndpointEvents(db, user.id, form.id, types))) {
+        return fail("not_found", 404);
+      }
+      return data(
+        { ok: true as const, intent: "alerts" as const },
+        { headers: privateHeaders },
+      );
+    }
     case "test": {
       const locale = getLocale(args.context) === "en" ? "en" : "es";
       const eventId = await queueTestEvent(db, user.id, form.id, locale);
@@ -292,6 +315,11 @@ export default function NotificationSettings({
           {outcome?.intent === "enable" ? (
             <p className="font-semibold">
               {t("settings.notifications.result.enabled")}
+            </p>
+          ) : null}
+          {outcome?.intent === "alerts" ? (
+            <p className="font-semibold">
+              {t("settings.notifications.result.alertsSaved")}
             </p>
           ) : null}
           {outcome?.intent === "test" ? (
@@ -420,6 +448,51 @@ export default function NotificationSettings({
                             : ""}
                         </p>
                       ) : null}
+                      <Form
+                        method="post"
+                        // A key with the saved state puts the box back as saved after a save.
+                        key={`${endpoint.id}:${endpoint.episodeAlerts}`}
+                        className="mt-3"
+                      >
+                        <input type="hidden" name="intent" value="alerts" />
+                        <input type="hidden" name="id" value={endpoint.id} />
+                        <fieldset>
+                          <legend className="font-semibold">
+                            {t("settings.notifications.alerts.legend")}
+                          </legend>
+                          <div className="mt-2 flex items-start gap-3">
+                            <input
+                              id={`episodes-${endpoint.id}`}
+                              name="episodes"
+                              value="on"
+                              type="checkbox"
+                              defaultChecked={endpoint.episodeAlerts}
+                              className="mt-1 h-5 w-5 shrink-0"
+                              aria-describedby={`episodes-hint-${endpoint.id}`}
+                            />
+                            <div>
+                              <label htmlFor={`episodes-${endpoint.id}`}>
+                                {t("settings.notifications.alerts.episodes")}
+                              </label>
+                              <p
+                                id={`episodes-hint-${endpoint.id}`}
+                                className="text-fg-muted text-sm"
+                              >
+                                {t("settings.notifications.alerts.hint")}
+                              </p>
+                            </div>
+                          </div>
+                        </fieldset>
+                        <button
+                          type="submit"
+                          disabled={busy}
+                          className={`${secondaryButtonClass} mt-2`}
+                        >
+                          {busy
+                            ? t("settings.notifications.alerts.saving")
+                            : t("settings.notifications.alerts.save")}
+                        </button>
+                      </Form>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {endpoint.enabled ? (
                           <Form method="post">

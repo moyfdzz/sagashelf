@@ -43,7 +43,7 @@ flowchart LR
   class providers planned
 ```
 
-The Worker serves the pages (search, title pages, the sagas and their curation screen for the administrator, the recommendations, the library, the statistics, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime), Open Library (books) and MangaDex (manga) are the data providers built; the last two are switched on by a variable. Wikidata is not a provider of titles: a job looks each title up and keeps which other formats of the same story it has ([ADR-025](adr/025-wikidata.md), SAG-16, switched on by `WIKIDATA_ENABLED`). The others are planned. The `scheduled` handler has three Cron Triggers: the first runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54), then looks up to 20 titles up in Wikidata and brings the curated sagas into the database ([ADR-026](adr/026-sagas.md), SAG-25), and the second, half an hour later, asks TVmaze for the next episode of the series ([ADR-027](adr/027-tvmaze-next-episode.md), SAG-90, switched on by `TVMAZE_ENABLED`); and the third, at a quarter past every hour, delivers the events of the outbox to the Discord webhooks that people connect in their settings ([ADR-029](adr/029-discord-webhooks.md), SAG-27, switched on by `WEBHOOKS_ENABLED`).
+The Worker serves the pages (search, title pages, the sagas and their curation screen for the administrator, the recommendations, the library, the statistics, the settings, sign-in and the legal pages), the image proxy, `/api/health`, `/api/locale` and the Clerk webhook, and adds security headers (including a CSP with a nonce for pages) to every response. The edge settings are steps in the dashboard ([edge setup](edge-setup.md), [ADR-011](adr/011-edge-security-and-domain.md)). `server/` holds the validated environment module, the database, the providers, the search and the jobs. TMDB (movies, series and anime), Open Library (books) and MangaDex (manga) are the data providers built; the last two are switched on by a variable. Wikidata is not a provider of titles: a job looks each title up and keeps which other formats of the same story it has ([ADR-025](adr/025-wikidata.md), SAG-16, switched on by `WIKIDATA_ENABLED`). The others are planned. The `scheduled` handler has three Cron Triggers: the first runs every 6 hours and refreshes the titles that are close to the 6 months TMDB allows ([ADR-007](adr/007-background-work-cron-and-outbox.md), SAG-54), then looks up to 20 titles up in Wikidata and brings the curated sagas into the database ([ADR-026](adr/026-sagas.md), SAG-25), and the second, half an hour later, asks TVmaze for the next episode of the series ([ADR-027](adr/027-tvmaze-next-episode.md), SAG-90, switched on by `TVMAZE_ENABLED`); and the third, at a quarter past every hour, tells people about the episodes that have come out ([ADR-030](adr/030-new-episode-alerts.md), SAG-28) and delivers the events of the outbox to the Discord webhooks that people connect in their settings ([ADR-029](adr/029-discord-webhooks.md), SAG-27, switched on by `WEBHOOKS_ENABLED`).
 
 ## 2. Life of a request
 
@@ -102,6 +102,7 @@ sequenceDiagram
   participant D as Discord webhook
 
   U->>DB: change plus outbox event in one transaction
+  C->>DB: episodes that came out: mark them and queue one message per endpoint, in one statement (SAG-28)
   C->>DB: read pending events
   C->>D: POST the message, never following a redirect
   alt delivered
@@ -116,7 +117,7 @@ sequenceDiagram
   end
 ```
 
-See [ADR-007](adr/007-background-work-cron-and-outbox.md) and [ADR-029](adr/029-discord-webhooks.md).
+See [ADR-007](adr/007-background-work-cron-and-outbox.md), [ADR-029](adr/029-discord-webhooks.md) and [ADR-030](adr/030-new-episode-alerts.md).
 
 ## 5. Data model
 

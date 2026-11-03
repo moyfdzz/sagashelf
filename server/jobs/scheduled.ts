@@ -1,3 +1,4 @@
+import { announceNewEpisodes } from "../db/episode-alerts";
 import { proposeSagaDrafts } from "../db/saga-drafts";
 import {
   getDb,
@@ -108,13 +109,29 @@ export async function runTvmazeJobs(): Promise<void> {
 }
 
 /**
- * What the third Cron Trigger runs: the webhook events that are due (ADR-029). With the webhooks
+ * What the third Cron Trigger runs: the episodes that came out are announced, and then the webhook
+ * events that are due are delivered, the new ones included (ADR-029, ADR-030). With the webhooks
  * switched off it does not even open the database, so a deployment without them costs nothing.
+ *
+ * The announcement is one statement, so it adds 1 subrequest to the 42 of a full delivery: 43 of the
+ * 50. It runs first so an episode that came out is delivered in this same run, and a failure of it
+ * is logged and never stops the delivery of what was already waiting.
  */
 export async function runOutboxJobs(): Promise<void> {
   try {
     if (!getWebhooksEnabled()) return;
-    const summary = await deliverDueEvents({ db: await getDb() });
+    const db = await getDb();
+    try {
+      const announced = await announceNewEpisodes(db);
+      if (announced.episodes > 0) {
+        console.log(
+          JSON.stringify({ event: "episodes.announced", ...announced }),
+        );
+      }
+    } catch (error) {
+      logJobFailed("announce-episodes", error);
+    }
+    const summary = await deliverDueEvents({ db });
     console.log(JSON.stringify({ event: "webhooks.batch", ...summary }));
   } catch (error) {
     logJobFailed("deliver-outbox", error);

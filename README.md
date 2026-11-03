@@ -11,7 +11,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 - A private statistics page: titles completed, episodes watched, days of content (watched and pending), scores, years, types, statuses, the best scored, your activity by month, the titles you spent the most time on, what you watched again, time and score by type, your best year and month, how long you take to finish something what has been planned the longest, and the time, the titles and the best scores of each genre (with a link to the titles of that genre in your library), and the same numbers for one type only (tabs for movies, series, anime, books and manga), drawn as charts that also have a table of numbers or write their numbers.
 - Accounts with Clerk (email or Google), a profile with a privacy level, and a username you can change.
 - Your data is yours: download a copy of it, restore your library from that copy, or delete your account and everything in it.
-- Alerts in Discord: connect a webhook of a channel in your settings and send a test message to check it (the alerts themselves, such as a new episode, come next). A webhook that fails turns itself off and says why.
+- Alerts in Discord: connect a webhook of a channel in your settings, send a test message to check it, and tick "new episodes" to get one message when an episode of a series or anime you have as "In progress" comes out (it can arrive up to an hour later). A webhook that fails turns itself off and says why.
 - Spanish (default) and English, light and dark mode, responsive on phone, tablet and desktop.
 
 ## Planned

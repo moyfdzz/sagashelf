@@ -217,7 +217,7 @@
       },
       "list": {
         "title": "Your webhooks",
-        "events": "For now only the test message is sent. Alerts for new episodes and for your library will come later.",
+        "events": "Choose which alerts each channel receives. With none ticked, only the test message is sent. Alerts for your library will come later.",
         "empty": "You have not connected any channel yet.",
         "kind": "Discord",
         "on": "On",
@@ -234,7 +234,15 @@
         "remove": "Remove",
         "removeLabel": "Remove the webhook {{url}}"
       },
+      "alerts": {
+        "legend": "Alerts for this channel",
+        "episodes": "New episodes of what you are watching",
+        "hint": "We tell you when a new episode comes out for the titles you have as \"In progress\", in a single message. It can arrive up to an hour after it comes out.",
+        "save": "Save alerts",
+        "saving": "Saving…"
+      },
       "result": {
+        "alertsSaved": "Alerts saved.",
         "added": "Webhook saved. Send a test message to check it.",
         "removed": "Webhook removed.",
         "enabled": "Webhook turned back on.",

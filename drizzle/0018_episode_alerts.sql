@@ -1,0 +1,1 @@
+ALTER TABLE "media_next_episode" ADD COLUMN "announced_stamp" timestamp with time zone;

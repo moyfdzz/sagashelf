@@ -2,6 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { maskWebhookUrl } from "../webhooks/discord-url";
+import type { SubscribableEvent } from "../webhooks/events";
 import {
   disableAfterFailures,
   type DisableReason,
@@ -139,6 +140,27 @@ export async function reenableEndpoint(
     SET enabled = true, disabled_at = NULL, disabled_reason = NULL,
         failure_count = 0, updated_at = now()
     WHERE id = ${endpointId}::uuid AND user_id = ${userId}::uuid AND NOT enabled
+    RETURNING id
+  `);
+  return rows.length > 0;
+}
+
+/**
+ * Saves which events an endpoint of the person receives (SAG-28). The list replaces the old one, so
+ * an empty list turns the alerts off. It goes through JSON and not as an array parameter, so it is
+ * the same on every driver. Returns false when the person has no such endpoint.
+ */
+export async function setEndpointEvents(
+  db: SqlExecutor,
+  userId: string,
+  endpointId: string,
+  eventTypes: readonly SubscribableEvent[],
+): Promise<boolean> {
+  const { rows } = await db.execute(sql`
+    UPDATE webhook_endpoints
+    SET event_types = ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(eventTypes)}::jsonb)),
+        updated_at = now()
+    WHERE id = ${endpointId}::uuid AND user_id = ${userId}::uuid
     RETURNING id
   `);
   return rows.length > 0;

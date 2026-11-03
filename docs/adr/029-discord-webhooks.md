@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Implementation:** Done (SAG-27) for the machinery: the outbox, the delivery job, the third Cron Trigger and the settings page, with the test message as the only event that is sent. The events that people will receive (a new episode, a finished title) are queued by SAG-28 and SAG-44. The signed generic webhooks of the ticket are left for a ticket of their own.
+- **Implementation:** Done (SAG-27) for the machinery: the outbox, the delivery job, the third Cron Trigger and the settings page, with the test message as the only event that is sent. The events that people will receive are queued by SAG-28 (a new episode, done: [ADR-030](030-new-episode-alerts.md)) and SAG-44 (a finished title). The signed generic webhooks of the ticket are left for a ticket of their own.
 - **Tickets:** SAG-27, SAG-28, SAG-44
 - **Related:** [ADR-007](007-background-work-cron-and-outbox.md), [ADR-012](012-neon-over-supabase.md), [ADR-018](018-personal-library.md), [ADR-002](002-data-and-migrations.md)
 
