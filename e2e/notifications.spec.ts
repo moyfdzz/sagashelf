@@ -60,6 +60,27 @@ test.describe("the notifications settings", () => {
     expect(otherSite.status()).toBeGreaterThanOrEqual(400);
   });
 
+  test("the alerts of new episodes (SAG-28) cannot be changed by a visitor, or from another site", async ({
+    request,
+  }) => {
+    const form = {
+      intent: "alerts",
+      id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
+      episodes: "on",
+    };
+
+    const visitor = await request.post(path, { form, maxRedirects: 0 });
+    const otherSite = await request.post(path, {
+      form,
+      headers: { Origin: "https://evil.example" },
+      maxRedirects: 0,
+    });
+
+    expect(visitor.status()).toBeGreaterThanOrEqual(300);
+    // The same two refusals as above: the framework before the action, and the action's own 403.
+    expect(otherSite.status()).toBeGreaterThanOrEqual(400);
+  });
+
   test("refuses a body that is too big, whoever sends it", async ({
     request,
   }) => {

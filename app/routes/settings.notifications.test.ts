@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   addDiscordEndpoint: vi.fn(),
   removeEndpoint: vi.fn(),
   reenableEndpoint: vi.fn(),
+  setEndpointEvents: vi.fn(),
   queueTestEvent: vi.fn(),
   claimEvent: vi.fn(),
   deliverEvent: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock("~server/db/webhooks", () => ({
   addDiscordEndpoint: mocks.addDiscordEndpoint,
   removeEndpoint: mocks.removeEndpoint,
   reenableEndpoint: mocks.reenableEndpoint,
+  setEndpointEvents: mocks.setEndpointEvents,
   queueTestEvent: mocks.queueTestEvent,
   claimEvent: mocks.claimEvent,
 }));
@@ -99,6 +101,7 @@ beforeEach(() => {
   mocks.addDiscordEndpoint.mockReset().mockResolvedValue("added");
   mocks.removeEndpoint.mockReset().mockResolvedValue(true);
   mocks.reenableEndpoint.mockReset().mockResolvedValue(true);
+  mocks.setEndpointEvents.mockReset().mockResolvedValue(true);
   mocks.queueTestEvent.mockReset().mockResolvedValue(eventId);
   mocks.claimEvent.mockReset().mockResolvedValue({
     id: eventId,
@@ -165,11 +168,29 @@ describe("the notifications page (SAG-27)", () => {
           enabled: false,
           disabledAt: "2026-11-02T12:00:00.000Z",
           disabledReason: "not_found",
+          episodeAlerts: false,
         },
       ]);
       expect(JSON.stringify(result)).not.toContain(fakeWebhookToken);
       expect(result.max).toBe(3);
       expect(result.enabled).toBe(true);
+    });
+
+    it("says whether a webhook has asked for the alerts of new episodes (SAG-28)", async () => {
+      mocks.listEndpoints.mockResolvedValue([
+        {
+          ...(await mocks.listEndpoints()).at(0),
+          eventTypes: ["episode.aired"],
+        },
+        { ...(await mocks.listEndpoints()).at(0), id: "other", eventTypes: [] },
+      ]);
+
+      const result = await load();
+
+      expect(result.endpoints.map((e) => e.episodeAlerts)).toEqual([
+        true,
+        false,
+      ]);
     });
 
     it("turns the dates of the log into text, so they cross to the browser", async () => {
@@ -454,6 +475,57 @@ describe("the notifications page (SAG-27)", () => {
         expect(result.init?.status).toBe(404);
         expect(result.data).toEqual({ ok: false, error: "not_found" });
       }
+    });
+  });
+
+  describe("POST alerts (SAG-28)", () => {
+    it("saves the alerts of new episodes for the webhook of the person of the session", async () => {
+      const result = answer(
+        await submit({ intent: "alerts", id: endpointId, episodes: "on" }),
+      );
+
+      expect(mocks.setEndpointEvents).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        endpointId,
+        ["episode.aired"],
+      );
+      expect(result.data).toEqual({ ok: true, intent: "alerts" });
+    });
+
+    it("turns them off when the box is not ticked, since an unticked box is not sent at all", async () => {
+      await submit({ intent: "alerts", id: endpointId });
+
+      expect(mocks.setEndpointEvents).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        endpointId,
+        [],
+      );
+    });
+
+    it("says not found for a webhook that is not the person's, and does not say whose it is", async () => {
+      mocks.setEndpointEvents.mockResolvedValue(false);
+
+      const result = answer(
+        await submit({ intent: "alerts", id: endpointId, episodes: "on" }),
+      );
+
+      expect(result.init?.status).toBe(404);
+      expect(result.data).toEqual({ ok: false, error: "not_found" });
+    });
+
+    it.each([
+      ["a value other than the one of the box", { episodes: "off" }],
+      ["an event type typed by hand", { episodes: "webhook.test" }],
+      ["a field the form does not have", { events: "episode.aired" }],
+    ])("refuses %s", async (_name, extra) => {
+      const result = answer(
+        await submit({ intent: "alerts", id: endpointId, ...extra }),
+      );
+
+      expect(result.init?.status).toBe(400);
+      expect(mocks.setEndpointEvents).not.toHaveBeenCalled();
     });
   });
 

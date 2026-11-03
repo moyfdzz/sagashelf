@@ -42,6 +42,11 @@ export const mediaNextEpisode = pgTable(
     // When the show is asked about again: the day after the next episode, or a week, or three
     // months, by what TVmaze said. It is how the job picks what to ask, with no list to keep.
     nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull(),
+    // The `air_stamp` of the last episode that people were told about (SAG-28, ADR-030). An episode
+    // is told when its stamp has passed and this is older, and telling it sets this to the stamp, in
+    // the same statement that queues the messages, so an episode is announced once. It is a moment
+    // and not a season and number so an episode with neither still has a key.
+    announcedStamp: timestamp("announced_stamp", { withTimezone: true }),
   },
   (t) => [
     check(

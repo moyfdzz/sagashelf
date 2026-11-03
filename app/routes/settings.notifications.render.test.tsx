@@ -49,6 +49,7 @@ const on = {
   enabled: true,
   disabledAt: null,
   disabledReason: null,
+  episodeAlerts: false,
 };
 const off = {
   id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70",
@@ -56,6 +57,7 @@ const off = {
   enabled: false,
   disabledAt: "2026-11-02T12:30:00.000Z",
   disabledReason: "not_found",
+  episodeAlerts: false,
 };
 
 const props = (loader: Record<string, unknown> = {}, actionData?: unknown) =>
@@ -108,7 +110,9 @@ describe("the notifications page (SAG-27)", () => {
 
     expect(html).toContain("Todavía no has conectado ningún canal");
     expect(html).toContain("Todavía no hay envíos");
-    expect(html).toContain("Por ahora solo se envía el mensaje de prueba");
+    expect(html).toContain(
+      "Sin ninguno marcado, solo se envía el mensaje de prueba",
+    );
   });
 
   it("lists a webhook with the masked address, and a button to test it and one to remove it", async () => {
@@ -122,6 +126,61 @@ describe("the notifications page (SAG-27)", () => {
     expect(html).toContain('name="intent" value="remove"');
     // The button that removes says which one it removes, for somebody who cannot see the page.
     expect(html).toContain(`aria-label="Quitar el webhook ${masked}"`);
+  });
+
+  describe("the alerts of new episodes (SAG-28)", () => {
+    const box = (html: string) =>
+      html.match(/<input [^>]*name="episodes"[^>]*>/)?.[0] ?? "";
+
+    it("offers a box for each webhook, with a label that names it and a hint that goes with it", async () => {
+      const html = await render(page({ endpoints: [on] }));
+
+      expect(html).toContain('name="intent" value="alerts"');
+      expect(html).toContain(`name="id" value="${endpointId}"`);
+      expect(html).toContain("Avisos de este canal");
+      expect(box(html)).toContain('type="checkbox"');
+      expect(box(html)).toContain(`id="episodes-${endpointId}"`);
+      expect(box(html)).toContain(
+        `aria-describedby="episodes-hint-${endpointId}"`,
+      );
+      expect(html).toMatch(
+        new RegExp(
+          `<label [^>]*for="episodes-${endpointId}"[^>]*>Episodios nuevos de lo que estás viendo</label>`,
+        ),
+      );
+      expect(html).toContain(`id="episodes-hint-${endpointId}"`);
+      expect(html).toContain("hasta una hora después");
+      expect(html).toContain("Guardar avisos");
+    });
+
+    it("has the box unticked until the person ticks it, and ticked once they have", async () => {
+      const unticked = await render(page({ endpoints: [on] }));
+      const ticked = await render(
+        page({ endpoints: [{ ...on, episodeAlerts: true }] }),
+      );
+
+      expect(box(unticked)).not.toContain("checked");
+      expect(box(ticked)).toContain("checked");
+    });
+
+    it("gives each webhook its own box, so two labels never point at the same one", async () => {
+      const html = await render(page({ endpoints: [on, off] }));
+      const ids = [...html.matchAll(/<input [^>]*name="episodes"[^>]*>/g)].map(
+        (match) => match[0].match(/ id="([^"]+)"/)?.[1],
+      );
+
+      expect(ids).toHaveLength(2);
+      expect(new Set(ids).size).toBe(2);
+    });
+
+    it("says the same in English", async () => {
+      const html = await render(page({ endpoints: [on] }), "en");
+
+      expect(html).toContain("Alerts for this channel");
+      expect(html).toContain("New episodes of what you are watching");
+      expect(html).toContain("up to an hour after it comes out");
+      expect(html).toContain("Save alerts");
+    });
   });
 
   it("draws the three buttons of a webhook the same size, with the one that removes in the danger colors (SAG-98)", async () => {

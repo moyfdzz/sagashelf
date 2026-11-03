@@ -6,6 +6,8 @@
  * and using `allowed_mentions` to prevent unexpected mentions", read 2026-11-02).
  */
 
+import { episodeAiredEvent } from "./events";
+
 /** What Discord accepts in `content` ("up to 2000 characters", the same page and date). */
 export const maxContentLength = 2000;
 
@@ -30,6 +32,90 @@ const message = (content: string): DiscordMessage => ({
   allowed_mentions: { parse: [] },
 });
 
+type EpisodeLine = {
+  title: string;
+  season: number | null;
+  number: number | null;
+};
+
+const asCount = (value: unknown): number | null =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? value
+    : null;
+
+/**
+ * What `episode.aired` carries (SAG-28, ADR-030): the episodes that came out for one person's
+ * endpoint, the first few of them, and how many there were. The payload comes from the database, so
+ * it is checked here and not trusted; a payload that says nothing yields null and the event is
+ * given up on.
+ */
+function episodesOf(
+  payload: Record<string, unknown>,
+): { lines: EpisodeLine[]; total: number } | null {
+  if (!Array.isArray(payload.episodes)) return null;
+  const lines: EpisodeLine[] = [];
+  for (const entry of payload.episodes) {
+    if (!entry || typeof entry !== "object") continue;
+    const { title, season, number } = entry as Record<string, unknown>;
+    if (typeof title !== "string" || title.trim() === "") continue;
+    lines.push({ title, season: asCount(season), number: asCount(number) });
+  }
+  if (lines.length === 0) return null;
+  const total = asCount(payload.total);
+  return {
+    lines,
+    total: total !== null && total >= lines.length ? total : lines.length,
+  };
+}
+
+const episodeText = {
+  es: {
+    one: "SagaShelf: ya salió un episodio nuevo de lo que estás viendo.",
+    other: (total: number) =>
+      `SagaShelf: ya salieron ${total} episodios nuevos de lo que estás viendo.`,
+    season: (season: number, number: number) =>
+      `temporada ${season}, episodio ${number}`,
+    episode: (number: number) => `episodio ${number}`,
+    more: (rest: number) => `… y ${rest} más.`,
+  },
+  en: {
+    one: "SagaShelf: a new episode of something you are watching is out.",
+    other: (total: number) =>
+      `SagaShelf: ${total} new episodes of what you are watching are out.`,
+    season: (season: number, number: number) =>
+      `season ${season}, episode ${number}`,
+    episode: (number: number) => `episode ${number}`,
+    more: (rest: number) => `… and ${rest} more.`,
+  },
+} as const;
+
+/** One message for all the episodes of the moment: a digest, not one message per series. */
+function episodesMessage(
+  payload: Record<string, unknown>,
+  locale: "es" | "en",
+): DiscordMessage | null {
+  const episodes = episodesOf(payload);
+  if (!episodes) return null;
+  const text = episodeText[locale];
+  const lines = episodes.lines.map((line) => {
+    const which =
+      line.season !== null && line.number !== null
+        ? text.season(line.season, line.number)
+        : line.number !== null
+          ? text.episode(line.number)
+          : null;
+    return which ? `• ${line.title}: ${which}` : `• ${line.title}`;
+  });
+  const rest = episodes.total - episodes.lines.length;
+  return message(
+    [
+      episodes.total === 1 ? text.one : text.other(episodes.total),
+      ...lines,
+      ...(rest > 0 ? [text.more(rest)] : []),
+    ].join("\n"),
+  );
+}
+
 /**
  * The message of an event, in the language the event was queued with, or null for a type that
  * has none (it is then given up on, not sent).
@@ -42,6 +128,8 @@ export function discordMessage(
   switch (type) {
     case "webhook.test":
       return message(testText[locale]);
+    case episodeAiredEvent:
+      return episodesMessage(payload, locale);
     default:
       return null;
   }
