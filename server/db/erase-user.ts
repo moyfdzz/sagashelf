@@ -18,6 +18,8 @@ export const erasedColumns: readonly (readonly [string, string])[] = [
   ["follows", "followee_id"],
   ["blocks", "blocker_id"],
   ["blocks", "blocked_id"],
+  ["mutes", "muter_id"],
+  ["mutes", "muted_id"],
   ["activity", "actor_id"],
   ["likes", "user_id"],
 ];

@@ -3,11 +3,14 @@ import { eq, inArray, sql } from "drizzle-orm";
 import type { ProfileDb } from "../db/profile";
 import {
   customEntries,
+  blocks,
+  follows,
   libraryEntries,
   libraryViewings,
   listItems,
   lists,
   mediaItems,
+  mutes,
   notifications,
   users,
   webhookEndpoints,
@@ -53,6 +56,15 @@ export type AccountExport = {
     createdAt: string;
     readAt: string | null;
   }[];
+  /**
+   * Who the person follows, has blocked and has muted (SAG-21), by username and since when. Only what
+   * the person did: never who follows them or who blocked them. An erased account is left out.
+   */
+  social: {
+    following: { username: string; since: string }[];
+    blocked: { username: string; since: string }[];
+    muted: { username: string; since: string }[];
+  };
 };
 
 /**
@@ -209,6 +221,46 @@ export async function exportAccount(
     .where(eq(notifications.userId, userId))
     .orderBy(notifications.createdAt, notifications.id);
 
+  const asNames = (
+    rows: { username: string; deletedAt: Date | null; since: Date }[],
+  ) =>
+    rows
+      .filter((row) => row.deletedAt === null)
+      .map((row) => ({
+        username: row.username,
+        since: row.since.toISOString(),
+      }));
+  const following = await db
+    .select({
+      username: users.username,
+      deletedAt: users.deletedAt,
+      since: follows.createdAt,
+    })
+    .from(follows)
+    .innerJoin(users, eq(users.id, follows.followeeId))
+    .where(eq(follows.followerId, userId))
+    .orderBy(follows.createdAt, users.username);
+  const blocked = await db
+    .select({
+      username: users.username,
+      deletedAt: users.deletedAt,
+      since: blocks.createdAt,
+    })
+    .from(blocks)
+    .innerJoin(users, eq(users.id, blocks.blockedId))
+    .where(eq(blocks.blockerId, userId))
+    .orderBy(blocks.createdAt, users.username);
+  const muted = await db
+    .select({
+      username: users.username,
+      deletedAt: users.deletedAt,
+      since: mutes.createdAt,
+    })
+    .from(mutes)
+    .innerJoin(users, eq(users.id, mutes.mutedId))
+    .where(eq(mutes.muterId, userId))
+    .orderBy(mutes.createdAt, users.username);
+
   return {
     schemaVersion: 1,
     exportedAt: now.toISOString(),
@@ -241,6 +293,11 @@ export async function exportAccount(
       enabled: endpoint.enabled,
       createdAt: endpoint.createdAt.toISOString(),
     })),
+    social: {
+      following: asNames(following),
+      blocked: asNames(blocked),
+      muted: asNames(muted),
+    },
     notifications: inbox.map((notification) => ({
       type: notification.type,
       payload: notification.payload,

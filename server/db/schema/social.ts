@@ -58,6 +58,31 @@ export const blocks = pgTable(
   ],
 );
 
+/**
+ * A mute is a preference of one person about another (SAG-21): "do not show me what they do".
+ * Unlike a block it hides nothing by itself and the other person is never told; the activity
+ * feed (SAG-22) reads it. Only the person who muted can see it.
+ */
+export const mutes = pgTable(
+  "mutes",
+  {
+    muterId: uuid("muter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mutedId: uuid("muted_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.muterId, t.mutedId] }),
+    check("mutes_not_self_check", sql`${t.muterId} <> ${t.mutedId}`),
+    index("mutes_muted_idx").on(t.mutedId),
+  ],
+);
+
 export const activityType = pgEnum("activity_type", [
   "started",
   "progressed",
