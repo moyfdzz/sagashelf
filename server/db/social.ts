@@ -33,9 +33,9 @@ export type FollowResult = "followed" | "unavailable" | "too_many";
 
 /**
  * Follows a person by username. Allowed only when the person exists, is not erased, is not the
- * viewer, has a **public** profile (friends-only and private profiles can only be followed through a
- * request, which is a later ticket), and neither has blocked the other. Following someone already
- * followed is `followed` too. The hourly cap is read in the same statement.
+ * viewer, has a **public** profile (a Private one can only be followed through a request, see
+ * `follow-requests.ts`), and neither has blocked the other. Following someone already followed is
+ * `followed` too. The hourly cap, shared with the requests sent, is read in the same statement.
  */
 export async function followUser(
   db: SqlExecutor,
@@ -44,9 +44,12 @@ export async function followUser(
 ): Promise<FollowResult> {
   const { rows } = await db.execute(sql`
     WITH recent AS (
-      SELECT count(*)::int AS n
-      FROM follows
-      WHERE follower_id = ${viewerId}::uuid AND created_at > now() - interval '1 hour'
+      SELECT (
+        (SELECT count(*) FROM follows
+          WHERE follower_id = ${viewerId}::uuid AND created_at > now() - interval '1 hour')
+        + (SELECT count(*) FROM follow_requests
+          WHERE requester_id = ${viewerId}::uuid AND created_at > now() - interval '1 hour')
+      )::int AS n
     ),
     target AS (
       SELECT u.id
@@ -66,6 +69,12 @@ export async function followUser(
       INSERT INTO follows (follower_id, followee_id)
       SELECT ${viewerId}::uuid, id FROM target
       ON CONFLICT DO NOTHING
+      RETURNING 1
+    ),
+    -- A request sent while the profile was Private has no use once it is Public and followed.
+    unrequested AS (
+      DELETE FROM follow_requests
+      WHERE requester_id = ${viewerId}::uuid AND target_id IN (SELECT id FROM target)
       RETURNING 1
     )
     SELECT (SELECT n FROM recent) AS recent, EXISTS (SELECT 1 FROM target) AS allowed
@@ -91,8 +100,8 @@ export async function unfollowUser(
 }
 
 /**
- * Blocks a person: records the block and removes every follow between the two, in both directions,
- * in the same statement. Blocking someone who does not exist, or oneself, does nothing.
+ * Blocks a person: records the block and removes every follow and every pending follow request
+ * between the two, in both directions, in the same statement. Blocking someone who does not exist, or oneself, does nothing.
  */
 export async function blockUser(
   db: SqlExecutor,
@@ -114,6 +123,12 @@ export async function blockUser(
       DELETE FROM follows
       WHERE (follower_id = ${viewerId}::uuid AND followee_id IN (SELECT id FROM target))
          OR (followee_id = ${viewerId}::uuid AND follower_id IN (SELECT id FROM target))
+      RETURNING 1
+    ),
+    unrequested AS (
+      DELETE FROM follow_requests
+      WHERE (requester_id = ${viewerId}::uuid AND target_id IN (SELECT id FROM target))
+         OR (target_id = ${viewerId}::uuid AND requester_id IN (SELECT id FROM target))
       RETURNING 1
     )
     SELECT 1

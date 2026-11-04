@@ -14,6 +14,11 @@ import { getInstance, getLocale } from "~/middleware/i18next";
 import { getOptionalUser, requireUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import {
+  cancelRequest,
+  hasRequested,
+  requestFollow,
+} from "~server/db/follow-requests";
+import {
   profileStatuses,
   getProfileSections,
   type ProfileStatus,
@@ -46,12 +51,22 @@ const maxFormBytes = 1024;
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
 const formSchema = z.strictObject({
-  intent: z.enum(["follow", "unfollow", "mute", "unmute", "block"]),
+  intent: z.enum([
+    "follow",
+    "unfollow",
+    "request",
+    "cancel_request",
+    "mute",
+    "unmute",
+    "block",
+  ]),
 });
 
 const notices = [
   "followed",
   "unfollowed",
+  "requested",
+  "request_cancelled",
   "muted",
   "unmuted",
   "too_many",
@@ -84,15 +99,22 @@ export async function loader(args: Route.LoaderArgs) {
   const name = owner.displayName ?? owner.username;
   const notice = asNotice(new URL(request.url).searchParams.get("notice"));
 
-  // What the viewer can do with this person, never more than the buttons the page draws.
+  // What the viewer can do with this person, never more than the buttons the page draws. A Private
+  // profile (level `friends`) cannot be followed, only asked for (SAG-108).
+  const following = relationship === "friend" || relationship === "follower";
+  const canRequest = owner.privacy === "friends" && !following;
   const you =
     relationship === "owner"
       ? ({ kind: "owner" } as const)
       : viewer
         ? ({
             kind: "member",
-            following: relationship === "friend" || relationship === "follower",
+            following,
             canFollow: owner.privacy === "public",
+            canRequest,
+            requested: canRequest
+              ? await hasRequested(db, viewer.id, owner.id)
+              : false,
             muted: await isMuted(db, viewer.id, owner.id),
           } as const)
         : ({ kind: "visitor", signInPath: signInPath(request.url) } as const);
@@ -221,6 +243,14 @@ export async function action(args: Route.ActionArgs) {
     case "unfollow":
       await unfollowUser(db, user.id, params.username);
       return redirect(`${back}?notice=unfollowed`, 303);
+    case "request":
+      return redirect(
+        `${back}?notice=${await requestFollow(db, user.id, params.username)}`,
+        303,
+      );
+    case "cancel_request":
+      await cancelRequest(db, user.id, params.username);
+      return redirect(`${back}?notice=request_cancelled`, 303);
     case "mute":
       await muteUser(db, user.id, params.username);
       return redirect(`${back}?notice=muted`, 303);
@@ -304,15 +334,30 @@ function Actions({ you, username }: { you: You; username: string }) {
       className="space-y-3"
     >
       <div className="flex flex-wrap items-start gap-2">
-        {you.following
-          ? button(
-              "unfollow",
-              t("profile.actions.unfollow"),
-              secondaryButtonClass,
-            )
-          : you.canFollow
-            ? button("follow", t("profile.actions.follow"), primaryButtonClass)
-            : null}
+        {you.following ? (
+          button(
+            "unfollow",
+            t("profile.actions.unfollow"),
+            secondaryButtonClass,
+          )
+        ) : you.canFollow ? (
+          button("follow", t("profile.actions.follow"), primaryButtonClass)
+        ) : you.canRequest ? (
+          you.requested ? (
+            <>
+              <p className="self-center font-semibold">
+                {t("profile.actions.requested")}
+              </p>
+              {button(
+                "cancel_request",
+                t("profile.actions.cancelRequest"),
+                secondaryButtonClass,
+              )}
+            </>
+          ) : (
+            button("request", t("profile.actions.request"), primaryButtonClass)
+          )
+        ) : null}
         {you.muted
           ? button("unmute", t("profile.actions.unmute"), secondaryButtonClass)
           : button("mute", t("profile.actions.mute"), secondaryButtonClass)}
@@ -358,12 +403,7 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
       {loaderData.view === "full" ? (
         <FullProfile loaderData={loaderData} username={head.username} />
       ) : (
-        <p className="text-fg-muted mt-6">
-          {t("profile.locked")}
-          {you.kind === "member" && !you.following ? (
-            <span className="ml-1">{t("profile.requestsSoon")}</span>
-          ) : null}
-        </p>
+        <p className="text-fg-muted mt-6">{t("profile.locked")}</p>
       )}
     </main>
   );

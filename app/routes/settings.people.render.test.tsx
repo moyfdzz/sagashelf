@@ -132,21 +132,27 @@ describe("the legal pages after the profiles (SAG-107)", () => {
 
     expect(html).toContain("Quién ve tu perfil");
     expect(html).toContain("Público:");
-    expect(html).toContain("Solo amistades:");
-    expect(html).toContain("Privado: nadie más que tú ve tu perfil");
+    expect(html).toContain("Privado:");
+    expect(html).toContain("Privacidad total: nadie más que tú ve tu perfil");
+    expect(html).toContain("puede enviarte una solicitud para seguirte");
+    expect(html).toContain("la guardamos como rechazada hasta 30 días");
     expect(html).toContain("tu nombre de usuario, tu nombre y tu foto");
     expect(html).toContain("Tus notas no las ve nadie.");
     expect(html).toContain("Relaciones: a quién sigues");
-    expect(html).toContain("tus seguimientos, bloqueos y silencios");
+    expect(html).toContain(
+      "tus seguimientos, solicitudes de seguimiento, bloqueos y silencios",
+    );
   });
 
   it("tell it in English too", async () => {
     const html = await render(<Privacy />, "en");
 
     expect(html).toContain("Who sees your profile");
-    expect(html).toContain("Friends only:");
+    expect(html).toContain("Private:");
+    expect(html).toContain("Total privacy: nobody but you sees your profile");
     expect(html).toContain("not even that it exists");
-    expect(html).toContain("your follows, blocks and mutes");
+    expect(html).toContain("we keep it as declined for up to 30 days");
+    expect(html).toContain("your follows, follow requests, blocks and mutes");
   });
 
   it("say what blocking does and add the use that is not allowed, in the terms", async () => {
@@ -154,7 +160,9 @@ describe("the legal pages after the profiles (SAG-107)", () => {
 
     expect(html).toContain("Otras personas");
     expect(html).toContain("Bloquear oculta tu perfil para esa persona");
-    expect(html).toContain("seguir de forma masiva o insistente");
+    expect(html).toContain(
+      "solicitudes de seguimiento de forma masiva o insistente",
+    );
     expect(html).toContain("tu nivel de privacidad");
   });
 
@@ -163,7 +171,9 @@ describe("the legal pages after the profiles (SAG-107)", () => {
 
     expect(html).toContain("Other people");
     expect(html).toContain("Blocking hides your profile from that person");
-    expect(html).toContain("follow other people in bulk or insistently");
+    expect(html).toContain(
+      "send follow requests to, other people in bulk or insistently",
+    );
   });
 
   it("show the new date, in both languages", async () => {

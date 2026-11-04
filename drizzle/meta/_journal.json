@@ -155,6 +155,13 @@
       "when": 1793765225119,
       "tag": "0021_mutes",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793774452692,
+      "tag": "0022_follow_requests",
+      "breakpoints": true
     }
   ]
 }

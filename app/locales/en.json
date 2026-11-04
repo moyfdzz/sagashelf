@@ -19,7 +19,7 @@
     "recommendations": "Recommendations",
     "menu": "Menu",
     "notifications": "Notifications",
-    "unread": ", {{shown}} unread"
+    "pending": ", {{shown}} pending"
   },
   "language": {
     "label": "Language"
@@ -157,8 +157,8 @@
       "privacy": "Profile privacy",
       "privacyOptions": {
         "public": "Public",
-        "friends": "Friends only (mutual follows)",
-        "private": "Private"
+        "friends": "Private (friends only)",
+        "private": "Total privacy"
       },
       "save": "Save changes",
       "saving": "Saving…",
@@ -171,7 +171,7 @@
         "invalid_privacy": "Choose an option from the list.",
         "generic": "We could not save the changes. Please try again."
       },
-      "privacyHint": "Public: anyone sees your profile. Friends only: other people see your username, name and picture, and will be able to ask to follow you; the rest is only seen by your friends. Private: nobody but you sees your profile, not even that it exists.",
+      "privacyHint": "Public: anyone sees your profile. Private: other people see your username, name and picture, and can ask to follow you; the rest is only seen by your friends, the people who follow each other with you. Total privacy: nobody but you sees your profile, not even that it exists.",
       "viewProfile": "View my public profile"
     },
     "data": {
@@ -483,7 +483,7 @@
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
       "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views.",
-      "social": "Relationships: whom you follow, whom you blocked and whom you muted. The person you mute does not know."
+      "social": "Relationships: whom you follow, whom you blocked and whom you muted, and the follow requests you send and receive. The person you mute does not know."
     },
     "not": {
       "title": "What we do not do",
@@ -504,7 +504,7 @@
     },
     "retention": {
       "title": "How long we keep it",
-      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
+      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, follow requests, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
     },
     "rights": {
       "title": "Your rights",
@@ -526,9 +526,10 @@
       "title": "Who sees your profile",
       "intro": "Your profile is at a public address (/u/ and your username) that search engines do not index. What it shows depends on the privacy level you choose in your settings:",
       "public": "Public: anyone, signed in or not, sees your username, your name, your picture, your bio, how many people follow you, how many you follow and how many are your friends, and the entries of your library that you marked as visible to everyone.",
-      "friends": "Friends only: anyone you have not blocked sees only your username, your name and your picture, so they can ask to follow you. Your bio, your counts and your library are seen only by your friends (people who follow you and whom you follow).",
-      "private": "Private: nobody but you sees your profile, not even that it exists.",
-      "rules": "Each entry of your library has its own level, and the stricter of the entry and your profile applies. Nobody sees your notes. The people who follow you appear in your list of followers according to the level of their own profile. If you block someone, or they block you, they stop seeing your profile and you stop seeing theirs, and the follows between you are removed."
+      "friends": "Private: anyone you have not blocked sees only your username, your name and your picture, and can send you a request to follow you. Your bio, your counts and your library are seen only by your friends (people who follow you and whom you follow). If you accept a request, that person follows you, but does not see your content until you follow them too; you can do that when you accept, and if their profile is also private, they have to accept your request.",
+      "private": "Total privacy: nobody but you sees your profile, not even that it exists, and nobody can send you requests.",
+      "rules": "Each entry of your library has its own level, and the stricter of the entry and your profile applies. Nobody sees your notes. The people who follow you appear in your list of followers according to the level of their own profile. If you block someone, or they block you, they stop seeing your profile and you stop seeing theirs, and the follows between you are removed.",
+      "requests": "We keep the follow requests you send and receive until they are answered, cancelled, one of you blocks the other or one of the accounts is deleted. If you decline a request nobody is told: we keep it as declined for up to 30 days so the same person cannot insist right away, and it is part of the copy of your data that you can download."
     }
   },
   "terms": {
@@ -551,7 +552,7 @@
       "piracy": "share links to pirated or illegal content;",
       "abuse": "try to get into accounts or systems without permission, or overload the service;",
       "impersonate": "pretend to be someone else, or choose a username that impersonates them.",
-      "stalk": "follow other people in bulk or insistently, or look for someone who has blocked you;"
+      "stalk": "follow, or send follow requests to, other people in bulk or insistently, or look for someone who has blocked you;"
     },
     "content": {
       "title": "Your content",
@@ -799,7 +800,7 @@
   },
   "notifications": {
     "title": "Notifications",
-    "description": "The new episodes of what you have as \"In progress\". The 50 newest of the last 30 days are shown.",
+    "description": "The requests to follow you and the new episodes of what you have as \"In progress\". Of the episodes, the 50 newest of the last 30 days are shown.",
     "listLabel": "List of notifications",
     "empty": "No notifications yet. When a new episode of something you have as \"In progress\" comes out, it will show up here.",
     "none": "You have no unread notifications.",
@@ -814,7 +815,21 @@
     },
     "errors": {
       "not_found": "We could not find that notification.",
-      "invalid_request": "We could not read the form. Reload the page and try again."
+      "invalid_request": "We could not read the form. Reload the page and try again.",
+      "request_not_found": "We could not find that request."
+    },
+    "requests": {
+      "title_one": "{{count}} request to follow you",
+      "title_other": "{{count}} requests to follow you",
+      "hint": "If you accept, that person follows you. With “Accept and follow back” you follow them too and you become friends. If you decline, they are not told.",
+      "accept": "Accept",
+      "accept_back": "Accept and follow back",
+      "decline": "Decline",
+      "result": {
+        "accept": "You accepted the request.",
+        "accept_back": "You accepted the request and asked to follow back. If their profile is private, they have to accept yours.",
+        "decline": "You declined the request."
+      }
     }
   },
   "stats": {
@@ -1127,8 +1142,7 @@
       "friends_one": "{{count}} friend",
       "friends_other": "{{count}} friends"
     },
-    "locked": "This profile is for friends only. Its content is not shown to other people.",
-    "requestsSoon": "Soon you will be able to ask to follow them.",
+    "locked": "This profile is private. Only their friends see its content.",
     "editProfile": "Edit my profile",
     "signInToFollow": "Sign in to follow",
     "actions": {
@@ -1138,16 +1152,21 @@
       "mute": "Mute",
       "unmute": "Unmute",
       "block": "Block",
-      "blockHint": "Blocking hides your profile from this person and theirs from you, and removes the follows between you. You can undo it in Settings."
+      "blockHint": "Blocking hides your profile from this person and theirs from you, and removes the follows between you. You can undo it in Settings.",
+      "request": "Request to follow",
+      "requested": "Request sent",
+      "cancelRequest": "Cancel request"
     },
     "notice": {
       "followed": "You now follow this person.",
       "unfollowed": "You stopped following this person.",
       "muted": "You muted this person.",
       "unmuted": "You unmuted this person.",
-      "too_many": "You have followed many people in a short time. Try again later.",
-      "unavailable": "This person could not be followed.",
-      "invalid_request": "We could not read the form. Reload the page and try again."
+      "too_many": "You have followed or asked to follow many people in a short time. Try again later.",
+      "unavailable": "That could not be done with this person.",
+      "invalid_request": "We could not read the form. Reload the page and try again.",
+      "requested": "You sent your request to follow this person.",
+      "request_cancelled": "You cancelled your request."
     },
     "sections": {
       "in_progress": "Watching or reading now",

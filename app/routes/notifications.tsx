@@ -6,9 +6,14 @@ import { z } from "zod";
 import type { Route } from "./+types/notifications";
 import { ClerkSession } from "~/components/ClerkSession";
 import { useFormatters } from "~/lib/format";
-import { secondaryButtonClass, linkClass } from "~/lib/ui";
+import { linkClass, primaryButtonClass, secondaryButtonClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
+import {
+  acceptRequest,
+  declineRequest,
+  listPendingRequests,
+} from "~server/db/follow-requests";
 import {
   countUnread,
   listNotifications,
@@ -30,10 +35,16 @@ const privateHeaders = { "Cache-Control": "private, no-store" };
 const formSchema = z.discriminatedUnion("intent", [
   z.strictObject({ intent: z.literal("read"), id: z.uuid() }),
   z.strictObject({ intent: z.literal("all") }),
+  // The follow requests (SAG-108): the person is named by username, and the database decides
+  // whether it is a request waiting for the person of the session.
+  z.strictObject({
+    intent: z.enum(["accept", "accept_back", "decline"]),
+    username: z.string().min(3).max(30),
+  }),
 ]);
 
 // Each code has its text in app/locales, under notifications.errors.
-type ErrorCode = "not_found" | "invalid_request";
+type ErrorCode = "not_found" | "request_not_found" | "invalid_request";
 
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
@@ -54,9 +65,10 @@ export async function loader(args: Route.LoaderArgs) {
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
 
   const db = await getDb();
-  const [rows, unread] = await Promise.all([
+  const [rows, unread, requests] = await Promise.all([
     listNotifications(db, user.id),
     countUnread(db, user.id),
+    listPendingRequests(db, user.id),
   ]);
 
   const { t } = getInstance(args.context);
@@ -65,6 +77,14 @@ export async function loader(args: Route.LoaderArgs) {
     title: t("app.pageTitle", { title: t("notifications.title") }),
     publishableKey: keys.publishableKey,
     unread,
+    // Who asked to follow this person. Only the name and the username: this is a session page, with
+    // a narrow policy, so no picture is drawn here.
+    requests: requests.map((request) => ({
+      username: request.username,
+      name: request.displayName ?? request.username,
+      canFollowBack: request.canFollowBack,
+      createdAt: request.createdAt.toISOString(),
+    })),
     // The text is made here, in the language of the page, from the same place as the Discord
     // message. A row that says nothing readable is left out.
     items: rows.flatMap((row) => {
@@ -154,6 +174,29 @@ export async function action(args: Route.ActionArgs) {
         { headers: privateHeaders },
       );
     }
+    case "accept":
+    case "accept_back": {
+      const found = await acceptRequest(
+        db,
+        user.id,
+        form.username,
+        form.intent === "accept_back",
+      );
+      if (!found) return fail("request_not_found", 404);
+      return data(
+        { ok: true as const, intent: form.intent },
+        { headers: privateHeaders },
+      );
+    }
+    case "decline": {
+      if (!(await declineRequest(db, user.id, form.username))) {
+        return fail("request_not_found", 404);
+      }
+      return data(
+        { ok: true as const, intent: "decline" as const },
+        { headers: privateHeaders },
+      );
+    }
   }
 }
 
@@ -165,7 +208,7 @@ export default function Notifications({
   const { formatDate } = useFormatters();
   const navigation = useNavigation();
   const busy = navigation.state !== "idle";
-  const { items, unread } = loaderData;
+  const { items, unread, requests } = loaderData;
 
   const error = actionData?.ok === false ? actionData.error : null;
   const outcome = actionData?.ok === true ? actionData : null;
@@ -192,11 +235,82 @@ export default function Notifications({
           {outcome?.intent === "all" ? (
             <p>{t("notifications.result.allRead")}</p>
           ) : null}
+          {outcome?.intent === "accept" || outcome?.intent === "accept_back" ? (
+            <p>{t(`notifications.requests.result.${outcome.intent}`)}</p>
+          ) : null}
+          {outcome?.intent === "decline" ? (
+            <p>{t("notifications.requests.result.decline")}</p>
+          ) : null}
         </div>
         {error ? (
           <p role="alert" className="text-danger-fg mt-3 font-semibold">
             {t(`notifications.errors.${error}`)}
           </p>
+        ) : null}
+
+        {requests.length > 0 ? (
+          <section aria-labelledby="follow-requests" className="mt-8">
+            <h2 id="follow-requests" className="text-xl font-bold">
+              {t("notifications.requests.title", { count: requests.length })}
+            </h2>
+            <p className="text-fg-muted mt-1 text-sm">
+              {t("notifications.requests.hint")}
+            </p>
+            <ul className="mt-4 space-y-3">
+              {requests.map((request) => (
+                <li
+                  key={request.username}
+                  className="border-border bg-surface-raised rounded-md border p-4"
+                >
+                  <p className="font-semibold break-words">
+                    {/* A plain link: profiles have a policy of their own (ADR-018). */}
+                    <a
+                      href={`/u/${encodeURIComponent(request.username)}`}
+                      className={linkClass}
+                    >
+                      {request.name}
+                    </a>
+                    <span className="text-fg-muted ml-2 font-normal">
+                      {t("profile.handle", { username: request.username })}
+                    </span>
+                  </p>
+                  <p className="text-fg-muted mt-1 text-sm">
+                    {formatDate(new Date(request.createdAt), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(
+                      [
+                        ["accept", primaryButtonClass],
+                        ...(request.canFollowBack
+                          ? ([["accept_back", secondaryButtonClass]] as const)
+                          : []),
+                        ["decline", secondaryButtonClass],
+                      ] as const
+                    ).map(([intent, className]) => (
+                      <Form method="post" key={intent}>
+                        <input type="hidden" name="intent" value={intent} />
+                        <input
+                          type="hidden"
+                          name="username"
+                          value={request.username}
+                        />
+                        <button
+                          type="submit"
+                          disabled={busy}
+                          className={className}
+                        >
+                          {t(`notifications.requests.${intent}`)}
+                        </button>
+                      </Form>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
 
         {unread > 0 ? (

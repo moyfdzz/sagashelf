@@ -12,7 +12,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 - Accounts with Clerk (email or Google), a profile with a privacy level, and a username you can change.
 - Your data is yours: download a copy of it, restore your library from that copy, or delete your account and everything in it.
 - Alerts in Discord: connect a webhook of a channel in your settings (the page "Discord alerts"), send a test message to check it, and tick "new episodes" to get one message when an episode of a series or anime you have as "In progress" comes out (it can arrive up to an hour later), and turn the alerts off for a single title from its page in your library. A webhook that fails turns itself off and says why.
-- Profiles: a public page for each person (`/u/<username>`) with their name, picture, bio, counts and the parts of their library they chose to share, lists of followers, people followed and friends, and buttons to follow, mute and block. A profile can be public, friends only (others see only the name and the picture) or private (nobody sees it), and the privacy policy says who sees what. Blocked and muted people are managed in the settings.
+- Profiles: a public page for each person (`/u/<username>`) with their name, picture, bio, counts and the parts of their library they chose to share, lists of followers, people followed and friends, and buttons to follow, mute and block. A profile can be Public, Private (others see only the name and the picture and can send a follow request, which the owner answers in the notifications) or Total privacy (nobody sees it), and the privacy policy says who sees what. Blocked and muted people are managed in the settings.
 - Notifications inside the app: the same episodes show up in the page "Notifications" (`/notifications`) even if you have no webhook, with the number of unread ones in the header (on a phone, on the menu button), "Mark as read" and "Mark all as read". They are kept 30 days and are part of your export and your account deletion.
 - Spanish (default) and English, light and dark mode, responsive on phone, tablet and desktop.
 
@@ -20,7 +20,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 
 - Sagas that group every format of a story, with per-user progress
 - Google Books as a fallback for books, the volumes of a manga, and more sources for series and anime
-- Social layer: follow, friends (mutual follows), block, public/friends/private profiles
+- Social layer: follow, follow requests, friends (mutual follows), block, public/friends/private profiles
 - Custom entries for titles missing from the catalog
 - Trending pages, an admin dashboard, and signed webhooks for developers
 

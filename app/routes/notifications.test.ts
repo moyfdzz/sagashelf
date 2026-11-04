@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   countUnread: vi.fn(),
   markRead: vi.fn(),
   markAllRead: vi.fn(),
+  listPendingRequests: vi.fn(),
+  acceptRequest: vi.fn(),
+  declineRequest: vi.fn(),
   locale: "es",
 }));
 
@@ -33,6 +36,11 @@ vi.mock("~server/db/notifications", () => ({
   countUnread: mocks.countUnread,
   markRead: mocks.markRead,
   markAllRead: mocks.markAllRead,
+}));
+vi.mock("~server/db/follow-requests", () => ({
+  listPendingRequests: mocks.listPendingRequests,
+  acceptRequest: mocks.acceptRequest,
+  declineRequest: mocks.declineRequest,
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
@@ -71,6 +79,9 @@ beforeEach(() => {
   mocks.countUnread.mockReset().mockResolvedValue(1);
   mocks.markRead.mockReset().mockResolvedValue(true);
   mocks.markAllRead.mockReset().mockResolvedValue(3);
+  mocks.listPendingRequests.mockReset().mockResolvedValue([]);
+  mocks.acceptRequest.mockReset().mockResolvedValue(true);
+  mocks.declineRequest.mockReset().mockResolvedValue(true);
 });
 
 const load = () =>
@@ -176,12 +187,55 @@ describe("the inbox of notifications (SAG-102)", () => {
       expect(result.items.map((item) => item.title)).toEqual(["Kept"]);
     });
 
+    it("reads the follow requests of the person of the session, and gives only a name and a username", async () => {
+      mocks.listPendingRequests.mockResolvedValue([
+        {
+          username: "ana_public",
+          displayName: "Ana",
+          avatarUrl: "https://img.clerk.com/ana",
+          canFollowBack: true,
+          createdAt: new Date("2026-11-04T10:00:00Z"),
+        },
+        {
+          username: "cat_hidden",
+          displayName: null,
+          avatarUrl: null,
+          canFollowBack: false,
+          createdAt: new Date("2026-11-04T09:00:00Z"),
+        },
+      ]);
+
+      const result = await load();
+
+      expect(mocks.listPendingRequests).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+      );
+      expect(result.requests).toEqual([
+        {
+          username: "ana_public",
+          name: "Ana",
+          canFollowBack: true,
+          createdAt: "2026-11-04T10:00:00.000Z",
+        },
+        {
+          username: "cat_hidden",
+          name: "cat_hidden",
+          canFollowBack: false,
+          createdAt: "2026-11-04T09:00:00.000Z",
+        },
+      ]);
+      // A session page has a narrow policy: no picture goes to it.
+      expect(JSON.stringify(result.requests)).not.toContain("img.clerk.com");
+    });
+
     it("sends a visitor to sign in and reads nothing", async () => {
       const redirect = new Response(null, { status: 302 });
       mocks.requireUser.mockRejectedValue(redirect);
 
       await expect(load()).rejects.toBe(redirect);
       expect(mocks.listNotifications).not.toHaveBeenCalled();
+      expect(mocks.listPendingRequests).not.toHaveBeenCalled();
     });
 
     it("refuses a deployment without Clerk keys", async () => {
@@ -252,6 +306,19 @@ describe("the inbox of notifications (SAG-102)", () => {
       ["a read without an id", { intent: "read" }],
       ["a read with an id that is not one", { intent: "read", id: "7" }],
       ["a field the form does not have", { intent: "all", userId: "other" }],
+      ["an accept without a username", { intent: "accept" }],
+      [
+        "an accept with a username that is too short",
+        { intent: "accept", username: "ab" },
+      ],
+      [
+        "a decline with a field the form does not have",
+        { intent: "decline", username: "ana_public", id: notificationId },
+      ],
+      [
+        "an id of the person in the form of an accept",
+        { intent: "accept_back", username: "ana_public", userId: "other" },
+      ],
       [
         "a user in the form of a read",
         { intent: "read", id: notificationId, userId: "other" },
@@ -266,6 +333,82 @@ describe("the inbox of notifications (SAG-102)", () => {
       });
       expect(mocks.markRead).not.toHaveBeenCalled();
       expect(mocks.markAllRead).not.toHaveBeenCalled();
+      expect(mocks.acceptRequest).not.toHaveBeenCalled();
+      expect(mocks.declineRequest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("POST: answering a follow request", () => {
+    it("accepts without following back, as the person of the session", async () => {
+      const result = answer(
+        await submit({ intent: "accept", username: "ana_public" }),
+      );
+
+      expect(mocks.acceptRequest).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        "ana_public",
+        false,
+      );
+      expect(result.data).toEqual({ ok: true, intent: "accept" });
+      expect(result.init?.headers?.["Cache-Control"]).toBe("private, no-store");
+    });
+
+    it("accepts and follows back, as the person of the session", async () => {
+      const result = answer(
+        await submit({ intent: "accept_back", username: "ana_public" }),
+      );
+
+      expect(mocks.acceptRequest).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        "ana_public",
+        true,
+      );
+      expect(result.data).toEqual({ ok: true, intent: "accept_back" });
+    });
+
+    it("declines, as the person of the session", async () => {
+      const result = answer(
+        await submit({ intent: "decline", username: "ana_public" }),
+      );
+
+      expect(mocks.declineRequest).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        "ana_public",
+      );
+      expect(result.data).toEqual({ ok: true, intent: "decline" });
+    });
+
+    it.each(["accept", "accept_back", "decline"])(
+      "answers 404 for a %s of a request that is not there",
+      async (intent) => {
+        mocks.acceptRequest.mockResolvedValue(false);
+        mocks.declineRequest.mockResolvedValue(false);
+
+        const result = answer(
+          await submit({ intent, username: "nobody_here" }),
+        );
+
+        expect(result.init?.status).toBe(404);
+        expect(result.data).toMatchObject({
+          ok: false,
+          error: "request_not_found",
+        });
+      },
+    );
+
+    it("is limited per person like the other buttons", async () => {
+      mocks.limit.mockResolvedValue({ success: false });
+
+      const result = (await submit({
+        intent: "accept",
+        username: "ana_public",
+      })) as Response;
+
+      expect(result.status).toBe(429);
+      expect(mocks.acceptRequest).not.toHaveBeenCalled();
     });
   });
 

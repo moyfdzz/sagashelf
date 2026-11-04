@@ -7,6 +7,7 @@ import {
   activity,
   blocks,
   customEntries,
+  followRequests,
   follows,
   libraryEntries,
   libraryViewings,
@@ -82,6 +83,11 @@ async function personWithEverything() {
     { muterId: ana.id, mutedId: bob.id },
     { muterId: bob.id, mutedId: ana.id },
   ]);
+  // Requests to follow (SAG-108): both directions are erased with the account.
+  await db.insert(followRequests).values([
+    { requesterId: ana.id, targetId: bob.id },
+    { requesterId: bob.id, targetId: ana.id },
+  ]);
   const [post] = await db
     .insert(activity)
     .values({ actorId: ana.id, type: "completed", mediaId: movie.id })
@@ -128,6 +134,7 @@ describe("eraseAccount", () => {
       follows,
       blocks,
       mutes,
+      followRequests,
       activity,
       likes,
     ]) {
@@ -264,6 +271,8 @@ describe("exportAccount", () => {
       following: [{ username: "bob_reads", since: expect.any(String) }],
       blocked: [{ username: "bob_reads", since: expect.any(String) }],
       muted: [{ username: "bob_reads", since: expect.any(String) }],
+      requestsSent: [{ username: "bob_reads", since: expect.any(String) }],
+      requestsReceived: [{ username: "bob_reads", since: expect.any(String) }],
     });
     // No Clerk id, no role, no email, no id of the account, nothing of other people.
     const text = JSON.stringify(data);

@@ -19,7 +19,13 @@ const base: AccountExport = {
   lists: [],
   webhooks: [],
   notifications: [],
-  social: { following: [], blocked: [], muted: [] },
+  social: {
+    following: [],
+    blocked: [],
+    muted: [],
+    requestsSent: [],
+    requestsReceived: [],
+  },
 };
 
 const lines = (csv: string) => csv.split("\r\n");

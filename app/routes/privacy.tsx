@@ -54,6 +54,7 @@ export default function Privacy() {
           ]}
         />
         <p>{t("privacy.profile.rules")}</p>
+        <p>{t("privacy.profile.requests")}</p>
       </LegalSection>
       <LegalSection title={t("privacy.not.title")}>
         <p>{t("privacy.not.body")}</p>
