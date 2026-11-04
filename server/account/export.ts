@@ -1,9 +1,10 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import type { ProfileDb } from "../db/profile";
 import {
   customEntries,
   blocks,
+  followRequests,
   follows,
   libraryEntries,
   libraryViewings,
@@ -58,12 +59,17 @@ export type AccountExport = {
   }[];
   /**
    * Who the person follows, has blocked and has muted (SAG-21), by username and since when. Only what
-   * the person did: never who follows them or who blocked them. An erased account is left out.
+   * the person did: never who follows them or who blocked them. An erased account is left out. The
+   * one exception is the requests waiting for their answer, which they already see in the app.
    */
   social: {
     following: { username: string; since: string }[];
     blocked: { username: string; since: string }[];
     muted: { username: string; since: string }[];
+    /** The requests to follow the person sent (SAG-108), declined ones too: they look sent. */
+    requestsSent: { username: string; since: string }[];
+    /** The requests waiting for the person's answer. A declined one is not listed. */
+    requestsReceived: { username: string; since: string }[];
   };
 };
 
@@ -260,6 +266,31 @@ export async function exportAccount(
     .innerJoin(users, eq(users.id, mutes.mutedId))
     .where(eq(mutes.muterId, userId))
     .orderBy(mutes.createdAt, users.username);
+  const requestsSent = await db
+    .select({
+      username: users.username,
+      deletedAt: users.deletedAt,
+      since: followRequests.createdAt,
+    })
+    .from(followRequests)
+    .innerJoin(users, eq(users.id, followRequests.targetId))
+    .where(eq(followRequests.requesterId, userId))
+    .orderBy(followRequests.createdAt, users.username);
+  const requestsReceived = await db
+    .select({
+      username: users.username,
+      deletedAt: users.deletedAt,
+      since: followRequests.createdAt,
+    })
+    .from(followRequests)
+    .innerJoin(users, eq(users.id, followRequests.requesterId))
+    .where(
+      and(
+        eq(followRequests.targetId, userId),
+        isNull(followRequests.declinedAt),
+      ),
+    )
+    .orderBy(followRequests.createdAt, users.username);
 
   return {
     schemaVersion: 1,
@@ -297,6 +328,8 @@ export async function exportAccount(
       following: asNames(following),
       blocked: asNames(blocked),
       muted: asNames(muted),
+      requestsSent: asNames(requestsSent),
+      requestsReceived: asNames(requestsReceived),
     },
     notifications: inbox.map((notification) => ({
       type: notification.type,

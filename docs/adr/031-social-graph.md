@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-04
-- **Implementation:** Partial. SAG-21 is the server side (the policy, the statements and the queries). SAG-107 is the profile page, the lists of people, the page of blocked and muted people and the legal pages. Search and follow requests are SAG-108, and favorites and lists of titles are SAG-112 and SAG-113.
+- **Implementation:** Partial. SAG-21 is the server side (the policy, the statements and the queries). SAG-107 is the profile page, the lists of people, the page of blocked and muted people and the legal pages. Follow requests are SAG-108 ([ADR-032](032-follow-requests.md)), searching people is SAG-115, and favorites and lists of titles are SAG-112 and SAG-113.
 - **Tickets:** SAG-21, SAG-107, SAG-108, SAG-112, SAG-113, SAG-22
 - **Related:** [ADR-003](003-auth-clerk.md), [ADR-006](006-security-model.md), [ADR-014](014-account-deletion-erases-everything.md), [ADR-018](018-personal-library.md)
 
@@ -42,7 +42,7 @@ A `private` profile has no card for anybody but its owner: the answer is the 404
 
 **A block can be undone** from `/settings/people` (SAG-107): the blocked and the muted, each with its button. It is needed because a blocked person's profile answers 404 to the person who blocked, so the profile page cannot be the place to undo it. The unblock and unmute answer the same for any username, so the form cannot be used to find out who exists.
 
-**Following is allowed only for a public profile, for now.** Following a friends-only or private profile needs a request that its owner accepts (SAG-108), so until then it is refused. `followUser` answers `followed`, `unavailable` or `too_many`.
+**Following is allowed only for a public profile.** Following a friends-only profile needs a request that its owner accepts (SAG-108, [ADR-032](032-follow-requests.md)), and a private one cannot be followed or asked for. `followUser` answers `followed`, `unavailable` or `too_many`.
 
 **No user enumeration.** `unavailable` is the answer for a username that does not exist, an erased account, a private or friends-only profile, oneself, and a block in either direction, so the answer says nothing about which of them it was. Unfollow, block, unblock, mute and unmute answer the same whoever the name belongs to: they do nothing quietly for a name that does not exist. `findViewableProfile` returns `null` for a missing username, an erased account, a block and a profile the viewer may not see: the four look the same, so a page that shows the same 404 for `null` cannot be used to find out who exists, who has blocked whom, or whose profile is private. A person who may not see a profile gets no counts and no lists from it either (`listFollowers`, `listFollowing`, `listFriends` start with `findViewableProfile`).
 
@@ -73,7 +73,7 @@ A `private` profile has no card for anybody but its owner: the answer is the 404
 
 ## Open questions
 
-- Whether an accepted follow request should make the two friends, or only create the follow (the friend would then still see the card until the owner follows back). SAG-108 decides.
+- ~~Whether an accepted follow request should make the two friends, or only create the follow.~~ Decided in [ADR-032](032-follow-requests.md): it only creates the follow, and "Accept and follow back" is the way to friendship in one step.
 - Whether the counts (followers, following, friends) should be hidden from people who may not see the lists. Today they are only asked for after `findViewableProfile`.
 
 ## References

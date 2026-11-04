@@ -35,6 +35,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [029](029-discord-webhooks.md)                   | Outgoing webhooks to Discord: the outbox, the delivery and the settings page              | Accepted | Done (SAG-27)                         |
 | [030](030-new-episode-alerts.md)                 | Alerts of new episodes, through the outbox to Discord                                     | Accepted | Done (SAG-28)                         |
 | [031](031-social-graph.md)                       | The social graph: follows, blocks, mutes and one policy for who may see what              | Accepted | Partial (SAG-21; pages in SAG-107)    |
+| [032](032-follow-requests.md)                    | Follow requests, and the names of the profile levels (Public, Private, Total privacy)     | Accepted | Done (SAG-108)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

@@ -38,7 +38,13 @@ const account = {
   lists: [],
   webhooks: [],
   notifications: [],
-  social: { following: [], blocked: [], muted: [] },
+  social: {
+    following: [],
+    blocked: [],
+    muted: [],
+    requestsSent: [],
+    requestsReceived: [],
+  },
 };
 
 beforeEach(() => {

@@ -45,10 +45,11 @@ const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font
  * 1280 px up (12 px on a phone, where the panel needs the room to be tapped) and the row keeps 22 px
  * to spare.
  *
- * A signed-in person also has the link to their notifications (SAG-102) with the number of unread
- * ones. On a phone that link is inside the panel, so the "Menu" button carries that number (a bubble
- * over its corner, which adds no width to the row measured above, SAG-106) and its name says how many
- * are unread.
+ * A signed-in person also has the link to their notifications (SAG-102) with the number of things
+ * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
+ * phone that link is inside the panel, so the "Menu" button carries that number (a bubble over its
+ * corner, which adds no width to the row measured above, SAG-106) and its name says how many are
+ * pending.
  *
  * The panel closes with Escape (which gives the focus back to the button), with a click outside and
  * when the route changes, since the links to the router's pages do not load a new document.
@@ -176,7 +177,7 @@ export function Navbar({
                 >
                   {shown}
                 </span>
-                <span className="sr-only">{t("nav.unread", { shown })}</span>
+                <span className="sr-only">{t("nav.pending", { shown })}</span>
               </>
             ) : null}
           </button>
@@ -211,7 +212,7 @@ export function Navbar({
                                 {shown}
                               </span>
                               <span className="sr-only">
-                                {t("nav.unread", { shown })}
+                                {t("nav.pending", { shown })}
                               </span>
                             </>
                           ) : null}

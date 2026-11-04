@@ -176,13 +176,13 @@ describe("the profile page: a profile seen in full (SAG-107)", () => {
 });
 
 describe("the profile page: a locked profile shows only its card", () => {
-  it("shows the name, the username and the picture, and says it is for friends only", async () => {
+  it("shows the name, the username and the picture, and says it is private", async () => {
     const html = await render(profile(cardData()));
 
     expect(html).toMatch(/<h1[^>]*>Ana<\/h1>/);
     expect(html).toContain("@ana_reads");
     expect(html).toContain('src="https://img.clerk.com/ana"');
-    expect(html).toContain("Este perfil es solo para amistades.");
+    expect(html).toContain("Este perfil es privado.");
   });
 
   it("has no bio, no counts, no sections and no list of people to leak", async () => {
@@ -196,22 +196,45 @@ describe("the profile page: a locked profile shows only its card", () => {
     expect(html).not.toContain("<section");
   });
 
-  it("has no button to ask to follow yet, and says requests are coming, to a person who is signed in", async () => {
-    const html = await render(
-      profile(
-        cardData({
-          you: {
-            kind: "member",
-            following: false,
-            canFollow: false,
-            muted: false,
-          },
-        }),
-      ),
+  const asking = (overrides: Record<string, unknown> = {}) =>
+    profile(
+      cardData({
+        you: {
+          kind: "member",
+          following: false,
+          canFollow: false,
+          canRequest: true,
+          requested: false,
+          muted: false,
+          ...overrides,
+        },
+      }),
     );
+  const intentsOf = (html: string) =>
+    [...html.matchAll(/name="intent" value="([^"]+)"/g)].map((m) => m[1]);
 
-    expect(html).toContain("Pronto podrás pedirle seguirla.");
+  it("offers a person who is signed in a button to request to follow, and no button to follow", async () => {
+    const html = await render(asking());
+
+    expect(intentsOf(html)).toEqual(["request", "mute", "block"]);
+    expect(html).toContain("Solicitar seguir");
     expect(html).not.toContain('value="follow"');
+  });
+
+  it("shows the request as sent, with a way to cancel it, instead of the button", async () => {
+    const html = await render(asking({ requested: true }));
+
+    expect(intentsOf(html)).toEqual(["cancel_request", "mute", "block"]);
+    expect(html).toContain("Solicitud enviada");
+    expect(html).toContain("Cancelar solicitud");
+    expect(html).not.toContain('value="request"');
+  });
+
+  it("offers no request to somebody who cannot ask", async () => {
+    const html = await render(asking({ canRequest: false }));
+
+    expect(intentsOf(html)).toEqual(["mute", "block"]);
+    expect(html).not.toContain("Solicitar seguir");
   });
 });
 
@@ -272,8 +295,11 @@ describe("the profile page: the buttons", () => {
 
   it.each([
     ["followed", "Ahora sigues a esta persona."],
-    ["too_many", "Has seguido a muchas personas en poco tiempo."],
-    ["unavailable", "No se pudo seguir a esta persona."],
+    [
+      "too_many",
+      "Has seguido o pedido seguir a muchas personas en poco tiempo.",
+    ],
+    ["unavailable", "No se pudo hacer eso con esta persona."],
   ])("says what happened after %s, in a live region", async (notice, text) => {
     const html = await render(profile(fullData({ notice })));
 

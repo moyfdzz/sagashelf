@@ -349,7 +349,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
     const html = await render(<Navbar savedTheme={null} signedIn unread={0} />);
 
     expect(link(html)).not.toContain("rounded-full");
-    expect(link(html)).not.toContain("sin leer");
+    expect(link(html)).not.toContain("pendientes");
     expect(menuButton(html)).not.toContain("rounded-full");
   });
 
@@ -357,7 +357,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
     const html = await render(<Navbar savedTheme={null} signedIn unread={3} />);
 
     expect(link(html)).toMatch(/<span aria-hidden="true"[^>]*>3<\/span>/);
-    expect(link(html)).toMatch(/<span class="sr-only">, 3 sin leer<\/span>/);
+    expect(link(html)).toMatch(/<span class="sr-only">, 3 pendientes<\/span>/);
   });
 
   it("says 99+ when there are more than 99, in the words too", async () => {
@@ -366,7 +366,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
     );
 
     expect(link(html)).toMatch(/aria-hidden="true"[^>]*>99\+<\/span>/);
-    expect(link(html)).toContain(", 99+ sin leer");
+    expect(link(html)).toContain(", 99+ pendientes");
   });
 
   it("puts the count on the menu button, since the link is inside its panel, and names it for a screen reader (SAG-106)", async () => {
@@ -377,7 +377,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
     expect(button).toMatch(
       /<span aria-hidden="true" class="[^"]*absolute[^"]*xl:hidden[^"]*">2<\/span>/,
     );
-    expect(button).toContain(", 2 sin leer");
+    expect(button).toContain(", 2 pendientes");
   });
 
   it('keeps the links of the wide row narrow enough for "Notificaciones" and its count to fit at 1280 px', async () => {
@@ -403,7 +403,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
     );
 
     expect(link(html)).toContain("Notifications");
-    expect(link(html)).toContain(", 2 unread");
+    expect(link(html)).toContain(", 2 pending");
   });
 
   it("does not show a visitor any of it", async () => {
@@ -412,6 +412,6 @@ describe("the unread alerts in the header (SAG-102)", () => {
     );
 
     expect(html).not.toContain("/notifications");
-    expect(html).not.toContain("sin leer");
+    expect(html).not.toContain("pendientes");
   });
 });

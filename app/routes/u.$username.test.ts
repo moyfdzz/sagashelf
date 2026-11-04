@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   muteUser: vi.fn(),
   unmuteUser: vi.fn(),
   blockUser: vi.fn(),
+  requestFollow: vi.fn(),
+  cancelRequest: vi.fn(),
+  hasRequested: vi.fn(),
   locale: "es",
 }));
 
@@ -37,6 +40,11 @@ vi.mock("~server/db/social", () => ({
   muteUser: mocks.muteUser,
   unmuteUser: mocks.unmuteUser,
   blockUser: mocks.blockUser,
+}));
+vi.mock("~server/db/follow-requests", () => ({
+  requestFollow: mocks.requestFollow,
+  cancelRequest: mocks.cancelRequest,
+  hasRequested: mocks.hasRequested,
 }));
 vi.mock("~server/db/profile-library", () => ({
   profileStatuses: ["in_progress", "planned", "completed"],
@@ -92,6 +100,9 @@ beforeEach(() => {
   mocks.muteUser.mockReset().mockResolvedValue(undefined);
   mocks.unmuteUser.mockReset().mockResolvedValue(undefined);
   mocks.blockUser.mockReset().mockResolvedValue(undefined);
+  mocks.requestFollow.mockReset().mockResolvedValue("requested");
+  mocks.cancelRequest.mockReset().mockResolvedValue(undefined);
+  mocks.hasRequested.mockReset().mockResolvedValue(false);
 });
 
 const load = (username = "ana_reads", search = "") =>
@@ -199,10 +210,54 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
       expect(JSON.stringify(result)).not.toContain("followers");
     });
 
-    it("cannot be followed yet, because following a locked profile needs a request", async () => {
+    it("cannot be followed, only asked for, so the page offers a request", async () => {
       const result = await load();
 
-      expect(result.you).toMatchObject({ kind: "member", canFollow: false });
+      expect(result.you).toMatchObject({
+        kind: "member",
+        canFollow: false,
+        canRequest: true,
+        requested: false,
+      });
+    });
+
+    it("says the request was sent when there is one, asking for the own row of the viewer", async () => {
+      mocks.hasRequested.mockResolvedValue(true);
+
+      const result = await load();
+
+      expect(result.you).toMatchObject({ canRequest: true, requested: true });
+      expect(mocks.hasRequested).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        "owner-id",
+      );
+    });
+
+    it("does not offer a request to somebody who already follows the profile", async () => {
+      mocks.findProfile.mockResolvedValue({
+        owner: head({ privacy: "friends" }),
+        relationship: "follower",
+        view: "card",
+      });
+
+      const result = await load();
+
+      expect(result.you).toMatchObject({
+        following: true,
+        canRequest: false,
+        requested: false,
+      });
+      expect(mocks.hasRequested).not.toHaveBeenCalled();
+    });
+
+    it("does not offer a request to a visitor, who is sent to sign in", async () => {
+      mocks.getOptionalUser.mockResolvedValue(null);
+
+      const result = await load();
+
+      expect(result.you).toMatchObject({ kind: "visitor" });
+      expect(mocks.hasRequested).not.toHaveBeenCalled();
     });
   });
 
@@ -345,7 +400,18 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
         view: "full",
       });
 
-      expect((await load()).you).toMatchObject({ canFollow: false });
+      expect((await load()).you).toMatchObject({
+        canFollow: false,
+        canRequest: false,
+      });
+      expect(mocks.hasRequested).not.toHaveBeenCalled();
+    });
+
+    it("never offers a request for a public profile, which is followed directly", async () => {
+      const result = await load();
+
+      expect(result.you).toMatchObject({ canFollow: true, canRequest: false });
+      expect(mocks.hasRequested).not.toHaveBeenCalled();
     });
 
     it("says whether the viewer muted the person, asking for the viewer's own row", async () => {
@@ -366,6 +432,8 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
     it.each([
       "followed",
       "unfollowed",
+      "requested",
+      "request_cancelled",
       "muted",
       "unmuted",
       "too_many",
@@ -446,6 +514,7 @@ describe("the profile page: the buttons (POST)", () => {
         key: expect.stringContaining("social:user-from-session"),
       });
       expect(mocks.followUser).not.toHaveBeenCalled();
+      expect(mocks.requestFollow).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -506,6 +575,47 @@ describe("the profile page: the buttons (POST)", () => {
         });
       },
     );
+
+    it("asks to follow the person of the address, as the person of the session", async () => {
+      const result = redirectOf(await submit({ intent: "request" }));
+
+      expect(mocks.requestFollow).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        "ana_reads",
+      );
+      expect(mocks.followUser).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        status: 303,
+        to: "/u/ana_reads?notice=requested",
+      });
+    });
+
+    it.each(["unavailable", "too_many"])(
+      "says %s to a request without saying why",
+      async (answer) => {
+        mocks.requestFollow.mockResolvedValue(answer);
+
+        expect(redirectOf(await submit({ intent: "request" }))).toEqual({
+          status: 303,
+          to: `/u/ana_reads?notice=${answer}`,
+        });
+      },
+    );
+
+    it("takes back a request, as the person of the session", async () => {
+      const result = redirectOf(await submit({ intent: "cancel_request" }));
+
+      expect(mocks.cancelRequest).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        "ana_reads",
+      );
+      expect(result).toEqual({
+        status: 303,
+        to: "/u/ana_reads?notice=request_cancelled",
+      });
+    });
 
     it("unfollows, mutes and unmutes, each with the person of the session", async () => {
       expect(redirectOf(await submit({ intent: "unfollow" })).to).toBe(

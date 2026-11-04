@@ -138,6 +138,7 @@ erDiagram
   MEDIA_ITEMS ||--o| CUSTOM_ENTRIES : "can be a"
   USERS ||--o{ CUSTOM_ENTRIES : creates
   USERS ||--o{ BLOCKS : blocks
+  USERS ||--o{ FOLLOW_REQUESTS : "asks to follow"
   USERS ||--o{ ACTIVITY : does
   ACTIVITY ||--o{ LIKES : gets
   USERS ||--o{ LIKES : gives

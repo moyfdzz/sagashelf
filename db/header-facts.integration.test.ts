@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { findHeaderFacts } from "../server/db/header-facts";
 import { unreadCap } from "../server/db/notifications";
-import { notifications, users } from "../server/db/schema";
+import { followRequests, notifications, users } from "../server/db/schema";
 import { createTestDb } from "./test-database";
 import { factories } from "./test-helpers";
 
@@ -86,6 +86,39 @@ describe("findHeaderFacts (SAG-114): the three facts of the header in one read",
     );
 
     expect((await findHeaderFacts(db, "user_many"))?.unread).toBe(
+      unreadCap + 1,
+    );
+  });
+
+  it("adds the follow requests waiting for an answer to the count, and not the declined ones or the ones sent", async () => {
+    const ana = await newUser({ clerkId: "user_ana" });
+    const ben = await newUser({ clerkId: "user_ben" });
+    const cat = await newUser({ clerkId: "user_cat" });
+    const dan = await newUser({ clerkId: "user_dan" });
+    await notify(ana.id);
+    await db.insert(followRequests).values([
+      { requesterId: ben.id, targetId: ana.id },
+      { requesterId: cat.id, targetId: ana.id, declinedAt: new Date() },
+      { requesterId: ana.id, targetId: dan.id },
+    ]);
+
+    // One notification and one request waiting: the declined one and the one she sent do not count
+    // for her. The one she sent is waiting for Dan, and the declined one is nobody's.
+    expect((await findHeaderFacts(db, "user_ana"))?.unread).toBe(2);
+    expect((await findHeaderFacts(db, "user_dan"))?.unread).toBe(1);
+    expect((await findHeaderFacts(db, "user_ben"))?.unread).toBe(0);
+  });
+
+  it("stops counting the requests a little after the cap too", async () => {
+    const ana = await newUser({ clerkId: "user_popular" });
+    for (let index = 0; index < unreadCap + 5; index += 1) {
+      const other = await newUser();
+      await db
+        .insert(followRequests)
+        .values({ requesterId: other.id, targetId: ana.id });
+    }
+
+    expect((await findHeaderFacts(db, "user_popular"))?.unread).toBe(
       unreadCap + 1,
     );
   });

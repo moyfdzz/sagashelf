@@ -83,6 +83,39 @@ export const mutes = pgTable(
   ],
 );
 
+/**
+ * A request to follow a person whose profile is Private (code level `friends`, SAG-108). It is not a
+ * follow: accepting it is what creates the follow. A request the owner declines is kept with
+ * `declined_at` set, so it still looks "sent" to the requester (declining tells nobody) and they
+ * cannot ask again at once; the app lets them ask again after 30 days. One row per pair.
+ */
+export const followRequests = pgTable(
+  "follow_requests",
+  {
+    requesterId: uuid("requester_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetId: uuid("target_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.requesterId, t.targetId] }),
+    check(
+      "follow_requests_not_self_check",
+      sql`${t.requesterId} <> ${t.targetId}`,
+    ),
+    // "The pending requests of this person", newest first: the list and the count of the header.
+    index("follow_requests_pending_idx")
+      .on(t.targetId, t.createdAt.desc())
+      .where(sql`${t.declinedAt} IS NULL`),
+  ],
+);
+
 export const activityType = pgEnum("activity_type", [
   "started",
   "progressed",
