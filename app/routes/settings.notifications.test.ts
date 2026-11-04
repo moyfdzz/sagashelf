@@ -20,9 +20,7 @@ const mocks = vi.hoisted(() => ({
   removeEndpoint: vi.fn(),
   reenableEndpoint: vi.fn(),
   setEndpointEvents: vi.fn(),
-  queueTestEvent: vi.fn(),
-  claimEvent: vi.fn(),
-  deliverEvent: vi.fn(),
+  sendTestMessage: vi.fn(),
   locale: "es",
 }));
 
@@ -48,11 +46,9 @@ vi.mock("~server/db/webhooks", () => ({
   removeEndpoint: mocks.removeEndpoint,
   reenableEndpoint: mocks.reenableEndpoint,
   setEndpointEvents: mocks.setEndpointEvents,
-  queueTestEvent: mocks.queueTestEvent,
-  claimEvent: mocks.claimEvent,
 }));
-vi.mock("~server/jobs/deliver-outbox", () => ({
-  deliverEvent: mocks.deliverEvent,
+vi.mock("~server/jobs/send-test-message", () => ({
+  sendTestMessage: mocks.sendTestMessage,
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
@@ -62,7 +58,6 @@ vi.mock("~/middleware/i18next", () => ({
 const db = { fake: "database" };
 const session = { id: "user-from-session", clerkId: "clerk_1", role: "user" };
 const endpointId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
-const eventId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70";
 
 beforeEach(() => {
   mocks.locale = "es";
@@ -102,22 +97,12 @@ beforeEach(() => {
   mocks.removeEndpoint.mockReset().mockResolvedValue(true);
   mocks.reenableEndpoint.mockReset().mockResolvedValue("enabled");
   mocks.setEndpointEvents.mockReset().mockResolvedValue(true);
-  mocks.queueTestEvent.mockReset().mockResolvedValue(eventId);
-  mocks.claimEvent.mockReset().mockResolvedValue({
-    id: eventId,
-    type: "webhook.test",
-    payload: { locale: "es" },
-    attempt: 1,
-    endpointId,
-    // The claimed event holds the whole address: it must never come out in an answer.
-    url: fakeWebhookUrl,
-  });
-  mocks.deliverEvent.mockReset().mockResolvedValue({
-    outcome: { kind: "delivered" },
-    statusCode: 204,
-    latencyMs: 80,
+  mocks.sendTestMessage.mockReset().mockResolvedValue({
+    found: true,
+    delivered: true,
+    status: 204,
+    reason: null,
     endpointOn: true,
-    resumeAt: null,
   });
 });
 
@@ -299,8 +284,7 @@ describe("the notifications page (SAG-27)", () => {
       expect(result.init?.status).toBe(503);
       expect(result.data).toMatchObject({ ok: false, error: "unavailable" });
       expect(mocks.getDb).not.toHaveBeenCalled();
-      expect(mocks.queueTestEvent).not.toHaveBeenCalled();
-      expect(mocks.deliverEvent).not.toHaveBeenCalled();
+      expect(mocks.sendTestMessage).not.toHaveBeenCalled();
     });
 
     it("counts the request against the person, and answers 429 when they are over the limit", async () => {
@@ -313,8 +297,7 @@ describe("the notifications page (SAG-27)", () => {
       });
       expect(result).toBeInstanceOf(Response);
       expect((result as Response).status).toBe(429);
-      expect(mocks.queueTestEvent).not.toHaveBeenCalled();
-      expect(mocks.deliverEvent).not.toHaveBeenCalled();
+      expect(mocks.sendTestMessage).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -345,7 +328,7 @@ describe("the notifications page (SAG-27)", () => {
       });
       expect(mocks.addDiscordEndpoint).not.toHaveBeenCalled();
       expect(mocks.removeEndpoint).not.toHaveBeenCalled();
-      expect(mocks.queueTestEvent).not.toHaveBeenCalled();
+      expect(mocks.sendTestMessage).not.toHaveBeenCalled();
     });
 
     it("answers privately, so no cache keeps it", async () => {
@@ -561,22 +544,30 @@ describe("the notifications page (SAG-27)", () => {
   });
 
   describe("POST test", () => {
-    it("queues the test for the person, in their language, and sends it now", async () => {
+    it("asks for the test for the person of the session, in their language", async () => {
       mocks.locale = "en";
 
-      const result = answer(await submit({ intent: "test", id: endpointId }));
+      await submit({ intent: "test", id: endpointId });
 
-      expect(mocks.queueTestEvent).toHaveBeenCalledWith(
+      expect(mocks.sendTestMessage).toHaveBeenCalledWith(
         db,
         "user-from-session",
         endpointId,
         "en",
       );
-      expect(mocks.claimEvent).toHaveBeenCalledWith(db, eventId);
-      expect(mocks.deliverEvent).toHaveBeenCalledWith(
-        { db },
-        expect.objectContaining({ id: eventId }),
-      );
+    });
+
+    it("falls back to Spanish for any language that is not English", async () => {
+      mocks.locale = "fr";
+
+      await submit({ intent: "test", id: endpointId });
+
+      expect(mocks.sendTestMessage.mock.calls[0]?.[3]).toBe("es");
+    });
+
+    it("answers what happened: whether it arrived, the status and whether the endpoint is on", async () => {
+      const result = answer(await submit({ intent: "test", id: endpointId }));
+
       expect(result.data).toEqual({
         ok: true,
         intent: "test",
@@ -587,26 +578,13 @@ describe("the notifications page (SAG-27)", () => {
       });
     });
 
-    it("falls back to Spanish for any language that is not English", async () => {
-      mocks.locale = "fr";
-
-      await submit({ intent: "test", id: endpointId });
-
-      expect(mocks.queueTestEvent.mock.calls[0]?.[3]).toBe("es");
-    });
-
     it("says why it failed with a short code, and whether the endpoint was turned off", async () => {
-      mocks.deliverEvent.mockResolvedValue({
-        outcome: {
-          kind: "failed",
-          countFailure: false,
-          disable: "not_found",
-          error: "http_404",
-        },
-        statusCode: 404,
-        latencyMs: 20,
+      mocks.sendTestMessage.mockResolvedValue({
+        found: true,
+        delivered: false,
+        status: 404,
+        reason: "http_404",
         endpointOn: false,
-        resumeAt: null,
       });
 
       const result = answer(await submit({ intent: "test", id: endpointId }));
@@ -621,33 +599,31 @@ describe("the notifications page (SAG-27)", () => {
       });
     });
 
-    it("never puts the address, the token or the claimed event in what it answers", async () => {
+    it("answers only those fields, and never anything else the function might hand back", async () => {
+      mocks.sendTestMessage.mockResolvedValue({
+        found: true,
+        delivered: true,
+        status: 204,
+        reason: null,
+        endpointOn: true,
+        url: fakeWebhookUrl,
+        token: fakeWebhookToken,
+      });
+
       const result = await submit({ intent: "test", id: endpointId });
 
       const text = JSON.stringify(result);
       expect(text).not.toContain(fakeWebhookToken);
       expect(text).not.toContain("discord.com");
-      expect(text).not.toContain("payload");
     });
 
-    it("sends nothing for a webhook that is not the person's, or is off", async () => {
-      mocks.queueTestEvent.mockResolvedValue(null);
+    it("answers 404 for a webhook that is not the person's, or is off", async () => {
+      mocks.sendTestMessage.mockResolvedValue({ found: false });
 
       const result = answer(await submit({ intent: "test", id: endpointId }));
 
       expect(result.init?.status).toBe(404);
       expect(result.data).toEqual({ ok: false, error: "not_found" });
-      expect(mocks.claimEvent).not.toHaveBeenCalled();
-      expect(mocks.deliverEvent).not.toHaveBeenCalled();
-    });
-
-    it("sends nothing when the event cannot be taken", async () => {
-      mocks.claimEvent.mockResolvedValue(null);
-
-      const result = answer(await submit({ intent: "test", id: endpointId }));
-
-      expect(result.init?.status).toBe(404);
-      expect(mocks.deliverEvent).not.toHaveBeenCalled();
     });
   });
 });

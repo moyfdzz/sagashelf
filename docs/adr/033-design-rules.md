@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-04
-- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that breaks them is listed in the check and removed by SAG-120 and SAG-121 (SAG-73, SAG-117, SAG-118 and SAG-119 are done).
-- **Tickets:** SAG-116, SAG-73, SAG-117, SAG-118, SAG-119, SAG-120, SAG-121
+- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that breaks them is listed in the check and removed by SAG-121 (SAG-73, SAG-117, SAG-118, SAG-119 and SAG-120 are done). SAG-128 will add the check for the sequence every write starts with.
+- **Tickets:** SAG-116, SAG-73, SAG-117, SAG-118, SAG-119, SAG-120, SAG-121, SAG-128
 - **Related:** [ADR-031](031-social-graph.md), [ADR-018](018-personal-library.md), [ADR-007](007-background-work.md)
 
 ## Context

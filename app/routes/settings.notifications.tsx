@@ -17,17 +17,15 @@ import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
   addDiscordEndpoint,
-  claimEvent,
   listEndpoints,
   listRecentDeliveries,
   maxEndpointsPerPerson,
-  queueTestEvent,
   reenableEndpoint,
   removeEndpoint,
   setEndpointEvents,
 } from "~server/db/webhooks";
 import { readForm } from "~server/http/body";
-import { deliverEvent } from "~server/jobs/deliver-outbox";
+import { sendTestMessage } from "~server/jobs/send-test-message";
 import { rateLimit } from "~server/rate-limit";
 import {
   getClerkKeys,
@@ -217,22 +215,17 @@ export async function action(args: Route.ActionArgs) {
     }
     case "test": {
       const locale = getLocale(args.context) === "en" ? "en" : "es";
-      const eventId = await queueTestEvent(db, user.id, form.id, locale);
-      if (!eventId) return fail("not_found", 404);
-      const event = await claimEvent(db, eventId);
-      if (!event) return fail("not_found", 404);
-      // The test is sent now, by this request, with the same rules as the job, and never retried.
-      const result = await deliverEvent({ db }, event);
+      // Sent now, by this request, with the same rules as the job, and never retried.
+      const sent = await sendTestMessage(db, user.id, form.id, locale);
+      if (!sent.found) return fail("not_found", 404);
       return data(
         {
           ok: true as const,
           intent: "test" as const,
-          delivered: result.outcome.kind === "delivered",
-          status: result.statusCode,
-          // A short code, never a body or an address.
-          reason:
-            result.outcome.kind === "delivered" ? null : result.outcome.error,
-          endpointOn: result.endpointOn,
+          delivered: sent.delivered,
+          status: sent.status,
+          reason: sent.reason,
+          endpointOn: sent.endpointOn,
         },
         { headers: privateHeaders },
       );
