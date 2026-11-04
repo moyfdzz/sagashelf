@@ -325,6 +325,36 @@ describe("listPendingRequests (SAG-108)", () => {
     ]);
   });
 
+  it("offers no follow back to somebody the owner already follows, whatever their level", async () => {
+    const owner = await person("owner_private", "friends");
+    const ana = await person("ana_public", "public");
+    const ben = await person("ben_private", "friends");
+    const cat = await person("cat_public", "public");
+    const dan = await person("dan_private", "friends");
+    for (const who of [ana, ben, cat, dan]) await ask(who.id, owner.id);
+    // The owner follows a Public and a Private requester, and not the other two.
+    await follow(owner.id, ana.id);
+    await follow(owner.id, ben.id);
+    // Somebody who follows the owner, but whom the owner does not follow, is not "already followed".
+    await follow(cat.id, owner.id);
+    await db.execute(sql`
+      UPDATE follow_requests SET created_at = CASE requester_id
+        WHEN ${ana.id}::uuid THEN now() - interval '4 minutes'
+        WHEN ${ben.id}::uuid THEN now() - interval '3 minutes'
+        WHEN ${cat.id}::uuid THEN now() - interval '2 minutes'
+        ELSE now() - interval '1 minute' END
+    `);
+
+    const list = await listPendingRequests(db, owner.id);
+
+    expect(list.map((r) => [r.username, r.canFollowBack])).toEqual([
+      ["dan_private", true],
+      ["cat_public", true],
+      ["ben_private", false],
+      ["ana_public", false],
+    ]);
+  });
+
   it("leaves out the declined, the erased and the blocked in either direction", async () => {
     const owner = await person("owner_private", "friends");
     const declined = await person("dan_declined");
