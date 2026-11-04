@@ -130,12 +130,6 @@ function fieldErrors(error: ZodError): FieldErrors {
 
 const notTheForm: FieldErrors = { form: "generic" };
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
 export async function loader(args: Route.LoaderArgs) {
@@ -218,19 +212,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(
-      request,
-      data({ ok: false as const, errors: notTheForm }, { status: 413 }),
-    );
+    return data({ ok: false as const, errors: notTheForm }, { status: 413 });
   }
 
   // A page on another site must not be able to change someone's library.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(
-      request,
-      data({ ok: false as const, errors: notTheForm }, { status: 403 }),
-    );
+    return data({ ok: false as const, errors: notTheForm }, { status: 403 });
   }
 
   // The person is the one in the verified session, never a field of the form.
@@ -241,7 +229,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `library:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const mediaId = mediaIdSchema.safeParse(args.params.mediaId);
   if (!mediaId.success) throw data(null, { status: 404 });

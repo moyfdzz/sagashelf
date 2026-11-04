@@ -44,26 +44,6 @@ const longFiles = [
   "app/routes/stats.tsx",
 ];
 
-// SAG-73 removes these copies (answerAndDrain in workers/app.ts already covers every route).
-const ownDrain = [
-  "app/routes/api.locale.ts",
-  "app/routes/library.$mediaId.status.ts",
-  "app/routes/library.$mediaId.step.ts",
-  "app/routes/library.$mediaId.tsx",
-  "app/routes/library.add-external.ts",
-  "app/routes/library.add.ts",
-  "app/routes/notifications.tsx",
-  "app/routes/settings.delete.ts",
-  "app/routes/settings.export.ts",
-  "app/routes/settings.import.tsx",
-  "app/routes/settings.notifications.tsx",
-  "app/routes/settings.people.tsx",
-  "app/routes/settings.profile.tsx",
-  "app/routes/settings.username.ts",
-  "app/routes/u.$username.tsx",
-  "app/routes/webhooks.clerk.ts",
-];
-
 // SAG-117 replaces these with one shared constant.
 const ownPrivateHeaders = [
   "app/routes/library.$mediaId.status.ts",
@@ -102,7 +82,7 @@ describe("the design rules of ADR-033", () => {
       (path) =>
         path.startsWith("app/routes/") &&
         /(function|const) answerWithoutReading\b/.test(read(path)),
-      ownDrain,
+      [],
     );
     expect(result).toEqual({ unlisted: [], stale: [] });
   });

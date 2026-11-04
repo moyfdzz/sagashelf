@@ -20,14 +20,6 @@ const formSchema = z.object({
 // The form has two short fields; anything bigger is not from this site's form.
 const maxFormBytes = 4096;
 
-// Answering before the body is read leaves it open, and the local runtime then
-// fails the next request on the same connection. Read and drop it first (it is
-// small: the size was already checked).
-async function answerWithoutReading(request: Request, response: Response) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 // Saves the language in a cookie and goes back to the page the visitor was on.
 export async function action({ request }: Route.ActionArgs) {
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
@@ -37,14 +29,11 @@ export async function action({ request }: Route.ActionArgs) {
   // A page on another site must not be able to change the visitor's language.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(
-      request,
-      Response.json({ error: "forbidden" }, { status: 403 }),
-    );
+    return Response.json({ error: "forbidden" }, { status: 403 });
   }
 
   const limited = await rateLimit(getWriteLimiter(), request, "locale");
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const form = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!form.success) {

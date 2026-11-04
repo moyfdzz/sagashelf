@@ -194,12 +194,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 /**
  * Follow, unfollow, mute, unmute and block, from the buttons of the page. The person is the one in
  * the verified session; the other one is named by the address of the page. Each one is a plain form
@@ -211,18 +205,12 @@ export async function action(args: Route.ActionArgs) {
   const back = `/u/${encodeURIComponent(params.username)}`;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(
-      request,
-      data({ error: "invalid_request" }, { status: 413 }),
-    );
+    return data({ error: "invalid_request" }, { status: 413 });
   }
   // A page on another site must not be able to follow or block for someone.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(
-      request,
-      data({ error: "invalid_request" }, { status: 403 }),
-    );
+    return data({ error: "invalid_request" }, { status: 403 });
   }
   if (!usernameShape.test(params.username)) throw notFound();
 
@@ -233,7 +221,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `social:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) {

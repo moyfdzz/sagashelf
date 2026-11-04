@@ -29,12 +29,6 @@ type ErrorCode = "too_high" | "invalid_request" | "failed";
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 /**
  * A browser that submits a form without JavaScript asks for a document and would show the JSON
  * of the answer. `Sec-Fetch-Dest` says so, and the person goes back to the library instead.
@@ -57,13 +51,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail("invalid_request", 413));
+    return fail("invalid_request", 413);
   }
 
   // A page on another site must not be able to change someone's progress.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail("invalid_request", 403));
+    return fail("invalid_request", 403);
   }
 
   const user = await requireUser(args);
@@ -73,11 +67,11 @@ export async function action(args: Route.ActionArgs) {
     request,
     `library:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const mediaId = mediaIdSchema.safeParse(args.params.mediaId);
   if (!mediaId.success) {
-    return answerWithoutReading(request, fail("invalid_request", 404));
+    return fail("invalid_request", 404);
   }
   // The form has nothing to read; the body is read and dropped.
   await request.arrayBuffer().catch(() => undefined);

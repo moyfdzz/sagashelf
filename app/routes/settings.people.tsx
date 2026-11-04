@@ -36,12 +36,6 @@ const fail = (status: number) =>
     { status, headers: privateHeaders },
   );
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 const withAvatar = (person: Person) => ({
   username: person.username,
   displayName: person.displayName,
@@ -93,12 +87,12 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail(413));
+    return fail(413);
   }
   // A page on another site must not be able to undo a block for someone.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail(403));
+    return fail(403);
   }
 
   // The person is the one in the verified session, never a field of the form.
@@ -109,7 +103,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `social:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) return fail(400);

@@ -13,12 +13,6 @@ const maxFormBytes = 1024;
 
 const formSchema = z.strictObject({ format: z.enum(["json", "csv"]) });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 // Only the button of the settings page asks for the file, with a POST.
 export function loader() {
   throw data({ error: "method_not_allowed" }, { status: 405 });
@@ -28,19 +22,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(
-      request,
-      data({ error: "invalid_request" }, { status: 413 }),
-    );
+    return data({ error: "invalid_request" }, { status: 413 });
   }
 
   // A page on another site must not be able to start the download.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(
-      request,
-      data({ error: "forbidden" }, { status: 403 }),
-    );
+    return data({ error: "forbidden" }, { status: 403 });
   }
 
   // The person is the one in the verified session, never a field of the form.
@@ -51,7 +39,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `export:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) {
