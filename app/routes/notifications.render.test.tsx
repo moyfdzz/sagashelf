@@ -193,6 +193,21 @@ describe("the follow requests on the page of notifications (SAG-108)", () => {
     expect(html).toContain('name="username" value="ana_public"');
   });
 
+  it("gives each request a View profile button that is a plain link to that profile", async () => {
+    const html = await render(page({ requests: [ana, cat] }));
+    const buttons = [...html.matchAll(/<a ([^>]*)>Ver perfil<\/a>/g)].map(
+      (m) => m[1],
+    );
+
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toContain('href="/u/ana_public"');
+    expect(buttons[1]).toContain('href="/u/cat_hidden"');
+    expect(buttons.join(" ")).not.toContain("data-discover");
+    expect(await render(page({ requests: [ana] }), "en")).toContain(
+      ">View profile</a>",
+    );
+  });
+
   it("does not offer to follow back somebody who cannot be followed", async () => {
     const html = await render(page({ requests: [cat] }));
 

@@ -345,9 +345,8 @@ function Actions({ you, username }: { you: You; username: string }) {
         ) : you.canRequest ? (
           you.requested ? (
             <>
-              <p className="self-center font-semibold">
-                {t("profile.actions.requested")}
-              </p>
+              {/* The button says it to the eye; this keeps it for a screen reader. */}
+              <p className="sr-only">{t("profile.actions.requested")}</p>
               {button(
                 "cancel_request",
                 t("profile.actions.cancelRequest"),

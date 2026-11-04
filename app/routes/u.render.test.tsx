@@ -225,7 +225,8 @@ describe("the profile page: a locked profile shows only its card", () => {
     const html = await render(asking({ requested: true }));
 
     expect(intentsOf(html)).toEqual(["cancel_request", "mute", "block"]);
-    expect(html).toContain("Solicitud enviada");
+    // Said to a screen reader only: the button already says it to the eye.
+    expect(html).toMatch(/<p class="sr-only">Solicitud enviada<\/p>/);
     expect(html).toContain("Cancelar solicitud");
     expect(html).not.toContain('value="request"');
   });

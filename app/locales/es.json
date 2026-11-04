@@ -825,6 +825,7 @@
       "accept": "Aceptar",
       "accept_back": "Aceptar y seguir también",
       "decline": "Rechazar",
+      "viewProfile": "Ver perfil",
       "result": {
         "accept": "Aceptaste la solicitud.",
         "accept_back": "Aceptaste la solicitud y pediste seguir de vuelta. Si su perfil es privado, tiene que aceptar la tuya.",

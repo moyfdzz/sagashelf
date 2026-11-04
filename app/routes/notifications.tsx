@@ -6,7 +6,12 @@ import { z } from "zod";
 import type { Route } from "./+types/notifications";
 import { ClerkSession } from "~/components/ClerkSession";
 import { useFormatters } from "~/lib/format";
-import { linkClass, primaryButtonClass, secondaryButtonClass } from "~/lib/ui";
+import {
+  linkClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  secondaryLinkClass,
+} from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -281,6 +286,12 @@ export default function Notifications({
                     })}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href={`/u/${encodeURIComponent(request.username)}`}
+                      className={secondaryLinkClass}
+                    >
+                      {t("notifications.requests.viewProfile")}
+                    </a>
                     {(
                       [
                         ["accept", primaryButtonClass],
