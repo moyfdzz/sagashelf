@@ -29,6 +29,7 @@ import {
   sagaActionSchema,
 } from "~server/sagas/admin-schema";
 import { getClerkKeys, getDb } from "~server/runtime-env";
+import { privateRouteHeaders } from "~server/http/cache";
 
 const idSchema = z.uuid();
 
@@ -116,9 +117,7 @@ export async function action(args: Route.ActionArgs) {
 }
 
 // A page with an administrator's work is never kept by a shared cache, and not indexed.
-export function headers() {
-  return { "Cache-Control": "private, no-store" };
-}
+export const headers = privateRouteHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

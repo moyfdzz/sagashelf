@@ -13,12 +13,10 @@ import { returnPath } from "~server/library/back";
 import { applyStep } from "~server/library/rules";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
+import { privateHeaders } from "~server/http/cache";
 
 // The form has no fields. Anything bigger is not from the library page.
 const maxFormBytes = 1024;
-
-// Answers that carry a person's data are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 const mediaIdSchema = z.uuid();
 

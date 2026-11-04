@@ -193,7 +193,9 @@ describe("the recommendations loader (SAG-87)", () => {
   });
 
   it("is private and not indexed", () => {
-    expect(headers().get("Cache-Control")).toBe("private, no-store");
+    expect(new Headers(headers()).get("Cache-Control")).toBe(
+      "private, no-store",
+    );
     expect(meta({ loaderData: { title: "T" } } as never)).toContainEqual({
       name: "robots",
       content: "noindex, nofollow",

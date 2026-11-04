@@ -99,6 +99,8 @@ describe("the statistics page loader", () => {
   });
 
   it("is never kept by a shared cache", () => {
-    expect(headers().get("Cache-Control")).toBe("private, no-store");
+    expect(new Headers(headers()).get("Cache-Control")).toBe(
+      "private, no-store",
+    );
   });
 });

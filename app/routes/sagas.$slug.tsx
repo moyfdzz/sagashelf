@@ -19,6 +19,7 @@ import {
   type SagaOrder,
 } from "~server/sagas/view";
 import { mediaPath } from "~server/media/slug";
+import { privateRouteHeaders } from "~server/http/cache";
 
 const slugShape = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -90,9 +91,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 // The page shows what this person has done, so no shared cache keeps it.
-export function headers() {
-  return { "Cache-Control": "private, no-store" };
-}
+export const headers = privateRouteHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [];

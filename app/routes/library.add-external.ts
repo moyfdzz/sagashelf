@@ -19,11 +19,10 @@ import {
   getSearchLimiter,
   getWriteLimiter,
 } from "~server/runtime-env";
+import { privateHeaders } from "~server/http/cache";
 
 // The form has a provider and an id. Anything bigger is not from the search.
 const maxFormBytes = 1024;
-
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 // Each code is the same text on the page: the title could not be added.
 type ErrorCode = "invalid_request" | "not_found" | "unavailable";

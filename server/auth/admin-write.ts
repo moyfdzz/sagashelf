@@ -5,6 +5,7 @@ import { requireRole } from "./require";
 import { readForm } from "../http/body";
 import { rateLimit } from "../rate-limit";
 import { getWriteLimiter } from "../runtime-env";
+import { privateHeaders } from "../http/cache";
 
 /**
  * The checks every write of the administration has in common (SAG-92), in the order that does not
@@ -43,6 +44,3 @@ export async function readAdminWrite(
 
   return { user, form: await readForm(request, maxBytes) };
 }
-
-// Answers of the administration are never kept by a shared cache.
-export const privateHeaders = { "Cache-Control": "private, no-store" };

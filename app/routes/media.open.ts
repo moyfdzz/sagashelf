@@ -13,6 +13,7 @@ import {
   getMediaProviders,
   getSearchLimiter,
 } from "~server/runtime-env";
+import { privateRouteHeaders } from "~server/http/cache";
 
 /**
  * Opens a title the search found: the first time it saves it (so the page can show it), and
@@ -55,6 +56,4 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 }
 
-export function headers() {
-  return { "Cache-Control": "private, no-store" };
-}
+export const headers = privateRouteHeaders;

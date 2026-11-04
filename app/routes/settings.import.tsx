@@ -25,12 +25,10 @@ import {
   getMediaProviders,
   getWriteLimiter,
 } from "~server/runtime-env";
+import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 
 // The file, or the file again when the person confirms, plus a few short fields.
 const maxFormBytes = maxImportBytes + 16 * 1024;
-
-// Pages and answers that carry a person's data are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 // Each code has its text in app/locales, under settings.import.errors.
 type ErrorCode = ParseError | "file_missing" | "file_too_large" | "generic";
@@ -59,12 +57,7 @@ export async function loader(args: Route.LoaderArgs) {
   }));
 }
 
-export function headers({ actionHeaders, loaderHeaders }: Route.HeadersArgs) {
-  const merged = new Headers(loaderHeaders);
-  actionHeaders.forEach((value, key) => merged.set(key, value));
-  merged.set("Cache-Control", "private, no-store");
-  return merged;
-}
+export const headers = mergePrivateHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
