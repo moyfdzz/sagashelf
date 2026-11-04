@@ -393,6 +393,57 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
       expect((await load()).you).toMatchObject({ kind: "member", following });
     });
 
+    describe("the confirmation to unfollow a Private profile (SAG-124)", () => {
+      const as = (relationship: string, privacy: string) =>
+        mocks.findProfile.mockResolvedValue({
+          owner: head({ privacy }),
+          relationship,
+          view: "full",
+        });
+
+      it.each(["friend", "follower"])(
+        "asks first, and shows the warning only with ?confirm=unfollow, for a %s of a Private profile",
+        async (relationship) => {
+          as(relationship, "friends");
+
+          expect((await load()).you).toMatchObject({
+            unfollowAsks: true,
+            confirmUnfollow: false,
+          });
+          expect(
+            (await load("ana_reads", "?confirm=unfollow")).you,
+          ).toMatchObject({ unfollowAsks: true, confirmUnfollow: true });
+          expect((await load("ana_reads", "?confirm=other")).you).toMatchObject(
+            {
+              confirmUnfollow: false,
+            },
+          );
+        },
+      );
+
+      it("does not ask for a Public profile, and ignores the parameter", async () => {
+        as("follower", "public");
+
+        expect(
+          (await load("ana_reads", "?confirm=unfollow")).you,
+        ).toMatchObject({
+          unfollowAsks: false,
+          confirmUnfollow: false,
+        });
+      });
+
+      it("does not show the warning to somebody who does not follow", async () => {
+        as("stranger", "friends");
+
+        expect(
+          (await load("ana_reads", "?confirm=unfollow")).you,
+        ).toMatchObject({
+          unfollowAsks: false,
+          confirmUnfollow: false,
+        });
+      });
+    });
+
     it("lets a public profile be followed and not a friends-only one, even for a follower", async () => {
       mocks.findProfile.mockResolvedValue({
         owner: head({ privacy: "friends" }),

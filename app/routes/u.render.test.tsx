@@ -270,6 +270,53 @@ describe("the profile page: the buttons", () => {
     expect(intents(html)).toEqual(["unfollow", "unmute", "block"]);
   });
 
+  describe("unfollowing a Private profile (SAG-124)", () => {
+    const asks = (overrides: Record<string, unknown> = {}) =>
+      member({
+        following: true,
+        canFollow: false,
+        unfollowAsks: true,
+        confirmUnfollow: false,
+        ...overrides,
+      });
+
+    it("makes Unfollow a plain link to the confirmation, and sends nothing yet", async () => {
+      const html = await render(profile(asks()));
+
+      expect(html).toContain('href="/u/ana_reads?confirm=unfollow"');
+      expect(intents(html)).toEqual(["mute", "block"]);
+      expect(html).not.toContain("tendrás que enviar otra solicitud");
+    });
+
+    it("warns, and offers to confirm or to cancel, once it is asked", async () => {
+      const html = await render(profile(asks({ confirmUnfollow: true })));
+
+      expect(html).toContain(
+        "Este perfil es privado. Si lo dejas de seguir, tendrás que enviar otra solicitud",
+      );
+      expect(intents(html)).toEqual(["unfollow", "mute", "block"]);
+      // Cancel is a link back to the page: it submits nothing.
+      expect(html).toMatch(/<a [^>]*href="\/u\/ana_reads"[^>]*>Cancelar<\/a>/);
+      expect(html).not.toContain("?confirm=unfollow");
+    });
+
+    it("says it in English", async () => {
+      const html = await render(profile(asks({ confirmUnfollow: true })), "en");
+
+      expect(html).toContain("This profile is private. If you unfollow it");
+      expect(html).toContain(">Cancel</a>");
+    });
+
+    it("does not ask for a Public profile: Unfollow stays a button", async () => {
+      const html = await render(
+        profile(member({ following: true, canFollow: true })),
+      );
+
+      expect(intents(html)).toEqual(["unfollow", "mute", "block"]);
+      expect(html).not.toContain("confirm=unfollow");
+    });
+  });
+
   it("does not offer to follow a profile that cannot be followed", async () => {
     const html = await render(profile(member({ canFollow: false })));
 

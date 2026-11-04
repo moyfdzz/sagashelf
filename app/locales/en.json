@@ -1156,7 +1156,10 @@
       "blockHint": "Blocking hides your profile from this person and theirs from you, and removes the follows between you. You can undo it in Settings.",
       "request": "Request to follow",
       "requested": "Request sent",
-      "cancelRequest": "Cancel request"
+      "cancelRequest": "Cancel request",
+      "unfollowWarningLabel": "Confirm that you unfollow",
+      "unfollowWarning": "This profile is private. If you unfollow it, you will have to send a new request and wait for it to be accepted.",
+      "cancelUnfollow": "Cancel"
     },
     "notice": {
       "followed": "You now follow this person.",

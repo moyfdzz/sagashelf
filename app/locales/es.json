@@ -1156,7 +1156,10 @@
       "blockHint": "Bloquear oculta tu perfil para esta persona y el suyo para ti, y quita los seguimientos entre ustedes. Puedes deshacerlo en Ajustes.",
       "request": "Solicitar seguir",
       "requested": "Solicitud enviada",
-      "cancelRequest": "Cancelar solicitud"
+      "cancelRequest": "Cancelar solicitud",
+      "unfollowWarningLabel": "Confirmar que dejas de seguir",
+      "unfollowWarning": "Este perfil es privado. Si lo dejas de seguir, tendrás que enviar otra solicitud y esperar a que la acepte.",
+      "cancelUnfollow": "Cancelar"
     },
     "notice": {
       "followed": "Ahora sigues a esta persona.",
