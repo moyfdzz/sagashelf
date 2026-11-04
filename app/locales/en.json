@@ -529,7 +529,7 @@
       "friends": "Private: anyone you have not blocked sees only your username, your name and your picture, and can send you a request to follow you. Your bio, your counts and your library are seen only by your friends (people who follow you and whom you follow). If you accept a request, that person follows you, but does not see your content until you follow them too; you can do that when you accept, and if their profile is also private, they have to accept your request.",
       "private": "Total privacy: nobody but you sees your profile, not even that it exists, and nobody can send you requests.",
       "rules": "Each entry of your library has its own level, and the stricter of the entry and your profile applies. Nobody sees your notes. The people who follow you appear in your list of followers according to the level of their own profile. If you block someone, or they block you, they stop seeing your profile and you stop seeing theirs, and the follows between you are removed.",
-      "requests": "We keep the follow requests you send and receive until they are answered, cancelled, one of you blocks the other or one of the accounts is deleted. If you decline a request nobody is told: we keep it as declined for up to 30 days so the same person cannot insist right away, and it is part of the copy of your data that you can download."
+      "requests": "We keep the follow requests you send and receive until they are answered, cancelled, one of you blocks the other or one of the accounts is deleted. If you decline a request nobody is told: we keep it as declined, and to the person who sent it, it still looks sent until they cancel it. It is part of the copy of your data that you can download."
     }
   },
   "terms": {

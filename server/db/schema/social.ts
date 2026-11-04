@@ -86,8 +86,8 @@ export const mutes = pgTable(
 /**
  * A request to follow a person whose profile is Private (code level `friends`, SAG-108). It is not a
  * follow: accepting it is what creates the follow. A request the owner declines is kept with
- * `declined_at` set, so it still looks "sent" to the requester (declining tells nobody) and they
- * cannot ask again at once; the app lets them ask again after 30 days. One row per pair.
+ * `declined_at` set, so it still looks "sent" to the requester (declining tells nobody). They can
+ * cancel it, which deletes the row, and then ask again at once (ADR-034). One row per pair.
  */
 export const followRequests = pgTable(
   "follow_requests",
