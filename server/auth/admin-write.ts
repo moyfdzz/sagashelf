@@ -2,7 +2,7 @@ import { data, type LoaderFunctionArgs } from "react-router";
 
 import type { SessionUser } from "./authorize";
 import { requireRole } from "./require";
-import { drainBody, readForm } from "../http/body";
+import { readForm } from "../http/body";
 import { rateLimit } from "../rate-limit";
 import { getWriteLimiter } from "../runtime-env";
 
@@ -10,8 +10,8 @@ import { getWriteLimiter } from "../runtime-env";
  * The checks every write of the administration has in common (SAG-92), in the order that does not
  * leave a body half read: the size from the header, the `Origin`, the role (an administrator with a
  * verified Google login, taken from the session and never from the form), the rate limit keyed by
- * the person, and then the form with its own limit. A refusal drains the body first, because an
- * answer given before the body is read breaks the connection under Miniflare.
+ * the person, and then the form with its own limit. A refusal does not read the body: the Worker
+ * entry drops what is left of it before any answer goes out (`answerAndDrain`).
  */
 export async function readAdminWrite(
   args: LoaderFunctionArgs,
@@ -19,8 +19,7 @@ export async function readAdminWrite(
   maxBytes: number,
 ): Promise<{ user: SessionUser; form: Record<string, FormDataEntryValue> }> {
   const { request } = args;
-  const refuse = async (error: string, status: number): Promise<never> => {
-    await drainBody(request);
+  const refuse = (error: string, status: number): never => {
     throw data({ error }, { status, headers: privateHeaders });
   };
 
@@ -40,10 +39,7 @@ export async function readAdminWrite(
     request,
     `admin:${scope}:${user.id}`,
   );
-  if (limited) {
-    await drainBody(request);
-    throw limited;
-  }
+  if (limited) throw limited;
 
   return { user, form: await readForm(request, maxBytes) };
 }
