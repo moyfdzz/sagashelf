@@ -103,6 +103,14 @@ export async function loader(args: Route.LoaderArgs) {
   // profile (level `friends`) cannot be followed, only asked for (SAG-108).
   const following = relationship === "friend" || relationship === "follower";
   const canRequest = owner.privacy === "friends" && !following;
+  // Following a Private profile again needs a new request that has to be accepted, so unfollowing
+  // it asks first (SAG-124). The confirmation is a state of the page (`?confirm=unfollow`), so it
+  // works without a script; the server does not need it, and unfollowing a Public profile does not
+  // ask, since following it again is immediate.
+  const unfollowAsks = following && owner.privacy === "friends";
+  const confirmUnfollow =
+    unfollowAsks &&
+    new URL(request.url).searchParams.get("confirm") === "unfollow";
   const you =
     relationship === "owner"
       ? ({ kind: "owner" } as const)
@@ -110,6 +118,8 @@ export async function loader(args: Route.LoaderArgs) {
         ? ({
             kind: "member",
             following,
+            unfollowAsks,
+            confirmUnfollow,
             canFollow: owner.privacy === "public",
             canRequest,
             requested: canRequest
@@ -335,10 +345,43 @@ function Actions({ you, username }: { you: You; username: string }) {
     >
       <div className="flex flex-wrap items-start gap-2">
         {you.following ? (
-          button(
-            "unfollow",
-            t("profile.actions.unfollow"),
-            secondaryButtonClass,
+          you.confirmUnfollow ? (
+            <div
+              role="group"
+              aria-label={t("profile.actions.unfollowWarningLabel")}
+              className="border-border bg-surface-raised w-full max-w-xl space-y-3 rounded-md border p-4"
+            >
+              <p className="font-semibold">
+                {t("profile.actions.unfollowWarning")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {button(
+                  "unfollow",
+                  t("profile.actions.unfollow"),
+                  dangerButtonClass,
+                )}
+                {/* A plain link back to the page: nothing is sent, nothing changes. */}
+                <a
+                  href={`/u/${encodeURIComponent(username)}`}
+                  className={secondaryLinkClass}
+                >
+                  {t("profile.actions.cancelUnfollow")}
+                </a>
+              </div>
+            </div>
+          ) : you.unfollowAsks ? (
+            <a
+              href={`/u/${encodeURIComponent(username)}?confirm=unfollow`}
+              className={secondaryLinkClass}
+            >
+              {t("profile.actions.unfollow")}
+            </a>
+          ) : (
+            button(
+              "unfollow",
+              t("profile.actions.unfollow"),
+              secondaryButtonClass,
+            )
           )
         ) : you.canFollow ? (
           button("follow", t("profile.actions.follow"), primaryButtonClass)
