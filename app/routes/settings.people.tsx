@@ -19,6 +19,7 @@ import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has an intent and one username. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -76,13 +77,10 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return fail(413);
-  }
   // A page on another site must not be able to undo a block for someone.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return fail(403);
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large" ? fail(413) : fail(403);
   }
 
   // The person is the one in the verified session, never a field of the form.

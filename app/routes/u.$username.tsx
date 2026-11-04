@@ -41,6 +41,7 @@ import { getDb, getWriteLimiter } from "~server/runtime-env";
 import type { MediaKind } from "~server/providers/types";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { usernameShape } from "~server/account/profile-schema";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has one word. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -190,13 +191,12 @@ export async function action(args: Route.ActionArgs) {
   const { request, params } = args;
   const back = `/u/${encodeURIComponent(params.username)}`;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return data({ error: "invalid_request" }, { status: 413 });
-  }
   // A page on another site must not be able to follow or block for someone.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return data({ error: "invalid_request" }, { status: 403 });
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? data({ error: "invalid_request" }, { status: 413 })
+      : data({ error: "invalid_request" }, { status: 403 });
   }
   if (!usernameShape.test(params.username)) throw notFound();
 

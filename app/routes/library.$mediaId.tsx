@@ -56,6 +56,7 @@ import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
 import { z } from "zod";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has a few short fields and the notes (2000 characters, up to 4 bytes each).
 const maxFormBytes = 16 * 1024;
@@ -176,14 +177,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return data({ ok: false as const, errors: notTheForm }, { status: 413 });
-  }
-
   // A page on another site must not be able to change someone's library.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return data({ ok: false as const, errors: notTheForm }, { status: 403 });
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? data({ ok: false as const, errors: notTheForm }, { status: 413 })
+      : data({ ok: false as const, errors: notTheForm }, { status: 403 });
   }
 
   // The person is the one in the verified session, never a field of the form.

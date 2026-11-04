@@ -7,6 +7,7 @@ import { localeCookie } from "~/middleware/i18next";
 import { rateLimit } from "~server/rate-limit";
 import { getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
+import { checkWrite } from "~server/http/write-guard";
 
 const formSchema = z.object({
   locale: z.enum(supportedLanguages),
@@ -22,14 +23,12 @@ const maxFormBytes = 4096;
 
 // Saves the language in a cookie and goes back to the page the visitor was on.
 export async function action({ request }: Route.ActionArgs) {
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return Response.json({ error: "payload_too_large" }, { status: 413 });
-  }
-
   // A page on another site must not be able to change the visitor's language.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return Response.json({ error: "forbidden" }, { status: 403 });
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? Response.json({ error: "payload_too_large" }, { status: 413 })
+      : Response.json({ error: "forbidden" }, { status: 403 });
   }
 
   const limited = await rateLimit(getWriteLimiter(), request, "locale");

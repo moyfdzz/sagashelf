@@ -14,6 +14,7 @@ import { applyStep } from "~server/library/rules";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has no fields. Anything bigger is not from the library page.
 const maxFormBytes = 1024;
@@ -48,14 +49,12 @@ export function loader() {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return fail("invalid_request", 413);
-  }
-
   // A page on another site must not be able to change someone's progress.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return fail("invalid_request", 403);
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? fail("invalid_request", 413)
+      : fail("invalid_request", 403);
   }
 
   const user = await requireUser(args);

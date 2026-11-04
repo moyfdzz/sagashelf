@@ -42,6 +42,7 @@ import {
   type SubscribableEvent,
 } from "~server/webhooks/events";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has one address (up to a few hundred characters) or one id. Anything bigger is not from
 // this page.
@@ -140,14 +141,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return fail("invalid_request", 413);
-  }
-
   // A page on another site must not be able to connect a webhook, or send a message, for someone.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return fail("invalid_request", 403);
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? fail("invalid_request", 413)
+      : fail("invalid_request", 403);
   }
 
   // The person is the one in the verified session, never a field of the form.

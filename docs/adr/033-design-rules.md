@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-04
-- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that broke them was listed in the check and has been removed (SAG-73, SAG-117, SAG-118, SAG-119, SAG-120 and SAG-121 are done), so no list is left and every rule fails at once for a new violation. SAG-128 will add the check for the sequence every write starts with.
+- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that broke them was listed in the check and has been removed (SAG-73, SAG-117, SAG-118, SAG-119, SAG-120 and SAG-121 are done), so no list is left and every rule fails at once for a new violation. SAG-128 added `checkWrite`, the one place for the size and the `Origin` that every write is asked first, and the check that every route with an `action` uses it; the authorization test of the 16 actions is its second part.
 - **Tickets:** SAG-116, SAG-73, SAG-117, SAG-118, SAG-119, SAG-120, SAG-121, SAG-128
 - **Related:** [ADR-031](031-social-graph.md), [ADR-018](018-personal-library.md), [ADR-007](007-background-work.md)
 
@@ -22,7 +22,7 @@ These rules apply to new code now and to old code as each ticket lands.
 6. **A file over 600 lines is split** (components for a screen; modules by reason to change for data). Existing files over the limit are listed in `app/architecture.test.ts` until their ticket splits them.
 7. **A refactor changes no behavior.** The tests that existed before must pass unchanged; measure bundle size, statements per page and subrequests of the crons before and after when the change could move them.
 
-The check is `app/architecture.test.ts`. For each rule it can list the files that still break it. The list can only shrink: a new file that breaks the rule fails, and a listed file that was fixed fails until it is removed from the list. Every list is empty today, so a violation fails at once. It checks the file size (rule 6), a route that writes its own body drain, any file but `server/http/cache.ts` that writes the string `private, no-store`, any other function called `asDate` than the one of `server/db/dates.ts`, and a second `usernameShape` than the one of `server/account/profile-schema.ts` (rule 4). A rule that a tool cannot check (1, 2, 5) is checked in review, with the line added to the pull request template.
+The check is `app/architecture.test.ts`. For each rule it can list the files that still break it. The list can only shrink: a new file that breaks the rule fails, and a listed file that was fixed fails until it is removed from the list. Every list is empty today, so a violation fails at once. It checks the file size (rule 6), a route that writes its own body drain, any file but `server/http/cache.ts` that writes the string `private, no-store`, any other function called `asDate` than the one of `server/db/dates.ts`, and a second `usernameShape` than the one of `server/account/profile-schema.ts` (rule 4). A route with an `action` must call `checkWrite` (or `readAdminWrite`, which does), and nothing but `server/http/write-guard.ts` reads the `Origin` header; the Clerk webhook is the one exception, since Clerk's servers call it and its signature is checked instead. A rule that a tool cannot check (1, 2, 5) is checked in review, with the line added to the pull request template.
 
 ## Alternatives considered
 
