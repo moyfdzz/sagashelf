@@ -18,7 +18,7 @@ test.describe("the notifications settings", () => {
     }
     const body = await response.text();
     expect(body).not.toContain("Conectar un canal de Discord");
-    expect(body).not.toContain("Notificaciones");
+    expect(body).not.toContain("Avisos en Discord");
   });
 
   test("a webhook sent by a visitor, or from another site, saves nothing", async ({

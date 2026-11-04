@@ -59,7 +59,7 @@ const readItem = {
 const props = (loader: Record<string, unknown> = {}, actionData?: unknown) =>
   ({
     loaderData: {
-      title: "Avisos | SagaShelf",
+      title: "Notificaciones | SagaShelf",
       publishableKey: "publishable-key-for-tests",
       unread: 0,
       items: [],
@@ -77,8 +77,8 @@ describe("the inbox of notifications page (SAG-102)", () => {
     const html = await render(page());
 
     expect(html).toContain("<h1");
-    expect(html).toContain("Todavía no hay avisos");
-    expect(html).toContain("No tienes avisos sin leer.");
+    expect(html).toContain("Todavía no hay notificaciones");
+    expect(html).toContain("No tienes notificaciones sin leer.");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("<ol");
   });
@@ -89,18 +89,18 @@ describe("the inbox of notifications page (SAG-102)", () => {
     const one = await render(page({ unread: 1, items: [unreadItem] }));
 
     expect(empty).toMatch(
-      /role="status"[^>]*>[\s\S]*No tienes avisos sin leer/,
+      /role="status"[^>]*>[\s\S]*No tienes notificaciones sin leer/,
     );
     expect(some).toMatch(
-      /role="status"[^>]*>[\s\S]*Tienes 3 avisos sin leer\./,
+      /role="status"[^>]*>[\s\S]*Tienes 3 notificaciones sin leer\./,
     );
-    expect(one).toContain("Tienes 1 aviso sin leer.");
+    expect(one).toContain("Tienes 1 notificación sin leer.");
   });
 
   it("lists each one with its title, which episode, a plain link to the entry and the date", async () => {
     const html = await render(page({ unread: 1, items: [unreadItem] }));
 
-    expect(html).toMatch(/<ol [^>]*aria-label="Lista de avisos"/);
+    expect(html).toMatch(/<ol [^>]*aria-label="Lista de notificaciones"/);
     expect(html).toContain("Severance");
     expect(html).toContain(": temporada 2, episodio 5");
     const link = html.match(/<a [^>]*href="\/library\/[^"]+"[^>]*>/)?.[0] ?? "";
@@ -115,10 +115,10 @@ describe("the inbox of notifications page (SAG-102)", () => {
     );
     const readPart = html.slice(html.indexOf("Andor"));
 
-    expect(html.match(/Nuevo/g)).toHaveLength(1);
+    expect(html.match(/Nueva/g)).toHaveLength(1);
     expect(html.match(/name="intent" value="read"/g)).toHaveLength(1);
     expect(html).toContain(`name="id" value="${unreadItem.id}"`);
-    expect(readPart).not.toContain("Marcar como leído");
+    expect(readPart).not.toContain("Marcar como leída");
     // A title with no link or no number is still shown, as text.
     expect(readPart).not.toContain("<a ");
   });
@@ -127,9 +127,9 @@ describe("the inbox of notifications page (SAG-102)", () => {
     const withUnread = await render(page({ unread: 2, items: [unreadItem] }));
     const allRead = await render(page({ unread: 0, items: [readItem] }));
 
-    expect(withUnread).toContain("Marcar todos como leídos");
+    expect(withUnread).toContain("Marcar todas como leídas");
     expect(withUnread).toMatch(/name="intent" value="all"/);
-    expect(allRead).not.toContain("Marcar todos como leídos");
+    expect(allRead).not.toContain("Marcar todas como leídas");
   });
 
   it("says what happened after a mark, and shows an error as an alert", async () => {
@@ -137,19 +137,21 @@ describe("the inbox of notifications page (SAG-102)", () => {
     const all = await render(page({}, { ok: true, intent: "all" }));
     const error = await render(page({}, { ok: false, error: "not_found" }));
 
-    expect(read).toContain("Aviso marcado como leído.");
-    expect(all).toContain("Avisos marcados como leídos.");
-    expect(error).toMatch(/role="alert"[^>]*>No encontramos ese aviso\./);
+    expect(read).toContain("Notificación marcada como leída.");
+    expect(all).toContain("Notificaciones marcadas como leídas.");
+    expect(error).toMatch(
+      /role="alert"[^>]*>No encontramos esa notificación\./,
+    );
   });
 
   it("says it all in English", async () => {
     const html = await render(page({ unread: 2, items: [unreadItem] }), "en");
     const empty = await render(page(), "en");
 
-    expect(html).toContain("You have 2 unread alerts.");
+    expect(html).toContain("You have 2 unread notifications.");
     expect(html).toContain("Mark as read");
     expect(html).toContain("Mark all as read");
     expect(html).toContain("New");
-    expect(empty).toContain("No alerts yet.");
+    expect(empty).toContain("No notifications yet.");
   });
 });

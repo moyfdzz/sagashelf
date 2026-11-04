@@ -69,7 +69,7 @@ const offAfterFailures = {
 const props = (loader: Record<string, unknown> = {}, actionData?: unknown) =>
   ({
     loaderData: {
-      title: "Notificaciones | SagaShelf",
+      title: "Avisos en Discord | SagaShelf",
       publishableKey: "publishable-key-for-tests",
       enabled: true,
       max: 3,
@@ -88,7 +88,7 @@ describe("the notifications page (SAG-27)", () => {
   it("explains how to make a webhook, warns who will read the channel, and asks for the address", async () => {
     const html = await render(page());
 
-    expect(html).toContain("Notificaciones");
+    expect(html).toContain("Avisos en Discord");
     expect(html).toContain("Conectar un canal de Discord");
     expect(html).toContain("Integraciones y luego a Webhooks");
     expect(html).toContain("cualquiera que pueda leer ese canal");
@@ -502,7 +502,7 @@ describe("the notifications page (SAG-27)", () => {
       "en",
     );
 
-    expect(html).toContain("Notifications");
+    expect(html).toContain("Discord alerts");
     expect(html).toContain("Connect a Discord channel");
     expect(html).toContain("That webhook no longer exists in Discord");
     expect(html).not.toContain("Turn back on");

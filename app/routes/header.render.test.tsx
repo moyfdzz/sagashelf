@@ -345,7 +345,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
   const menuButton = (html: string) =>
     html.match(/<button [^>]*aria-expanded[\s\S]*?<\/button>/)?.[0] ?? "";
 
-  it("shows nothing next to the link, and no dot, when there is nothing unread", async () => {
+  it("shows nothing next to the link, and no count on the menu button, when there is nothing unread", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn unread={0} />);
 
     expect(link(html)).not.toContain("rounded-full");
@@ -369,12 +369,31 @@ describe("the unread alerts in the header (SAG-102)", () => {
     expect(link(html)).toContain(", 99+ sin leer");
   });
 
-  it("puts a dot on the menu button, since the link is inside its panel, and names it for a screen reader", async () => {
+  it("puts the count on the menu button, since the link is inside its panel, and names it for a screen reader (SAG-106)", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn unread={2} />);
     const button = menuButton(html);
 
-    expect(button).toMatch(/<span aria-hidden="true" class="[^"]*xl:hidden/);
+    // A bubble with the number, over the corner (absolute, so it adds no width) and only on a phone.
+    expect(button).toMatch(
+      /<span aria-hidden="true" class="[^"]*absolute[^"]*xl:hidden[^"]*">2<\/span>/,
+    );
     expect(button).toContain(", 2 sin leer");
+  });
+
+  it('keeps the links of the wide row narrow enough for "Notificaciones" and its count to fit at 1280 px', async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn unread={150} />,
+    );
+
+    expect(link(html)).toContain("xl:px-2");
+  });
+
+  it("says 99+ on the menu button when there are more than 99", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn unread={150} />,
+    );
+
+    expect(menuButton(html)).toMatch(/aria-hidden="true"[^>]*>99\+<\/span>/);
   });
 
   it("says it in English", async () => {
@@ -383,7 +402,7 @@ describe("the unread alerts in the header (SAG-102)", () => {
       "en",
     );
 
-    expect(link(html)).toContain("Alerts");
+    expect(link(html)).toContain("Notifications");
     expect(link(html)).toContain(", 2 unread");
   });
 
