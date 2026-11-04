@@ -22,7 +22,7 @@ The tables `follows` and `blocks` existed from SAG-9, and a profile, a library e
 
 **`private` means the owner only**, as the settings already say ("Solo yo" for an entry, "Privado" for a profile). A friend does not see it. A **follower** (the viewer follows, the owner does not follow back) sees what a stranger sees: following gives no access, only friendship does, and **friends are two follows, computed and never stored**. A **block** in either direction hides everything, and it is decided before anything but the owner. The relationship comes from three facts read in one statement (`getRelationship`): is there a block in either direction, does the viewer follow the owner, does the owner follow the viewer. The function that turns them into a relationship is also pure (`relationshipOf`).
 
-**Every statement is one statement, with the id of the session.** `follows`, `blocks` and the new `mutes` are written only by `server/db/social.ts`, each function being one SQL statement (atomic on the HTTP client, ADR-029), taking `viewerId` from the verified session and naming the other person by **username** (`citext`, so any case). Blocking inserts the block and deletes the follows in both directions in the same statement. Unblocking does not bring the follows back.
+**Every statement is one statement, with the id of the session.** `follows`, `blocks` and the new `mutes` are written only by `server/db/follows.ts` and `server/db/blocks-mutes.ts` (split from one `social.ts` by SAG-118), each function being one SQL statement (atomic on the HTTP client, ADR-029), taking `viewerId` from the verified session and naming the other person by **username** (`citext`, so any case). Blocking inserts the block and deletes the follows in both directions in the same statement. Unblocking does not bring the follows back.
 
 **A locked profile shows a card, a private one shows nothing (SAG-107).** The level `friends` means "locked, not hidden": anybody who is not blocked sees the **card** of the profile (the username, the name and the picture) and nothing else, so they can ask to follow once requests exist (SAG-108). `canSeeCard(relationship, level)` is the second rule of the policy, with its own table:
 
@@ -78,4 +78,4 @@ A `private` profile has no card for anybody but its owner: the answer is the 404
 
 ## References
 
-- The code: `server/social/can-view.ts`, `server/db/social.ts`, `db/social.integration.test.ts`.
+- The code: `server/social/can-view.ts`; in `server/db/`, `follows.ts` (follow, unfollow and the hourly cap), `blocks-mutes.ts`, `profile-lookup.ts` (the relationship and who may see a profile), `people-lists.ts` (the pages of people and the counts) and `person.ts` (the shape of a person in a list); and the tests `db/social.integration.test.ts`, `db/social-profile.integration.test.ts` and `db/social-statements.integration.test.ts`, which counts the statements of each function.

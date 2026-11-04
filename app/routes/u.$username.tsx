@@ -26,14 +26,13 @@ import {
 } from "~server/db/profile-library";
 import {
   blockUser,
-  findProfile,
-  followUser,
-  getSocialCounts,
   isMuted,
   muteUser,
-  unfollowUser,
   unmuteUser,
-} from "~server/db/social";
+} from "~server/db/blocks-mutes";
+import { followUser, unfollowUser } from "~server/db/follows";
+import { getSocialCounts } from "~server/db/people-lists";
+import { findProfile } from "~server/db/profile-lookup";
 import { readForm } from "~server/http/body";
 import { imageSrc } from "~server/images/sources";
 import { mediaPath } from "~server/media/slug";

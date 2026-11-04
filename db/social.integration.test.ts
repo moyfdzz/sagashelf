@@ -3,21 +3,23 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   blockUser,
-  findViewableProfile,
-  followsPerHour,
-  followUser,
-  getRelationship,
+  muteUser,
+  unblockUser,
+  unmuteUser,
+} from "../server/db/blocks-mutes";
+import { followUser, followsPerHour, unfollowUser } from "../server/db/follows";
+import {
   getSocialCounts,
   listFollowers,
   listFollowing,
   listFriends,
   maxPage,
-  muteUser,
   pageSize,
-  unblockUser,
-  unfollowUser,
-  unmuteUser,
-} from "../server/db/social";
+} from "../server/db/people-lists";
+import {
+  findViewableProfile,
+  getRelationship,
+} from "../server/db/profile-lookup";
 import { blocks, follows, mutes, users } from "../server/db/schema";
 import {
   levels,
@@ -639,6 +641,8 @@ describe("the lists of followers, following and friends", () => {
     const first = await listFollowers(db, null, "owner_one", 1);
     const second = await listFollowers(db, null, "owner_one", 2);
     const huge = await listFollowers(db, null, "owner_one", maxPage + 500);
+    // Without the cap this page puts the offset past the integer of SQL and the query fails.
+    const absurd = await listFollowers(db, null, "owner_one", 1_000_000_000);
     const nonsense = await listFollowers(db, null, "owner_one", Number.NaN);
 
     expect(first?.people).toHaveLength(pageSize);
@@ -646,6 +650,7 @@ describe("the lists of followers, following and friends", () => {
     expect(second?.people).toHaveLength(3);
     expect(second?.hasMore).toBe(false);
     expect(huge?.people).toHaveLength(0);
+    expect(absurd?.people).toHaveLength(0);
     expect(nonsense?.people).toHaveLength(pageSize);
   });
 });

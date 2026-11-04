@@ -6,12 +6,12 @@ import { linkClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
 import {
-  findViewableProfile,
   listFollowers,
   listFollowing,
   listFriends,
   maxPage,
-} from "~server/db/social";
+} from "~server/db/people-lists";
+import { findViewableProfile } from "~server/db/profile-lookup";
 import { getDb } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 

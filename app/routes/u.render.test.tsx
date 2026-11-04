@@ -12,7 +12,10 @@ import { resources } from "~/locales";
 // The loaders and the actions are tested in their own files; here only the pages are drawn.
 vi.mock("~server/runtime-env", () => ({}));
 vi.mock("~server/auth/require", () => ({}));
-vi.mock("~server/db/social", () => ({
+vi.mock("~server/db/profile-lookup", () => ({}));
+vi.mock("~server/db/follows", () => ({}));
+vi.mock("~server/db/blocks-mutes", () => ({}));
+vi.mock("~server/db/people-lists", () => ({
   maxPage: 100,
   listFollowers: vi.fn(),
   listFollowing: vi.fn(),

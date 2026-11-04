@@ -16,9 +16,11 @@ vi.mock("~server/auth/require", () => ({
   getOptionalUser: mocks.getOptionalUser,
 }));
 vi.mock("~server/runtime-env", () => ({ getDb: mocks.getDb }));
-vi.mock("~server/db/social", () => ({
-  maxPage: 100,
+vi.mock("~server/db/profile-lookup", () => ({
   findViewableProfile: mocks.findViewableProfile,
+}));
+vi.mock("~server/db/people-lists", () => ({
+  maxPage: 100,
   listFollowers: mocks.listFollowers,
   listFollowing: mocks.listFollowing,
   listFriends: mocks.listFriends,

@@ -10,12 +10,9 @@ import {
   requestFollow,
   sentRequestsMax,
 } from "../server/db/follow-requests";
-import {
-  blockUser,
-  followsPerHour,
-  followUser,
-  getRelationship,
-} from "../server/db/social";
+import { blockUser } from "../server/db/blocks-mutes";
+import { followUser, followsPerHour } from "../server/db/follows";
+import { getRelationship } from "../server/db/profile-lookup";
 import { blocks, followRequests, follows, users } from "../server/db/schema";
 import type { Level } from "../server/social/can-view";
 import { createTestDb } from "./test-database";

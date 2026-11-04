@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-04
-- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that breaks them is listed in the check and removed by SAG-118, SAG-119, SAG-120 and SAG-121 (SAG-73 and SAG-117 are done).
+- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that breaks them is listed in the check and removed by SAG-119, SAG-120 and SAG-121 (SAG-73, SAG-117 and SAG-118 are done).
 - **Tickets:** SAG-116, SAG-73, SAG-117, SAG-118, SAG-119, SAG-120, SAG-121
 - **Related:** [ADR-031](031-social-graph.md), [ADR-018](018-personal-library.md), [ADR-007](007-background-work.md)
 

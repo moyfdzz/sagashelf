@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
-import { followsPerHour, type Person } from "./social";
+import { followsPerHour } from "./follows";
+import { type Person } from "./person";
 
 /**
  * Follow requests (SAG-108, ADR-032): the way to ask for a profile that is Private (code level
