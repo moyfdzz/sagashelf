@@ -10,7 +10,7 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
   smallButtonClass,
-  textLinkClass,
+  linkClass,
 } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { readAdminWrite } from "~server/auth/admin-write";
@@ -171,7 +171,7 @@ export default function AdminSaga({ loaderData }: Route.ComponentProps) {
     >
       <main className="container mx-auto max-w-3xl px-4 py-10">
         <p>
-          <Link to="/admin/sagas" className={textLinkClass}>
+          <Link to="/admin/sagas" className={linkClass}>
             {t("admin.sagas.edit.back")}
           </Link>
         </p>
@@ -220,7 +220,7 @@ export default function AdminSaga({ loaderData }: Route.ComponentProps) {
             {published ? (
               // A plain link: the public page has a policy of its own, which only a new document
               // gets.
-              <a href={`/sagas/${saga.slug}`} className={textLinkClass}>
+              <a href={`/sagas/${saga.slug}`} className={linkClass}>
                 {t("admin.sagas.edit.viewPublic")}
               </a>
             ) : null}

@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { data, Link } from "react-router";
 
 import type { Route } from "./+types/u.$username.$kind";
-import { secondaryLinkClass, textLinkClass } from "~/lib/ui";
+import { linkClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
 import {
@@ -144,7 +144,7 @@ export default function People({ loaderData }: Route.ComponentProps) {
                 <div className="min-w-0">
                   <Link
                     to={`/u/${encodeURIComponent(person.username)}`}
-                    className={`${textLinkClass} font-semibold break-words`}
+                    className={`${linkClass} break-words`}
                   >
                     {shown}
                   </Link>

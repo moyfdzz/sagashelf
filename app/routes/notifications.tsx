@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { Route } from "./+types/notifications";
 import { ClerkSession } from "~/components/ClerkSession";
 import { useFormatters } from "~/lib/format";
-import { secondaryButtonClass, textLinkClass } from "~/lib/ui";
+import { secondaryButtonClass, linkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -230,7 +230,7 @@ export default function Notifications({
                   <p className={item.read ? "" : "font-semibold"}>
                     {item.href ? (
                       // A plain link: the library is a session page with a policy of its own.
-                      <a href={item.href} className={textLinkClass}>
+                      <a href={item.href} className={linkClass}>
                         {item.title}
                       </a>
                     ) : (

@@ -15,7 +15,7 @@ import {
   maxAdminFormBytes,
 } from "~server/sagas/admin-schema";
 import { getClerkKeys, getDb } from "~server/runtime-env";
-import { inputClass, primaryButtonClass, textLinkClass } from "~/lib/ui";
+import { inputClass, primaryButtonClass, linkClass } from "~/lib/ui";
 
 export async function loader(args: Route.LoaderArgs) {
   await requireRole(args, "admin");
@@ -142,10 +142,7 @@ export default function AdminSagas({ loaderData }: Route.ComponentProps) {
                   className="border-border bg-surface-raised rounded-md border p-4"
                 >
                   <p className="font-semibold">
-                    <Link
-                      to={`/admin/sagas/${saga.id}`}
-                      className={textLinkClass}
-                    >
+                    <Link to={`/admin/sagas/${saga.id}`} className={linkClass}>
                       {saga.titles[lang] || saga.title}
                     </Link>
                   </p>

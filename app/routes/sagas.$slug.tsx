@@ -1,7 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { data, Link } from "react-router";
 
-import { linkClass, textLinkClass } from "~/lib/ui";
+import { linkClass } from "~/lib/ui";
 import type { Route } from "./+types/sagas.$slug";
 import { WikidataLink } from "~/components/WikidataLink";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -159,7 +159,7 @@ export default function SagaPage({ loaderData }: Route.ComponentProps) {
             {t(`saga.hint.${saga.hint.kind}`)}
           </span>
           {saga.hint.href ? (
-            <Link to={saga.hint.href} className={textLinkClass}>
+            <Link to={saga.hint.href} className={linkClass}>
               {saga.hint.label}
             </Link>
           ) : (
@@ -178,7 +178,7 @@ export default function SagaPage({ loaderData }: Route.ComponentProps) {
               className={
                 saga.order === order
                   ? "font-semibold underline underline-offset-4"
-                  : textLinkClass
+                  : linkClass
               }
             >
               {t(`saga.order.${order}`)}
@@ -196,7 +196,7 @@ export default function SagaPage({ loaderData }: Route.ComponentProps) {
             {group.items.map((item) => (
               <li key={item.qid}>
                 {item.href ? (
-                  <Link to={item.href} className={textLinkClass}>
+                  <Link to={item.href} className={linkClass}>
                     {item.label}
                   </Link>
                 ) : (

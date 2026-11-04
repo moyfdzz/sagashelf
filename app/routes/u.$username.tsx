@@ -5,10 +5,10 @@ import { z } from "zod";
 import type { Route } from "./+types/u.$username";
 import {
   dangerButtonClass,
+  linkClass,
   primaryButtonClass,
   secondaryButtonClass,
   secondaryLinkClass,
-  textLinkClass,
 } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { getOptionalUser, requireUser } from "~server/auth/require";
@@ -390,17 +390,17 @@ function FullProfile({
       <nav aria-label={t("profile.counts.label")} className="mt-6">
         <ul className="flex flex-wrap gap-x-6 gap-y-2">
           <li>
-            <Link to={`${base}/followers`} className={textLinkClass}>
+            <Link to={`${base}/followers`} className={linkClass}>
               {t("profile.counts.followers", { count: counts.followers })}
             </Link>
           </li>
           <li>
-            <Link to={`${base}/following`} className={textLinkClass}>
+            <Link to={`${base}/following`} className={linkClass}>
               {t("profile.counts.following", { count: counts.following })}
             </Link>
           </li>
           <li>
-            <Link to={`${base}/friends`} className={textLinkClass}>
+            <Link to={`${base}/friends`} className={linkClass}>
               {t("profile.counts.friends", { count: counts.friends })}
             </Link>
           </li>

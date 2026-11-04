@@ -2,16 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   isSignedIn: vi.fn(),
-  isAdministrator: vi.fn(),
-  unreadNotifications: vi.fn(),
+  getHeaderState: vi.fn(),
 }));
 
 vi.mock("~server/auth/signed-in", () => ({ isSignedIn: mocks.isSignedIn }));
-vi.mock("~server/auth/is-admin", () => ({
-  isAdministrator: mocks.isAdministrator,
-}));
-vi.mock("~server/auth/unread-notifications", () => ({
-  unreadNotifications: mocks.unreadNotifications,
+vi.mock("~server/auth/header-facts", () => ({
+  getHeaderState: mocks.getHeaderState,
 }));
 vi.mock("~/middleware/clerk", () => ({ authMiddleware: vi.fn() }));
 vi.mock("~/middleware/i18next", () => ({
@@ -24,8 +20,9 @@ import { loader } from "./root";
 
 beforeEach(() => {
   mocks.isSignedIn.mockReset().mockResolvedValue(true);
-  mocks.isAdministrator.mockReset().mockResolvedValue(false);
-  mocks.unreadNotifications.mockReset().mockResolvedValue(0);
+  mocks.getHeaderState
+    .mockReset()
+    .mockResolvedValue({ isAdmin: false, username: "ana_reads", unread: 0 });
 });
 
 const load = async () => {
@@ -38,20 +35,26 @@ const load = async () => {
   return (result as unknown as { data: Record<string, unknown> }).data;
 };
 
-describe("the loader of the root: what the header needs (SAG-95)", () => {
+describe("the loader of the root: what the header needs (SAG-95, SAG-102, SAG-114)", () => {
   it("says an administrator is one, and only that", async () => {
-    mocks.isAdministrator.mockResolvedValue(true);
+    mocks.getHeaderState.mockResolvedValue({
+      isAdmin: true,
+      username: "ana_reads",
+      unread: 0,
+    });
 
     const root = await load();
 
     expect(root).toMatchObject({ signedIn: true, isAdmin: true });
-    // Two yes-or-no answers and a count: never the role, the id or the email of the person.
+    // A yes or no, the username for the link to the profile and a count: never the role, the id or
+    // the email of the person.
     expect(Object.keys(root).sort()).toEqual([
       "isAdmin",
       "locale",
       "signedIn",
       "theme",
       "unread",
+      "username",
     ]);
   });
 
@@ -59,27 +62,45 @@ describe("the loader of the root: what the header needs (SAG-95)", () => {
     expect(await load()).toMatchObject({ signedIn: true, isAdmin: false });
   });
 
-  it("does not look at the role of a visitor, which would be a read for nothing", async () => {
-    mocks.isSignedIn.mockResolvedValue(false);
-    mocks.isAdministrator.mockResolvedValue(true);
-
-    const root = await load();
-
-    expect(root).toMatchObject({ signedIn: false, isAdmin: false });
-    expect(mocks.isAdministrator).not.toHaveBeenCalled();
+  it("carries the username of a person with a session, for the link Perfil of the account menu", async () => {
+    expect(await load()).toMatchObject({
+      signedIn: true,
+      username: "ana_reads",
+    });
   });
 
-  it("carries the number of unread notifications of a person with a session (SAG-102)", async () => {
-    mocks.unreadNotifications.mockResolvedValue(4);
+  it("carries the number of unread notifications of a person with a session", async () => {
+    mocks.getHeaderState.mockResolvedValue({
+      isAdmin: false,
+      username: "ana_reads",
+      unread: 4,
+    });
 
     expect(await load()).toMatchObject({ signedIn: true, unread: 4 });
   });
 
-  it("does not count the notifications of a visitor", async () => {
-    mocks.isSignedIn.mockResolvedValue(false);
-    mocks.unreadNotifications.mockResolvedValue(9);
+  it("makes ONE read for all three facts, not one for each", async () => {
+    await load();
 
-    expect(await load()).toMatchObject({ signedIn: false, unread: 0 });
-    expect(mocks.unreadNotifications).not.toHaveBeenCalled();
+    expect(mocks.getHeaderState).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not read anything for a visitor, and says nobody", async () => {
+    mocks.isSignedIn.mockResolvedValue(false);
+    mocks.getHeaderState.mockResolvedValue({
+      isAdmin: true,
+      username: "ana_reads",
+      unread: 9,
+    });
+
+    const root = await load();
+
+    expect(root).toMatchObject({
+      signedIn: false,
+      isAdmin: false,
+      username: null,
+      unread: 0,
+    });
+    expect(mocks.getHeaderState).not.toHaveBeenCalled();
   });
 });

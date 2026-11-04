@@ -57,12 +57,15 @@ export function Navbar({
   savedTheme,
   signedIn,
   isAdmin = false,
+  username = null,
   unread: unreadCount = 0,
 }: {
   savedTheme: Theme | null;
   signedIn: boolean;
   /** An administrator also finds the administration in the account links (SAG-95). */
   isAdmin?: boolean;
+  /** The username of the person, for the link "Perfil" of the account (SAG-114). */
+  username?: string | null;
   /** Unread notifications (SAG-102), 100 or more meaning "more than 99". Zero draws nothing. */
   unread?: number;
 }) {
@@ -230,7 +233,11 @@ export function Navbar({
             {/* On a phone the account is part of the panel, after a divider. */}
             <ul className="border-border flex flex-col gap-1 border-t pt-2 xl:hidden">
               {signedIn ? (
-                <AccountLinks isAdmin={isAdmin} itemClass={accountItemClass} />
+                <AccountLinks
+                  isAdmin={isAdmin}
+                  username={username}
+                  itemClass={accountItemClass}
+                />
               ) : (
                 <>
                   <li>
@@ -251,7 +258,7 @@ export function Navbar({
         {/* Wide screens: the account is at the end of the row, as before. */}
         <div className="hidden xl:order-4 xl:block">
           {signedIn ? (
-            <AccountMenu isAdmin={isAdmin} />
+            <AccountMenu isAdmin={isAdmin} username={username} />
           ) : (
             // Plain anchors: the sign-in and sign-up pages have their own, wider security policy,
             // which only a new document gets.
