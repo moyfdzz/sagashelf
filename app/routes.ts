@@ -14,6 +14,7 @@ export default [
   route("community", "routes/community.tsx"),
   route("credits", "routes/credits.tsx"),
   route("library", "routes/library.tsx"),
+  route("notifications", "routes/notifications.tsx"),
   route("stats", "routes/stats.tsx"),
   route("recommendations", "routes/recommendations.tsx"),
   route("admin/sagas", "routes/admin.sagas.tsx"),

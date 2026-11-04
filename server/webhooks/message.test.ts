@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { discordMessage, maxContentLength, plain } from "./message";
+import {
+  discordMessage,
+  episodeLabel,
+  episodeNotice,
+  maxContentLength,
+  plain,
+} from "./message";
 
 describe("plain (SAG-27)", () => {
   it("stops a mention from forming, whatever form it takes", () => {
@@ -191,4 +197,45 @@ describe("the alert of new episodes (SAG-28)", () => {
   ])("has no message for %s, so the event is given up on", (_name, payload) => {
     expect(aired({ locale: "es", total: 1, ...payload })).toBeNull();
   });
+});
+
+describe("episodeLabel and episodeNotice (SAG-102)", () => {
+  it("name the episode in the language asked, the way the Discord message does", () => {
+    expect(episodeLabel("es", { season: 2, number: 5 })).toBe(
+      "temporada 2, episodio 5",
+    );
+    expect(episodeLabel("en", { season: 2, number: 5 })).toBe(
+      "season 2, episode 5",
+    );
+    expect(episodeLabel("es", { season: null, number: 5 })).toBe("episodio 5");
+    expect(episodeLabel("en", { season: null, number: null })).toBeNull();
+  });
+
+  it("say the same thing the Discord message says for the same episode", () => {
+    const payload = {
+      locale: "en",
+      total: 1,
+      episodes: [{ title: "A", season: 3, number: 4 }],
+    };
+    const message = discordMessage("episode.aired", payload);
+    const notice = episodeNotice(payload.episodes[0], "en");
+
+    expect(message?.content).toContain(`• ${notice?.title}: ${notice?.which}`);
+  });
+
+  it("read the title, the numbers and the id of a payload, and trust none of it", () => {
+    expect(
+      episodeNotice({ title: "A", season: 1, number: 2, mediaId: "m1" }, "es"),
+    ).toEqual({ title: "A", which: "temporada 1, episodio 2", mediaId: "m1" });
+    expect(
+      episodeNotice({ title: "A", season: "1", number: -2, mediaId: 5 }, "es"),
+    ).toEqual({ title: "A", which: null, mediaId: null });
+  });
+
+  it.each([{}, { title: 3 }, { title: "   " }])(
+    "have nothing to say for %j",
+    (payload) => {
+      expect(episodeNotice(payload, "es")).toBeNull();
+    },
+  );
 });

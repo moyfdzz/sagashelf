@@ -90,13 +90,14 @@ describe("the navigation of the header (SAG-96)", () => {
   const navHrefs = (html: string) =>
     hrefs(html.match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? "");
 
-  it("lists home, search, library, statistics and recommendations for a signed-in person", async () => {
+  it("lists home, search, library, alerts, statistics and recommendations for a signed-in person", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn />);
 
     expect(navHrefs(html)).toEqual([
       "/",
       "/search",
       "/library",
+      "/notifications",
       "/stats",
       "/recommendations",
     ]);
@@ -106,16 +107,23 @@ describe("the navigation of the header (SAG-96)", () => {
     const html = await render(<Navbar savedTheme={null} signedIn={false} />);
 
     expect(navHrefs(html)).toEqual(["/", "/search"]);
-    for (const path of ["/library", "/stats", "/recommendations", "/settings"])
+    for (const path of [
+      "/library",
+      "/notifications",
+      "/stats",
+      "/recommendations",
+      "/settings",
+    ])
       expect(html).not.toContain(`href="${path}`);
   });
 
-  it("keeps the library a plain anchor, and the other pages the router's", async () => {
+  it("keeps the library and the alerts plain anchors, and the other pages the router's", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn />);
     const anchor = (path: string) =>
       html.match(new RegExp(`<a [^>]*href="${path}"[^>]*>`))?.[0] ?? "";
 
     expect(anchor("/library")).not.toContain("data-discover");
+    expect(anchor("/notifications")).not.toContain("data-discover");
     expect(anchor("/stats")).toContain("data-discover");
     expect(anchor("/recommendations")).toContain("data-discover");
   });
@@ -328,5 +336,63 @@ describe("the header on a phone (SAG-104)", () => {
       /<span class="[^"]*max-\[420px\]:sr-only">Menu<\/span>/,
     );
     expect(html).toContain('aria-label="English"');
+  });
+});
+
+describe("the unread alerts in the header (SAG-102)", () => {
+  const link = (html: string) =>
+    html.match(/<a [^>]*href="\/notifications"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
+  const menuButton = (html: string) =>
+    html.match(/<button [^>]*aria-expanded[\s\S]*?<\/button>/)?.[0] ?? "";
+
+  it("shows nothing next to the link, and no dot, when there is nothing unread", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn unread={0} />);
+
+    expect(link(html)).not.toContain("rounded-full");
+    expect(link(html)).not.toContain("sin leer");
+    expect(menuButton(html)).not.toContain("rounded-full");
+  });
+
+  it("shows the count on the link, hidden from a screen reader that reads it in words instead", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn unread={3} />);
+
+    expect(link(html)).toMatch(/<span aria-hidden="true"[^>]*>3<\/span>/);
+    expect(link(html)).toMatch(/<span class="sr-only">, 3 sin leer<\/span>/);
+  });
+
+  it("says 99+ when there are more than 99, in the words too", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn unread={100} />,
+    );
+
+    expect(link(html)).toMatch(/aria-hidden="true"[^>]*>99\+<\/span>/);
+    expect(link(html)).toContain(", 99+ sin leer");
+  });
+
+  it("puts a dot on the menu button, since the link is inside its panel, and names it for a screen reader", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn unread={2} />);
+    const button = menuButton(html);
+
+    expect(button).toMatch(/<span aria-hidden="true" class="[^"]*xl:hidden/);
+    expect(button).toContain(", 2 sin leer");
+  });
+
+  it("says it in English", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn unread={2} />,
+      "en",
+    );
+
+    expect(link(html)).toContain("Alerts");
+    expect(link(html)).toContain(", 2 unread");
+  });
+
+  it("does not show a visitor any of it", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn={false} unread={5} />,
+    );
+
+    expect(html).not.toContain("/notifications");
+    expect(html).not.toContain("sin leer");
   });
 });

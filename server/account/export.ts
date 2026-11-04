@@ -8,6 +8,7 @@ import {
   listItems,
   lists,
   mediaItems,
+  notifications,
   users,
   webhookEndpoints,
 } from "../db/schema";
@@ -41,6 +42,16 @@ export type AccountExport = {
     eventTypes: string[];
     enabled: boolean;
     createdAt: string;
+  }[];
+  /**
+   * The notifications inside the app (SAG-102), the last 30 days: what each one said, when it was
+   * made and when it was read. Never the id of the row.
+   */
+  notifications: {
+    type: string;
+    payload: Record<string, unknown>;
+    createdAt: string;
+    readAt: string | null;
   }[];
 };
 
@@ -187,6 +198,17 @@ export async function exportAccount(
     .where(eq(webhookEndpoints.userId, userId))
     .orderBy(webhookEndpoints.createdAt, webhookEndpoints.id);
 
+  const inbox = await db
+    .select({
+      type: notifications.type,
+      payload: notifications.payload,
+      createdAt: notifications.createdAt,
+      readAt: notifications.readAt,
+    })
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(notifications.createdAt, notifications.id);
+
   return {
     schemaVersion: 1,
     exportedAt: now.toISOString(),
@@ -218,6 +240,12 @@ export async function exportAccount(
       eventTypes: endpoint.eventTypes,
       enabled: endpoint.enabled,
       createdAt: endpoint.createdAt.toISOString(),
+    })),
+    notifications: inbox.map((notification) => ({
+      type: notification.type,
+      payload: notification.payload,
+      createdAt: notification.createdAt.toISOString(),
+      readAt: notification.readAt?.toISOString() ?? null,
     })),
   };
 }

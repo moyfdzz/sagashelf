@@ -12,6 +12,7 @@ SagaShelf is a personal, non-commercial portfolio project: a web app to search, 
 - Accounts with Clerk (email or Google), a profile with a privacy level, and a username you can change.
 - Your data is yours: download a copy of it, restore your library from that copy, or delete your account and everything in it.
 - Alerts in Discord: connect a webhook of a channel in your settings, send a test message to check it, and tick "new episodes" to get one message when an episode of a series or anime you have as "In progress" comes out (it can arrive up to an hour later), and turn the alerts off for a single title from its page in your library. A webhook that fails turns itself off and says why.
+- Alerts inside the app: the same episodes show up in the page "Alerts" (`/notifications`) even if you have no webhook, with the number of unread ones in the header, "Mark as read" and "Mark all as read". They are kept 30 days and are part of your export and your account deletion.
 - Spanish (default) and English, light and dark mode, responsive on phone, tablet and desktop.
 
 ## Planned

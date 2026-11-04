@@ -37,6 +37,7 @@ const account = {
   customEntries: [],
   lists: [],
   webhooks: [],
+  notifications: [],
 };
 
 beforeEach(() => {

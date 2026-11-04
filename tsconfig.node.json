@@ -29,6 +29,7 @@
     "server/db/next-episodes.ts",
     "server/db/webhooks.ts",
     "server/db/episode-alerts.ts",
+    "server/db/notifications.ts",
     "server/webhooks/events.ts",
     "server/webhooks/discord-url.ts",
     "server/webhooks/discord.ts",
