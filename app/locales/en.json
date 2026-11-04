@@ -17,7 +17,7 @@
     "admin": "Administration",
     "recommendations": "Recommendations",
     "menu": "Menu",
-    "notifications": "Alerts",
+    "notifications": "Notifications",
     "unread": ", {{shown}} unread"
   },
   "language": {
@@ -198,10 +198,10 @@
       "profile": "Profile",
       "data": "My data",
       "delete": "Delete account",
-      "notifications": "Notifications"
+      "notifications": "Discord alerts"
     },
     "notifications": {
-      "title": "Notifications",
+      "title": "Discord alerts",
       "description": "Get SagaShelf alerts in a Discord channel.",
       "back": "Back to settings",
       "unavailable": "Discord alerts are not available on this server yet.",
@@ -718,7 +718,7 @@
         "title": "Alerts for this title",
         "label": "Tell me about new episodes of this title",
         "hint": "You only get alerts for what you have as \"In progress\", and when your Discord webhook has the new episodes box ticked.",
-        "link": "Go to Notifications",
+        "link": "Go to Discord alerts",
         "save": "Save alerts",
         "saved": "Alerts saved."
       },
@@ -757,22 +757,22 @@
     }
   },
   "notifications": {
-    "title": "Alerts",
+    "title": "Notifications",
     "description": "The new episodes of what you have as \"In progress\". The 50 newest of the last 30 days are shown.",
-    "listLabel": "List of alerts",
-    "empty": "No alerts yet. When a new episode of something you have as \"In progress\" comes out, it will show up here.",
-    "none": "You have no unread alerts.",
-    "unread_one": "You have {{count}} unread alert.",
-    "unread_other": "You have {{count}} unread alerts.",
+    "listLabel": "List of notifications",
+    "empty": "No notifications yet. When a new episode of something you have as \"In progress\" comes out, it will show up here.",
+    "none": "You have no unread notifications.",
+    "unread_one": "You have {{count}} unread notification.",
+    "unread_other": "You have {{count}} unread notifications.",
     "new": "New",
     "markRead": "Mark as read",
     "markAll": "Mark all as read",
     "result": {
-      "read": "Alert marked as read.",
-      "allRead": "Alerts marked as read."
+      "read": "Notification marked as read.",
+      "allRead": "Notifications marked as read."
     },
     "errors": {
-      "not_found": "We could not find that alert.",
+      "not_found": "We could not find that notification.",
       "invalid_request": "We could not read the form. Reload the page and try again."
     }
   },

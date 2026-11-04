@@ -14,8 +14,8 @@ test.describe("the inbox of notifications", () => {
       expect(response.headers()["location"]).toMatch(/sign-in|clerk/);
     }
     const body = await response.text();
-    expect(body).not.toContain("No tienes avisos sin leer");
-    expect(body).not.toContain("Marcar como leído");
+    expect(body).not.toContain("No tienes notificaciones sin leer");
+    expect(body).not.toContain("Marcar como leída");
   });
 
   test("marking an alert as read, sent by a visitor or from another site, marks nothing", async ({

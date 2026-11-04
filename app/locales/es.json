@@ -17,7 +17,7 @@
     "admin": "Administración",
     "recommendations": "Recomendaciones",
     "menu": "Menú",
-    "notifications": "Avisos",
+    "notifications": "Notificaciones",
     "unread": ", {{shown}} sin leer"
   },
   "language": {
@@ -198,10 +198,10 @@
       "profile": "Perfil",
       "data": "Mis datos",
       "delete": "Eliminar cuenta",
-      "notifications": "Notificaciones"
+      "notifications": "Avisos en Discord"
     },
     "notifications": {
-      "title": "Notificaciones",
+      "title": "Avisos en Discord",
       "description": "Recibe avisos de SagaShelf en un canal de Discord.",
       "back": "Volver a los ajustes",
       "unavailable": "Los avisos a Discord todavía no están disponibles en este servidor.",
@@ -718,7 +718,7 @@
         "title": "Avisos de este título",
         "label": "Avisarme de episodios nuevos de este título",
         "hint": "Solo recibes avisos de lo que tienes en «En curso», y si tu webhook de Discord tiene marcada la casilla de episodios nuevos.",
-        "link": "Ir a Notificaciones",
+        "link": "Ir a Avisos en Discord",
         "save": "Guardar avisos",
         "saved": "Avisos guardados."
       },
@@ -757,22 +757,22 @@
     }
   },
   "notifications": {
-    "title": "Avisos",
+    "title": "Notificaciones",
     "description": "Los episodios nuevos de lo que tienes \"En curso\". Se muestran los 50 más nuevos de los últimos 30 días.",
-    "listLabel": "Lista de avisos",
-    "empty": "Todavía no hay avisos. Cuando salga un episodio nuevo de algo que tienes \"En curso\", aparecerá aquí.",
-    "none": "No tienes avisos sin leer.",
-    "unread_one": "Tienes {{count}} aviso sin leer.",
-    "unread_other": "Tienes {{count}} avisos sin leer.",
-    "new": "Nuevo",
-    "markRead": "Marcar como leído",
-    "markAll": "Marcar todos como leídos",
+    "listLabel": "Lista de notificaciones",
+    "empty": "Todavía no hay notificaciones. Cuando salga un episodio nuevo de algo que tienes \"En curso\", aparecerá aquí.",
+    "none": "No tienes notificaciones sin leer.",
+    "unread_one": "Tienes {{count}} notificación sin leer.",
+    "unread_other": "Tienes {{count}} notificaciones sin leer.",
+    "new": "Nueva",
+    "markRead": "Marcar como leída",
+    "markAll": "Marcar todas como leídas",
     "result": {
-      "read": "Aviso marcado como leído.",
-      "allRead": "Avisos marcados como leídos."
+      "read": "Notificación marcada como leída.",
+      "allRead": "Notificaciones marcadas como leídas."
     },
     "errors": {
-      "not_found": "No encontramos ese aviso.",
+      "not_found": "No encontramos esa notificación.",
       "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
     }
   },

@@ -13,7 +13,7 @@ const focusClass =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:-outline-offset-2";
 
 const linkClass = (active: boolean) =>
-  `block rounded-md px-3 py-2 text-lg font-semibold transition-colors ${focusClass} ${
+  `block rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 ${focusClass} ${
     active ? "text-accent" : "text-fg-muted hover:text-accent"
   }`;
 
@@ -40,9 +40,15 @@ const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font
  * from 360 px. Below that the switches go to a second row, as they did before SAG-104. The name of
  * the app keeps its size, and never shrinks or breaks, at any width.
  *
- * A signed-in person also has the link to their alerts (SAG-102) with the number of unread ones. On a
- * phone that link is inside the panel, so the "Menu" button carries a small dot (drawn over its
- * corner, which adds no width to the row measured above) and its name says how many are unread.
+ * On the wide row (measured on 2026-11-04) the Spanish word "Notificaciones" with a count of three digits
+ * needs 1274 px inside the 1248 px that 1280 gives, so the links have 8 px of padding on each side from
+ * 1280 px up (12 px on a phone, where the panel needs the room to be tapped) and the row keeps 22 px
+ * to spare.
+ *
+ * A signed-in person also has the link to their notifications (SAG-102) with the number of unread
+ * ones. On a phone that link is inside the panel, so the "Menu" button carries that number (a bubble
+ * over its corner, which adds no width to the row measured above, SAG-106) and its name says how many
+ * are unread.
  *
  * The panel closes with Escape (which gives the focus back to the button), with a click outside and
  * when the route changes, since the links to the router's pages do not load a new document.
@@ -157,13 +163,16 @@ export function Navbar({
             </svg>
             {/* Below 420 px only the icon is drawn; the word is still the name of the button. */}
             <span className="max-[420px]:sr-only">{t("nav.menu")}</span>
-            {/* A dot says there is something unread inside, since the link is in the panel. */}
+            {/* The count of what is unread, since the link is in the panel. It hangs over the corner,
+                so it adds no width to the row. */}
             {unread > 0 ? (
               <>
                 <span
                   aria-hidden="true"
-                  className="bg-accent border-surface-raised absolute -top-1 -right-1 size-3 rounded-full border-2 xl:hidden"
-                />
+                  className="bg-accent text-accent-fg border-surface-raised absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 px-1 text-xs leading-none font-bold xl:hidden"
+                >
+                  {shown}
+                </span>
                 <span className="sr-only">{t("nav.unread", { shown })}</span>
               </>
             ) : null}
