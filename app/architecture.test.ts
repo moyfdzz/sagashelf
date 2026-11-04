@@ -35,9 +35,9 @@ function checkRule(
   };
 }
 
-// SAG-121 removes each of these from the list as it splits the file.
+// The limit of ADR-033. SAG-121 split the last three files that were over it, so the list of
+// those still to split is empty: a file over the limit now fails at once.
 const maxLines = 600;
-const longFiles = ["app/routes/stats.tsx"];
 
 describe("the design rules of ADR-033", () => {
   it("finds the source files it checks", () => {
@@ -45,10 +45,10 @@ describe("the design rules of ADR-033", () => {
     expect(files).toContain("app/routes/library.tsx");
   });
 
-  it("keeps a file under 600 lines, apart from the ones listed to be split", () => {
+  it("keeps every file under 600 lines", () => {
     const result = checkRule(
       (path) => read(path).split("\n").length > maxLines,
-      longFiles,
+      [],
     );
     expect(result).toEqual({ unlisted: [], stale: [] });
   });
