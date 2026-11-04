@@ -1157,7 +1157,7 @@
       "request": "Solicitar seguir",
       "requested": "Solicitud enviada",
       "cancelRequest": "Cancelar solicitud",
-      "unfollowWarningLabel": "Confirmar que dejas de seguir",
+      "unfollowTitle": "¿Dejar de seguir a {{name}}?",
       "unfollowWarning": "Este perfil es privado. Si lo dejas de seguir, tendrás que enviar otra solicitud y esperar a que la acepte.",
       "cancelUnfollow": "Cancelar"
     },
