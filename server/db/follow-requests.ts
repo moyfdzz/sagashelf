@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import { followsPerHour } from "./follows";
 import { type Person } from "./person";
+import { asDate } from "./dates";
 
 /**
  * Follow requests (SAG-108, ADR-032): the way to ask for a profile that is Private (code level
@@ -130,9 +131,6 @@ export type PendingRequest = Person & {
   canFollowBack: boolean;
   createdAt: Date;
 };
-
-const asDate = (value: unknown): Date =>
-  value instanceof Date ? value : new Date(String(value));
 
 /**
  * The requests waiting for the owner, newest first. A request from an erased account, from somebody

@@ -10,6 +10,7 @@
     "db/**/*",
     "server/db/schema/**/*",
     "server/db/clerk-sync.ts",
+    "server/db/dates.ts",
     "server/db/erase-user.ts",
     "server/db/profile.ts",
     "server/db/username.ts",

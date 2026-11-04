@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { asDate } from "./dates";
 
 /**
  * What the inbox of notifications reads and writes (SAG-102, ADR-030). The rows are written by
@@ -25,9 +26,6 @@ export type NotificationView = {
   createdAt: Date;
   readAt: Date | null;
 };
-
-const asDate = (value: unknown): Date =>
-  value instanceof Date ? value : new Date(String(value));
 
 /** The newest notifications of one person, unread or not. */
 export async function listNotifications(

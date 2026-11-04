@@ -272,7 +272,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-function asDate(value: string): number {
+function utcDayStart(value: string): number {
   return Date.parse(`${value}T00:00:00Z`);
 }
 
@@ -378,7 +378,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                   season: item.nextEpisode.season,
                   number: item.nextEpisode.number,
                   name: item.nextEpisode.name,
-                  date: formatDate(asDate(item.nextEpisode.airDate)),
+                  date: formatDate(utcDayStart(item.nextEpisode.airDate)),
                 },
               )}{" "}
               <span className="text-fg-muted text-sm">
@@ -491,7 +491,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                         count: season.episodes.length,
                         context: season.airDate ? "dated" : undefined,
                         date: season.airDate
-                          ? formatDate(asDate(season.airDate))
+                          ? formatDate(utcDayStart(season.airDate))
                           : "",
                       })}
                     </span>

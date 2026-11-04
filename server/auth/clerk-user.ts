@@ -96,7 +96,7 @@ function asString(value: unknown): string | null {
 // and the year 5138 in seconds), so both are read correctly instead of one becoming 1970.
 const secondsBelow = 100_000_000_000;
 
-function asDate(value: unknown): Date | null {
+function epochToDate(value: unknown): Date | null {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     return null;
   }
@@ -151,7 +151,7 @@ export function planClerkEvent(event: ClerkEventLike): ClerkOperation {
   if (event.type === "user.deleted") {
     const { id } = (event.data ?? {}) as { id?: unknown };
     const clerkId = asString(id);
-    const at = asDate(event.timestamp);
+    const at = epochToDate(event.timestamp);
     return clerkId && at ? { kind: "delete", clerkId, at } : { kind: "ignore" };
   }
   if (event.type !== "user.created" && event.type !== "user.updated") {
@@ -161,7 +161,7 @@ export function planClerkEvent(event: ClerkEventLike): ClerkOperation {
   const data = (event.data ?? {}) as ClerkUserData;
   const clerkId = asString(data.id);
   // The user's own update time when there is one, else the time of the event.
-  const at = asDate(data.updated_at) ?? asDate(event.timestamp);
+  const at = epochToDate(data.updated_at) ?? epochToDate(event.timestamp);
   if (!clerkId || !at) return { kind: "ignore" };
 
   const username = asString(data.username);

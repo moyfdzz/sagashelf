@@ -8,6 +8,7 @@ import {
   type DisableReason,
   type Outcome,
 } from "../webhooks/outcome";
+import { asDate } from "./dates";
 
 /**
  * What the webhooks of a person and the delivery of their events read and write (SAG-27,
@@ -41,9 +42,6 @@ export type EndpointView = {
   disabledReason: DisableReason | null;
   createdAt: Date;
 };
-
-const asDate = (value: unknown): Date =>
-  value instanceof Date ? value : new Date(String(value));
 
 const isDisableReason = (value: unknown): value is DisableReason =>
   value === "unauthorized" ||

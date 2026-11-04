@@ -67,6 +67,26 @@ describe("the design rules of ADR-033", () => {
     expect(result).toEqual({ unlisted: [], stale: [] });
   });
 
+  it("reads a timestamp column with one asDate, in server/db/dates.ts, and no other function of that name", () => {
+    const result = checkRule(
+      (path) =>
+        path !== "server/db/dates.ts" &&
+        /(function|const) asDate\b/.test(read(path)),
+      [],
+    );
+    expect(result).toEqual({ unlisted: [], stale: [] });
+  });
+
+  it("writes the shape of a username once, in server/account/profile-schema.ts", () => {
+    const result = checkRule(
+      (path) =>
+        path !== "server/account/profile-schema.ts" &&
+        /(function|const) usernameShape\b/.test(read(path)),
+      [],
+    );
+    expect(result).toEqual({ unlisted: [], stale: [] });
+  });
+
   it("says what is never cached in one place, server/http/cache.ts, and not in each route", () => {
     const result = checkRule(
       (path) =>
