@@ -8,11 +8,10 @@ import { addEntrySchema } from "~server/library/schema";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
+import { privateHeaders } from "~server/http/cache";
 
 // The form has one id. Anything bigger is not from the title page.
 const maxFormBytes = 1024;
-
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 /**
  * A form that the title page sends with JavaScript is a `fetch`, and its answer is data: the

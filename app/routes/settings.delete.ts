@@ -14,12 +14,10 @@ import { getProfile } from "~server/db/profile";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
+import { privateHeaders } from "~server/http/cache";
 
 // The form has a short text and a box. Anything bigger is not from this page.
 const maxFormBytes = 1024;
-
-// Pages and answers that carry a person's data are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 // Each code has its text in app/locales, under settings.delete.errors.
 type ErrorCode =

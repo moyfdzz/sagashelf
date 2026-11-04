@@ -55,12 +55,10 @@ import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
 import { z } from "zod";
+import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 
 // The form has a few short fields and the notes (2000 characters, up to 4 bytes each).
 const maxFormBytes = 16 * 1024;
-
-// Pages and answers that carry a person's data are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 const mediaIdSchema = z.uuid();
 
@@ -193,12 +191,7 @@ export async function loader(args: Route.LoaderArgs) {
   }));
 }
 
-export function headers({ actionHeaders, loaderHeaders }: Route.HeadersArgs) {
-  const merged = new Headers(loaderHeaders);
-  actionHeaders.forEach((value, key) => merged.set(key, value));
-  merged.set("Cache-Control", "private, no-store");
-  return merged;
-}
+export const headers = mergePrivateHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

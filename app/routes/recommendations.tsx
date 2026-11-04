@@ -16,6 +16,7 @@ import {
   viewSagaSuggestions,
 } from "~server/recommendations/view";
 import { getDb } from "~server/runtime-env";
+import { privateRouteHeaders } from "~server/http/cache";
 
 export async function loader(args: Route.LoaderArgs) {
   const user = await requireUser(args);
@@ -41,9 +42,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 // A page with a person's data is never kept by a shared cache.
-export function headers() {
-  return new Headers({ "Cache-Control": "private, no-store" });
-}
+export const headers = privateRouteHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

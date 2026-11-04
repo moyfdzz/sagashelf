@@ -27,6 +27,7 @@ import { imageSrc } from "~server/images/sources";
 import { mediaPath, openPath } from "~server/media/slug";
 import { runSearch } from "~server/search/pipeline";
 import { searchPath } from "~server/search/path";
+import { privateRouteHeaders } from "~server/http/cache";
 
 export async function loader(args: Route.LoaderArgs) {
   const { request, context } = args;
@@ -139,10 +140,7 @@ export function shouldRevalidate({
   return defaultShouldRevalidate;
 }
 
-export function headers() {
-  // Searches differ by session in the header and call other services, so no shared cache.
-  return { "Cache-Control": "private, no-store" };
-}
+export const headers = privateRouteHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

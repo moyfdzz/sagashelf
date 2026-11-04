@@ -25,6 +25,7 @@ import { entryBackPath } from "~server/library/path";
 import { searchBackPath } from "~server/search/path";
 import { getDb, getMediaProviders, runInBackground } from "~server/runtime-env";
 import { pickTitle } from "~server/db/titles";
+import { privateRouteHeaders } from "~server/http/cache";
 
 /** How long a first visit in a new language waits for the provider before showing what it holds. */
 const firstVisitWaitMs = 2500;
@@ -244,9 +245,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 // The block of the library shows what this person has done, so no shared cache keeps the page.
-export function headers() {
-  return { "Cache-Control": "private, no-store" };
-}
+export const headers = privateRouteHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [];

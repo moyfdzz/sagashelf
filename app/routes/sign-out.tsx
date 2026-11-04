@@ -8,6 +8,7 @@ import type { Route } from "./+types/sign-out";
 import { ClerkSession } from "~/components/ClerkSession";
 import { getInstance } from "~/middleware/i18next";
 import { getClerkKeys } from "~server/runtime-env";
+import { privateRouteHeaders } from "~server/http/cache";
 
 export async function loader(args: Route.LoaderArgs) {
   const keys = getClerkKeys();
@@ -21,9 +22,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 // Pages and answers that carry a person's session are never kept by a shared cache.
-export function headers() {
-  return { "Cache-Control": "private, no-store" };
-}
+export const headers = privateRouteHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData?.title }, { name: "robots", content: "noindex" }];

@@ -37,6 +37,7 @@ import {
 } from "~server/library/view";
 import { libraryPath } from "~server/library/path";
 import { getDb } from "~server/runtime-env";
+import { mergePrivateHeaders } from "~server/http/cache";
 
 export async function loader(args: Route.LoaderArgs) {
   const user = await requireUser(args);
@@ -77,12 +78,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 // A page with a person's data is never kept by a shared cache.
-export function headers({ loaderHeaders }: Route.HeadersArgs) {
-  const merged = new Headers({ "Cache-Control": "private, no-store" });
-  const cookie = loaderHeaders.get("Set-Cookie");
-  if (cookie) merged.set("Set-Cookie", cookie);
-  return merged;
-}
+export const headers = mergePrivateHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

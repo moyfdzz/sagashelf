@@ -40,27 +40,7 @@ const maxLines = 600;
 const longFiles = [
   "app/routes/library.$mediaId.tsx",
   "app/routes/library.tsx",
-  "app/routes/settings.notifications.tsx",
   "app/routes/stats.tsx",
-];
-
-// SAG-117 replaces these with one shared constant.
-const ownPrivateHeaders = [
-  "app/routes/library.$mediaId.status.ts",
-  "app/routes/library.$mediaId.step.ts",
-  "app/routes/library.$mediaId.tsx",
-  "app/routes/library.add-external.ts",
-  "app/routes/library.add.ts",
-  "app/routes/notifications.tsx",
-  "app/routes/settings.delete.ts",
-  "app/routes/settings.import.tsx",
-  "app/routes/settings.notifications.tsx",
-  "app/routes/settings.people.tsx",
-  "app/routes/settings.profile.tsx",
-  "app/routes/settings.username.ts",
-  "app/routes/u.$username.$kind.tsx",
-  "app/routes/u.$username.tsx",
-  "server/auth/admin-write.ts",
 ];
 
 describe("the design rules of ADR-033", () => {
@@ -87,10 +67,12 @@ describe("the design rules of ADR-033", () => {
     expect(result).toEqual({ unlisted: [], stale: [] });
   });
 
-  it("does not define its own privateHeaders: one shared constant says what is never cached", () => {
+  it("says what is never cached in one place, server/http/cache.ts, and not in each route", () => {
     const result = checkRule(
-      (path) => /const privateHeaders\s*=/.test(read(path)),
-      ownPrivateHeaders,
+      (path) =>
+        path !== "server/http/cache.ts" &&
+        read(path).includes("private, no-store"),
+      [],
     );
     expect(result).toEqual({ unlisted: [], stale: [] });
   });

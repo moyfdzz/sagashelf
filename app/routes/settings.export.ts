@@ -7,6 +7,7 @@ import { requireUser } from "~server/auth/require";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
+import { privateHeaders } from "~server/http/cache";
 
 // The form has one button. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -60,7 +61,7 @@ export async function action(args: Route.ActionArgs) {
           : "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="sagashelf-data-${day}.${parsed.data.format}"`,
         // The file is one person's data: no shared cache keeps it.
-        "Cache-Control": "private, no-store",
+        ...privateHeaders,
       },
     },
   );

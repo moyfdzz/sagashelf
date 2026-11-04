@@ -13,6 +13,7 @@ import {
   maxPage,
 } from "~server/db/social";
 import { getDb } from "~server/runtime-env";
+import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 
 const usernameShape = /^[^\s/?#%\\]{3,30}$/;
 
@@ -21,8 +22,6 @@ type Kind = (typeof kinds)[number];
 const isKind = (value: string): value is Kind =>
   (kinds as readonly string[]).includes(value);
 
-// Pages that depend on who is looking are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 const notFound = () => data(null, { status: 404, headers: privateHeaders });
 
 const lists = {
@@ -78,11 +77,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 // Pages that depend on who is looking are never kept by a shared cache.
-export function headers({ loaderHeaders }: Route.HeadersArgs) {
-  const merged = new Headers(loaderHeaders);
-  merged.set("Cache-Control", "private, no-store");
-  return merged;
-}
+export const headers = mergePrivateHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

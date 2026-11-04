@@ -15,12 +15,10 @@ import { libraryStatuses } from "~server/library/schema";
 import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
+import { privateHeaders } from "~server/http/cache";
 
 // The form has one short field. Anything bigger is not from the title page.
 const maxFormBytes = 1024;
-
-// Answers that carry a person's data are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 const mediaIdSchema = z.uuid();
 const formSchema = z.strictObject({ status: z.enum(libraryStatuses) });

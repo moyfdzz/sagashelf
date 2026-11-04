@@ -18,12 +18,10 @@ import {
 import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
+import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 
 // The form has an intent and one username. Anything bigger is not from this page.
 const maxFormBytes = 1024;
-
-// Pages and answers that carry a person's data are never kept by a shared cache.
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 const formSchema = z.strictObject({
   intent: z.enum(["unblock", "unmute"]),
@@ -65,15 +63,7 @@ export async function loader(args: Route.LoaderArgs) {
 
 // Pages and answers that carry a person's data are never kept by a shared cache. Set here, for
 // the page and for its data requests alike, and the cookie of an answer is kept.
-export function headers({ actionHeaders, loaderHeaders }: Route.HeadersArgs) {
-  const merged = new Headers(loaderHeaders);
-  actionHeaders.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") merged.append(key, value);
-    else merged.set(key, value);
-  });
-  merged.set("Cache-Control", "private, no-store");
-  return merged;
-}
+export const headers = mergePrivateHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
