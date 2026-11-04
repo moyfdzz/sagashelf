@@ -8,7 +8,7 @@ export type Claim =
   | { ok: true; previous: Date | null }
   | { ok: false; reason: "cooldown" | "gone" };
 
-function asDate(value: unknown): Date | null {
+function asDateOrNull(value: unknown): Date | null {
   return value === null || value === undefined
     ? null
     : new Date(value as string | number | Date);
@@ -23,7 +23,7 @@ export async function getUsernameChangedAt(
     SELECT username_changed_at FROM users
     WHERE id = ${userId} AND deleted_at IS NULL
   `);
-  return asDate(rows[0]?.username_changed_at);
+  return asDateOrNull(rows[0]?.username_changed_at);
 }
 
 /**
@@ -55,7 +55,7 @@ export async function claimUsernameChange(
   `);
   const row = rows[0] ?? {};
   if (Number(row.claimed) === 1) {
-    return { ok: true, previous: asDate(row.previous) };
+    return { ok: true, previous: asDateOrNull(row.previous) };
   }
   return { ok: false, reason: Number(row.found) === 0 ? "gone" : "cooldown" };
 }

@@ -5,7 +5,10 @@ import {
   cleanText,
   displayNameMaxLength,
   profileUpdateSchema,
+  usernameMaxLength,
+  usernameMinLength,
   usernameSchema,
+  usernameShape,
 } from "./profile-schema";
 
 const parse = (input: unknown) => profileUpdateSchema.safeParse(input);
@@ -168,5 +171,34 @@ describe("usernameSchema", () => {
 
   it("allows a name that only contains a reserved word", () => {
     expect(check("admin_fan")).toBe("admin_fan");
+  });
+});
+
+describe("usernameShape", () => {
+  it("takes the lengths the username rules allow, and no other", () => {
+    expect(usernameShape.test("a".repeat(usernameMinLength))).toBe(true);
+    expect(usernameShape.test("a".repeat(usernameMaxLength))).toBe(true);
+    expect(usernameShape.test("a".repeat(usernameMinLength - 1))).toBe(false);
+    expect(usernameShape.test("a".repeat(usernameMaxLength + 1))).toBe(false);
+  });
+
+  it("refuses what cannot be a path segment", () => {
+    const bad = [
+      "ana reads",
+      "ana/reads",
+      "ana?x",
+      "ana#x",
+      "ana%20x",
+      "ana\\x",
+      "ana\tx",
+    ];
+    for (const name of bad) {
+      expect(usernameShape.test(name)).toBe(false);
+    }
+  });
+
+  it("takes an ordinary username, in any case", () => {
+    expect(usernameShape.test("Ana_Reads")).toBe(true);
+    expect(usernameShape.test("ana.reads-2")).toBe(true);
   });
 });

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-04
-- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that breaks them is listed in the check and removed by SAG-119, SAG-120 and SAG-121 (SAG-73, SAG-117 and SAG-118 are done).
+- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that breaks them is listed in the check and removed by SAG-120 and SAG-121 (SAG-73, SAG-117, SAG-118 and SAG-119 are done).
 - **Tickets:** SAG-116, SAG-73, SAG-117, SAG-118, SAG-119, SAG-120, SAG-121
 - **Related:** [ADR-031](031-social-graph.md), [ADR-018](018-personal-library.md), [ADR-007](007-background-work.md)
 
@@ -22,7 +22,7 @@ These rules apply to new code now and to old code as each ticket lands.
 6. **A file over 600 lines is split** (components for a screen; modules by reason to change for data). Existing files over the limit are listed in `app/architecture.test.ts` until their ticket splits them.
 7. **A refactor changes no behavior.** The tests that existed before must pass unchanged; measure bundle size, statements per page and subrequests of the crons before and after when the change could move them.
 
-The check is `app/architecture.test.ts`. For each rule it lists the files that still break it. The list can only shrink: a new file that breaks the rule fails, and a listed file that was fixed fails until it is removed from the list. It currently checks the file size (rule 6, with three route files still listed), a route that writes its own body drain, and any file but `server/http/cache.ts` that writes the string `private, no-store` (rule 4); the last two have empty lists, so they fail at once for a new copy. A rule that a tool cannot check (1, 2, 5) is checked in review, with the line added to the pull request template.
+The check is `app/architecture.test.ts`. For each rule it lists the files that still break it. The list can only shrink: a new file that breaks the rule fails, and a listed file that was fixed fails until it is removed from the list. It currently checks the file size (rule 6, with three route files still listed), a route that writes its own body drain, any file but `server/http/cache.ts` that writes the string `private, no-store`, any other function called `asDate` than the one of `server/db/dates.ts`, and a second `usernameShape` than the one of `server/account/profile-schema.ts` (rule 4); all but the first have empty lists, so they fail at once for a new copy. A rule that a tool cannot check (1, 2, 5) is checked in review, with the line added to the pull request template.
 
 ## Alternatives considered
 

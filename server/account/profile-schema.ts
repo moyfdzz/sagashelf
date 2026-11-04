@@ -83,6 +83,13 @@ export const usernameSchema = z
   });
 
 /**
+ * Whether a path segment has the shape of a username: a length the rules allow and no space or
+ * character that would break a path. The database decides if the name exists; this only keeps a
+ * path that cannot be one from reaching it (SAG-119, one copy for every page of a profile).
+ */
+export const usernameShape = /^[^\s/?#%\\]{3,30}$/;
+
+/**
  * What the profile form may change. `strict` makes any other key an error, so a request that
  * carries `role`, `clerkId`, `deletedAt` or an email is refused instead of ignored. Every field
  * is optional, so a form can send only what it edits.

@@ -14,8 +14,7 @@ import {
 import { findViewableProfile } from "~server/db/profile-lookup";
 import { getDb } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
-
-const usernameShape = /^[^\s/?#%\\]{3,30}$/;
+import { usernameShape } from "~server/account/profile-schema";
 
 const kinds = ["followers", "following", "friends"] as const;
 type Kind = (typeof kinds)[number];

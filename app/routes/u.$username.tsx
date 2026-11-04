@@ -40,10 +40,7 @@ import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import type { MediaKind } from "~server/providers/types";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
-
-// Anything with the shape of a username. The database decides if it exists; this only keeps a
-// path that cannot be one (too long, a slash, a space) from reaching it.
-const usernameShape = /^[^\s/?#%\\]{3,30}$/;
+import { usernameShape } from "~server/account/profile-schema";
 
 // The form has one word. Anything bigger is not from this page.
 const maxFormBytes = 1024;
