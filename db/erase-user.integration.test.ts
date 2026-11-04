@@ -14,6 +14,7 @@ import {
   listItems,
   lists,
   mediaItems,
+  mutes,
   notifications,
   users,
 } from "../server/db/schema";
@@ -76,6 +77,11 @@ async function personWithEverything() {
     { followerId: bob.id, followeeId: ana.id },
   ]);
   await db.insert(blocks).values({ blockerId: ana.id, blockedId: bob.id });
+  // Who each one muted (SAG-21): both directions are erased with the account.
+  await db.insert(mutes).values([
+    { muterId: ana.id, mutedId: bob.id },
+    { muterId: bob.id, mutedId: ana.id },
+  ]);
   const [post] = await db
     .insert(activity)
     .values({ actorId: ana.id, type: "completed", mediaId: movie.id })
@@ -121,6 +127,7 @@ describe("eraseAccount", () => {
       listItems,
       follows,
       blocks,
+      mutes,
       activity,
       likes,
     ]) {
@@ -251,16 +258,22 @@ describe("exportAccount", () => {
       readAt: "2026-11-03T12:00:00.000Z",
     });
     expect(JSON.stringify(data?.notifications)).not.toContain("Bob's one");
+    // Whom she follows, blocked and muted, by username; never who follows her, and never the mute
+    // that Bob made of her.
+    expect(data?.social).toEqual({
+      following: [{ username: "bob_reads", since: expect.any(String) }],
+      blocked: [{ username: "bob_reads", since: expect.any(String) }],
+      muted: [{ username: "bob_reads", since: expect.any(String) }],
+    });
     // No Clerk id, no role, no email, no id of the account, nothing of other people.
     const text = JSON.stringify(data);
-    for (const secret of [
-      "user_ana",
-      "ana@example.test",
-      "bob_reads",
-      ana.id,
-    ]) {
+    for (const secret of ["user_ana", "ana@example.test", ana.id]) {
       expect(text).not.toContain(secret);
     }
+    // Bob's username is only in the lists of what she did to him, and nowhere else.
+    const { social, ...rest } = data ?? { social: null };
+    expect(JSON.stringify(rest)).not.toContain("bob_reads");
+    expect(JSON.stringify(social)).toContain("bob_reads");
   });
 
   it("gives nothing for an erased account", async () => {
