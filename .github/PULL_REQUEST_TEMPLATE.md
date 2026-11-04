@@ -26,6 +26,10 @@ Not run, and why:
 
 - [ ] This PR changes nothing that `README.md` describes (features, stack, commands), or I updated it here.
 
+## Design
+
+- [ ] The new code follows the design rules of ADR-033 (a thin route, one statement per data function, no copied helper, no file over 600 lines), or the PR says why not.
+
 ## Notes for the reviewer
 
 <!-- Decisions, trade-offs, risks, follow-ups, or where to look first. -->

@@ -52,6 +52,7 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 - GitHub Actions are pinned to a full commit hash with the version in a comment. Dependabot proposes updates weekly; never switch a pin to a floating tag.
 - ESLint stays on v9 because `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not support v10 yet.
 - Schema changes: edit `server/db/schema`, run `npm run db:generate`, read the SQL it produced, and add a test for any new constraint to `db/`. Never paste a connection string into a file or a chat; set `DATABASE_URL` in your own terminal.
+- Design rules (ADR-033): a route reads, calls and answers; a data function is one statement; a rule used twice is written once in a shared place; a file over 600 lines is split. `app/architecture.test.ts` lists the files that still break a rule, and the list may only shrink.
 - Before each commit: `npm run check`, then review `git diff --staged`. Stage named files, never `git add .`.
 - PR with squash merge. The PR description says what changed, why, and how it was checked.
 - Secrets never go in the repo: names only in `.env.example`; real values in `.dev.vars` (local) or Workers secrets.
