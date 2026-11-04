@@ -122,7 +122,10 @@ export async function hasRequested(
 }
 
 export type PendingRequest = Person & {
-  /** Whether the person can be followed back: `private` profiles cannot be asked for. */
+  /**
+   * Whether there is something to follow back: `private` profiles cannot be asked for, and a person
+   * the owner already follows needs nothing more (SAG-126).
+   */
   canFollowBack: boolean;
   createdAt: Date;
 };
@@ -140,7 +143,11 @@ export async function listPendingRequests(
   ownerId: string,
 ): Promise<PendingRequest[]> {
   const { rows } = await db.execute(sql`
-    SELECT u.username, u.display_name, u.avatar_url, u.privacy, r.created_at
+    SELECT u.username, u.display_name, u.avatar_url, u.privacy, r.created_at,
+           EXISTS (
+             SELECT 1 FROM follows f
+             WHERE f.follower_id = ${ownerId}::uuid AND f.followee_id = u.id
+           ) AS already_followed
     FROM follow_requests r
     JOIN users u ON u.id = r.requester_id
     WHERE r.target_id = ${ownerId}::uuid
@@ -158,7 +165,9 @@ export async function listPendingRequests(
     username: String(row.username),
     displayName: typeof row.display_name === "string" ? row.display_name : null,
     avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : null,
-    canFollowBack: row.privacy === "public" || row.privacy === "friends",
+    canFollowBack:
+      (row.privacy === "public" || row.privacy === "friends") &&
+      row.already_followed !== true,
     createdAt: asDate(row.created_at),
   }));
 }
