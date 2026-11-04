@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
   getClerkKeys: vi.fn(),
   getAuth: vi.fn(),
   getDb: vi.fn(),
-  drainBody: vi.fn(),
 }));
 
 vi.mock("@clerk/react-router/server", () => ({ getAuth: mocks.getAuth }));
@@ -17,11 +16,14 @@ vi.mock("../runtime-env", () => ({
   getClerkKeys: mocks.getClerkKeys,
   getDb: mocks.getDb,
 }));
-vi.mock("../http/body", () => ({ drainBody: mocks.drainBody }));
 
 const args = (method = "POST") =>
   ({
-    request: new Request("https://sagashelf.app/settings/delete", { method }),
+    request: new Request("https://sagashelf.app/settings/delete", {
+      method,
+      body: "intent=delete",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    }),
     params: {},
     context: {},
   }) as unknown as LoaderFunctionArgs;
@@ -42,32 +44,33 @@ async function refusal(promise: Promise<unknown>) {
 beforeEach(() => {
   mocks.getClerkKeys.mockReset().mockReturnValue({ secretKey: "x" });
   mocks.getAuth.mockReset().mockResolvedValue({ userId: null });
-  mocks.drainBody.mockReset().mockResolvedValue(undefined);
   mocks.getDb.mockReset();
 });
 
+// A refusal leaves the body alone: the Worker entry drops what is left of it before any answer
+// goes out (`answerAndDrain`, SAG-69), so nothing here has to remember it (SAG-73).
 describe("requireUser", () => {
-  it("reads what is left of the body before it says the deployment has no keys", async () => {
+  it("says the deployment has no keys, without touching the body", async () => {
     mocks.getClerkKeys.mockReturnValue(null);
     const call = args();
 
     const thrown = await refusal(requireUser(call));
 
     expect(thrown.init?.status).toBe(503);
-    expect(mocks.drainBody).toHaveBeenCalledWith(call.request);
+    expect(call.request.bodyUsed).toBe(false);
   });
 
-  it("reads it before it sends a visitor to sign in", async () => {
+  it("sends a visitor to sign in, without touching the body", async () => {
     const call = args();
 
     const thrown = await refusal(requireUser(call));
 
     // A redirect to the sign-in page, a whole new document.
     expect(thrown.status).toBe(302);
-    expect(mocks.drainBody).toHaveBeenCalledWith(call.request);
+    expect(call.request.bodyUsed).toBe(false);
   });
 
-  it("reads it before it refuses a person that has no account", async () => {
+  it("refuses a person that has no account, without touching the body", async () => {
     mocks.getAuth.mockResolvedValue({ userId: "user_1" });
     mocks.getDb.mockResolvedValue({
       select: () => ({
@@ -79,10 +82,10 @@ describe("requireUser", () => {
     const thrown = await refusal(requireUser(call));
 
     expect(thrown.init?.status).toBe(403);
-    expect(mocks.drainBody).toHaveBeenCalledWith(call.request);
+    expect(call.request.bodyUsed).toBe(false);
   });
 
-  it("does not read anything when the person may go in", async () => {
+  it("lets the person go in, and the body is for the route to read", async () => {
     mocks.getAuth.mockResolvedValue({ userId: "user_1" });
     mocks.getDb.mockResolvedValue({
       select: () => ({
@@ -94,7 +97,9 @@ describe("requireUser", () => {
       }),
     });
 
-    await expect(requireUser(args())).resolves.toMatchObject({ id: "u1" });
-    expect(mocks.drainBody).not.toHaveBeenCalled();
+    const call = args();
+
+    await expect(requireUser(call)).resolves.toMatchObject({ id: "u1" });
+    expect(call.request.bodyUsed).toBe(false);
   });
 });

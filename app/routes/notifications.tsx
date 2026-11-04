@@ -54,12 +54,6 @@ type ErrorCode = "not_found" | "request_not_found" | "invalid_request";
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -138,13 +132,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail("invalid_request", 413));
+    return fail("invalid_request", 413);
   }
 
   // A page on another site must not be able to mark somebody's alerts as read.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail("invalid_request", 403));
+    return fail("invalid_request", 403);
   }
 
   // The person is the one in the verified session, never a field of the form.
@@ -155,7 +149,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `notifications:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) return fail("invalid_request", 400);

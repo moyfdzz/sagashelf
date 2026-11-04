@@ -29,12 +29,6 @@ type ErrorCode =
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 // Only the form of the settings page changes the username, with a POST.
 export function loader() {
   throw data({ error: "method_not_allowed" }, { status: 405 });
@@ -44,13 +38,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail("invalid_request", 413));
+    return fail("invalid_request", 413);
   }
 
   // A page on another site must not be able to change someone's username.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail("invalid_request", 403));
+    return fail("invalid_request", 403);
   }
 
   // The person is the one in the verified session, never a field of the form.
@@ -61,7 +55,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `username:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = usernameChangeSchema.safeParse(
     await readForm(request, maxFormBytes),

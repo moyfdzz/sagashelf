@@ -31,12 +31,6 @@ type ErrorCode = "invalid_request" | "not_found" | "unavailable";
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 /**
  * A form that the search sends with JavaScript is a `fetch`, and its answer is data: the result
  * changes in place. The same form without JavaScript is a document, and the person goes to their
@@ -61,23 +55,20 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail("invalid_request", 413));
+    return fail("invalid_request", 413);
   }
 
   // A page on another site must not be able to fill someone's library.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail("invalid_request", 403));
+    return fail("invalid_request", 403);
   }
 
   const user = await getOptionalUser(args);
   if (!user) {
-    return answerWithoutReading(
-      request,
-      redirectDocument(
-        signInPath(request.headers.get("Referer") ?? request.url),
-        303,
-      ),
+    return redirectDocument(
+      signInPath(request.headers.get("Referer") ?? request.url),
+      303,
     );
   }
 
@@ -86,7 +77,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `library:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = externalTitleSchema.safeParse(
     await readForm(request, maxFormBytes),

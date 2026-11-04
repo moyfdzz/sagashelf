@@ -14,12 +14,6 @@ const maxFormBytes = 1024;
 
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 /**
  * A form that the title page sends with JavaScript is a `fetch`, and its answer is data: the
  * page changes in place. The same form without JavaScript is a document, and the person goes to
@@ -57,27 +51,18 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(
-      request,
-      data({ error: "payload_too_large" }, { status: 413 }),
-    );
+    return data({ error: "payload_too_large" }, { status: 413 });
   }
 
   // A page on another site must not be able to fill someone's library.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(
-      request,
-      data({ error: "forbidden" }, { status: 403 }),
-    );
+    return data({ error: "forbidden" }, { status: 403 });
   }
 
   const user = await getOptionalUser(args);
   if (!user) {
-    return answerWithoutReading(
-      request,
-      redirectDocument(signInPath(cameFrom(request)), 303),
-    );
+    return redirectDocument(signInPath(cameFrom(request)), 303);
   }
 
   const limited = await rateLimit(
@@ -85,7 +70,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `library:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = addEntrySchema.safeParse(
     await readForm(request, maxFormBytes),

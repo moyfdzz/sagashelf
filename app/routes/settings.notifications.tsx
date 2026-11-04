@@ -85,12 +85,6 @@ type ErrorCode =
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 export async function loader(args: Route.LoaderArgs) {
   // Sends a visitor without a session to sign in, and refuses an account with no local row.
   const user = await requireUser(args);
@@ -159,20 +153,20 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail("invalid_request", 413));
+    return fail("invalid_request", 413);
   }
 
   // A page on another site must not be able to connect a webhook, or send a message, for someone.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail("invalid_request", 403));
+    return fail("invalid_request", 403);
   }
 
   // The person is the one in the verified session, never a field of the form.
   const user = await requireUser(args);
 
   if (!getWebhooksEnabled()) {
-    return answerWithoutReading(request, fail("unavailable", 503));
+    return fail("unavailable", 503);
   }
 
   const limited = await rateLimit(
@@ -180,7 +174,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `webhooks:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) return fail("invalid_request", 400);

@@ -20,7 +20,7 @@ Risk first, then cost. "Copies" were counted by searching the source on 2026-11-
 
 ### High: copies of a security rule
 
-1. **`answerWithoutReading` is defined 16 times** (`api.locale.ts`, `webhooks.clerk.ts` and 14 more routes, in two variants: `Response` and generic `<T>`). It protects against a connection that breaks when a POST is answered before its body is read. A fix to one copy leaves the others behind. **Fix, but first check SAG-73:** `answerAndDrain` in `workers/app.ts` already covers every route, so most copies may simply be deleted. Ticket: finish SAG-73 and keep one helper in `server/http/` only where a route still needs it.
+1. **`answerWithoutReading` is defined 16 times** (`api.locale.ts`, `webhooks.clerk.ts` and 14 more routes, in two variants: `Response` and generic `<T>`). It protects against a connection that breaks when a POST is answered before its body is read. A fix to one copy leaves the others behind. **Fix, but first check SAG-73:** `answerAndDrain` in `workers/app.ts` already covers every route, so most copies may simply be deleted. **Done in SAG-73:** `answerAndDrain` did cover every route, so the 16 copies and the five `drainBody` calls of `requireUser` and `readAdminWrite` were deleted, and no helper was needed.
 2. **`privateHeaders` is defined in 15 routes, the string `"private, no-store"` appears 26 times, and 18 routes export their own `headers()`.** The rule "an answer with a person's data is never cached" is written by hand each time, so a new route can forget it. **Fix:** one `privateHeaders` constant in `app/lib/` (client-safe, a route module can import it) and a shared `headers` function for the routes that only return it. Rule check below.
 
 ### High: one module with several reasons to change

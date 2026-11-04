@@ -82,13 +82,6 @@ function fieldErrors(error: ZodError): FieldErrors {
   return errors;
 }
 
-// Answering before the body is read leaves it open, and the local runtime then fails the next
-// request on the same connection. Read and drop it first (the size was already checked).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 export async function loader(args: Route.LoaderArgs) {
   // Sends a visitor without a session to sign in, and refuses an account with no local row.
   const user = await requireUser(args);
@@ -137,19 +130,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(
-      request,
-      data({ ok: false as const, errors: notTheForm }, { status: 413 }),
-    );
+    return data({ ok: false as const, errors: notTheForm }, { status: 413 });
   }
 
   // A page on another site must not be able to change someone's profile.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(
-      request,
-      data({ ok: false as const, errors: notTheForm }, { status: 403 }),
-    );
+    return data({ ok: false as const, errors: notTheForm }, { status: 403 });
   }
 
   // The person is the one in the verified session, never a field of the form.
@@ -160,7 +147,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `profile:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsed = profileUpdateSchema.safeParse(
     await readForm(request, maxFormBytes),

@@ -43,12 +43,6 @@ const formSchema = z.strictObject({
   keepVisibility: z.literal("on").optional(),
 });
 
-// Answering before the body is read leaves it open (see settings.profile.tsx).
-async function answerWithoutReading<T>(request: Request, response: T) {
-  await request.arrayBuffer().catch(() => undefined);
-  return response;
-}
-
 const fail = (error: ErrorCode, status = 400) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
@@ -84,13 +78,13 @@ export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
   if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return answerWithoutReading(request, fail("file_too_large", 413));
+    return fail("file_too_large", 413);
   }
 
   // A page on another site must not be able to write into someone's library.
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) {
-    return answerWithoutReading(request, fail("generic", 403));
+    return fail("generic", 403);
   }
 
   // The person is the one in the verified session, never something that is in the file.
@@ -101,7 +95,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `import:${user.id}`,
   );
-  if (limited) return answerWithoutReading(request, limited);
+  if (limited) return limited;
 
   const parsedForm = formSchema.safeParse(
     await readForm(request, maxFormBytes),
