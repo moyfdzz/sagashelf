@@ -16,7 +16,9 @@
     "stats": "Statistics",
     "admin": "Administration",
     "recommendations": "Recommendations",
-    "menu": "Menu"
+    "menu": "Menu",
+    "notifications": "Alerts",
+    "unread": ", {{shown}} unread"
   },
   "language": {
     "label": "Language"
@@ -752,6 +754,26 @@
       "viewings_limit": "You reached the most times that can be saved for this title.",
       "generic": "We could not save the changes. Try again.",
       "not_completed_read": "You can only read a completed title again."
+    }
+  },
+  "notifications": {
+    "title": "Alerts",
+    "description": "The new episodes of what you have as \"In progress\". The 50 newest of the last 30 days are shown.",
+    "listLabel": "List of alerts",
+    "empty": "No alerts yet. When a new episode of something you have as \"In progress\" comes out, it will show up here.",
+    "none": "You have no unread alerts.",
+    "unread_one": "You have {{count}} unread alert.",
+    "unread_other": "You have {{count}} unread alerts.",
+    "new": "New",
+    "markRead": "Mark as read",
+    "markAll": "Mark all as read",
+    "result": {
+      "read": "Alert marked as read.",
+      "allRead": "Alerts marked as read."
+    },
+    "errors": {
+      "not_found": "We could not find that alert.",
+      "invalid_request": "We could not read the form. Reload the page and try again."
     }
   },
   "stats": {

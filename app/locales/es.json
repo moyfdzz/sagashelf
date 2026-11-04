@@ -16,7 +16,9 @@
     "stats": "Estadísticas",
     "admin": "Administración",
     "recommendations": "Recomendaciones",
-    "menu": "Menú"
+    "menu": "Menú",
+    "notifications": "Avisos",
+    "unread": ", {{shown}} sin leer"
   },
   "language": {
     "label": "Idioma"
@@ -752,6 +754,26 @@
       "viewings_limit": "Llegaste al máximo de veces que se pueden guardar para este título.",
       "generic": "No pudimos guardar los cambios. Inténtalo de nuevo.",
       "not_completed_read": "Solo puedes volver a leer un título completado."
+    }
+  },
+  "notifications": {
+    "title": "Avisos",
+    "description": "Los episodios nuevos de lo que tienes \"En curso\". Se muestran los 50 más nuevos de los últimos 30 días.",
+    "listLabel": "Lista de avisos",
+    "empty": "Todavía no hay avisos. Cuando salga un episodio nuevo de algo que tienes \"En curso\", aparecerá aquí.",
+    "none": "No tienes avisos sin leer.",
+    "unread_one": "Tienes {{count}} aviso sin leer.",
+    "unread_other": "Tienes {{count}} avisos sin leer.",
+    "new": "Nuevo",
+    "markRead": "Marcar como leído",
+    "markAll": "Marcar todos como leídos",
+    "result": {
+      "read": "Aviso marcado como leído.",
+      "allRead": "Avisos marcados como leídos."
+    },
+    "errors": {
+      "not_found": "No encontramos ese aviso.",
+      "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
     }
   },
   "stats": {

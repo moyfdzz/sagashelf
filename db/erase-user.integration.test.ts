@@ -14,6 +14,7 @@ import {
   listItems,
   lists,
   mediaItems,
+  notifications,
   users,
 } from "../server/db/schema";
 import { createTestDb } from "./test-database";
@@ -81,6 +82,28 @@ async function personWithEverything() {
     .returning();
   if (!post) throw new Error("The post was not created");
   await db.insert(likes).values({ userId: bob.id, activityId: post.id });
+  // What the inbox told them (SAG-102): one read and one unread, and one of the other person.
+  await db.insert(notifications).values([
+    {
+      userId: ana.id,
+      type: "episode.aired",
+      payload: { title: "Ana's private watching", mediaId: movie.id },
+      dedupeKey: "episode:ana:1",
+    },
+    {
+      userId: ana.id,
+      type: "episode.aired",
+      payload: { title: "Another one" },
+      dedupeKey: "episode:ana:2",
+      readAt: new Date("2026-11-03T12:00:00Z"),
+    },
+    {
+      userId: bob.id,
+      type: "episode.aired",
+      payload: { title: "Bob's one" },
+      dedupeKey: "episode:bob:1",
+    },
+  ]);
   return { ana, bob, movie };
 }
 
@@ -103,6 +126,9 @@ describe("eraseAccount", () => {
     ]) {
       expect(await db.select().from(table), String(table)).toHaveLength(0);
     }
+    // Their notifications are gone and the other person's stays.
+    const left = await db.select().from(notifications);
+    expect(left.map((row) => row.userId)).toEqual([bob.id]);
     // The shared title stays; the title the person wrote is gone with their entry.
     const titles = (await db.select().from(mediaItems)).map((m) => m.title);
     expect(titles).toEqual([movie.title]);
@@ -216,6 +242,15 @@ describe("exportAccount", () => {
         items: [{ title: "A shared movie", note: "ana's note" }],
       },
     ]);
+    // The notifications: both of hers, with what each said and when it was read, and not Bob's.
+    expect(data?.notifications).toHaveLength(2);
+    expect(data?.notifications).toContainEqual({
+      type: "episode.aired",
+      payload: { title: "Another one" },
+      createdAt: expect.any(String),
+      readAt: "2026-11-03T12:00:00.000Z",
+    });
+    expect(JSON.stringify(data?.notifications)).not.toContain("Bob's one");
     // No Clerk id, no role, no email, no id of the account, nothing of other people.
     const text = JSON.stringify(data);
     for (const secret of [

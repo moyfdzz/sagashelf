@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-03
-- **Implementation:** Done (SAG-28) for the episodes of series and anime, delivered to Discord. New volumes of manga and books, and a notification inside the app, are left out (see "What is not here"). "Do not tell me about this series" was added by SAG-101.
+- **Implementation:** Done (SAG-28) for the episodes of series and anime, delivered to Discord. New volumes of manga and books are left out (see "What is not here"). "Do not tell me about this series" was added by SAG-101, and the inbox inside the app by SAG-102.
 - **Tickets:** SAG-28, SAG-27, SAG-90
 - **Related:** [ADR-007](007-background-work-cron-and-outbox.md), [ADR-018](018-personal-library.md), [ADR-027](027-tvmaze-next-episode.md), [ADR-029](029-discord-webhooks.md), [ADR-012](012-neon-over-supabase.md)
 
@@ -13,7 +13,7 @@ ADR-027 keeps the next episode of each series (`media_next_episode`) and ADR-029
 Four things in the ticket did not match what exists, and are decided here:
 
 - **The table keeps one row per title, the next episode, and overwrites it.** The job of ADR-027 asks TVmaze again the day after an episode comes out, and saves the episode that follows. Comparing "before" and "after" in that job would tell people about an episode more than a day after it came out.
-- **There is data for episodes only.** Nothing in the database says when a new volume of a manga or a book comes out (that is SAG-68), and there is no table of notifications inside the app.
+- **There is data for episodes only.** Nothing in the database says when a new volume of a manga or a book comes out (that is SAG-68), and (until SAG-102) there was no table of notifications inside the app.
 - **Nobody receives anything today.** `webhook_endpoints.event_types` is empty by default and the settings page had no way to choose.
 - **There is no time zone per person**, only the language (`users.locale`).
 
@@ -27,7 +27,7 @@ Four things in the ticket did not match what exists, and are decided here:
 
 **A switch for each title (SAG-101, migration `0019`).** `library_entries.notify_new_episodes` is on by default, which is what an entry did before there was a switch, so the migration changes nothing for anybody. The page of a series or an anime in the library has a small form of its own, "Alerts for this title", with a box and its own button (`setEntryNotifyNewEpisodes`: one statement, the id of the session in its `WHERE`, and it does not change `updated_at`, because the column is set to itself: Drizzle would otherwise stamp it with `$onUpdate` and silencing a title would move it up the list of what was changed lately). The statement of the alerts only joins entries that have it on. It is part of the export of the account, and an import gives it to a **new** entry as the file says (a file from before the switch reads as on, and only a real `false` turns it off) while an entry the person already has keeps its own, even when it is replaced, like the visibility.
 
-**One message per endpoint, a digest.** All the episodes of the moment for that endpoint go in one `episode.aired` event: the first 10 titles (in order of title) and how many there were, so a Sunday night with eight series is one message. The title is in the language of the person (`titles ->> locale`, else the title saved). The key of the event is made from what it tells (the endpoint and a hash of the titles and moments), so even a repeat of the same statement could not queue it twice.
+**An inbox inside the app (SAG-102, migration `0020`).** A person who has no webhook, or does not use Discord, never heard of an episode. The same statement now also writes a row in `notifications` (user, type `episode.aired`, a JSON payload with the title in the language of the person, the season, the number and the id of the title, the moment it was made and `read_at`) for **each person** who hears an episode, whether or not they have an endpoint, so the Discord message and the notification come from one cause and one statement. The key of a row (`'episode:' || media id || ':' || air stamp`, unique with the user) makes a repeat harmless. It is **one row per episode**, not a digest: it reads better in a list and is marked one by one. The page is `/notifications`, a plain anchor like every session page (ADR-018, and `isSessionPage` gives it the narrow policy with Clerk's script); it lists the 50 newest of the last 30 days, with "Mark as read" for each and "Mark all as read" (`markRead` and `markAllRead`, each one statement with the id of the session in its `WHERE`; a Zod `strictObject`, the `Origin` check and the rate limit, like the other actions). The text of a row is made by the page, in the language of the page, with `episodeLabel` of `server/webhooks/message.ts`, the same function the Discord message uses. The header shows the number of unread ones next to the link and a dot on the menu button of a phone (the link is in its panel); the count is one small read in the root loader for a person with a session (`countUnreadByClerkId`, capped so it never scans a long table, shown as `99+`), and a failure of it is logged by name and says 0. A row is deleted after 30 days by a `DELETE` **in the same statement** of the alerts, so the cleanup costs no request: the budget stays at 43 of the 50. The table is in the erasure of the account (`erasedColumns`; the test that reads the foreign keys fails without it) and in the export (`notifications`, without the id of the row). **What it does not do:** nothing is written for the episodes that came out before it was deployed (the window of 3 days still applies), and, because the job is the hourly one, with `WEBHOOKS_ENABLED` off nothing is written either: the flag switches the whole job off. All the episodes of the moment for that endpoint go in one `episode.aired` event: the first 10 titles (in order of title) and how many there were, so a Sunday night with eight series is one message. The title is in the language of the person (`titles ->> locale`, else the title saved). The key of the event is made from what it tells (the endpoint and a hash of the titles and moments), so even a repeat of the same statement could not queue it twice.
 
 **The text** (`server/webhooks/message.ts`) is "a new episode is out" or "N new episodes are out", then one line per title with season and episode when TVmaze gave them, and "… and N more". It carries **no hour**: TVmaze's date is in the time zone of the network (ADR-027), and the person's own zone is not known, so naming an hour would often be wrong. It mentions nobody (ADR-029). A payload that says nothing is given up on, not sent.
 
@@ -38,14 +38,14 @@ Four things in the ticket did not match what exists, and are decided here:
 ## What is not here, and why
 
 - **New volumes of manga and books.** No data says when a volume comes out (SAG-68 is the ticket for volumes by ISBN). The same statement and event type can take it when there is a source.
-- **A notification inside the app.** There is no table, no page and no erasure or export for it; that is a feature of its own. Today the only destination is a Discord channel.
+- **Notifications for anything but episodes.** The table takes only `episode.aired` (a `CHECK`); a new type is a migration with its text.
 - **A time zone and an hour.** See above.
 
 ## Alternatives considered
 
 - **Compare the old and the new row in the job of ADR-027.** No new column, but the alert comes a day or more after the episode, because that job asks again the day after it comes out.
 - **One message per episode.** Simpler, but a person with many series gets many messages at once, and 20 events a run is all the delivery sends.
-- **A table of announcements** (user, title, episode). Exact per person, but it grows with the library and needs erasure and export; one column on the catalog table says the same for everyone, because the alert depends on the episode and not on the person.
+- **A table of announcements** (user, title, episode) as the memory of what was told. Exact per person, but it grows with the library; one column on the catalog table says the same for everyone, because the alert depends on the episode and not on the person. The inbox of SAG-102 is a table too, but it is not the memory: it is what the person reads, it is kept 30 days, and the episode is still marked on the catalog table.
 - **On by default.** A person who connected a webhook only to try it would find alerts in their channel they never asked for.
 - **A Cron Trigger for this.** The Free plan allows 5 and 3 are used; the hourly one has room (43 of 50).
 

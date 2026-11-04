@@ -9,6 +9,7 @@ import {
 import {
   libraryEntries,
   mediaNextEpisode,
+  notifications,
   outbox,
   webhookEndpoints,
 } from "../server/db/schema";
@@ -112,7 +113,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
 
     const summary = await announceNewEpisodes(db, now);
 
-    expect(summary).toEqual({ episodes: 1, messages: 1 });
+    expect(summary).toEqual({ episodes: 1, messages: 1, notifications: 1 });
     const rows = await queued();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -154,8 +155,8 @@ describe("announceNewEpisodes (SAG-28)", () => {
     const later = await announceNewEpisodes(db, hoursFromNow(5));
 
     expect(first.messages).toBe(1);
-    expect(second).toEqual({ episodes: 0, messages: 0 });
-    expect(later).toEqual({ episodes: 0, messages: 0 });
+    expect(second).toEqual({ episodes: 0, messages: 0, notifications: 0 });
+    expect(later).toEqual({ episodes: 0, messages: 0, notifications: 0 });
     expect(await queued()).toHaveLength(1);
   });
 
@@ -189,9 +190,9 @@ describe("announceNewEpisodes (SAG-28)", () => {
       .where(eq(mediaNextEpisode.mediaId, show.id));
     const after = await announceNewEpisodes(db, hoursFromNow(4));
 
-    expect(before).toEqual({ episodes: 0, messages: 0 });
+    expect(before).toEqual({ episodes: 0, messages: 0, notifications: 0 });
     expect(unmarked?.announcedStamp).toBeNull();
-    expect(after).toEqual({ episodes: 1, messages: 1 });
+    expect(after).toEqual({ episodes: 1, messages: 1, notifications: 1 });
   });
 
   it("does not announce an episode that came out longer ago than the window, so a first run is not a flood", async () => {
@@ -208,7 +209,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
 
     const summary = await announceNewEpisodes(db, now);
 
-    expect(summary).toEqual({ episodes: 1, messages: 1 });
+    expect(summary).toEqual({ episodes: 1, messages: 1, notifications: 1 });
     const [row] = await queued();
     expect(digestOf(row ?? { payload: null }).episodes).toEqual([
       { title: "Fresh", season: 1, number: 1 },
@@ -224,6 +225,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
     expect(await announceNewEpisodes(db, now)).toEqual({
       episodes: 0,
       messages: 0,
+      notifications: 0,
     });
   });
 
@@ -252,8 +254,8 @@ describe("announceNewEpisodes (SAG-28)", () => {
       await watching(person.id, show.id);
       const second = await announceNewEpisodes(db, now);
 
-      expect(first).toEqual({ episodes: 1, messages: 0 });
-      expect(second).toEqual({ episodes: 0, messages: 0 });
+      expect(first).toEqual({ episodes: 1, messages: 0, notifications: 0 });
+      expect(second).toEqual({ episodes: 0, messages: 0, notifications: 0 });
       expect(await queued()).toHaveLength(0);
     });
 
@@ -276,7 +278,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
 
       const summary = await announceNewEpisodes(db, now);
 
-      expect(summary).toEqual({ episodes: 1, messages: 0 });
+      expect(summary).toEqual({ episodes: 1, messages: 0, notifications: 4 });
       expect(await queued()).toHaveLength(0);
     });
 
@@ -295,7 +297,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
 
       const summary = await announceNewEpisodes(db, now);
 
-      expect(summary).toEqual({ episodes: 3, messages: 2 });
+      expect(summary).toEqual({ episodes: 3, messages: 2, notifications: 4 });
       const rows = await queued();
       const titlesOf = (endpointId: string) =>
         digestOf(
@@ -316,7 +318,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
 
       const summary = await announceNewEpisodes(db, now);
 
-      expect(summary).toEqual({ episodes: 1, messages: 2 });
+      expect(summary).toEqual({ episodes: 1, messages: 2, notifications: 1 });
       expect(new Set((await queued()).map((row) => row.endpointId)).size).toBe(
         2,
       );
@@ -334,7 +336,7 @@ describe("announceNewEpisodes (SAG-28)", () => {
 
       const summary = await announceNewEpisodes(db, now);
 
-      expect(summary).toEqual({ episodes: 3, messages: 1 });
+      expect(summary).toEqual({ episodes: 3, messages: 1, notifications: 3 });
       const [row] = await queued();
       const digest = digestOf(row ?? { payload: null });
       expect(digest.total).toBe(3);
@@ -383,8 +385,8 @@ describe("announceNewEpisodes (SAG-28)", () => {
       const next = await announceNewEpisodes(db, now);
       const again = await announceNewEpisodes(db, now);
 
-      expect(next).toEqual({ episodes: 1, messages: 1 });
-      expect(again).toEqual({ episodes: 0, messages: 0 });
+      expect(next).toEqual({ episodes: 1, messages: 1, notifications: 1 });
+      expect(again).toEqual({ episodes: 0, messages: 0, notifications: 0 });
       const rows = await queued();
       expect(rows).toHaveLength(2);
       expect(digestOf(rows[1] ?? { payload: null }).episodes).toEqual([
@@ -533,7 +535,7 @@ describe("the switch of a title (SAG-101)", () => {
 
     const summary = await announceNewEpisodes(db, now);
 
-    expect(summary).toEqual({ episodes: 2, messages: 1 });
+    expect(summary).toEqual({ episodes: 2, messages: 1, notifications: 1 });
     const [row] = await queued();
     const digest = digestOf(row ?? { payload: null });
     expect(digest.total).toBe(1);
@@ -550,6 +552,7 @@ describe("the switch of a title (SAG-101)", () => {
     expect(await announceNewEpisodes(db, now)).toEqual({
       episodes: 1,
       messages: 0,
+      notifications: 0,
     });
     expect(await queued()).toHaveLength(0);
   });
@@ -565,7 +568,7 @@ describe("the switch of a title (SAG-101)", () => {
     await setEntryNotifyNewEpisodes(db, person.id, quiet.id, true);
     const later = await announceNewEpisodes(db, now);
 
-    expect(later).toEqual({ episodes: 0, messages: 0 });
+    expect(later).toEqual({ episodes: 0, messages: 0, notifications: 0 });
     expect(await queued()).toHaveLength(0);
   });
 
@@ -588,7 +591,7 @@ describe("the switch of a title (SAG-101)", () => {
       .where(eq(mediaNextEpisode.mediaId, quiet.id));
     const next = await announceNewEpisodes(db, now);
 
-    expect(next).toEqual({ episodes: 1, messages: 1 });
+    expect(next).toEqual({ episodes: 1, messages: 1, notifications: 1 });
   });
 
   it("only silences the person who did: another one who follows the same title is still told", async () => {
@@ -603,10 +606,172 @@ describe("the switch of a title (SAG-101)", () => {
 
     const summary = await announceNewEpisodes(db, now);
 
-    expect(summary).toEqual({ episodes: 1, messages: 1 });
+    expect(summary).toEqual({ episodes: 1, messages: 1, notifications: 1 });
     const rows = await queued();
     expect(rows).toHaveLength(1);
     expect(rows[0]?.endpointId).toBe(benEndpoint.id);
     expect(rows[0]?.endpointId).not.toBe(anaEndpoint.id);
+  });
+});
+
+describe("the inbox of notifications (SAG-102)", () => {
+  const inbox = () =>
+    db.select().from(notifications).orderBy(asc(notifications.createdAt));
+
+  it("tells a person who has no webhook at all, which is the whole point of the inbox", async () => {
+    const person = await newUser();
+    const show = await series("Severance", {
+      airStamp: hoursAgo(2),
+      season: 2,
+      number: 5,
+    });
+    await watching(person.id, show.id);
+
+    const summary = await announceNewEpisodes(db, now);
+
+    expect(summary).toEqual({ episodes: 1, messages: 0, notifications: 1 });
+    expect(await queued()).toHaveLength(0);
+    const rows = await inbox();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      userId: person.id,
+      type: "episode.aired",
+      readAt: null,
+    });
+    expect(rows[0]?.payload).toEqual({
+      locale: "es",
+      mediaId: show.id,
+      title: "Severance",
+      season: 2,
+      number: 5,
+    });
+  });
+
+  it("comes from the same cause as the Discord message: both are written, in one statement", async () => {
+    const person = await newUser();
+    await endpoint(person.id);
+    const show = await series("Severance", { airStamp: hoursAgo(2) });
+    await watching(person.id, show.id);
+
+    const summary = await announceNewEpisodes(db, now);
+
+    expect(summary).toEqual({ episodes: 1, messages: 1, notifications: 1 });
+    expect(await queued()).toHaveLength(1);
+    expect(await inbox()).toHaveLength(1);
+  });
+
+  it("writes the title in the language of the person", async () => {
+    const person = await newUser({ locale: "en" });
+    const show = await series(
+      "Los Simpson",
+      { airStamp: hoursAgo(1) },
+      { en: "The Simpsons" },
+    );
+    await watching(person.id, show.id);
+
+    await announceNewEpisodes(db, now);
+
+    const [row] = await inbox();
+    expect(row?.payload).toMatchObject({ locale: "en", title: "The Simpsons" });
+  });
+
+  it("writes one per episode and per person, so two titles are two rows", async () => {
+    const person = await newUser();
+    const a = await series("A", { airStamp: hoursAgo(1) });
+    const b = await series("B", { airStamp: hoursAgo(1) });
+    await watching(person.id, a.id);
+    await watching(person.id, b.id);
+
+    await announceNewEpisodes(db, now);
+
+    const titles = (await inbox()).map((row) => row.payload.title).sort();
+    expect(titles).toEqual(["A", "B"]);
+  });
+
+  it("only tells the people who watch it: a title that is planned, completed or silenced leaves nothing", async () => {
+    const person = await newUser();
+    const planned = await series("Planned", { airStamp: hoursAgo(1) });
+    const done = await series("Done", { airStamp: hoursAgo(1) });
+    const quiet = await series("Quiet", { airStamp: hoursAgo(1) });
+    const live = await series("Live", { airStamp: hoursAgo(1) });
+    await watching(person.id, planned.id, "planned");
+    await watching(person.id, done.id, "completed");
+    await watching(person.id, quiet.id);
+    await setEntryNotifyNewEpisodes(db, person.id, quiet.id, false);
+    await watching(person.id, live.id);
+
+    await announceNewEpisodes(db, now);
+
+    expect((await inbox()).map((row) => row.payload.title)).toEqual(["Live"]);
+  });
+
+  it("never writes a person's notification for somebody else's library", async () => {
+    const ana = await newUser();
+    const ben = await newUser();
+    const hers = await series("Hers", { airStamp: hoursAgo(1) });
+    await series("Nobody's", { airStamp: hoursAgo(1) });
+    await watching(ana.id, hers.id);
+
+    await announceNewEpisodes(db, now);
+
+    const rows = await inbox();
+    expect(rows.map((row) => row.userId)).toEqual([ana.id]);
+    expect(rows.some((row) => row.userId === ben.id)).toBe(false);
+  });
+
+  it("does not write the same one twice, however many times it runs", async () => {
+    const person = await newUser();
+    const show = await series("Severance", { airStamp: hoursAgo(2) });
+    await watching(person.id, show.id);
+
+    await announceNewEpisodes(db, now);
+    const again = await announceNewEpisodes(db, now);
+
+    expect(again.notifications).toBe(0);
+    expect(await inbox()).toHaveLength(1);
+  });
+
+  it("is also protected by its own key if the episode were marked again", async () => {
+    const person = await newUser();
+    const show = await series("Severance", { airStamp: hoursAgo(2) });
+    await watching(person.id, show.id);
+    await announceNewEpisodes(db, now);
+
+    // Put the mark back, as if the first statement had been lost, and run it again.
+    await db
+      .update(mediaNextEpisode)
+      .set({ announcedStamp: null })
+      .where(eq(mediaNextEpisode.mediaId, show.id));
+    const again = await announceNewEpisodes(db, now);
+
+    expect(again.notifications).toBe(0);
+    expect(await inbox()).toHaveLength(1);
+  });
+
+  it("deletes what is older than 30 days in the same statement, and keeps the rest", async () => {
+    const person = await newUser();
+    const show = await series("Severance", { airStamp: hoursAgo(1) });
+    await watching(person.id, show.id);
+    const make = (key: string, createdAt: Date) =>
+      db.insert(notifications).values({
+        userId: person.id,
+        type: "episode.aired",
+        payload: { title: key },
+        dedupeKey: key,
+        createdAt,
+      });
+    const days = (n: number) =>
+      new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+    await make("old", days(31));
+    await make("edge", days(29));
+    await make("fresh", days(1));
+
+    await announceNewEpisodes(db, now);
+
+    const left = (await inbox()).map((row) => row.dedupeKey).sort();
+    expect(left).toHaveLength(3);
+    expect(left).toContain("edge");
+    expect(left).toContain("fresh");
+    expect(left).not.toContain("old");
   });
 });

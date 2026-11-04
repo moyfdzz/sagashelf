@@ -21,6 +21,7 @@ import { readTheme } from "~/lib/theme";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
 import { isAdministrator } from "~server/auth/is-admin";
 import { isSignedIn } from "~server/auth/signed-in";
+import { unreadNotifications } from "~server/auth/unread-notifications";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
 
@@ -35,6 +36,9 @@ export const links: Route.LinksFunction = () => [
 export async function loader(args: Route.LoaderArgs) {
   const { context, request } = args;
   const signedIn = await isSignedIn(args);
+  const [isAdmin, unread] = signedIn
+    ? await Promise.all([isAdministrator(args), unreadNotifications(args)])
+    : [false, 0];
   return data({
     locale: getLocale(context),
     // The mode the person chose with the switch. With none, the page follows the system.
@@ -43,7 +47,9 @@ export async function loader(args: Route.LoaderArgs) {
     signedIn,
     // Also a yes or no: the link to the administration is for an administrator (SAG-95). It is read
     // only for a person with a session, and the pages of the administration check the role again.
-    isAdmin: signedIn ? await isAdministrator(args) : false,
+    isAdmin,
+    // How many notifications are unread, for the link in the header (SAG-102). 99 is the most shown.
+    unread,
   });
 }
 
@@ -53,6 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const theme = rootData?.theme ?? null;
   const signedIn = rootData?.signedIn ?? false;
   const isAdmin = rootData?.isAdmin ?? false;
+  const unread = rootData?.unread ?? 0;
 
   return (
     <html
@@ -67,7 +74,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <Navbar savedTheme={theme} signedIn={signedIn} isAdmin={isAdmin} />
+        <Navbar
+          savedTheme={theme}
+          signedIn={signedIn}
+          isAdmin={isAdmin}
+          unread={unread}
+        />
         {children}
         <Footer />
         <ScrollRestoration />

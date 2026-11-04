@@ -183,6 +183,8 @@ describe("isSessionPage", () => {
     "/admin",
     "/admin/sagas",
     "/admin/sagas/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f",
+    "/notifications",
+    "/notifications/",
   ])("is true for %s", (path) => expect(isSessionPage(path)).toBe(true));
 
   it.each([
@@ -196,6 +198,8 @@ describe("isSessionPage", () => {
     "/api/library",
     "/administrator",
     "/api/admin",
+    "/notificationsx",
+    "/api/notifications",
   ])("is false for %s", (path) => expect(isSessionPage(path)).toBe(false));
 });
 

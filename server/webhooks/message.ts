@@ -89,6 +89,43 @@ const episodeText = {
   },
 } as const;
 
+/**
+ * Which episode a line is about, in words ("temporada 2, episodio 5"), or null when the provider gave
+ * no number. The Discord message and the notification inside the app (SAG-102) both use it, so they
+ * say the same thing.
+ */
+export function episodeLabel(
+  locale: "es" | "en",
+  line: { season: number | null; number: number | null },
+): string | null {
+  const text = episodeText[locale];
+  if (line.season !== null && line.number !== null) {
+    return text.season(line.season, line.number);
+  }
+  return line.number !== null ? text.episode(line.number) : null;
+}
+
+/**
+ * What the notification inside the app shows for an `episode.aired` row: the title and which
+ * episode. The payload comes from the database, so it is checked and not trusted; null means it says
+ * nothing and the row is not shown.
+ */
+export function episodeNotice(
+  payload: Record<string, unknown>,
+  locale: "es" | "en",
+): { title: string; which: string | null; mediaId: string | null } | null {
+  const { title, season, number, mediaId } = payload;
+  if (typeof title !== "string" || title.trim() === "") return null;
+  return {
+    title,
+    which: episodeLabel(locale, {
+      season: asCount(season),
+      number: asCount(number),
+    }),
+    mediaId: typeof mediaId === "string" ? mediaId : null,
+  };
+}
+
 /** One message for all the episodes of the moment: a digest, not one message per series. */
 function episodesMessage(
   payload: Record<string, unknown>,
@@ -98,12 +135,7 @@ function episodesMessage(
   if (!episodes) return null;
   const text = episodeText[locale];
   const lines = episodes.lines.map((line) => {
-    const which =
-      line.season !== null && line.number !== null
-        ? text.season(line.season, line.number)
-        : line.number !== null
-          ? text.episode(line.number)
-          : null;
+    const which = episodeLabel(locale, line);
     return which ? `• ${line.title}: ${which}` : `• ${line.title}`;
   });
   const rest = episodes.total - episodes.lines.length;

@@ -18,6 +18,7 @@ const base: AccountExport = {
   customEntries: [],
   lists: [],
   webhooks: [],
+  notifications: [],
 };
 
 const lines = (csv: string) => csv.split("\r\n");

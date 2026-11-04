@@ -13,6 +13,7 @@ export const erasedColumns: readonly (readonly [string, string])[] = [
   ["custom_entries", "owner_id"],
   ["lists", "owner_id"],
   ["webhook_endpoints", "user_id"],
+  ["notifications", "user_id"],
   ["follows", "follower_id"],
   ["follows", "followee_id"],
   ["blocks", "blocker_id"],

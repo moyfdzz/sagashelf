@@ -77,10 +77,13 @@ export function isAuthPage(pathname: string): boolean {
  * visible component) to keep the session alive, and get the narrow policy below. The sign-out
  * page (SAG-38) needs the same script to end the session, and the same origins. The library
  * (SAG-18) is here because its entry page has a form that can stay open, and so is the
- * administration (SAG-92), whose forms are edited for a while.
+ * administration (SAG-92), whose forms are edited for a while. The inbox of notifications (SAG-102)
+ * is here because it is a page of a signed-in person with forms.
  */
 export function isSessionPage(pathname: string): boolean {
-  return /^\/(settings|sign-out|library|admin)(\/|$)/.test(pathname);
+  return /^\/(settings|sign-out|library|admin|notifications)(\/|$)/.test(
+    pathname,
+  );
 }
 
 /**

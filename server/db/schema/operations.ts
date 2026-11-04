@@ -157,3 +157,39 @@ export const processedWebhooks = pgTable(
   },
   (t) => [primaryKey({ columns: [t.provider, t.eventId] })],
 );
+
+/**
+ * What a person is told inside the app (SAG-102, ADR-030): one row per episode that came out of a
+ * title they have "in progress". It is written by the same statement that queues the Discord
+ * events, so both come from one cause. `dedupe_key` makes a repeat of that statement harmless, and
+ * `read_at` is empty until the person marks it. Rows older than 30 days are deleted by the same
+ * hourly job.
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: primaryId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("notifications_user_dedupe_unique").on(t.userId, t.dedupeKey),
+    check("notifications_type_check", sql`${t.type} in ('episode.aired')`),
+    // The page: newest first, for one person.
+    index("notifications_user_created_idx").on(t.userId, t.createdAt.desc()),
+    // The count in the header only looks at what is unread.
+    index("notifications_user_unread_idx")
+      .on(t.userId)
+      .where(sql`${t.readAt} is null`),
+    // The cleanup looks at age only.
+    index("notifications_created_idx").on(t.createdAt),
+  ],
+);
