@@ -135,7 +135,8 @@ describe("the legal pages after the profiles (SAG-107)", () => {
     expect(html).toContain("Privado:");
     expect(html).toContain("Privacidad total: nadie más que tú ve tu perfil");
     expect(html).toContain("puede enviarte una solicitud para seguirte");
-    expect(html).toContain("la guardamos como rechazada hasta 30 días");
+    expect(html).toContain("sigue como enviada hasta que la cancele");
+    expect(html).not.toContain("rechazada hasta 30 días");
     expect(html).toContain("tu nombre de usuario, tu nombre y tu foto");
     expect(html).toContain("Tus notas no las ve nadie.");
     expect(html).toContain("Relaciones: a quién sigues");
@@ -151,7 +152,8 @@ describe("the legal pages after the profiles (SAG-107)", () => {
     expect(html).toContain("Private:");
     expect(html).toContain("Total privacy: nobody but you sees your profile");
     expect(html).toContain("not even that it exists");
-    expect(html).toContain("we keep it as declined for up to 30 days");
+    expect(html).toContain("it still looks sent until they cancel it");
+    expect(html).not.toContain("declined for up to 30 days");
     expect(html).toContain("your follows, follow requests, blocks and mutes");
   });
 

@@ -17,9 +17,6 @@ import { followsPerHour, type Person } from "./social";
 /** Requests one person may have sent and not seen answered (declined ones count: they look sent). */
 export const sentRequestsMax = 100;
 
-/** After this long a declined request may be sent again. Checked inside the statement, no job. */
-export const askAgainAfterDays = 30;
-
 /** The most pending requests the page of notifications lists. */
 export const pendingListMax = 50;
 
@@ -30,7 +27,8 @@ export type RequestResult = "requested" | "unavailable" | "too_many";
  * erased, is not the viewer, has level `friends`, is not already followed, and neither has blocked
  * the other. It shares the hourly cap of follows (`followsPerHour`), and a person may have at most
  * `sentRequestsMax` requests sent. Asking again for a request already pending is `requested` and
- * changes nothing; a declined one is only renewed after `askAgainAfterDays`.
+ * changes nothing, and so does asking again for a declined one: the requester must cancel it first
+ * (ADR-034), which is what lets them ask again at once.
  */
 export async function requestFollow(
   db: SqlExecutor,
@@ -77,10 +75,7 @@ export async function requestFollow(
     added AS (
       INSERT INTO follow_requests (requester_id, target_id)
       SELECT ${viewerId}::uuid, id FROM target
-      ON CONFLICT (requester_id, target_id) DO UPDATE
-        SET created_at = now(), declined_at = NULL
-        WHERE follow_requests.declined_at IS NOT NULL
-          AND follow_requests.declined_at < now() - make_interval(days => ${askAgainAfterDays}::int)
+      ON CONFLICT (requester_id, target_id) DO NOTHING
       RETURNING 1
     )
     SELECT (SELECT n FROM recent) AS recent, (SELECT n FROM sent) AS sent,
@@ -95,8 +90,9 @@ export async function requestFollow(
 }
 
 /**
- * Takes back a request the viewer sent. A request the owner declined stays (it must keep looking
- * sent). It always answers the same: it does nothing when there was no request.
+ * Takes back a request the viewer sent, also one the owner declined (ADR-034): the owner is told
+ * nothing either way, and the viewer may ask again at once. It always answers the same: it does
+ * nothing when there was no request.
  */
 export async function cancelRequest(
   db: SqlExecutor,
@@ -106,7 +102,6 @@ export async function cancelRequest(
   await db.execute(sql`
     DELETE FROM follow_requests
     WHERE requester_id = ${viewerId}::uuid
-      AND declined_at IS NULL
       AND target_id IN (SELECT id FROM users WHERE username = ${username})
   `);
 }
@@ -225,10 +220,7 @@ export async function acceptRequest(
           SELECT 1 FROM follows f
           WHERE f.follower_id = ${ownerId}::uuid AND f.followee_id = req.id
         )
-      ON CONFLICT (requester_id, target_id) DO UPDATE
-        SET created_at = now(), declined_at = NULL
-        WHERE follow_requests.declined_at IS NOT NULL
-          AND follow_requests.declined_at < now() - make_interval(days => ${askAgainAfterDays}::int)
+      ON CONFLICT (requester_id, target_id) DO NOTHING
       RETURNING 1
     )
     SELECT EXISTS (SELECT 1 FROM req) AS found
@@ -238,7 +230,7 @@ export async function acceptRequest(
 
 /**
  * Declines the request of a username. Nobody is told: the row stays with `declined_at` set, so the
- * requester keeps seeing "sent" and cannot ask again at once. Declining what is not there, or what
+ * requester keeps seeing "sent" until they cancel it (ADR-034). Declining what is not there, or what
  * is already declined, does nothing.
  */
 export async function declineRequest(

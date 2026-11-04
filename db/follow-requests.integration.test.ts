@@ -3,7 +3,6 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   acceptRequest,
-  askAgainAfterDays,
   cancelRequest,
   declineRequest,
   hasRequested,
@@ -165,7 +164,7 @@ describe("requestFollow (SAG-108)", () => {
     expect(rows[0]?.createdAt).toEqual(first?.createdAt);
   });
 
-  it("keeps a declined request declined for 30 days, and answers as if it was sent", async () => {
+  it("keeps a declined request as it is, and answers as if it was sent, until it is cancelled", async () => {
     const ana = await person("ana_viewer");
     const ben = await person("ben_private", "friends");
     await ask(ana.id, ben.id);
@@ -182,14 +181,12 @@ describe("requestFollow (SAG-108)", () => {
     expect(await listPendingRequests(db, ben.id)).toHaveLength(0);
   });
 
-  it("lets a declined request be sent again once it is older than the wait", async () => {
+  it("lets a declined request be sent again at once after the requester cancelled it", async () => {
     const ana = await person("ana_viewer");
     const ben = await person("ben_private", "friends");
     await ask(ana.id, ben.id);
-    await db.execute(sql`
-      UPDATE follow_requests
-      SET declined_at = now() - make_interval(days => ${askAgainAfterDays + 1}::int)
-    `);
+    await declineRequest(db, ben.id, "ana_viewer");
+    await cancelRequest(db, ana.id, "ben_private");
 
     expect(await requestFollow(db, ana.id, "ben_private")).toBe("requested");
 
@@ -198,21 +195,6 @@ describe("requestFollow (SAG-108)", () => {
     expect(
       (await listPendingRequests(db, ben.id)).map((r) => r.username),
     ).toEqual(["ana_viewer"]);
-  });
-
-  it("does not renew a request declined one day short of the wait", async () => {
-    const ana = await person("ana_viewer");
-    const ben = await person("ben_private", "friends");
-    await ask(ana.id, ben.id);
-    await db.execute(sql`
-      UPDATE follow_requests
-      SET declined_at = now() - make_interval(days => ${askAgainAfterDays - 1}::int)
-    `);
-
-    await requestFollow(db, ana.id, "ben_private");
-
-    const [row] = await allRequests();
-    expect(row?.declinedAt).toBeInstanceOf(Date);
   });
 
   it("shares the hourly cap with the follows: follows plus requests of the last hour", async () => {
@@ -269,14 +251,16 @@ describe("cancelRequest and hasRequested (SAG-108)", () => {
     ]);
   });
 
-  it("leaves a declined request alone, so cancelling cannot undo a decline", async () => {
+  it("takes back a declined request too, so the person can ask again", async () => {
     const ana = await person("ana_viewer");
     const ben = await person("ben_private", "friends");
     await ask(ana.id, ben.id, true);
+    expect(await hasRequested(db, ana.id, ben.id)).toBe(true);
 
     await cancelRequest(db, ana.id, "ben_private");
 
-    expect(await pairs()).toEqual(["ana_viewer>ben_private"]);
+    expect(await pairs()).toEqual([]);
+    expect(await hasRequested(db, ana.id, ben.id)).toBe(false);
   });
 
   it("does nothing, quietly, for a name that does not exist or without a request", async () => {

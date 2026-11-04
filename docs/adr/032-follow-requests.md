@@ -1,6 +1,6 @@
 # ADR-032: Follow requests, and the names of the profile levels
 
-- **Status:** Accepted
+- **Status:** Accepted. The 30-day wait and the cancel that leaves a declined request alone are replaced by [ADR-034](034-cancel-a-declined-request.md).
 - **Date:** 2026-11-04
 - **Implementation:** Done (SAG-108). Searching people is SAG-115.
 - **Tickets:** SAG-108, SAG-115

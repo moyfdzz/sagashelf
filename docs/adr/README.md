@@ -37,6 +37,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [031](031-social-graph.md)                       | The social graph: follows, blocks, mutes and one policy for who may see what              | Accepted | Partial (SAG-21; pages in SAG-107)    |
 | [032](032-follow-requests.md)                    | Follow requests, and the names of the profile levels (Public, Private, Total privacy)     | Accepted | Done (SAG-108)                        |
 | [033](033-design-rules.md)                       | Design rules for routes, data functions and helpers                                       | Accepted | Partial (SAG-116)                     |
+| [034](034-cancel-a-declined-request.md)          | Cancelling a declined follow request, and no wait to ask again                            | Accepted | Done (SAG-123)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 
