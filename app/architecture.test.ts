@@ -37,11 +37,7 @@ function checkRule(
 
 // SAG-121 removes each of these from the list as it splits the file.
 const maxLines = 600;
-const longFiles = [
-  "app/routes/library.$mediaId.tsx",
-  "app/routes/library.tsx",
-  "app/routes/stats.tsx",
-];
+const longFiles = ["app/routes/library.tsx", "app/routes/stats.tsx"];
 
 describe("the design rules of ADR-033", () => {
   it("finds the source files it checks", () => {

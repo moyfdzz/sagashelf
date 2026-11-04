@@ -1,22 +1,22 @@
 import { rootAuthLoader } from "@clerk/react-router/server";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { data, redirect, useNavigation } from "react-router";
 import type { ZodError } from "zod";
 
 import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
-import { StatusToast } from "~/components/StatusToast";
-import { useFormatters } from "~/lib/format";
-import { readingContext } from "~/lib/media";
+import { AlertsSection } from "~/components/library-entry/AlertsSection";
+import { EntryForm } from "~/components/library-entry/EntryForm";
+import { EntryHeader } from "~/components/library-entry/EntryHeader";
+import { RemoveEntry } from "~/components/library-entry/RemoveEntry";
 import {
-  dangerButtonClass,
-  forwardLinkClass,
-  linkClass,
-  primaryButtonClass,
-  secondaryButtonClass,
-} from "~/lib/ui";
-import { CountedTextarea } from "~/components/CountedTextarea";
+  useEntryErrors,
+  type Field,
+  type FieldErrors,
+} from "~/components/library-entry/shared";
+import { ViewingsSection } from "~/components/library-entry/ViewingsSection";
+import { StatusToast } from "~/components/StatusToast";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -61,34 +61,6 @@ import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 const maxFormBytes = 16 * 1024;
 
 const mediaIdSchema = z.uuid();
-
-// Each code has its text in app/locales, under library.errors.
-type ErrorCode =
-  | "invalid"
-  | "progress_too_high"
-  | "dates_order"
-  | "notes_too_long"
-  | "not_completed"
-  | "viewings_limit"
-  | "generic";
-
-type Field =
-  | "status"
-  | "progress"
-  | "progressUnit"
-  | "progressTotal"
-  | "score"
-  | "startedAt"
-  | "finishedAt"
-  | "notes"
-  | "visibility"
-  | "viewStartedOn"
-  | "viewFinishedOn"
-  | "viewNotes"
-  | "viewings"
-  | "form";
-
-type FieldErrors = Partial<Record<Field, ErrorCode>>;
 
 const fields: readonly Field[] = [
   "status",
@@ -358,8 +330,17 @@ export async function action(args: Route.ActionArgs) {
   );
 }
 
-const inputClass =
-  "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
+/** What the page is given, for the pieces of the page that draw it. */
+export type LibraryEntryData = Route.ComponentProps["loaderData"];
+
+// The lists and limits of the entry live in server/, which a component may not import.
+const limits = {
+  statuses: libraryStatuses,
+  visibilityLevels,
+  notesMax: notesMaxLength,
+  viewingNotesMax: viewingNotesMaxLength,
+};
+
 export default function LibraryEntry({
   loaderData,
   actionData,
@@ -367,11 +348,8 @@ export default function LibraryEntry({
   const { t } = useTranslation();
   const navigation = useNavigation();
   const saving = navigation.state === "submitting";
-  // The finish date can only be set while the status is "completed".
-  const [status, setStatus] = useState(loaderData.entry.status);
   // Kept from the first load, so saving the entry does not send the person to a plain library.
   const [libraryPathBack] = useState(loaderData.backToLibrary ?? "/library");
-  const { formatDate } = useFormatters();
   const {
     entry,
     media,
@@ -381,46 +359,10 @@ export default function LibraryEntry({
     progressUnits: units,
     progressAt,
   } = loaderData;
-  // A manga lets the person pick; the first unit is the default. A book has only pages.
-  const [unit, setUnit] = useState(entry.progressUnit ?? units[0]);
-  const dayText = (value: string) =>
-    formatDate(Date.parse(`${value}T00:00:00Z`));
-  const viewingDates = (from: string | null, to: string | null) =>
-    t("library.editor.viewings.dates", {
-      context: from && to ? "range" : from ? "from" : to ? "to" : "none",
-      from: from ? dayText(from) : "",
-      to: to ? dayText(to) : "",
-    });
-  const errors: FieldErrors = actionData?.ok === false ? actionData.errors : {};
-  const hasErrors = Object.keys(errors).length > 0;
-  // The errors of the three viewing forms are shown once, above the list.
-  const viewingError =
-    errors.viewings ??
-    errors.viewFinishedOn ??
-    errors.viewStartedOn ??
-    errors.viewNotes;
-  const context = readingContext(media.type);
-  const errorText = (code: ErrorCode) =>
-    code === "not_completed"
-      ? t("library.errors.not_completed", { context })
-      : t(`library.errors.${code}`);
-
-  const fieldError = (field: Field) =>
-    errors[field] ? (
-      <p
-        id={`${field}-error`}
-        className="text-danger-text mt-1 text-sm font-semibold"
-      >
-        {errorText(errors[field])}
-      </p>
-    ) : null;
-  const invalid = (field: Field, hint?: string) => ({
-    "aria-invalid": errors[field] ? true : undefined,
-    "aria-describedby":
-      [hint, errors[field] ? `${field}-error` : undefined]
-        .filter(Boolean)
-        .join(" ") || undefined,
-  });
+  const fieldErrors: FieldErrors =
+    actionData?.ok === false ? actionData.errors : {};
+  const errors = useEntryErrors(fieldErrors, media.type);
+  const { context, hasErrors, errorText } = errors;
 
   return (
     <ClerkSession
@@ -428,35 +370,7 @@ export default function LibraryEntry({
       publishableKey={loaderData.publishableKey}
     >
       <main className="container mx-auto max-w-2xl px-4 py-10">
-        <p>
-          <Link to={libraryPathBack} className={linkClass}>
-            {t("library.editor.back")}
-          </Link>
-        </p>
-
-        <div className="mt-4 flex gap-4">
-          {media.poster ? (
-            <img
-              src={media.poster}
-              alt={t("media.posterAlt", { title: media.title })}
-              width={96}
-              height={144}
-              className="border-border h-36 w-24 shrink-0 rounded-md border"
-            />
-          ) : null}
-          <div>
-            <h1 className="text-3xl font-bold">{media.title}</h1>
-            <p className="text-fg-muted mt-1 font-semibold">
-              {t(`media.kinds.${media.type as "movie"}`)}
-              {media.year ? ` ${t("search.year", { year: media.year })}` : ""}
-            </p>
-            <p className="mt-2">
-              <a href={media.detailPath} className={forwardLinkClass}>
-                {t("library.editor.viewTitle")}
-              </a>
-            </p>
-          </div>
-        </div>
+        <EntryHeader media={media} libraryPathBack={libraryPathBack} />
 
         {/* Always in the page, so a screen reader announces each message that appears in it. */}
         <div
@@ -482,507 +396,36 @@ export default function LibraryEntry({
             role="alert"
             className="border-danger-edge bg-danger-bg text-danger-fg mt-6 rounded-md border px-4 py-3 font-semibold"
           >
-            {errors.form ? errorText(errors.form) : t("library.errors.summary")}
+            {fieldErrors.form
+              ? errorText(fieldErrors.form)
+              : t("library.errors.summary")}
           </p>
         ) : null}
 
-        {/* A key from the saved values makes the fields show what was stored after a save. */}
-        <Form
-          method="post"
-          key={JSON.stringify(entry)}
-          className="mt-8 space-y-6"
-        >
-          <input type="hidden" name="intent" value="save" />
+        <EntryForm
+          entry={entry}
+          units={units}
+          total={total}
+          progressAt={progressAt}
+          saving={saving}
+          errors={errors}
+          limits={limits}
+        />
 
-          <div>
-            <label htmlFor="status" className="font-semibold">
-              {t("library.editor.status")}
-            </label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={entry.status}
-              onChange={(event) =>
-                setStatus(event.target.value as typeof entry.status)
-              }
-              {...invalid("status")}
-              className={inputClass}
-            >
-              {libraryStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {t(`library.status.${status}`)}
-                </option>
-              ))}
-            </select>
-            {fieldError("status")}
-          </div>
-
-          {unit ? (
-            <>
-              {units.length > 1 ? (
-                <div>
-                  <label htmlFor="progressUnit" className="font-semibold">
-                    {t("library.editor.progressUnit")}
-                  </label>
-                  <select
-                    id="progressUnit"
-                    name="progressUnit"
-                    value={unit}
-                    onChange={(event) =>
-                      setUnit(event.target.value as typeof unit)
-                    }
-                    {...invalid("progressUnit")}
-                    className={inputClass}
-                  >
-                    {units.map((option) => (
-                      <option key={option} value={option}>
-                        {t(
-                          `library.editor.progressUnitOptions.${option as "chapters"}`,
-                        )}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldError("progressUnit")}
-                </div>
-              ) : (
-                <input type="hidden" name="progressUnit" value={unit} />
-              )}
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="progress" className="font-semibold">
-                    {t("library.editor.progressRead", { context: unit })}
-                  </label>
-                  <input
-                    id="progress"
-                    name="progress"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    defaultValue={entry.progress}
-                    {...invalid("progress")}
-                    className={inputClass}
-                  />
-                  {fieldError("progress")}
-                </div>
-                <div>
-                  <label htmlFor="progressTotal" className="font-semibold">
-                    {t("library.editor.progressTotal", { context: unit })}
-                  </label>
-                  <input
-                    id="progressTotal"
-                    name="progressTotal"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    defaultValue={entry.progressTotal ?? ""}
-                    {...invalid("progressTotal", "progressTotal-hint")}
-                    className={inputClass}
-                  />
-                  <p
-                    id="progressTotal-hint"
-                    className="text-fg-muted mt-1 text-sm"
-                  >
-                    {t("library.editor.progressTotalHint")}
-                  </p>
-                  {fieldError("progressTotal")}
-                </div>
-              </div>
-            </>
-          ) : total > 0 ? (
-            <div>
-              <label htmlFor="progress" className="font-semibold">
-                {t("library.editor.progress")}
-              </label>
-              <input
-                id="progress"
-                name="progress"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={total}
-                defaultValue={entry.progress}
-                {...invalid("progress", "progress-hint")}
-                className={inputClass}
-              />
-              <p id="progress-hint" className="text-fg-muted mt-1 text-sm">
-                {t("library.editor.progressHint", { total })}
-                {progressAt
-                  ? ` ${t("library.editor.progressAt", progressAt)}`
-                  : ""}
-              </p>
-              {fieldError("progress")}
-            </div>
-          ) : (
-            // A title with no episodes (a movie) keeps its progress as it is.
-            <input type="hidden" name="progress" value={entry.progress} />
-          )}
-
-          <div>
-            <label htmlFor="score" className="font-semibold">
-              {t("library.editor.score")}
-            </label>
-            <select
-              id="score"
-              name="score"
-              defaultValue={entry.score ?? ""}
-              {...invalid("score")}
-              className={inputClass}
-            >
-              <option value="">{t("library.editor.noScore")}</option>
-              {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((score) => (
-                <option key={score} value={score}>
-                  {t("library.editor.scoreOption", { score })}
-                </option>
-              ))}
-            </select>
-            {fieldError("score")}
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="startedAt" className="font-semibold">
-                {t("library.editor.startedAt")}
-              </label>
-              <input
-                id="startedAt"
-                name="startedAt"
-                type="date"
-                defaultValue={entry.startedAt ?? ""}
-                {...invalid("startedAt")}
-                className={inputClass}
-              />
-              {fieldError("startedAt")}
-            </div>
-            <div>
-              <label htmlFor="finishedAt" className="font-semibold">
-                {t("library.editor.finishedAt")}
-              </label>
-              <input
-                id="finishedAt"
-                name="finishedAt"
-                type="date"
-                defaultValue={entry.finishedAt ?? ""}
-                disabled={status !== "completed"}
-                {...invalid("finishedAt", "finishedAt-hint")}
-                className={`${inputClass} disabled:opacity-60`}
-              />
-              <p id="finishedAt-hint" className="text-fg-muted mt-1 text-sm">
-                {t("library.editor.finishedAtHint")}
-              </p>
-              {fieldError("finishedAt")}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="notes" className="font-semibold">
-              {t("library.editor.notes")}
-            </label>
-            <CountedTextarea
-              id="notes"
-              name="notes"
-              rows={5}
-              max={notesMaxLength}
-              defaultValue={entry.notes ?? ""}
-              {...invalid("notes", "notes-hint")}
-              className={inputClass}
-            />
-            <p id="notes-hint" className="text-fg-muted mt-1 text-sm">
-              {t("library.editor.notesHint", { max: notesMaxLength })}
-            </p>
-            {fieldError("notes")}
-          </div>
-
-          <div>
-            <label htmlFor="visibility" className="font-semibold">
-              {t("library.editor.visibility")}
-            </label>
-            <select
-              id="visibility"
-              name="visibility"
-              defaultValue={entry.visibility}
-              {...invalid("visibility", "visibility-hint")}
-              className={inputClass}
-            >
-              {visibilityLevels.map((level) => (
-                <option key={level} value={level}>
-                  {t(`library.editor.visibilityOptions.${level}`)}
-                </option>
-              ))}
-            </select>
-            <p id="visibility-hint" className="text-fg-muted mt-1 text-sm">
-              {t("library.editor.visibilityHint")}
-            </p>
-            {fieldError("visibility")}
-          </div>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className={primaryButtonClass}
-          >
-            {saving ? t("library.editor.saving") : t("library.editor.save")}
-          </button>
-        </Form>
-
-        <section className="border-border mt-10 border-t pt-6">
-          <h2 className="text-xl font-semibold">
-            {t("library.editor.viewings.title", { context })}
-          </h2>
-          <p className="text-fg-muted mt-1">
-            {t("library.editor.viewings.count", {
-              count: watchedCount,
-              context,
-            })}
-          </p>
-          {viewingError ? (
-            <p role="alert" className="text-danger-text mt-2 font-semibold">
-              {errorText(viewingError)}
-            </p>
-          ) : null}
-          {viewings.length === 0 ? (
-            <p className="text-fg-muted mt-3 text-sm">
-              {t("library.editor.viewings.empty")}
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {viewings.map((viewing) => (
-                <li
-                  key={viewing.id}
-                  className="border-border bg-surface-raised rounded-md border"
-                >
-                  <details>
-                    <summary className="cursor-pointer px-4 py-3">
-                      <span className="font-semibold">
-                        {viewingDates(viewing.startedOn, viewing.finishedOn)}
-                      </span>
-                      {viewing.notes ? (
-                        <span className="text-fg-muted block text-sm">
-                          {viewing.notes}
-                        </span>
-                      ) : null}
-                    </summary>
-                    <Form
-                      method="post"
-                      key={JSON.stringify(viewing)}
-                      className="border-border space-y-4 border-t px-4 py-4"
-                    >
-                      <input
-                        type="hidden"
-                        name="viewingId"
-                        value={viewing.id}
-                      />
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <label
-                            htmlFor={`viewStartedOn-${viewing.id}`}
-                            className="font-semibold"
-                          >
-                            {t("library.editor.startedAt")}
-                          </label>
-                          <input
-                            id={`viewStartedOn-${viewing.id}`}
-                            name="viewStartedOn"
-                            type="date"
-                            defaultValue={viewing.startedOn ?? ""}
-                            className={inputClass}
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor={`viewFinishedOn-${viewing.id}`}
-                            className="font-semibold"
-                          >
-                            {t("library.editor.finishedAt")}
-                          </label>
-                          <input
-                            id={`viewFinishedOn-${viewing.id}`}
-                            name="viewFinishedOn"
-                            type="date"
-                            defaultValue={viewing.finishedOn ?? ""}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label
-                          htmlFor={`viewNotes-${viewing.id}`}
-                          className="font-semibold"
-                        >
-                          {t("library.editor.viewings.notes")}
-                        </label>
-                        <CountedTextarea
-                          id={`viewNotes-${viewing.id}`}
-                          name="viewNotes"
-                          rows={2}
-                          max={viewingNotesMaxLength}
-                          defaultValue={viewing.notes ?? ""}
-                          className={inputClass}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          type="submit"
-                          name="intent"
-                          value="viewing_save"
-                          className={primaryButtonClass}
-                        >
-                          {t("library.editor.viewings.save")}
-                        </button>
-                        <button
-                          type="submit"
-                          name="intent"
-                          value="viewing_remove"
-                          className={secondaryButtonClass}
-                        >
-                          {t("library.editor.viewings.remove")}
-                        </button>
-                      </div>
-                    </Form>
-                  </details>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <details className="border-border mt-4 rounded-md border">
-            <summary className="cursor-pointer px-4 py-3 font-semibold">
-              {t("library.editor.viewings.add")}
-            </summary>
-            <Form
-              method="post"
-              key={`add-${viewings.length}`}
-              className="border-border space-y-4 border-t px-4 py-4"
-            >
-              <input type="hidden" name="intent" value="viewing_add" />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="viewStartedOn" className="font-semibold">
-                    {t("library.editor.startedAt")}
-                  </label>
-                  <input
-                    id="viewStartedOn"
-                    name="viewStartedOn"
-                    type="date"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="viewFinishedOn" className="font-semibold">
-                    {t("library.editor.finishedAt")}
-                  </label>
-                  <input
-                    id="viewFinishedOn"
-                    name="viewFinishedOn"
-                    type="date"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="viewNotes" className="font-semibold">
-                  {t("library.editor.viewings.notes")}
-                </label>
-                <CountedTextarea
-                  id="viewNotes"
-                  name="viewNotes"
-                  rows={2}
-                  max={viewingNotesMaxLength}
-                  aria-describedby="viewNotes-hint"
-                  className={inputClass}
-                />
-                <p id="viewNotes-hint" className="text-fg-muted mt-1 text-sm">
-                  {t("library.editor.viewings.notesHint", {
-                    max: viewingNotesMaxLength,
-                  })}
-                </p>
-              </div>
-              <button type="submit" className={primaryButtonClass}>
-                {t("library.editor.viewings.addSubmit")}
-              </button>
-            </Form>
-          </details>
-
-          {entry.status === "completed" ? (
-            <Form method="post" className="mt-3 space-y-2">
-              <input type="hidden" name="intent" value="rewatch" />
-              <button type="submit" className={secondaryButtonClass}>
-                {t("library.editor.rewatch", { context })}
-              </button>
-              <p className="text-fg-muted text-sm">
-                {t("library.editor.rewatchHint", { context })}
-              </p>
-            </Form>
-          ) : null}
-        </section>
+        <ViewingsSection
+          entry={entry}
+          viewings={viewings}
+          watchedCount={watchedCount}
+          errors={errors}
+          limits={limits}
+        />
 
         {/* Only a series or an anime has episodes to be told about (SAG-101). */}
         {media.type === "series" || media.type === "anime" ? (
-          <section aria-labelledby="alerts-title" className="mt-8">
-            <h2 id="alerts-title" className="text-2xl font-bold">
-              {t("library.editor.alerts.title")}
-            </h2>
-            <Form
-              method="post"
-              // A key with the saved state puts the box back as it was saved after a save.
-              key={String(entry.notifyNewEpisodes)}
-              className="mt-3 space-y-3"
-            >
-              <input type="hidden" name="intent" value="notify" />
-              <div className="flex items-start gap-3">
-                <input
-                  id="notify-new-episodes"
-                  name="notify"
-                  value="on"
-                  type="checkbox"
-                  defaultChecked={entry.notifyNewEpisodes}
-                  className="mt-1 h-5 w-5 shrink-0"
-                  aria-describedby="notify-new-episodes-hint"
-                />
-                <div>
-                  <label
-                    htmlFor="notify-new-episodes"
-                    className="font-semibold"
-                  >
-                    {t("library.editor.alerts.label")}
-                  </label>
-                  <p
-                    id="notify-new-episodes-hint"
-                    className="text-fg-muted text-sm"
-                  >
-                    {t("library.editor.alerts.hint")}
-                    {/* A plain link: the settings pages have a security policy of their own (ADR-018). */}
-                    <a
-                      href="/settings/notifications"
-                      className="ml-1 underline"
-                    >
-                      {t("library.editor.alerts.link")}
-                    </a>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className={secondaryButtonClass}
-              >
-                {t("library.editor.alerts.save")}
-              </button>
-            </Form>
-          </section>
+          <AlertsSection entry={entry} saving={saving} />
         ) : null}
 
-        <details className="border-border mt-8 rounded-md border">
-          <summary className="cursor-pointer px-4 py-3 font-semibold">
-            {t("library.editor.remove.summary")}
-          </summary>
-          <Form method="post" className="border-border space-y-3 border-t p-4">
-            <input type="hidden" name="intent" value="remove" />
-            <p>{t("library.editor.remove.warning")}</p>
-            <button type="submit" className={dangerButtonClass}>
-              {t("library.editor.remove.confirm")}
-            </button>
-          </Form>
-        </details>
+        <RemoveEntry />
       </main>
     </ClerkSession>
   );
