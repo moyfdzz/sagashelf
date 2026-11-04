@@ -3,6 +3,7 @@ import { data, Form, Link, redirect } from "react-router";
 import { z } from "zod";
 
 import type { Route } from "./+types/u.$username";
+import { ConfirmDialog } from "~/components/ConfirmDialog";
 import {
   dangerButtonClass,
   linkClass,
@@ -304,7 +305,15 @@ function Avatar({
 
 type You = Route.ComponentProps["loaderData"]["you"];
 
-function Actions({ you, username }: { you: You; username: string }) {
+function Actions({
+  you,
+  username,
+  name,
+}: {
+  you: You;
+  username: string;
+  name: string;
+}) {
   const { t } = useTranslation();
   if (you.kind === "owner") {
     return (
@@ -345,37 +354,29 @@ function Actions({ you, username }: { you: You; username: string }) {
     >
       <div className="flex flex-wrap items-start gap-2">
         {you.following ? (
-          you.confirmUnfollow ? (
-            <div
-              role="group"
-              aria-label={t("profile.actions.unfollowWarningLabel")}
-              className="border-border bg-surface-raised w-full max-w-xl space-y-3 rounded-md border p-4"
-            >
-              <p className="font-semibold">
-                {t("profile.actions.unfollowWarning")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {button(
-                  "unfollow",
-                  t("profile.actions.unfollow"),
-                  dangerButtonClass,
-                )}
-                {/* A plain link back to the page: nothing is sent, nothing changes. */}
-                <a
-                  href={`/u/${encodeURIComponent(username)}`}
-                  className={secondaryLinkClass}
+          you.unfollowAsks ? (
+            <>
+              <a
+                href={`/u/${encodeURIComponent(username)}?confirm=unfollow`}
+                className={secondaryLinkClass}
+              >
+                {t("profile.actions.unfollow")}
+              </a>
+              {you.confirmUnfollow ? (
+                <ConfirmDialog
+                  title={t("profile.actions.unfollowTitle", { name })}
+                  message={t("profile.actions.unfollowWarning")}
+                  cancelHref={`/u/${encodeURIComponent(username)}`}
+                  cancelLabel={t("profile.actions.cancelUnfollow")}
                 >
-                  {t("profile.actions.cancelUnfollow")}
-                </a>
-              </div>
-            </div>
-          ) : you.unfollowAsks ? (
-            <a
-              href={`/u/${encodeURIComponent(username)}?confirm=unfollow`}
-              className={secondaryLinkClass}
-            >
-              {t("profile.actions.unfollow")}
-            </a>
+                  {button(
+                    "unfollow",
+                    t("profile.actions.unfollow"),
+                    dangerButtonClass,
+                  )}
+                </ConfirmDialog>
+              ) : null}
+            </>
           ) : (
             button(
               "unfollow",
@@ -432,7 +433,7 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
       </header>
 
       <div className="mt-6">
-        <Actions you={you} username={head.username} />
+        <Actions you={you} username={head.username} name={name} />
       </div>
 
       {/* Always in the page, so a screen reader announces the result of a button. */}

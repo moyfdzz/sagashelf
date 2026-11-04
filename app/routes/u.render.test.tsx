@@ -297,13 +297,35 @@ describe("the profile page: the buttons", () => {
       expect(intents(html)).toEqual(["unfollow", "mute", "block"]);
       // Cancel is a link back to the page: it submits nothing.
       expect(html).toMatch(/<a [^>]*href="\/u\/ana_reads"[^>]*>Cancelar<\/a>/);
-      expect(html).not.toContain("?confirm=unfollow");
+    });
+
+    it("draws it as an open modal named by its title, with the confirm form inside it", async () => {
+      const html = await render(profile(asks({ confirmUnfollow: true })));
+      const dialog = html.match(/<dialog[^>]*>[\s\S]*<\/dialog>/)?.[0] ?? "";
+
+      expect(dialog).toMatch(/^<dialog[^>]* open=""/);
+      expect(dialog).toMatch(/aria-labelledby="([^"]+)"/);
+      const id = dialog.match(/aria-labelledby="([^"]+)"/)?.[1];
+      expect(dialog).toMatch(
+        new RegExp(`<h2 id="${id}"[^>]*>¿Dejar de seguir a [^<]+\\?</h2>`),
+      );
+      expect(dialog).toContain('name="intent" value="unfollow"');
+      expect(dialog).toContain(">Cancelar</a>");
+      // The ask link stays behind it, so the page does not jump when it opens.
+      expect(html).toContain('href="/u/ana_reads?confirm=unfollow"');
+    });
+
+    it("draws no modal until it is asked", async () => {
+      const html = await render(profile(asks()));
+
+      expect(html).not.toContain("<dialog");
     });
 
     it("says it in English", async () => {
       const html = await render(profile(asks({ confirmUnfollow: true })), "en");
 
       expect(html).toContain("This profile is private. If you unfollow it");
+      expect(html).toMatch(/>Unfollow [^<]+\?<\/h2>/);
       expect(html).toContain(">Cancel</a>");
     });
 
