@@ -25,11 +25,11 @@ Risk first, then cost. "Copies" were counted by searching the source on 2026-11-
 
 ### High: one module with several reasons to change
 
-3. **`server/db/social.ts` (481 lines)** holds follow, block, mute, the relationship, the two profile lookups, the lists of people, the counts, and three constants. **Fix:** split by reason to change into `follows`, `blocks-mutes`, `profile` (lookups), `people-lists` and `counts`, keeping the exports and every statement as they are. `follow-requests.ts` is already its own module and stays. The split is a move, so the existing integration tests are the safety net.
+3. **`server/db/social.ts` (481 lines)** holds follow, block, mute, the relationship, the two profile lookups, the lists of people, the counts, and three constants. **Done in SAG-118:** split into `follows.ts`, `blocks-mutes.ts`, `profile-lookup.ts` (not `profile.ts`: that name already belongs to the profile of the account), `people-lists.ts` (the pages and the counts) and `person.ts`, each under 150 lines. Every SQL statement was moved as it was (checked by comparing the text of the statements of the old file and the new ones), and `db/social-statements.integration.test.ts` counts the statements of each function, with the numbers taken before the move. `follow-requests.ts` stays as it was.
 
 ### Medium
 
-4. **`findViewableProfile` and `findProfile` repeat the same query and the same building of the profile head.** **Fix:** one private query inside `profile`, two thin public functions. Do it right after finding 3, in the same file.
+4. **`findViewableProfile` and `findProfile` repeat the same query and the same building of the profile head.** **Done in SAG-118:** one private `loadProfile` in `profile-lookup.ts` reads the row and builds the head, and `findViewableProfile` and `findProfile` only decide what to show with `canView` and `canSeeCard`.
 5. **`asDate` is defined 6 times with 3 different meanings** (`number`, `Date | null`, `Date`). The ticket assumed plain copies; they are not. **Fix:** unify only the three that are identical (`follow-requests.ts`, `notifications.ts`, `webhooks.ts`) in one `server/db/dates.ts`; give the others names that say what they return (`asDateOrNull`) so nobody mixes them up.
 6. **`usernameShape` is defined twice** (`u.$username.tsx`, `u.$username.$kind.tsx`), not three times. **Fix:** put it next to the other username rules, after reading `server/db/username.ts` to avoid a third place.
 7. **Four routes have an `action` that is a `switch` on `intent`** with the logic of each button (`notifications.tsx`, `settings.notifications.tsx`, `u.$username.tsx`, `admin.sagas.$id.tsx`). **Fix, one route per ticket, only where it pays:** move each button's logic to a small function in `server/` that the tests already know, and leave the route to read the form, check the origin and answer. Start with `u.$username.tsx`, the largest.
@@ -37,7 +37,7 @@ Risk first, then cost. "Copies" were counted by searching the source on 2026-11-
 
 ### Rejected
 
-9. **`toPerson`** exists once, in `social.ts`; it is not a copy. It moves with the split (finding 3).
+9. **`toPerson`** exists once, in `social.ts`; it is not a copy. It moved with the split (finding 3), and because two modules use it now (the lists of blocked and muted people and the pages of people), it lives in `person.ts` with the `Person` type.
 10. **The `text` helper** no longer exists; only `textCode` (specific to profile errors) is left in `settings.profile.tsx`.
 11. **Splitting `server/db/webhooks.ts` (514), `library.ts` (473) and `stats.ts` (401)** for size alone. No second reason to change was found; look again only if a ticket adds one.
 

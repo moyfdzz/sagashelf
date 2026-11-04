@@ -27,7 +27,7 @@ vi.mock("@clerk/react-router/server", () => ({
     handler: (args: unknown) => unknown,
   ) => ({ ...(handler(args) as object), __clerk_ssr_state: "state" }),
 }));
-vi.mock("~server/db/social", () => ({
+vi.mock("~server/db/blocks-mutes", () => ({
   listBlocked: mocks.listBlocked,
   listMuted: mocks.listMuted,
   unblockUser: mocks.unblockUser,

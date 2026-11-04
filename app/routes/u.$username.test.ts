@@ -31,12 +31,18 @@ vi.mock("~server/runtime-env", () => ({
   getDb: mocks.getDb,
   getWriteLimiter: () => ({ limit: mocks.limit }),
 }));
-vi.mock("~server/db/social", () => ({
+vi.mock("~server/db/profile-lookup", () => ({
   findProfile: mocks.findProfile,
+}));
+vi.mock("~server/db/people-lists", () => ({
   getSocialCounts: mocks.getSocialCounts,
-  isMuted: mocks.isMuted,
+}));
+vi.mock("~server/db/follows", () => ({
   followUser: mocks.followUser,
   unfollowUser: mocks.unfollowUser,
+}));
+vi.mock("~server/db/blocks-mutes", () => ({
+  isMuted: mocks.isMuted,
   muteUser: mocks.muteUser,
   unmuteUser: mocks.unmuteUser,
   blockUser: mocks.blockUser,

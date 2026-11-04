@@ -13,8 +13,8 @@ import {
   listMuted,
   unblockUser,
   unmuteUser,
-  type Person,
-} from "~server/db/social";
+} from "~server/db/blocks-mutes";
+import { type Person } from "~server/db/person";
 import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";

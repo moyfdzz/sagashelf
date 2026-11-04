@@ -13,7 +13,7 @@ import { resources } from "~/locales";
 // The loader and the action are tested in their own file; here only the pages are drawn.
 vi.mock("~server/runtime-env", () => ({}));
 vi.mock("~server/auth/require", () => ({}));
-vi.mock("~server/db/social", () => ({}));
+vi.mock("~server/db/blocks-mutes", () => ({}));
 vi.mock("@clerk/react-router/server", () => ({}));
 vi.mock("~/components/ClerkSession", () => ({
   ClerkSession: ({ children }: { children: ReactNode }) => children,

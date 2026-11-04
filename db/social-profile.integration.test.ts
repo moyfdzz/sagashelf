@@ -8,12 +8,12 @@ import {
 } from "../server/db/profile-library";
 import {
   blockUser,
-  findProfile,
   isMuted,
   listBlocked,
   listMuted,
   muteUser,
-} from "../server/db/social";
+} from "../server/db/blocks-mutes";
+import { findProfile } from "../server/db/profile-lookup";
 import {
   blocks,
   follows,
