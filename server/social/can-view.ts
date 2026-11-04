@@ -9,6 +9,11 @@
  *   `follows`, computed and never stored).
  * - `private`: the owner only. Not even a friend sees it.
  *
+ * A profile of the level `friends` is **locked, not hidden**: anybody who is not blocked sees its card
+ * (the username, the name and the picture, and nothing else) and, once requests exist, can ask to
+ * follow. A profile of the level `private` shows nobody anything, not even that it exists
+ * (`canSeeCard`). That is the choice a person makes with the level.
+ *
  * A block hides each person from the other, whatever the level. Nobody is blocked from their own
  * things: the owner is the owner before anything else.
  */
@@ -92,4 +97,16 @@ export function canView(
     case "private":
       return false;
   }
+}
+
+/**
+ * Whether the viewer may see the **card** of a profile: the username, the name and the picture.
+ * This is all that a locked profile (`friends`) shows to someone who may not see the rest, and it
+ * is also what a public profile shows first. A `private` profile has no card for anybody but its
+ * owner, and a block hides even the card.
+ */
+export function canSeeCard(relationship: Relationship, level: Level): boolean {
+  if (relationship === "blocked") return false;
+  if (relationship === "owner") return true;
+  return level !== "private";
 }

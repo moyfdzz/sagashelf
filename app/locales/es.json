@@ -169,7 +169,9 @@
         "invalid_locale": "Elige un idioma de la lista.",
         "invalid_privacy": "Elige una opción de la lista.",
         "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
-      }
+      },
+      "privacyHint": "Público: cualquiera ve tu perfil. Solo amistades: otras personas ven tu nombre de usuario, tu nombre y tu foto, y podrán pedirte seguirte; el resto solo lo ven tus amistades. Privado: nadie más que tú ve tu perfil, ni siquiera que existe.",
+      "viewProfile": "Ver mi perfil público"
     },
     "data": {
       "title": "Tus datos",
@@ -198,7 +200,8 @@
       "profile": "Perfil",
       "data": "Mis datos",
       "delete": "Eliminar cuenta",
-      "notifications": "Avisos en Discord"
+      "notifications": "Avisos en Discord",
+      "people": "Bloqueadas"
     },
     "notifications": {
       "title": "Avisos en Discord",
@@ -347,6 +350,29 @@
         "failed": "No pudimos cambiar el nombre de usuario. Inténtalo de nuevo.",
         "invalid_request": "No pudimos procesar la solicitud."
       }
+    },
+    "people": {
+      "title": "Personas bloqueadas y silenciadas",
+      "description": "Aquí puedes deshacer un bloqueo o un silencio. Silenciar a alguien no se lo avisa.",
+      "back": "Volver a Ajustes",
+      "blocked": {
+        "title": "Bloqueadas",
+        "empty": "No has bloqueado a nadie.",
+        "unblock": "Desbloquear"
+      },
+      "muted": {
+        "title": "Silenciadas",
+        "empty": "No has silenciado a nadie.",
+        "unmute": "Dejar de silenciar"
+      },
+      "avatarAlt": "Foto de perfil de {{name}}",
+      "result": {
+        "unblocked": "Desbloqueaste a esa persona. Los seguimientos que había entre ustedes no se restauran.",
+        "unmuted": "Dejaste de silenciar a esa persona."
+      },
+      "errors": {
+        "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
+      }
     }
   },
   "common": {
@@ -452,10 +478,11 @@
       "account": "Cuenta: tu correo, tu nombre de usuario y, si usas contraseña, una versión protegida de ella. La contraseña la gestiona Clerk y SagaShelf nunca la guarda.",
       "google": "Inicio con Google: si eliges esta opción, Google comparte con Clerk tu correo, tu nombre y tu foto de perfil. No accedemos a nada más de tu cuenta de Google.",
       "profile": "Perfil: el nombre para mostrar, la biografía, el idioma, tu nivel de privacidad y la foto que elijas.",
-      "library": "Biblioteca: por cada título que guardas, su estado, tu progreso, tu puntuación, las fechas en que lo empezaste y lo terminaste, cuántas veces lo has vuelto a ver, tus notas y un nivel de visibilidad (privado de forma predeterminada). Por ahora solo tú ves tu biblioteca; antes de mostrar algo a otras personas actualizaremos esta política.",
+      "library": "Biblioteca: por cada título que guardas, su estado, tu progreso, tu puntuación, las fechas en que lo empezaste y lo terminaste, cuántas veces lo has vuelto a ver, tus notas y un nivel de visibilidad (privado de forma predeterminada). Si cambias el nivel de una entrada, la verán las personas que ese nivel permita (consulta «Quién ve tu perfil»). Tus notas no las ve nadie más.",
       "viewings": "Historial de visualizaciones: las fechas y las notas de cada vez que viste un título, si decides anotarlas.",
       "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
-      "analytics": "Estadísticas de uso: medimos cuántas visitas recibe cada página y qué tan rápido carga con Cloudflare Web Analytics. Según Cloudflare, no usa cookies ni almacenamiento del navegador y no identifica a cada persona: recibe sobre todo tiempos de carga y páginas vistas."
+      "analytics": "Estadísticas de uso: medimos cuántas visitas recibe cada página y qué tan rápido carga con Cloudflare Web Analytics. Según Cloudflare, no usa cookies ni almacenamiento del navegador y no identifica a cada persona: recibe sobre todo tiempos de carga y páginas vistas.",
+      "social": "Relaciones: a quién sigues, a quién has bloqueado y a quién has silenciado. La persona a la que silencias no lo sabe."
     },
     "not": {
       "title": "Lo que no hacemos",
@@ -476,7 +503,7 @@
     },
     "retention": {
       "title": "Cuánto tiempo los conservamos",
-      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado, y el proveedor de la base de datos puede conservar copias de respaldo por un periodo corto."
+      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones, y tus seguimientos, bloqueos y silencios), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado, y el proveedor de la base de datos puede conservar copias de respaldo por un periodo corto."
     },
     "rights": {
       "title": "Tus derechos",
@@ -493,6 +520,14 @@
     "contact": {
       "title": "Contacto",
       "body": "Escríbenos a {{email}}."
+    },
+    "profile": {
+      "title": "Quién ve tu perfil",
+      "intro": "Tu perfil está en una dirección pública (/u/ y tu nombre de usuario) que no se indexa en buscadores. Lo que muestra depende del nivel de privacidad que elijas en tus ajustes:",
+      "public": "Público: cualquier persona, haya iniciado sesión o no, ve tu nombre de usuario, tu nombre, tu foto, tu biografía, cuántas personas te siguen, a cuántas sigues y cuántas son tus amistades, y las entradas de tu biblioteca que marcaste como visibles para todas las personas.",
+      "friends": "Solo amistades: cualquier persona que no hayas bloqueado ve solo tu nombre de usuario, tu nombre y tu foto, para poder pedirte seguirte. Tu biografía, tus contadores y tu biblioteca solo los ven tus amistades (personas que te siguen y a las que sigues).",
+      "private": "Privado: nadie más que tú ve tu perfil, ni siquiera que existe.",
+      "rules": "Cada entrada de tu biblioteca tiene su propio nivel, y manda el más estricto entre el de la entrada y el de tu perfil. Tus notas no las ve nadie. Las personas que te siguen aparecen en tu lista de seguidores según el nivel de su propio perfil. Si bloqueas a alguien, o esa persona te bloquea, deja de ver tu perfil y tú el suyo, y se quitan los seguimientos entre ustedes."
     }
   },
   "terms": {
@@ -514,11 +549,12 @@
       "spam": "enviar spam o publicar contenido engañoso;",
       "piracy": "compartir enlaces a contenido pirata o ilegal;",
       "abuse": "intentar entrar sin permiso a cuentas o sistemas, ni sobrecargar el servicio;",
-      "impersonate": "hacerte pasar por otra persona, ni elegir un nombre de usuario que la suplante."
+      "impersonate": "hacerte pasar por otra persona, ni elegir un nombre de usuario que la suplante.",
+      "stalk": "seguir de forma masiva o insistente a otras personas, ni buscar a quien te ha bloqueado;"
     },
     "content": {
       "title": "Tu contenido",
-      "body": "Eres responsable de lo que escribes en tu perfil (nombre, biografía y foto) y en tu biblioteca (por ejemplo, tus notas). Tú eliges quién lo ve; las notas de tu biblioteca no las ve nadie más. Conservas tus derechos sobre tu contenido y nos permites guardarlo y mostrarlo en el servicio según esa elección. Si importas un archivo, debe contener solo datos tuyos."
+      "body": "Eres responsable de lo que escribes en tu perfil (nombre, biografía y foto) y en tu biblioteca (por ejemplo, tus notas). Tú eliges quién lo ve con tu nivel de privacidad (consulta la Política de privacidad); las notas de tu biblioteca no las ve nadie más. Conservas tus derechos sobre tu contenido y nos permites guardarlo y mostrarlo en el servicio según esa elección. Si importas un archivo, debe contener solo datos tuyos."
     },
     "titles": {
       "title": "Datos de los títulos",
@@ -539,6 +575,10 @@
     "contact": {
       "title": "Contacto",
       "body": "Escríbenos a {{email}}."
+    },
+    "people": {
+      "title": "Otras personas",
+      "body": "Puedes seguir a otras personas, bloquearlas y silenciarlas. Bloquear oculta tu perfil para esa persona y el suyo para ti, y quita los seguimientos entre ustedes. Limitamos cuántas personas puedes seguir por hora para evitar el spam. Si una persona cierra su perfil o lo hace privado, respeta su decisión."
     }
   },
   "library": {
@@ -1072,6 +1112,61 @@
       "description": "Obras de las sagas que ya empezaste y que no tienes en tu biblioteca, en el orden de la historia.",
       "more_one": "y {{count}} obra más",
       "more_other": "y {{count}} obras más"
+    }
+  },
+  "profile": {
+    "pageTitle": "{{name}} (@{{username}})",
+    "avatarAlt": "Foto de perfil de {{name}}",
+    "handle": "@{{username}}",
+    "counts": {
+      "label": "Seguidores y personas seguidas",
+      "followers_one": "{{count}} seguidor",
+      "followers_other": "{{count}} seguidores",
+      "following": "{{count}} siguiendo",
+      "friends_one": "{{count}} amistad",
+      "friends_other": "{{count}} amistades"
+    },
+    "locked": "Este perfil es solo para amistades. Su contenido no se muestra a otras personas.",
+    "requestsSoon": "Pronto podrás pedirle seguirla.",
+    "editProfile": "Editar mi perfil",
+    "signInToFollow": "Inicia sesión para seguir",
+    "actions": {
+      "label": "Acciones sobre esta persona",
+      "follow": "Seguir",
+      "unfollow": "Dejar de seguir",
+      "mute": "Silenciar",
+      "unmute": "Dejar de silenciar",
+      "block": "Bloquear",
+      "blockHint": "Bloquear oculta tu perfil para esta persona y el suyo para ti, y quita los seguimientos entre ustedes. Puedes deshacerlo en Ajustes."
+    },
+    "notice": {
+      "followed": "Ahora sigues a esta persona.",
+      "unfollowed": "Dejaste de seguir a esta persona.",
+      "muted": "Silenciaste a esta persona.",
+      "unmuted": "Dejaste de silenciar a esta persona.",
+      "too_many": "Has seguido a muchas personas en poco tiempo. Inténtalo de nuevo más tarde.",
+      "unavailable": "No se pudo seguir a esta persona.",
+      "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
+    },
+    "sections": {
+      "in_progress": "Viendo o leyendo ahora",
+      "planned": "Quiero ver o leer",
+      "completed": "Completadas",
+      "shown": "Se muestran {{shown}} de {{total}}."
+    },
+    "empty": "Todavía no hay nada público en esta biblioteca.",
+    "people": {
+      "followers": "Seguidores",
+      "following": "Siguiendo",
+      "friends": "Amistades",
+      "back": "Volver al perfil",
+      "empty": "Todavía no hay nadie aquí.",
+      "pageTitle": "{{kind}} de @{{username}}",
+      "label": "Personas",
+      "pagination": "Paginación",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {{page}}"
     }
   }
 }

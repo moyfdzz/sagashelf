@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canSeeCard,
   canView,
   levels,
   relationshipOf,
@@ -181,5 +182,63 @@ describe("relationshipOf", () => {
       "stranger",
     );
     expect(relationshipOf(facts({}))).toBe("stranger");
+  });
+});
+
+/** Who sees the card of a profile (SAG-107): written out in full, 6 relationships × 3 levels. */
+const cardExpected: Record<Relationship, Record<Level, boolean>> = {
+  owner: { public: true, friends: true, private: true },
+  friend: { public: true, friends: true, private: false },
+  follower: { public: true, friends: true, private: false },
+  stranger: { public: true, friends: true, private: false },
+  signed_out: { public: true, friends: true, private: false },
+  blocked: { public: false, friends: false, private: false },
+};
+
+describe("canSeeCard (SAG-107): every privacy level × every relationship", () => {
+  for (const relationship of relationships) {
+    for (const level of levels) {
+      it(`${relationship} ${cardExpected[relationship][level] ? "sees" : "does not see"} the card of a ${level} profile`, () => {
+        expect(canSeeCard(relationship, level)).toBe(
+          cardExpected[relationship][level],
+        );
+      });
+    }
+  }
+
+  it("is never more than the profile itself shows to the owner, and never to a blocked person", () => {
+    for (const level of levels) {
+      expect(canSeeCard("owner", level)).toBe(true);
+      expect(canSeeCard("blocked", level)).toBe(false);
+    }
+  });
+
+  it("is what a locked profile shows to anybody who may not see the rest", () => {
+    for (const relationship of [
+      "follower",
+      "stranger",
+      "signed_out",
+    ] as const) {
+      expect(canView(relationship, "friends")).toBe(false);
+      expect(canSeeCard(relationship, "friends")).toBe(true);
+    }
+  });
+
+  it("never gives a card to somebody who may not even know the profile exists: a private one", () => {
+    for (const relationship of relationships) {
+      expect(canSeeCard(relationship, "private")).toBe(
+        relationship === "owner",
+      );
+    }
+  });
+
+  it("is never stricter than the full view: whoever sees everything sees the card", () => {
+    for (const relationship of relationships) {
+      for (const level of levels) {
+        if (canView(relationship, level)) {
+          expect(canSeeCard(relationship, level)).toBe(true);
+        }
+      }
+    }
   });
 });

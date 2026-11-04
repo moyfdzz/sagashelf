@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import {
+  canSeeCard,
   canView,
   relationshipOf,
   type Level,
@@ -237,6 +238,96 @@ export async function findViewableProfile(
   return canView(relationship, owner.privacy) ? { owner, relationship } : null;
 }
 
+/** What a profile page may show of a username: everything, or only the card (a locked profile). */
+export type ProfileView = "full" | "card";
+
+/**
+ * The profile of a username as the page shows it, or null. `full` when the viewer may see the
+ * profile (`canView`), `card` when it is locked (a `friends` profile seen by somebody who is not a
+ * friend: only the username, the name and the picture, **never the bio**), and null for a username
+ * that does not exist, an erased account, a `private` profile, and a block in either direction: the
+ * four look the same, so the answer cannot be used to find out who exists, who is private or who
+ * has blocked whom. A person who locked their profile chose to show the card; one who made it
+ * private chose to show nothing.
+ */
+export async function findProfile(
+  db: SqlExecutor,
+  viewerId: string | null,
+  username: string,
+): Promise<{
+  owner: ProfileHead;
+  relationship: Relationship;
+  view: ProfileView;
+} | null> {
+  const { rows } = await db.execute(sql`
+    SELECT id, username, display_name, avatar_url, bio, privacy
+    FROM users
+    WHERE username = ${username} AND deleted_at IS NULL
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  const head: ProfileHead = {
+    id: String(row.id),
+    username: String(row.username),
+    displayName: text(row.display_name),
+    avatarUrl: text(row.avatar_url),
+    bio: text(row.bio),
+    privacy: asLevel(row.privacy),
+  };
+  const relationship = await getRelationship(db, viewerId, head.id);
+  if (canView(relationship, head.privacy)) {
+    return { owner: head, relationship, view: "full" };
+  }
+  if (canSeeCard(relationship, head.privacy)) {
+    return { owner: { ...head, bio: null }, relationship, view: "card" };
+  }
+  return null;
+}
+
+/** Whether the viewer has muted the owner. Only the person who muted can ask: it is their own row. */
+export async function isMuted(
+  db: SqlExecutor,
+  viewerId: string,
+  ownerId: string,
+): Promise<boolean> {
+  const { rows } = await db.execute(sql`
+    SELECT EXISTS (
+      SELECT 1 FROM mutes WHERE muter_id = ${viewerId}::uuid AND muted_id = ${ownerId}::uuid
+    ) AS muted
+  `);
+  return rows[0]?.muted === true;
+}
+
+/** The people the viewer has blocked, newest first, for the page where a block can be undone. */
+export async function listBlocked(
+  db: SqlExecutor,
+  viewerId: string,
+): Promise<Person[]> {
+  const { rows } = await db.execute(sql`
+    SELECT u.username, u.display_name, u.avatar_url
+    FROM blocks b JOIN users u ON u.id = b.blocked_id
+    WHERE b.blocker_id = ${viewerId}::uuid AND u.deleted_at IS NULL
+    ORDER BY b.created_at DESC, u.id
+    LIMIT 200
+  `);
+  return rows.map(toPerson);
+}
+
+/** The people the viewer has muted, newest first. */
+export async function listMuted(
+  db: SqlExecutor,
+  viewerId: string,
+): Promise<Person[]> {
+  const { rows } = await db.execute(sql`
+    SELECT u.username, u.display_name, u.avatar_url
+    FROM mutes m JOIN users u ON u.id = m.muted_id
+    WHERE m.muter_id = ${viewerId}::uuid AND u.deleted_at IS NULL
+    ORDER BY m.created_at DESC, u.id
+    LIMIT 200
+  `);
+  return rows.map(toPerson);
+}
+
 export type Person = {
   username: string;
   displayName: string | null;
@@ -244,6 +335,12 @@ export type Person = {
 };
 
 export type PeoplePage = { people: Person[]; hasMore: boolean };
+
+const toPerson = (row: Record<string, unknown>): Person => ({
+  username: String(row.username),
+  displayName: text(row.display_name),
+  avatarUrl: text(row.avatar_url),
+});
 
 type Kind = "followers" | "following" | "friends";
 
@@ -307,11 +404,7 @@ async function listPeople(
     LIMIT ${pageSize + 1}::int OFFSET ${offset}::int
   `);
   return {
-    people: rows.slice(0, pageSize).map((row) => ({
-      username: String(row.username),
-      displayName: text(row.display_name),
-      avatarUrl: text(row.avatar_url),
-    })),
+    people: rows.slice(0, pageSize).map(toPerson),
     hasMore: rows.length > pageSize,
   };
 }

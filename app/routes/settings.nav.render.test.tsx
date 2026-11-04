@@ -45,6 +45,7 @@ describe("the navigation of the settings (SAG-27)", () => {
       ["Mis datos", "#data"],
       ["Eliminar cuenta", "#delete"],
       ["Avisos en Discord", "/settings/notifications"],
+      ["Bloqueadas", "/settings/people"],
     ]);
   });
 
@@ -66,6 +67,7 @@ describe("the navigation of the settings (SAG-27)", () => {
       "My data",
       "Delete account",
       "Discord alerts",
+      "Blocked",
     ]);
   });
 });

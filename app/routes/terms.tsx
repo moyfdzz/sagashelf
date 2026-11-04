@@ -42,12 +42,16 @@ export default function Terms() {
             t("terms.use.spam"),
             t("terms.use.piracy"),
             t("terms.use.abuse"),
+            t("terms.use.stalk"),
             t("terms.use.impersonate"),
           ]}
         />
       </LegalSection>
       <LegalSection title={t("terms.content.title")}>
         <p>{t("terms.content.body")}</p>
+      </LegalSection>
+      <LegalSection title={t("terms.people.title")}>
+        <p>{t("terms.people.body")}</p>
       </LegalSection>
       <LegalSection title={t("terms.titles.title")}>
         <p>

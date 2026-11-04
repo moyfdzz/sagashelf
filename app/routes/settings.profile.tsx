@@ -17,6 +17,7 @@ import {
   inputClass,
   secondaryButtonClass,
   secondaryLinkClass,
+  textLinkClass,
 } from "~/lib/ui";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
@@ -398,7 +399,7 @@ export default function ProfileSettings({
               name="privacy"
               defaultValue={profile.privacy}
               aria-invalid={errors.privacy ? true : undefined}
-              aria-describedby={errors.privacy ? "privacy-error" : undefined}
+              aria-describedby={`privacy-hint${errors.privacy ? " privacy-error" : ""}`}
               className={inputClass}
             >
               {privacyLevels.map((level) => (
@@ -407,6 +408,9 @@ export default function ProfileSettings({
                 </option>
               ))}
             </select>
+            <p id="privacy-hint" className="text-fg-muted mt-1 text-sm">
+              {t("settings.profile.privacyHint")}
+            </p>
             {errors.privacy ? (
               <p
                 id="privacy-error"
@@ -415,6 +419,15 @@ export default function ProfileSettings({
                 {errorText(errors.privacy)}
               </p>
             ) : null}
+            {/* A plain link: the public profile has its own security policy (ADR-018). */}
+            <p className="mt-2">
+              <a
+                href={`/u/${encodeURIComponent(profile.username)}`}
+                className={textLinkClass}
+              >
+                {t("settings.profile.viewProfile")}
+              </a>
+            </p>
           </div>
 
           <button

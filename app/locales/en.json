@@ -169,7 +169,9 @@
         "invalid_locale": "Choose a language from the list.",
         "invalid_privacy": "Choose an option from the list.",
         "generic": "We could not save the changes. Please try again."
-      }
+      },
+      "privacyHint": "Public: anyone sees your profile. Friends only: other people see your username, name and picture, and will be able to ask to follow you; the rest is only seen by your friends. Private: nobody but you sees your profile, not even that it exists.",
+      "viewProfile": "View my public profile"
     },
     "data": {
       "title": "Your data",
@@ -198,7 +200,8 @@
       "profile": "Profile",
       "data": "My data",
       "delete": "Delete account",
-      "notifications": "Discord alerts"
+      "notifications": "Discord alerts",
+      "people": "Blocked"
     },
     "notifications": {
       "title": "Discord alerts",
@@ -347,6 +350,29 @@
         "failed": "We could not change the username. Try again.",
         "invalid_request": "We could not process the request."
       }
+    },
+    "people": {
+      "title": "Blocked and muted people",
+      "description": "Here you can undo a block or a mute. Muting someone does not tell them.",
+      "back": "Back to Settings",
+      "blocked": {
+        "title": "Blocked",
+        "empty": "You have not blocked anyone.",
+        "unblock": "Unblock"
+      },
+      "muted": {
+        "title": "Muted",
+        "empty": "You have not muted anyone.",
+        "unmute": "Unmute"
+      },
+      "avatarAlt": "Profile picture of {{name}}",
+      "result": {
+        "unblocked": "You unblocked that person. The follows there were between you are not restored.",
+        "unmuted": "You unmuted that person."
+      },
+      "errors": {
+        "invalid_request": "We could not read the form. Reload the page and try again."
+      }
     }
   },
   "common": {
@@ -452,10 +478,11 @@
       "account": "Account: your email, your username and, if you use a password, a protected version of it. Clerk manages the password and SagaShelf never stores it.",
       "google": "Google sign-in: if you choose it, Google shares your email, name and profile photo with Clerk. We do not access anything else in your Google account.",
       "profile": "Profile: your display name, bio, language, privacy level and the photo you choose.",
-      "library": "Library: for each title you save, its status, your progress, your score, the dates you started and finished it, how many times you have watched it again, your notes and a visibility level (private by default). For now only you can see your library; before anything is shown to other people we will update this policy.",
+      "library": "Library: for each title you save, its status, your progress, your score, the dates you started and finished it, how many times you watched it again, your notes and a visibility level (private by default). If you change the level of an entry, the people that level allows will see it (see \"Who sees your profile\"). Nobody else sees your notes.",
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
-      "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views."
+      "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views.",
+      "social": "Relationships: whom you follow, whom you blocked and whom you muted. The person you mute does not know."
     },
     "not": {
       "title": "What we do not do",
@@ -476,7 +503,7 @@
     },
     "retention": {
       "title": "How long we keep it",
-      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
+      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
     },
     "rights": {
       "title": "Your rights",
@@ -493,6 +520,14 @@
     "contact": {
       "title": "Contact",
       "body": "Write to us at {{email}}."
+    },
+    "profile": {
+      "title": "Who sees your profile",
+      "intro": "Your profile is at a public address (/u/ and your username) that search engines do not index. What it shows depends on the privacy level you choose in your settings:",
+      "public": "Public: anyone, signed in or not, sees your username, your name, your picture, your bio, how many people follow you, how many you follow and how many are your friends, and the entries of your library that you marked as visible to everyone.",
+      "friends": "Friends only: anyone you have not blocked sees only your username, your name and your picture, so they can ask to follow you. Your bio, your counts and your library are seen only by your friends (people who follow you and whom you follow).",
+      "private": "Private: nobody but you sees your profile, not even that it exists.",
+      "rules": "Each entry of your library has its own level, and the stricter of the entry and your profile applies. Nobody sees your notes. The people who follow you appear in your list of followers according to the level of their own profile. If you block someone, or they block you, they stop seeing your profile and you stop seeing theirs, and the follows between you are removed."
     }
   },
   "terms": {
@@ -514,11 +549,12 @@
       "spam": "send spam or post misleading content;",
       "piracy": "share links to pirated or illegal content;",
       "abuse": "try to get into accounts or systems without permission, or overload the service;",
-      "impersonate": "pretend to be someone else, or choose a username that impersonates them."
+      "impersonate": "pretend to be someone else, or choose a username that impersonates them.",
+      "stalk": "follow other people in bulk or insistently, or look for someone who has blocked you;"
     },
     "content": {
       "title": "Your content",
-      "body": "You are responsible for what you write in your profile (name, bio and photo) and in your library (for example, your notes). You choose who sees it; the notes in your library are seen by no one else. You keep your rights over your content and allow us to store it and show it in the service according to that choice. If you import a file, it must contain only your own data."
+      "body": "You are responsible for what you write in your profile (name, bio and photo) and in your library (for example, your notes). You choose who sees it with your privacy level (see the Privacy Policy); the notes in your library are seen by no one else. You keep your rights over your content and allow us to store it and show it in the service according to that choice. If you import a file, it must contain only your own data."
     },
     "titles": {
       "title": "Title data",
@@ -539,6 +575,10 @@
     "contact": {
       "title": "Contact",
       "body": "Write to us at {{email}}."
+    },
+    "people": {
+      "title": "Other people",
+      "body": "You can follow other people, block them and mute them. Blocking hides your profile from that person and theirs from you, and removes the follows between you. We limit how many people you can follow per hour to prevent spam. If a person locks their profile or makes it private, respect their decision."
     }
   },
   "library": {
@@ -1072,6 +1112,61 @@
       "description": "Works of the sagas you already started that you do not have in your library, in the order of the story.",
       "more_one": "and {{count}} more work",
       "more_other": "and {{count}} more works"
+    }
+  },
+  "profile": {
+    "pageTitle": "{{name}} (@{{username}})",
+    "avatarAlt": "Profile picture of {{name}}",
+    "handle": "@{{username}}",
+    "counts": {
+      "label": "Followers and people followed",
+      "followers_one": "{{count}} follower",
+      "followers_other": "{{count}} followers",
+      "following": "{{count}} following",
+      "friends_one": "{{count}} friend",
+      "friends_other": "{{count}} friends"
+    },
+    "locked": "This profile is for friends only. Its content is not shown to other people.",
+    "requestsSoon": "Soon you will be able to ask to follow them.",
+    "editProfile": "Edit my profile",
+    "signInToFollow": "Sign in to follow",
+    "actions": {
+      "label": "Actions on this person",
+      "follow": "Follow",
+      "unfollow": "Unfollow",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "block": "Block",
+      "blockHint": "Blocking hides your profile from this person and theirs from you, and removes the follows between you. You can undo it in Settings."
+    },
+    "notice": {
+      "followed": "You now follow this person.",
+      "unfollowed": "You stopped following this person.",
+      "muted": "You muted this person.",
+      "unmuted": "You unmuted this person.",
+      "too_many": "You have followed many people in a short time. Try again later.",
+      "unavailable": "This person could not be followed.",
+      "invalid_request": "We could not read the form. Reload the page and try again."
+    },
+    "sections": {
+      "in_progress": "Watching or reading now",
+      "planned": "Want to watch or read",
+      "completed": "Completed",
+      "shown": "Showing {{shown}} of {{total}}."
+    },
+    "empty": "There is nothing public in this library yet.",
+    "people": {
+      "followers": "Followers",
+      "following": "Following",
+      "friends": "Friends",
+      "back": "Back to the profile",
+      "empty": "Nobody here yet.",
+      "pageTitle": "{{kind}} of @{{username}}",
+      "label": "People",
+      "pagination": "Pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{page}}"
     }
   }
 }

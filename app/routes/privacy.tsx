@@ -38,10 +38,22 @@ export default function Privacy() {
             t("privacy.data.profile"),
             t("privacy.data.library"),
             t("privacy.data.viewings"),
+            t("privacy.data.social"),
             t("privacy.data.technical"),
             t("privacy.data.analytics"),
           ]}
         />
+      </LegalSection>
+      <LegalSection id="profile" title={t("privacy.profile.title")}>
+        <p>{t("privacy.profile.intro")}</p>
+        <LegalList
+          items={[
+            t("privacy.profile.public"),
+            t("privacy.profile.friends"),
+            t("privacy.profile.private"),
+          ]}
+        />
+        <p>{t("privacy.profile.rules")}</p>
       </LegalSection>
       <LegalSection title={t("privacy.not.title")}>
         <p>{t("privacy.not.body")}</p>
