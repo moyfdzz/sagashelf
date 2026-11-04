@@ -16,6 +16,7 @@ export function SettingsNav() {
     { href: "#data", label: t("settings.nav.data") },
     { href: "#delete", label: t("settings.nav.delete") },
     { href: "/settings/notifications", label: t("settings.nav.notifications") },
+    { href: "/settings/people", label: t("settings.nav.people") },
   ];
 
   return (

@@ -200,6 +200,9 @@ describe("isSessionPage", () => {
     "/api/admin",
     "/notificationsx",
     "/api/notifications",
+    // A profile is a public page (SAG-107): its buttons are plain forms that reload the page.
+    "/u/ana_reads",
+    "/u/ana_reads/followers",
   ])("is false for %s", (path) => expect(isSessionPage(path)).toBe(false));
 });
 
