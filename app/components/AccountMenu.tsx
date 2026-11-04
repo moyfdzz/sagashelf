@@ -9,13 +9,19 @@ const itemClass =
 
 /**
  * The account menu of a signed-in person on a wide screen: a button that shows or hides a list of
- * links (`AccountLinks`: settings, the administration for an administrator, and sign-out). The links
+ * links (`AccountLinks`: the profile, settings, the administration for an administrator, and sign-out). The links
  * are plain anchors, so each one loads a whole new page and the menu starts closed there. Escape and
  * a click outside close it, and Escape gives the focus back to the button. The navigation links
  * (library, statistics, recommendations) are in the header itself since SAG-96, and on a phone all
  * of it is in the panel of the header's menu instead.
  */
-export function AccountMenu({ isAdmin = false }: { isAdmin?: boolean }) {
+export function AccountMenu({
+  isAdmin = false,
+  username = null,
+}: {
+  isAdmin?: boolean;
+  username?: string | null;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   // Which edge of the button the panel hangs from. It starts at the right, as the server draws it,
@@ -75,7 +81,11 @@ export function AccountMenu({ isAdmin = false }: { isAdmin?: boolean }) {
           align === "right" ? "right-0" : "left-0"
         }`}
       >
-        <AccountLinks isAdmin={isAdmin} itemClass={itemClass} />
+        <AccountLinks
+          isAdmin={isAdmin}
+          username={username}
+          itemClass={itemClass}
+        />
       </ul>
     </div>
   );

@@ -12,7 +12,10 @@ import type { SqlExecutor } from "./clerk-sync";
 /** How many the page lists. Older ones are still kept (30 days) but not drawn. */
 export const pageSize = 50;
 
-/** The count in the header stops here ("99+"), so counting is never a scan of a long table. */
+/**
+ * The count in the header stops here ("99+"), so counting is never a scan of a long table. The read
+ * of the header (`findHeaderFacts`) counts up to this plus one.
+ */
 export const unreadCap = 99;
 
 export type NotificationView = {
@@ -25,28 +28,6 @@ export type NotificationView = {
 
 const asDate = (value: unknown): Date =>
   value instanceof Date ? value : new Date(String(value));
-
-/**
- * How many unread notifications the person with this Clerk id has, up to `unreadCap` plus one (so
- * the header can say "99+"). The Clerk id is the one of the verified session. A person with no
- * account row has none.
- */
-export async function countUnreadByClerkId(
-  db: SqlExecutor,
-  clerkId: string,
-): Promise<number> {
-  const { rows } = await db.execute(sql`
-    SELECT count(*)::int AS unread
-    FROM (
-      SELECT 1
-      FROM notifications n
-      JOIN users u ON u.id = n.user_id
-      WHERE u.clerk_id = ${clerkId} AND u.deleted_at IS NULL AND n.read_at IS NULL
-      LIMIT ${unreadCap + 1}::int
-    ) capped
-  `);
-  return Number(rows[0]?.unread ?? 0);
-}
 
 /** The newest notifications of one person, unread or not. */
 export async function listNotifications(

@@ -19,9 +19,8 @@ import { Navbar } from "~/components/Navbar";
 import { authMiddleware } from "~/middleware/clerk";
 import { readTheme } from "~/lib/theme";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
-import { isAdministrator } from "~server/auth/is-admin";
+import { getHeaderState } from "~server/auth/header-facts";
 import { isSignedIn } from "~server/auth/signed-in";
-import { unreadNotifications } from "~server/auth/unread-notifications";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
 
@@ -36,20 +35,24 @@ export const links: Route.LinksFunction = () => [
 export async function loader(args: Route.LoaderArgs) {
   const { context, request } = args;
   const signedIn = await isSignedIn(args);
-  const [isAdmin, unread] = signedIn
-    ? await Promise.all([isAdministrator(args), unreadNotifications(args)])
-    : [false, 0];
+  // One read for the three facts of the header, and none for a visitor.
+  const header = signedIn
+    ? await getHeaderState(args)
+    : { isAdmin: false, username: null, unread: 0 };
   return data({
     locale: getLocale(context),
     // The mode the person chose with the switch. With none, the page follows the system.
     theme: readTheme(request.headers.get("Cookie")),
-    // Only a yes or no for the header. Who the person is stays in the pages that need it.
+    // A yes or no for the header. The little else it shows about the person (the role as a yes or no,
+    // the username for the link "Perfil" and a count) comes from one read, below.
     signedIn,
     // Also a yes or no: the link to the administration is for an administrator (SAG-95). It is read
     // only for a person with a session, and the pages of the administration check the role again.
-    isAdmin,
+    isAdmin: header.isAdmin,
+    // The username, for the link "Perfil" of the account menu (SAG-114).
+    username: header.username,
     // How many notifications are unread, for the link in the header (SAG-102). 99 is the most shown.
-    unread,
+    unread: header.unread,
   });
 }
 
@@ -60,6 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const signedIn = rootData?.signedIn ?? false;
   const isAdmin = rootData?.isAdmin ?? false;
   const unread = rootData?.unread ?? 0;
+  const username = rootData?.username ?? null;
 
   return (
     <html
@@ -78,6 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           savedTheme={theme}
           signedIn={signedIn}
           isAdmin={isAdmin}
+          username={username}
           unread={unread}
         />
         {children}

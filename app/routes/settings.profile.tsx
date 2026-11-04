@@ -17,7 +17,7 @@ import {
   inputClass,
   secondaryButtonClass,
   secondaryLinkClass,
-  textLinkClass,
+  linkClass,
 } from "~/lib/ui";
 import { getInstance, localeCookie } from "~/middleware/i18next";
 import {
@@ -423,7 +423,7 @@ export default function ProfileSettings({
             <p className="mt-2">
               <a
                 href={`/u/${encodeURIComponent(profile.username)}`}
-                className={textLinkClass}
+                className={linkClass}
               >
                 {t("settings.profile.viewProfile")}
               </a>

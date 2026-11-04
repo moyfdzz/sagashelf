@@ -83,8 +83,10 @@ describe("the button that deletes (SAG-98)", () => {
 });
 
 describe("the look of a link", () => {
-  it("is blue with no underline when it stands on its own, and amber under the pointer and the focus", () => {
-    expect(linkClass).toContain("text-accent");
+  it("is the color of the text, semibold, with no underline when it stands on its own, and amber under the pointer and the focus (SAG-114)", () => {
+    expect(linkClass).toContain("text-fg");
+    expect(linkClass).toContain("font-semibold");
+    expect(linkClass).not.toContain("text-accent");
     expect(linkClass).not.toMatch(/(^| )underline( |$)/);
     for (const state of ["hover", "focus-visible"]) {
       expect(linkClass).toContain(`${state}:text-link-hover`);
@@ -93,17 +95,23 @@ describe("the look of a link", () => {
     expect(linkClass).toContain("focus-visible:outline-2");
   });
 
-  it("keeps a thin underline, a little apart from the text, when it is inside a sentence", () => {
-    expect(textLinkClass).toContain(linkClass);
+  it("keeps the blue and a thin underline, a little apart from the text, when it is inside a sentence", () => {
+    expect(textLinkClass).toContain("text-accent");
     expect(textLinkClass).toMatch(/(^| )underline( |$)/);
+    for (const state of ["hover", "focus-visible"]) {
+      expect(textLinkClass).toContain(`${state}:text-link-hover`);
+    }
+    expect(textLinkClass).toContain("focus-visible:outline-2");
     expect(textLinkClass).toContain("decoration-1");
     expect(textLinkClass).toContain("underline-offset-4");
   });
 
   it("moves softly, and not at all for a person who asked for less motion", () => {
-    expect(linkClass).toContain("transition-colors");
-    expect(linkClass).toContain("duration-150");
-    expect(linkClass).toContain("motion-reduce:transition-none");
+    for (const className of [linkClass, textLinkClass]) {
+      expect(className).toContain("transition-colors");
+      expect(className).toContain("duration-150");
+      expect(className).toContain("motion-reduce:transition-none");
+    }
   });
 
   it("adds an arrow that a screen reader does not read, to the links that go somewhere", () => {
@@ -187,5 +195,42 @@ describe("the links of the site", () => {
       );
 
     expect(own).toEqual([]);
+  });
+});
+
+describe("a link on its own is not drawn as a link inside a sentence (SAG-114)", () => {
+  const sources = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sources(path);
+      return /\.tsx$/.test(entry.name) && !/\.test\.tsx$/.test(entry.name)
+        ? [path]
+        : [];
+    });
+
+  // The only files that draw the blue link with the underline, and why: each one puts the link
+  // inside a sentence (a `Trans` that wraps some words of a paragraph, or a link component that a
+  // `Trans` fills). A link on its own (a list, a count, a back link) uses `linkClass`.
+  const insideASentence = [
+    join("components", "ClerkAuthPage.tsx"),
+    join("components", "TvmazeLink.tsx"),
+    join("components", "WikidataLink.tsx"),
+    join("routes", "community.tsx"),
+    join("routes", "credits.tsx"),
+    join("routes", "terms.tsx"),
+    join("routes", "media.$type.$slug.tsx"),
+  ];
+
+  it("keeps the blue underlined link to the places that put it inside a sentence", () => {
+    const root = join(__dirname, "..");
+    const users: string[] = [];
+    for (const file of sources(root)) {
+      if (file.endsWith(join("lib", "ui.ts"))) continue;
+      if (readFileSync(file, "utf8").includes("textLinkClass")) {
+        users.push(file.slice(root.length + 1));
+      }
+    }
+
+    expect(users.sort()).toEqual([...insideASentence].sort());
   });
 });

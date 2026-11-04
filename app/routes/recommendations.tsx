@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import type { Route } from "./+types/recommendations";
 import { useFormatters } from "~/lib/format";
-import { forwardLinkClass, tabClass, textLinkClass } from "~/lib/ui";
+import { forwardLinkClass, tabClass, linkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -121,7 +121,7 @@ export default function Recommendations({ loaderData }: Route.ComponentProps) {
                 className="border-border bg-surface-raised rounded-md border p-4"
               >
                 <p className="font-semibold">
-                  <Link to={item.href} className={textLinkClass}>
+                  <Link to={item.href} className={linkClass}>
                     {item.title}
                   </Link>
                   <span className="text-fg-muted ml-2 font-normal">
@@ -170,7 +170,7 @@ export default function Recommendations({ loaderData }: Route.ComponentProps) {
                 className="border-border bg-surface-raised rounded-md border p-4"
               >
                 <p className="font-semibold">
-                  <Link to={`/sagas/${saga.slug}`} className={textLinkClass}>
+                  <Link to={`/sagas/${saga.slug}`} className={linkClass}>
                     {saga.title}
                   </Link>
                 </p>
@@ -178,7 +178,7 @@ export default function Recommendations({ loaderData }: Route.ComponentProps) {
                   {saga.items.map((work) => (
                     <li key={work.qid}>
                       {work.href ? (
-                        <Link to={work.href} className={textLinkClass}>
+                        <Link to={work.href} className={linkClass}>
                           {work.label}
                         </Link>
                       ) : (

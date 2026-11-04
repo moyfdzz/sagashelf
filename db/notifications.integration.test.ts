@@ -3,12 +3,10 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   countUnread,
-  countUnreadByClerkId,
   listNotifications,
   markAllRead,
   markRead,
   pageSize,
-  unreadCap,
 } from "../server/db/notifications";
 import { notifications, users } from "../server/db/schema";
 import { createTestDb } from "./test-database";
@@ -160,40 +158,6 @@ describe("counting what is unread", () => {
 
     expect(await countUnread(db, ana.id)).toBe(2);
     expect(await countUnread(db, ben.id)).toBe(1);
-  });
-
-  it("counts for the header by the Clerk id of the session", async () => {
-    const ana = await newUser({ clerkId: "user_ana_clerk" });
-    await notify(ana.id);
-    await notify(ana.id);
-
-    expect(await countUnreadByClerkId(db, "user_ana_clerk")).toBe(2);
-    expect(await countUnreadByClerkId(db, "user_nobody")).toBe(0);
-  });
-
-  it("does not count the notifications of an erased account", async () => {
-    const ana = await newUser({ clerkId: "user_gone" });
-    await notify(ana.id);
-    await db
-      .update(users)
-      .set({ deletedAt: new Date() })
-      .where(eq(users.id, ana.id));
-
-    expect(await countUnreadByClerkId(db, "user_gone")).toBe(0);
-  });
-
-  it("stops counting a little after the cap, so the header can say 99+", async () => {
-    const ana = await newUser({ clerkId: "user_many" });
-    await db.insert(notifications).values(
-      Array.from({ length: unreadCap + 20 }, (_, index) => ({
-        userId: ana.id,
-        type: "episode.aired",
-        payload: { title: `T${index}` },
-        dedupeKey: `k${index}`,
-      })),
-    );
-
-    expect(await countUnreadByClerkId(db, "user_many")).toBe(unreadCap + 1);
   });
 });
 

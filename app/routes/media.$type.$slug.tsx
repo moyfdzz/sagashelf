@@ -526,7 +526,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                 <Link
                   key={saga.slug}
                   to={`/sagas/${saga.slug}`}
-                  className={textLinkClass}
+                  className={linkClass}
                 >
                   {t("media.seeSaga", { title: saga.title })}
                 </Link>
@@ -542,7 +542,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
                 {group.items.map((related) => (
                   <li key={related.qid}>
                     {related.href ? (
-                      <Link to={related.href} className={textLinkClass}>
+                      <Link to={related.href} className={linkClass}>
                         {related.label}
                       </Link>
                     ) : (
