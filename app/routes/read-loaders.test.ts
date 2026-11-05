@@ -80,6 +80,10 @@ const rows: Row[] = [
     username: "ana",
     kind: "followers",
   }),
+  row("u.$username.library.$status.tsx", "visitor", "/u/ana/library/planned", {
+    username: "ana",
+    status: "planned",
+  }),
   row("media.$type.$slug.tsx", "visitor", "/media/movie/some-title", {
     type: "movie",
     slug: "some-title",
