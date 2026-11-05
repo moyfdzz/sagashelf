@@ -102,7 +102,7 @@ const rows: Row[] = [
     size: "w185",
     file: "poster.jpg",
   }),
-  row("media.open.ts", "public", "/media/open?provider=tmdb&id=1"),
+  row("media.open.ts", "visitor", "/media/open?provider=tmdb&id=1"),
 
   row("api.locale.ts", "post-only", "/api/locale"),
   row("library.add.ts", "post-only", "/library/add"),

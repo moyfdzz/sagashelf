@@ -56,6 +56,13 @@
       "namespace_id": "1003",
       "simple": { "limit": 300, "period": 60 },
     },
+    // Opening a title that only a provider knows saves it, so only a person with a session can,
+    // and 10 a minute is more than anybody opens by hand (SAG-130, ADR-035).
+    {
+      "name": "OPEN_LIMITER",
+      "namespace_id": "1004",
+      "simple": { "limit": 10, "period": 60 },
+    },
   ],
   // Preview deployments (one per PR) get their own values and never reuse production ones.
   // Bindings are not inherited: each one is declared again here, with its own counter.
@@ -82,6 +89,11 @@
         "name": "IMAGE_LIMITER",
         "namespace_id": "2003",
         "simple": { "limit": 300, "period": 60 },
+      },
+      {
+        "name": "OPEN_LIMITER",
+        "namespace_id": "2004",
+        "simple": { "limit": 10, "period": 60 },
       },
     ],
   },

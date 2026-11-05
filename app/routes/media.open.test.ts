@@ -7,6 +7,7 @@ import { ProviderError } from "~server/providers/http";
 const mocks = vi.hoisted(() => ({
   findMediaByExternalId: vi.fn(),
   importMedia: vi.fn(),
+  getOptionalUser: vi.fn(),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
@@ -14,10 +15,13 @@ vi.mock("~server/db/media-detail", () => ({
   findMediaByExternalId: mocks.findMediaByExternalId,
 }));
 vi.mock("~server/media/import", () => ({ importMedia: mocks.importMedia }));
+vi.mock("~server/auth/require", () => ({
+  getOptionalUser: mocks.getOptionalUser,
+}));
 vi.mock("~server/runtime-env", () => ({
   getDb: async () => ({ fake: "database" }),
   getMediaProviders: () => [],
-  getSearchLimiter: () => ({ limit: mocks.limit }),
+  getOpenLimiter: () => ({ limit: mocks.limit }),
 }));
 vi.mock("~/middleware/i18next", () => ({ getLocale: () => "es" }));
 
@@ -28,6 +32,7 @@ beforeEach(() => {
   mocks.importMedia
     .mockReset()
     .mockResolvedValue({ id, type: "movie", title: "Matrix" });
+  mocks.getOptionalUser.mockReset().mockResolvedValue({ id: "user-1" });
   mocks.limit.mockReset().mockResolvedValue({ success: true });
 });
 
@@ -50,7 +55,7 @@ async function status(promise: Promise<unknown>) {
 }
 
 describe("opening a title from a search result", () => {
-  it("saves a new title and goes to its own address", async () => {
+  it("saves a new title for a person with a session and goes to its own address", async () => {
     const response = (await open("?provider=tmdb&id=movie%2F603")) as Response;
 
     expect(response.status).toBe(302);
@@ -63,7 +68,8 @@ describe("opening a title from a search result", () => {
     );
   });
 
-  it("goes straight to a title we already hold, without the provider or the limit", async () => {
+  it("goes straight to a title we already hold, without a session, the provider or the limit", async () => {
+    mocks.getOptionalUser.mockResolvedValue(null);
     mocks.findMediaByExternalId.mockResolvedValue({
       id,
       type: "anime",
@@ -75,8 +81,56 @@ describe("opening a title from a search result", () => {
     expect(response.headers.get("Location")).toBe(
       `/media/anime/ataque-a-los-titanes-${id}`,
     );
+    expect(mocks.getOptionalUser).not.toHaveBeenCalled();
     expect(mocks.importMedia).not.toHaveBeenCalled();
     expect(mocks.limit).not.toHaveBeenCalled();
+  });
+
+  describe("a title that only a provider knows (SAG-130)", () => {
+    it("sends a visitor to sign in, and back to this same address, and saves nothing", async () => {
+      mocks.getOptionalUser.mockResolvedValue(null);
+
+      const response = (await open(
+        "?provider=tmdb&id=movie%2F603",
+      )) as Response;
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe(
+        `/sign-in?redirectTo=${encodeURIComponent("/media/open?provider=tmdb&id=movie%2F603")}`,
+      );
+      expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(mocks.importMedia).not.toHaveBeenCalled();
+      expect(mocks.limit).not.toHaveBeenCalled();
+    });
+
+    it("does not call the provider for a visitor, however many titles are asked for", async () => {
+      mocks.getOptionalUser.mockResolvedValue(null);
+
+      for (let n = 0; n < 25; n++) {
+        await open(`?provider=tmdb&id=movie%2F${n}`);
+      }
+
+      expect(mocks.importMedia).not.toHaveBeenCalled();
+    });
+
+    it("limits the person, with a key of their own, before it asks the provider", async () => {
+      await open("?provider=tmdb&id=movie%2F603");
+
+      expect(mocks.limit).toHaveBeenCalledTimes(1);
+      expect(mocks.limit.mock.calls[0]?.[0].key).toBe(
+        "media-open:user-1:unknown",
+      );
+    });
+
+    it("keeps the limit of one person apart from the limit of another", async () => {
+      mocks.getOptionalUser.mockResolvedValue({ id: "user-2" });
+
+      await open("?provider=tmdb&id=movie%2F603");
+
+      expect(mocks.limit.mock.calls[0]?.[0].key).toBe(
+        "media-open:user-2:unknown",
+      );
+    });
   });
 
   it.each([
@@ -89,6 +143,7 @@ describe("opening a title from a search result", () => {
     async (_name, query) => {
       expect(await status(open(query))).toBe(400);
       expect(mocks.findMediaByExternalId).not.toHaveBeenCalled();
+      expect(mocks.getOptionalUser).not.toHaveBeenCalled();
       expect(mocks.importMedia).not.toHaveBeenCalled();
     },
   );
