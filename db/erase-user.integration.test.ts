@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { exportAccount } from "../server/account/export";
+import { exportAccount, type AccountExport } from "../server/account/export";
 import { eraseAccount, erasedColumns } from "../server/db/erase-user";
 import {
   activity,
@@ -18,9 +18,51 @@ import {
   mutes,
   notifications,
   users,
+  webhookEndpoints,
 } from "../server/db/schema";
 import { createTestDb } from "./test-database";
 import { factories } from "./test-helpers";
+
+/**
+ * The columns that point at a person and stay when the account is erased, with the reason. The
+ * row of an erased account stays too, without anything that says who it was (ADR-014).
+ */
+const keptColumns: Readonly<Record<string, string>> = {
+  "reports.reporter_id":
+    "a report outlives the person who made it, so a moderator can still act on it",
+  "reports.resolved_by": "records which moderator closed a report",
+  "audit_log.actor_id": "the audit log must not lose who did what",
+};
+
+/** Where the export shows each erased column. Each one must hold rows for a full account. */
+const exportedColumns: Readonly<
+  Record<string, (data: AccountExport) => readonly unknown[]>
+> = {
+  "library_entries.user_id": (data) => data.libraryEntries,
+  "custom_entries.owner_id": (data) => data.customEntries,
+  "lists.owner_id": (data) => data.lists,
+  "webhook_endpoints.user_id": (data) => data.webhooks,
+  "notifications.user_id": (data) => data.notifications,
+  "follows.follower_id": (data) => data.social.following,
+  "blocks.blocker_id": (data) => data.social.blocked,
+  "mutes.muter_id": (data) => data.social.muted,
+  "follow_requests.requester_id": (data) => data.social.requestsSent,
+  "follow_requests.target_id": (data) => data.social.requestsReceived,
+};
+
+/** The erased columns that the export leaves out, with the reason. */
+const notExportedColumns: Readonly<Record<string, string>> = {
+  "follows.followee_id": "who follows the person is what someone else did",
+  "blocks.blocked_id": "who blocked the person is what someone else did",
+  "mutes.muted_id": "who muted the person is what someone else did",
+  "activity.actor_id":
+    "no code writes it yet; SAG-22 must export it when it does",
+  "likes.user_id": "no code writes it yet; SAG-22 must export it when it does",
+};
+
+const erasedNames = erasedColumns.map(
+  ([table, column]) => `${table}.${column}`,
+);
 
 const { db, pool } = createTestDb();
 const { newUser, newMedia } = factories(db);
@@ -116,6 +158,12 @@ async function personWithEverything() {
       dedupeKey: "episode:bob:1",
     },
   ]);
+  await db.insert(webhookEndpoints).values({
+    userId: ana.id,
+    kind: "discord",
+    url: "https://discord.com/api/webhooks/1/not-a-real-token",
+    eventTypes: ["library.completed"],
+  });
   return { ana, bob, movie };
 }
 
@@ -211,25 +259,42 @@ describe("eraseAccount", () => {
     expect(await db.select().from(libraryEntries)).toHaveLength(1);
   });
 
-  it("covers every table that deletes with a user (a new table cannot be forgotten)", async () => {
+  it("erases or explains every column that points at a person (a new one cannot be forgotten)", async () => {
     const { rows } = await db.execute(sql`
       SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
       FROM pg_constraint c
       JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
       WHERE c.contype = 'f'
         AND c.confrelid = 'users'::regclass
-        AND c.confdeltype = 'c'
     `);
     const inDatabase = rows.map((r) => `${r.tbl}.${r.col}`).sort();
-    const handled = erasedColumns
-      .map(([table, column]) => `${table}.${column}`)
-      .sort();
+    const handled = [...erasedNames, ...Object.keys(keptColumns)].sort();
 
     expect(handled).toEqual(inDatabase);
   });
 });
 
 describe("exportAccount", () => {
+  it("says where each erased column is exported, or why it is not", () => {
+    const classified = [
+      ...Object.keys(exportedColumns),
+      ...Object.keys(notExportedColumns),
+    ].sort();
+
+    expect(classified).toEqual([...erasedNames].sort());
+  });
+
+  it("really has rows for each column it says it exports", async () => {
+    const { ana } = await personWithEverything();
+
+    const data = await exportAccount(db, ana.id);
+    if (!data) throw new Error("The export is empty");
+
+    for (const [column, read] of Object.entries(exportedColumns)) {
+      expect(read(data).length, column).toBeGreaterThan(0);
+    }
+  });
+
   it("gives the person their own data and nobody else's", async () => {
     const { ana } = await personWithEverything();
 
