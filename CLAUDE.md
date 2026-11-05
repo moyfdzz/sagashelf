@@ -39,6 +39,7 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 - `app/locales`: UI text. `es.json` is the source of truth and `en.json` must have exactly the same keys. `app/middleware/i18next.ts` picks the language per request
 - `server/testing/`: MSW mock server shared by all tests. Unhandled requests fail the test, so tests never reach the network; each provider adds its fixtures here
 - `docs/architecture.md` and `docs/adr/`: the system overview with Mermaid diagrams, and one decision record per major decision. A change to the stack or to a major decision adds a new ADR (and marks the old one as superseded) instead of rewriting history. Facts about third-party limits and license terms are written with their source and the date they were read.
+- `docs/agent-notes.md`: what a coding agent must know that does not change between sessions (how to work, migrations by hand, traps found before). Read it before writing code, running the e2e tests or applying a migration. The state of the day is not there: it is in `CLAUDE.local.md` (ignored by git), in the Linear ticket In Progress and in the memory folder; `/handoff` rewrites the first at the end of a session
 - `e2e/`: Playwright tests. Unit tests sit next to the code as `*.test.ts`
 
 ## Conventions
