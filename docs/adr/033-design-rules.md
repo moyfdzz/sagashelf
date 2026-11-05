@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-04
-- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that broke them was listed in the check and has been removed (SAG-73, SAG-117, SAG-118, SAG-119, SAG-120 and SAG-121 are done), so no list is left and every rule fails at once for a new violation. SAG-128 added `checkWrite`, the one place for the size and the `Origin` that every write is asked first, and the check that every route with an `action` uses it; the authorization test of the 16 actions is its second part.
+- **Implementation:** Partial. The rules and the check exist (SAG-116); the code that broke them was listed in the check and has been removed (SAG-73, SAG-117, SAG-118, SAG-119, SAG-120 and SAG-121 are done), so no list is left and every rule fails at once for a new violation. SAG-128 added `checkWrite`, the one place for the size and the `Origin` that every write is asked first, and the check that every route with an `action` uses it; its second part is `app/routes/write-actions.test.ts`, a table with one row per route with an `action` (the test fails for a route that is not in it) that proves each one refuses a foreign `Origin`, an oversize body, a missing session and a request over the rate limit, before it touches the database.
 - **Tickets:** SAG-116, SAG-73, SAG-117, SAG-118, SAG-119, SAG-120, SAG-121, SAG-128
 - **Related:** [ADR-031](031-social-graph.md), [ADR-018](018-personal-library.md), [ADR-007](007-background-work.md)
 
