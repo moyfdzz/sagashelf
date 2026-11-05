@@ -31,7 +31,7 @@ Security is layered: the repository and pipeline stop mistakes before they ship,
 | **Spam and harassment**                            | Reports, moderation states, bans, rate limits, community rules                                                                                                                                                                            | Routes, admin (SAG-22, SAG-26)                                                      | Partial (blocks and mutes built; reports are SAG-22) |
 | **Cost abuse of providers**                        | Per-provider rate limiter and circuit breaker, caching, local-first search                                                                                                                                                                | `server/` (SAG-13, SAG-15)                                                          | Built (but see the review, S-1)                      |
 | **Personal data in logs**                          | No tokens, emails or personal data in logs; generic error responses; visitor hashes with a rotating salt instead of IPs in analytics                                                                                                      | Everywhere (SAG-10, SAG-24, SAG-29)                                                 | Partial (SAG-134)                                    |
-| **Data loss**                                      | Neon point-in-time restore, tested on a branch before launch                                                                                                                                                                              | Neon (SAG-29)                                                                       | Planned                                              |
+| **Data loss**                                      | Neon point-in-time restore, tested on a branch before launch. On the Free plan the window is only 6 hours (Neon docs, read 2026-11-04)                                                                                                    | Neon (SAG-29)                                                                       | Partial (SAG-135)                                    |
 
 ### Rules that apply to every change
 
@@ -42,7 +42,7 @@ Security is layered: the repository and pipeline stop mistakes before they ship,
 
 ### Incident plan
 
-Before launch (SAG-29) there must be a written procedure to rotate each key, disable sign-ups, and pause outgoing webhooks, and an inventory of secrets by name only. The inventory and how to rotate each secret are in [`../secrets.md`](../secrets.md) (SAG-29, part 3); the procedure for an incident is part 4.
+Before launch (SAG-29) there must be a written procedure to rotate each key, disable sign-ups, and pause outgoing webhooks, and an inventory of secrets by name only. The inventory and how to rotate each secret are in [`../secrets.md`](../secrets.md) (SAG-29, part 3); the procedure for an incident is [`../incident-plan.md`](../incident-plan.md) (part 4).
 
 ## Alternatives considered
 

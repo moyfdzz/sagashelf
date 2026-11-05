@@ -1,6 +1,6 @@
 # Secrets: inventory and how to rotate each one
 
-Names only. No value of any secret is written here, in the repository, in an issue or in a chat. This page is part 3 of SAG-29; the incident plan (what to do first when something leaks, how to close sign-ups and pause webhooks) is part 4 and uses this page.
+Names only. No value of any secret is written here, in the repository, in an issue or in a chat. This page is part 3 of SAG-29; the [incident plan](incident-plan.md) (what to do first when something leaks, how to close sign-ups and pause webhooks) is part 4 and uses this page.
 
 Last checked against the code on 2026-11-04. The source of the list is `server/env.ts`, the only place where the variables are validated. If a variable is added there, add its row here in the same pull request.
 
