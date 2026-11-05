@@ -70,6 +70,14 @@ The Neon history is **6 hours** on the Free plan, so the first minutes matter: a
 4. After a restore, people who signed up **after** the restore point exist in Clerk and not in the database. In Clerk, Webhooks, the delivery log, send again the `user.created` events from that time. They are not processed twice: the table of processed events was restored too.
 5. Write it down, with the real size of the loss.
 
+### F. The dependency audit is red
+
+The check `npm audit (production)` (`.github/workflows/dependency-audit.yml`) fails on a **high or critical** advisory in a production dependency. A development tool or a lower severity does not fail it; the job summary reports them. It is not required, so it does not stop a merge: look at it anyway. A red check on a PR that changed no dependency means a new advisory, not that PR. If the summary shows no advisory, it was probably the npm registry: run the workflow again.
+
+1. Read the advisory in the job summary: which package, and whether the Worker reaches the vulnerable code.
+2. Update the package in its own ticket. If only a package inside another one is affected and its parent has no fix yet, use `overrides` in `package.json`, and run the tests.
+3. If it cannot be fixed yet, or it does not apply, **accept it on purpose**: write the advisory, the reason and a date to look again in a Linear ticket. `npm audit` has no ignore list, so the check stays red and the daily email keeps coming until the package changes.
+
 ## Neon: restore
 
 Neon's own words, read 2026-11-04: on the Free plan the history window is up to 6 hours (up to 1 GB of change history per project), the plan includes 1 manual snapshot, and a restore applies to a root branch. Sources: [History window](https://neon.com/docs/postgres/backup-restore/history-window) and [Neon plans](https://neon.com/docs/introduction/plans).
