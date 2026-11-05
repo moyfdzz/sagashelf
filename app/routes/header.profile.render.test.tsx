@@ -111,3 +111,20 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
     expect(html).not.toContain("Perfil");
   });
 });
+
+describe("the link to the search of people (SAG-115)", () => {
+  it("is in the header of a person with a session", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn username="ana_reads" />,
+    );
+
+    expect(hrefs(html)).toContain("/social");
+    expect(html).toContain(">Social</a>");
+  });
+
+  it("is not offered to a visitor", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn={false} />);
+
+    expect(hrefs(html)).not.toContain("/social");
+  });
+});

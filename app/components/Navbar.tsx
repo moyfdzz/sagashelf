@@ -13,7 +13,7 @@ const focusClass =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:-outline-offset-2";
 
 const linkClass = (active: boolean) =>
-  `block rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 ${focusClass} ${
+  `block rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 xl:text-base ${focusClass} ${
     active ? "text-accent" : "text-fg-muted hover:text-accent"
   }`;
 
@@ -42,8 +42,10 @@ const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font
  *
  * On the wide row (measured on 2026-11-04) the Spanish word "Notificaciones" with a count of three digits
  * needs 1274 px inside the 1248 px that 1280 gives, so the links have 8 px of padding on each side from
- * 1280 px up (12 px on a phone, where the panel needs the room to be tapped) and the row keeps 22 px
- * to spare.
+ * 1280 px up (12 px on a phone, where the panel needs the room to be tapped). "Social" (SAG-115) did
+ * not fit in the 22 px that were left, so from 1280 px up the links are 16 px instead of 18. Measured
+ * on 2026-11-05 with all of that, at 1280 px: one row, with about 16 px to spare in Spanish and 49 in
+ * English. A new link needs that measure again.
  *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
  * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
@@ -115,6 +117,7 @@ export function Navbar({
     ...(signedIn
       ? [
           { label: t("nav.library"), to: "/library", session: true, badge: 0 },
+          { label: t("nav.social"), to: "/social", session: false, badge: 0 },
           {
             label: t("nav.notifications"),
             to: "/notifications",

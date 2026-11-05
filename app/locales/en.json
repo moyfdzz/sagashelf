@@ -14,6 +14,7 @@
     "signOut": "Sign out",
     "search": "Search",
     "library": "My library",
+    "social": "Social",
     "stats": "Statistics",
     "admin": "Administration",
     "recommendations": "Recommendations",
@@ -171,7 +172,7 @@
         "invalid_privacy": "Choose an option from the list.",
         "generic": "We could not save the changes. Please try again."
       },
-      "privacyHint": "Public: anyone sees your profile. Private: other people see your username, name and picture, and can ask to follow you; the rest is only seen by your friends, the people who follow each other with you. Total privacy: nobody but you sees your profile, not even that it exists.",
+      "privacyHint": "Public: anyone sees your profile. Private: other people see your username, name and picture, can find you by your username and ask to follow you; the rest is only seen by your friends, the people who follow each other with you. Total privacy: nobody but you sees your profile, not even that it exists.",
       "viewProfile": "View my public profile"
     },
     "data": {
@@ -1198,5 +1199,17 @@
       "next": "Next",
       "page": "Page {{page}}"
     }
+  },
+  "social": {
+    "title": "Social",
+    "description": "Find people by their username.",
+    "inputLabel": "Username",
+    "submit": "Search",
+    "prompt_one": "Type the start of a username, at least {{count}} character.",
+    "prompt_other": "Type the start of a username, at least {{count}} characters.",
+    "tooShort_one": "Type at least {{count}} character.",
+    "tooShort_other": "Type at least {{count}} characters.",
+    "empty": "We found nobody starting with “{{query}}”.",
+    "resultsLabel": "People found"
   }
 }
