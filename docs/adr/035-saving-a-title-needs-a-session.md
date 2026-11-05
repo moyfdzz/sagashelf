@@ -25,7 +25,7 @@ The security review (SAG-29, finding S-1) looked at that bound again. The route 
 - **Show the data of the provider to a visitor without saving it.** It keeps the old experience, but it needs a page that renders a title from the provider with nothing in the database, with its own cache and its own rules for the license of the data. It is a feature, not a fix. Left for its own ticket if visitors ask for it.
 - **Reuse `WRITE_LIMITER` (30 a minute).** It needs no change in the configuration, but it is the limit of everything else that writes. A limit of its own can be tuned for this one use.
 - **A daily cap of titles saved by one caller.** The Workers Rate Limiting binding only counts in windows of 10 or 60 seconds, so a daily cap needs a counter in the database, with a migration and a table. It was not chosen: this ADR bounds the **rate** and not the **total** (see Consequences).
-- **A Turnstile on the call.** Clerk already puts one in front of sign-up, and a `GET` that is followed by a redirect cannot carry a challenge well. The unused `server/turnstile.ts` is SAG-132.
+- **A Turnstile on the call.** Clerk already puts one in front of sign-up, and a `GET` that is followed by a redirect cannot carry a challenge well. The unused `server/turnstile.ts` was removed in SAG-132.
 - **Make the call a `POST`.** ADR-017 rejected it because results opened without JavaScript would break; it still would.
 
 ## Consequences

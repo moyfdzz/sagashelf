@@ -9,13 +9,20 @@ describe("parseEnv", () => {
     });
   });
 
-  it("accepts the optional Turnstile secret and rejects an empty one", () => {
-    expect(
-      parseEnv({ APP_ENV: "preview", TURNSTILE_SECRET_KEY: "set" }),
-    ).toEqual({ APP_ENV: "preview", TURNSTILE_SECRET_KEY: "set" });
-    expect(() =>
-      parseEnv({ APP_ENV: "preview", TURNSTILE_SECRET_KEY: "" }),
-    ).toThrow(/TURNSTILE_SECRET_KEY/);
+  it("accepts an optional value and rejects an empty one", () => {
+    expect(parseEnv({ APP_ENV: "preview", CLERK_JWT_KEY: "set" })).toEqual({
+      APP_ENV: "preview",
+      CLERK_JWT_KEY: "set",
+    });
+    expect(() => parseEnv({ APP_ENV: "preview", CLERK_JWT_KEY: "" })).toThrow(
+      /CLERK_JWT_KEY/,
+    );
+  });
+
+  it("ignores a variable it does not know, so a leftover secret breaks nothing", () => {
+    expect(parseEnv({ APP_ENV: "preview", OLD_SECRET: "set" })).toEqual({
+      APP_ENV: "preview",
+    });
   });
 
   it("validates the Clerk keys by prefix without echoing them", () => {
