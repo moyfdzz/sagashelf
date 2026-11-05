@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { data, Link } from "react-router";
 
 import type { Route } from "./+types/u.$username.$kind";
+import { ProfilePagination } from "~/components/ProfilePagination";
 import { linkClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
@@ -14,6 +15,7 @@ import {
 import { findViewableProfile } from "~server/db/profile-lookup";
 import { getDb } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
+import { pageParam } from "~server/http/page-param";
 import { usernameShape } from "~server/account/profile-schema";
 
 const kinds = ["followers", "following", "friends"] as const;
@@ -29,12 +31,6 @@ const lists = {
   friends: listFriends,
 } as const;
 
-/** The page asked for, from `?page=`, a whole number from 1 to the last one that can be asked for. */
-function pageOf(request: Request): number {
-  const raw = Number(new URL(request.url).searchParams.get("page"));
-  return Number.isInteger(raw) && raw >= 1 ? Math.min(raw, maxPage) : 1;
-}
-
 export async function loader(args: Route.LoaderArgs) {
   const { params, request, context } = args;
   if (!usernameShape.test(params.username) || !isKind(params.kind)) {
@@ -44,7 +40,7 @@ export async function loader(args: Route.LoaderArgs) {
   const db = await getDb();
   const viewer = await getOptionalUser(args);
   const viewerId = viewer?.id ?? null;
-  const page = pageOf(request);
+  const page = pageParam(request, maxPage);
   // The same rule as the profile: a person who may not see the profile gets nothing from its lists,
   // and the answer is the same 404 as for a profile that does not exist (ADR-031).
   const found = await findViewableProfile(db, viewerId, params.username);
@@ -152,32 +148,11 @@ export default function People({ loaderData }: Route.ComponentProps) {
         </ul>
       )}
 
-      {page > 1 || hasMore ? (
-        <nav
-          aria-label={t("profile.people.pagination")}
-          className="mt-6 flex flex-wrap items-center gap-3"
-        >
-          {page > 1 ? (
-            <Link
-              to={`${base}/${kind}?page=${page - 1}`}
-              className={secondaryLinkClass}
-            >
-              {t("profile.people.previous")}
-            </Link>
-          ) : null}
-          <span className="text-fg-muted">
-            {t("profile.people.page", { page })}
-          </span>
-          {hasMore ? (
-            <Link
-              to={`${base}/${kind}?page=${page + 1}`}
-              className={secondaryLinkClass}
-            >
-              {t("profile.people.next")}
-            </Link>
-          ) : null}
-        </nav>
-      ) : null}
+      <ProfilePagination
+        page={page}
+        hasMore={hasMore}
+        pathTo={(toPage) => `${base}/${kind}?page=${toPage}`}
+      />
     </main>
   );
 }

@@ -15,6 +15,10 @@ export default [
   route("credits", "routes/credits.tsx"),
   route("u/:username", "routes/u.$username.tsx"),
   route("u/:username/:kind", "routes/u.$username.$kind.tsx"),
+  route(
+    "u/:username/library/:status",
+    "routes/u.$username.library.$status.tsx",
+  ),
   route("library", "routes/library.tsx"),
   route("notifications", "routes/notifications.tsx"),
   route("stats", "routes/stats.tsx"),

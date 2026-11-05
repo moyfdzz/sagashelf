@@ -1176,7 +1176,13 @@
       "in_progress": "Viendo o leyendo ahora",
       "planned": "Quiero ver o leer",
       "completed": "Completadas",
-      "shown": "Se muestran {{shown}} de {{total}}."
+      "shown": "Se muestran {{shown}} de {{total}}.",
+      "seeAll": "Ver todos",
+      "seeAllLabel": "Ver todos: {{section}}"
+    },
+    "sectionPage": {
+      "pageTitle": "{{section}} de @{{username}}",
+      "empty": "No hay títulos aquí."
     },
     "empty": "Todavía no hay nada público en esta biblioteca.",
     "people": {

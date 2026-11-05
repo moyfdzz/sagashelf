@@ -26,6 +26,22 @@ test.describe("the public profile", () => {
     }
   });
 
+  test("a section of a profile that cannot exist is a 404, and is not kept by a cache", async ({
+    request,
+  }) => {
+    for (const path of [
+      "/u/ana_reads/library/paused",
+      "/u/ana_reads/library/COMPLETED",
+      "/u/ana_reads/library/completed?type=custom",
+      "/u/ab/library/completed",
+    ]) {
+      const response = await request.get(path);
+
+      expect(response.status(), path).toBe(404);
+      expect(response.headers()["cache-control"], path).not.toMatch(/public/);
+    }
+  });
+
   test("a button sent by a visitor, or from another site, changes nothing", async ({
     request,
   }) => {

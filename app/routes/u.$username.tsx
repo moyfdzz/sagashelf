@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Route } from "./+types/u.$username";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
+import { PosterGrid } from "~/components/PosterGrid";
 import {
   dangerButtonClass,
   linkClass,
@@ -34,11 +35,9 @@ import { followUser, unfollowUser } from "~server/db/follows";
 import { getSocialCounts } from "~server/db/people-lists";
 import { findProfile } from "~server/db/profile-lookup";
 import { readForm } from "~server/http/body";
-import { imageSrc } from "~server/images/sources";
-import { mediaPath } from "~server/media/slug";
+import { posterCard } from "~server/media/poster-card";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
-import type { MediaKind } from "~server/providers/types";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { usernameShape } from "~server/account/profile-schema";
 import { checkWrite } from "~server/http/write-guard";
@@ -158,13 +157,7 @@ export async function loader(args: Route.LoaderArgs) {
     sections: profileStatuses.map((status) => ({
       status,
       total: sections[status].total,
-      entries: sections[status].entries.map((entry) => ({
-        href: mediaPath(entry.type as MediaKind, entry.title, entry.mediaId),
-        title: entry.title,
-        year: entry.year,
-        score: entry.score,
-        poster: imageSrc(entry.imageUrl, "w185"),
-      })),
+      entries: sections[status].entries.map(posterCard),
     })),
   };
 }
@@ -469,7 +462,13 @@ function FullProfile({
       ) : (
         sections
           .filter((section) => section.total > 0)
-          .map((section) => <Section key={section.status} section={section} />)
+          .map((section) => (
+            <Section
+              key={section.status}
+              section={section}
+              profilePath={base}
+            />
+          ))
       )}
     </>
   );
@@ -477,11 +476,13 @@ function FullProfile({
 
 function Section({
   section,
+  profilePath,
 }: {
   section: Extract<
     Route.ComponentProps["loaderData"],
     { view: "full" }
   >["sections"][number];
+  profilePath: string;
 }) {
   const { t } = useTranslation();
   const status: ProfileStatus = section.status;
@@ -496,43 +497,19 @@ function Section({
           {t("profile.sections.shown", {
             shown: section.entries.length,
             total: section.total,
-          })}
+          })}{" "}
+          <Link
+            to={`${profilePath}/library/${status}`}
+            aria-label={t("profile.sections.seeAllLabel", {
+              section: t(`profile.sections.${status}`),
+            })}
+            className={linkClass}
+          >
+            {t("profile.sections.seeAll")}
+          </Link>
         </p>
       ) : null}
-      <ul className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-        {section.entries.map((entry) => (
-          <li key={entry.href}>
-            <Link to={entry.href} className="block">
-              {entry.poster ? (
-                // The title is written under it, so a screen reader skips the picture.
-                <span aria-hidden="true" className="block">
-                  <img
-                    src={entry.poster}
-                    alt={t("media.posterAlt", { title: entry.title })}
-                    width={185}
-                    height={278}
-                    loading="lazy"
-                    className="border-border aspect-[2/3] w-full rounded-md border object-cover"
-                  />
-                </span>
-              ) : (
-                <div
-                  aria-hidden="true"
-                  className="bg-border aspect-[2/3] w-full rounded-md"
-                />
-              )}
-              <span className="mt-1 block text-sm font-semibold break-words">
-                {entry.title}
-              </span>
-            </Link>
-            {entry.score ? (
-              <span className="text-fg-muted text-sm">
-                {t("library.card.scoreShort", { score: entry.score })}
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <PosterGrid entries={section.entries} />
     </section>
   );
 }

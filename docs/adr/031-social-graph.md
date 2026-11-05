@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-04
 - **Implementation:** Partial. SAG-21 is the server side (the policy, the statements and the queries). SAG-107 is the profile page, the lists of people, the page of blocked and muted people and the legal pages. Follow requests are SAG-108 ([ADR-032](032-follow-requests.md)), searching people is SAG-115, and favorites and lists of titles are SAG-112 and SAG-113.
-- **Tickets:** SAG-21, SAG-107, SAG-108, SAG-112, SAG-113, SAG-22
+- **Tickets:** SAG-21, SAG-107, SAG-108, SAG-112, SAG-113, SAG-127, SAG-22
 - **Related:** [ADR-003](003-auth-clerk.md), [ADR-006](006-security-model.md), [ADR-014](014-account-deletion-erases-everything.md), [ADR-018](018-personal-library.md)
 
 ## Context
@@ -39,6 +39,8 @@ A `private` profile has no card for anybody but its owner: the answer is the 404
 **The link to the profile (SAG-114).** The account menu, and the panel of the menu on a phone, have "Perfil" first, a plain anchor to `/u/<username>`. The header needs the username, so the root loader reads the three facts of the header in **one** statement (`findHeaderFacts`: the role as a yes or no, the username and the count of unread notifications) where it made two reads before (the role and the count); an erased account has none of them. A link on its own is drawn in the color of the text, semibold, amber under the pointer (`linkClass`); the blue underlined link (`textLinkClass`) is only for a link inside a sentence, and a test lists the files that use it.
 
 **Lists of people are pages of their own** (`/u/:username/followers`, `/following`, `/friends`, 50 a page, `?page=` up to 100). They start with `findViewableProfile`, so a card or a hidden profile gets the same 404.
+
+**So does each section of a library (SAG-127).** `/u/:username/library/:status` lists one section of a profile: `?type=` for the tabs chosen with the owner, the newest changed first, 24 a page, `?page=` up to 100. It starts with `findViewableProfile` too, and `getProfileSectionPage` filters by `visibleLevels` in the SQL, so neither the titles nor the counts of the tabs hold what the viewer may not see, and notes are not read. A public entry past the first 12 of a section could not be reached before and can be now: it is what the owner marked as public.
 
 **A block can be undone** from `/settings/people` (SAG-107): the blocked and the muted, each with its button. It is needed because a blocked person's profile answers 404 to the person who blocked, so the profile page cannot be the place to undo it. The unblock and unmute answer the same for any username, so the form cannot be used to find out who exists.
 

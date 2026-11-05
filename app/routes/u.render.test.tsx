@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
 import People from "./u.$username.$kind";
+import ProfileSectionPage from "./u.$username.library.$status";
 import Profile from "./u.$username";
 import { resources } from "~/locales";
 
@@ -467,5 +468,95 @@ describe("the lists of people of a profile", () => {
     expect(html).toMatch(/<h1[^>]*>Friends<\/h1>/);
     expect(html).toContain("Nobody here yet.");
     expect(html).toContain("Back to the profile");
+  });
+});
+
+describe("the link to all the titles of a section of a profile (SAG-127)", () => {
+  it("is under a section with more titles than it shows, with a name of its own", async () => {
+    const html = await render(profile(fullData()));
+
+    expect(html).toContain('href="/u/ana_reads/library/completed"');
+    expect(html).toContain('aria-label="Ver todos: Completadas"');
+    expect(html).toContain(">Ver todos</a>");
+  });
+
+  it("is not under a section that shows all its titles", async () => {
+    const html = await render(profile(fullData()));
+
+    expect(html).not.toContain("/library/in_progress");
+    expect(html).not.toContain("/library/planned");
+  });
+});
+
+describe("the page of a section of a profile (SAG-127)", () => {
+  const sectionData = (overrides: Record<string, unknown> = {}) => ({
+    title: "Completadas de @ana_reads | SagaShelf",
+    username: "ana_reads",
+    status: "completed",
+    type: null,
+    page: 1,
+    hasMore: false,
+    tabs: [
+      { type: null, count: 14 },
+      { type: "anime", count: 0 },
+      { type: "movie", count: 0 },
+      { type: "series", count: 14 },
+      { type: "book", count: 0 },
+      { type: "manga", count: 0 },
+    ],
+    entries: [entry],
+    ...overrides,
+  });
+  const sectionPage = (loaderData: unknown) => (
+    <ProfileSectionPage
+      {...({ loaderData } as unknown as Parameters<
+        typeof ProfileSectionPage
+      >[0])}
+    />
+  );
+
+  it("names the section and the person, and goes back to the profile", async () => {
+    const html = await render(sectionPage(sectionData()));
+
+    expect(html).toMatch(/<h1[^>]*>Completadas<\/h1>/);
+    expect(html).toContain("@ana_reads");
+    expect(html).toContain('href="/u/ana_reads"');
+    expect(html).toContain("Severance");
+  });
+
+  it("draws a tab for each type with its count, and marks the chosen one", async () => {
+    const html = await render(sectionPage(sectionData({ type: "series" })));
+
+    expect(html).toContain('href="/u/ana_reads/library/completed?type=book"');
+    expect(html).toContain('href="/u/ana_reads/library/completed"');
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toMatch(
+      /aria-current="page"[^>]*>Series(<!-- -->)? (<!-- -->)?<span[^>]*>\(14\)<\/span>/,
+    );
+  });
+
+  it("keeps the type when it moves between pages", async () => {
+    const html = await render(
+      sectionPage(sectionData({ type: "series", page: 2, hasMore: true })),
+    );
+
+    expect(html).toContain('href="/u/ana_reads/library/completed?type=series"');
+    expect(html).toContain(
+      'href="/u/ana_reads/library/completed?type=series&amp;page=3"',
+    );
+    expect(html).toContain("Página 2");
+  });
+
+  it("has no pages when everything fits in one", async () => {
+    const html = await render(sectionPage(sectionData()));
+
+    expect(html).not.toContain("Página 1");
+  });
+
+  it("says so when there is nothing, in the language of the viewer", async () => {
+    const html = await render(sectionPage(sectionData({ entries: [] })), "en");
+
+    expect(html).toContain("No titles here.");
+    expect(html).toMatch(/<h1[^>]*>Completed<\/h1>/);
   });
 });

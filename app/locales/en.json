@@ -1176,7 +1176,13 @@
       "in_progress": "Watching or reading now",
       "planned": "Want to watch or read",
       "completed": "Completed",
-      "shown": "Showing {{shown}} of {{total}}."
+      "shown": "Showing {{shown}} of {{total}}.",
+      "seeAll": "See all",
+      "seeAllLabel": "See all: {{section}}"
+    },
+    "sectionPage": {
+      "pageTitle": "{{section}} of @{{username}}",
+      "empty": "No titles here."
     },
     "empty": "There is nothing public in this library yet.",
     "people": {
