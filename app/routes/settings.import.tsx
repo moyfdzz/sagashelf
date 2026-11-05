@@ -26,6 +26,7 @@ import {
   getWriteLimiter,
 } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The file, or the file again when the person confirms, plus a few short fields.
 const maxFormBytes = maxImportBytes + 16 * 1024;
@@ -70,14 +71,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return fail("file_too_large", 413);
-  }
-
   // A page on another site must not be able to write into someone's library.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return fail("generic", 403);
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? fail("file_too_large", 413)
+      : fail("generic", 403);
   }
 
   // The person is the one in the verified session, never something that is in the file.

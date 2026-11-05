@@ -6,6 +6,7 @@ import { readForm } from "../http/body";
 import { rateLimit } from "../rate-limit";
 import { getWriteLimiter } from "../runtime-env";
 import { privateHeaders } from "../http/cache";
+import { checkWrite } from "../http/write-guard";
 
 /**
  * The checks every write of the administration has in common (SAG-92), in the order that does not
@@ -24,13 +25,12 @@ export async function readAdminWrite(
     throw data({ error }, { status, headers: privateHeaders });
   };
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxBytes) {
-    return refuse("payload_too_large", 413);
-  }
   // A page on another site must not be able to change a saga.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return refuse("forbidden", 403);
+  const unsafe = checkWrite(request, maxBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? refuse("payload_too_large", 413)
+      : refuse("forbidden", 403);
   }
 
   const user = await requireRole(args, "admin");

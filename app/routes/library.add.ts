@@ -9,6 +9,7 @@ import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
 import { privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has one id. Anything bigger is not from the title page.
 const maxFormBytes = 1024;
@@ -49,14 +50,12 @@ export function loader() {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return data({ error: "payload_too_large" }, { status: 413 });
-  }
-
   // A page on another site must not be able to fill someone's library.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return data({ error: "forbidden" }, { status: 403 });
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? data({ error: "payload_too_large" }, { status: 413 })
+      : data({ error: "forbidden" }, { status: 403 });
   }
 
   const user = await getOptionalUser(args);

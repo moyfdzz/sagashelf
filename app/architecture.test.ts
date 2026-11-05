@@ -83,6 +83,29 @@ describe("the design rules of ADR-033", () => {
     expect(result).toEqual({ unlisted: [], stale: [] });
   });
 
+  it("asks every write the size and the Origin with checkWrite, and no route reads the Origin by hand", () => {
+    // The Clerk webhook is called by Clerk's servers, not by a page, so it has no Origin to check:
+    // it is checked by the signature of its body instead.
+    const signedInstead = ["app/routes/webhooks.clerk.ts"];
+    const withoutTheCheck = checkRule(
+      (path) =>
+        path.startsWith("app/routes/") &&
+        /export (async )?function action\b/.test(read(path)) &&
+        !/\b(checkWrite|readAdminWrite)\(/.test(read(path)),
+      signedInstead,
+    );
+    const byHand = checkRule(
+      (path) =>
+        path !== "server/http/write-guard.ts" &&
+        /headers\.get\("Origin"\)/.test(read(path)),
+      [],
+    );
+    expect({ withoutTheCheck, byHand }).toEqual({
+      withoutTheCheck: { unlisted: [], stale: [] },
+      byHand: { unlisted: [], stale: [] },
+    });
+  });
+
   it("says what is never cached in one place, server/http/cache.ts, and not in each route", () => {
     const result = checkRule(
       (path) =>

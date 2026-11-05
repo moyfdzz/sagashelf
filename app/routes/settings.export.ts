@@ -8,6 +8,7 @@ import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
 import { privateHeaders } from "~server/http/cache";
+import { checkWrite } from "~server/http/write-guard";
 
 // The form has one button. Anything bigger is not from this page.
 const maxFormBytes = 1024;
@@ -22,14 +23,12 @@ export function loader() {
 export async function action(args: Route.ActionArgs) {
   const { request } = args;
 
-  if (Number(request.headers.get("Content-Length") ?? 0) > maxFormBytes) {
-    return data({ error: "invalid_request" }, { status: 413 });
-  }
-
   // A page on another site must not be able to start the download.
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin) {
-    return data({ error: "forbidden" }, { status: 403 });
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe) {
+    return unsafe === "too_large"
+      ? data({ error: "invalid_request" }, { status: 413 })
+      : data({ error: "forbidden" }, { status: 403 });
   }
 
   // The person is the one in the verified session, never a field of the form.
