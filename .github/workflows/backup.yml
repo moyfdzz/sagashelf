@@ -1,0 +1,53 @@
+name: Database backup
+
+# One encrypted copy of the production database every day, kept outside Neon
+# (SAG-135, ADR-036). Setup and restore steps: docs/backups.md.
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+env:
+  HUSKY: "0"
+
+jobs:
+  backup:
+    name: Dump, encrypt and upload
+    if: github.repository == 'moyfdzz/sagashelf'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Dump and encrypt
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_GPG_PUBLIC_KEY: ${{ secrets.BACKUP_GPG_PUBLIC_KEY }}
+          BACKUP_OUT_DIR: ${{ runner.temp }}/backup
+        run: bash scripts/db-backup.sh
+
+      - name: Upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # R2 does not take the extra checksums that newer AWS CLI versions add.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ACCOUNT_ID: ${{ secrets.BACKUP_R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.BACKUP_R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          for file in "$RUNNER_TEMP"/backup/sagashelf-*.dump.gpg; do
+            aws s3 cp "$file" "s3://$R2_BUCKET/" \
+              --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          done
