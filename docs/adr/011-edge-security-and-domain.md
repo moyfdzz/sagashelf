@@ -54,6 +54,8 @@ A form handler rejects bodies over 4 KB with `413` before reading them, and an e
 
 A server helper (`server/turnstile.ts`) verifies a token with Cloudflare's `siteverify` endpoint and returns false on any failure, expiry or repeat (a token works once and lasts five minutes). The widget is added to sign-up, sign-in after failures and public write forms when those pages exist (SAG-10). The secret key is a Workers secret named `TURNSTILE_SECRET_KEY`.
 
+**Note added on 2026-11-05 (SAG-132):** this was never wired to a form. Clerk's sign-up brought its own Turnstile, so the helper and the variable were removed. The text above is kept as what was decided at the time; [edge setup](../edge-setup.md) says what protects what today.
+
 ## Alternatives considered
 
 - **Set the CSP in `_headers` or in a Cloudflare Transform Rule.** Neither can create a nonce per response, and `_headers` does not reach Worker responses. Rejected for pages.

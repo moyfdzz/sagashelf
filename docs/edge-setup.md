@@ -33,11 +33,14 @@ The Free plan allows 5 custom rules and **1 rate-limiting rule** with a 10 secon
 
 ## 5. Turnstile
 
-The widget is wired into forms in SAG-10, but the keys can be created now.
+**The only Turnstile that protects anything is the one inside Clerk's sign-up.** Clerk runs it when it finds a sign-up suspicious, and it is checked in the Clerk dashboard ([incident plan](incident-plan.md)). No form of ours has a widget, and the Worker verifies no token: the unused helper `server/turnstile.ts` was removed in SAG-132.
 
-- [x] Turnstile, widget `SagaShelf` in Managed mode for the hostname `sagashelf.app`. `www` is not needed: the Worker redirects it to the apex domain, so the widget only ever loads there. More hostnames can be added later in the widget settings (the Free plan allows 10 per widget).
-- [x] The secret key is stored only as the Worker secret `TURNSTILE_SECRET_KEY`, in the **Production** variables (checked on 2026-10-21: the secret is listed as an encrypted value). The **site key** is public and goes into the page in SAG-10.
-- [ ] Previews have their own set of variables (the **Previews Base** tab). They do not receive the production secret. SAG-10 decides how to test Turnstile on previews, for example with a separate widget and its own secret.
+Left over from before that decision, in Cloudflare and read by no code, and safe to delete by hand:
+
+- The widget `SagaShelf`, in Managed mode for the hostname `sagashelf.app`, if it is the one made for this site. Clerk's is managed apart from it.
+- The Worker secret `TURNSTILE_SECRET_KEY`, in the **Production** variables.
+
+A public form that needs a challenge later adds its own widget, secret and verification, in its own ticket, with a test.
 
 ## 6. Check the result
 
