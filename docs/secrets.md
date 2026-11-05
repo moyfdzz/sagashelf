@@ -53,4 +53,4 @@ The menu names of each provider change. If one differs from what is written here
 - **gitleaks** on every pull request (`Secrets (gitleaks)`), with the default rules and one exception: the exact value of each Clerk publishable key. Run over the **whole history** (181 commits, all branches, the repository's own config) on 2026-11-04 with the Docker image of the same version as CI (8.24.3): no leaks.
 - **GitHub secret scanning:** 0 open alerts on 2026-11-04.
 - **The environment check** names a variable that is wrong and never prints its value (`server/env.ts`).
-- **Logs:** no log line carries a secret, with one exception that is a finding and has a ticket: a failed database statement logs the values of its parameters (SAG-134, in the [security review](reviews/2026-11-security-review.md)).
+- **Logs:** no log line carries a secret. An error that nobody handled is written by `handleError` (`server/http/error-log.ts`) without its message, so a failed database statement does not log the values it was sent (SAG-134), and a test fails for a `console` call that is given an error.

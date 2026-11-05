@@ -5,6 +5,7 @@ import type { EntryContext, RouterContextProvider } from "react-router";
 import { ServerRouter } from "react-router";
 
 import { getInstance } from "~/middleware/i18next";
+import { logUnhandled } from "~server/http/error-log";
 import { getClerkKeys } from "~server/runtime-env";
 import {
   buildContentSecurityPolicy,
@@ -15,6 +16,19 @@ import {
 } from "~server/security-headers";
 
 export const streamTimeout = 5_000;
+
+/**
+ * Every error that a loader, an action or the rendering did not handle comes here, in place of
+ * React Router's own handler, which prints the error whole. A failed database statement carries
+ * the values it was sent in its message, so only the name, the status, the path and a few lines of
+ * the stack are written (SAG-134). The development server also gets the message: its data is fake.
+ */
+export function handleError(
+  error: unknown,
+  { request }: { request: Request },
+): void {
+  logUnhandled(error, request, { verbose: import.meta.env.DEV });
+}
 
 export default async function handleRequest(
   request: Request,
@@ -81,7 +95,7 @@ export default async function handleRequest(
         // errors encountered during initial shell rendering since they'll
         // reject and get logged in handleDocumentRequest.
         if (shellRendered) {
-          console.error(error);
+          handleError(error, { request });
         }
       },
     },

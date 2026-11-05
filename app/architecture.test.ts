@@ -22,6 +22,86 @@ function sourceFiles(dir: string): string[] {
 const files = roots.flatMap(sourceFiles);
 const read = (path: string) => readFileSync(path, "utf8");
 
+// What the logs may hold (SAG-134, ADR-006). An error can carry the values of a failed statement
+// in its message, so a `console` call is given the name of an error, never the error, its message
+// or its stack. This reads the text of the code and not its syntax, so it catches the usual
+// ways of getting this wrong and not every one.
+const errorNames = "error|err|e|cause|reason|exception";
+const unsafeArgument = [
+  new RegExp(`^(${errorNames})$`),
+  new RegExp(`\\b(${errorNames})\\.(message|stack|cause)\\b`),
+  new RegExp(`String\\(\\s*(${errorNames})\\s*\\)`),
+  new RegExp(`\\$\\{\\s*(${errorNames})\\s*\\}`),
+];
+
+/** The text between the parentheses of the call that opens at `open`. */
+function textOfCall(source: string, open: number): string | null {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = open; i < source.length; i++) {
+    const char = source[i] ?? "";
+    if (quote) {
+      if (char === "\\") i++;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === "`") quote = char;
+    else if ("([{".includes(char)) depth++;
+    else if (")]}".includes(char)) {
+      depth--;
+      if (depth === 0) return source.slice(open + 1, i);
+    }
+  }
+  return null;
+}
+
+/** The arguments of a call, split at the commas that are not inside a bracket or a string. */
+function splitArguments(text: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let quote: string | null = null;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i] ?? "";
+    if (quote) {
+      if (char === "\\") i++;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === "`") quote = char;
+    else if ("([{".includes(char)) depth++;
+    else if (")]}".includes(char)) depth--;
+    else if (char === "," && depth === 0) {
+      parts.push(text.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  parts.push(text.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+/** The `console` calls in a source that are given an error, or what it says, to write. */
+function unsafeConsoleCalls(source: string): string[] {
+  const found: string[] = [];
+  for (const call of source.matchAll(
+    /console\.(log|error|warn|info|debug)\(/g,
+  )) {
+    const text = textOfCall(source, call.index + call[0].length - 1);
+    if (text === null) continue;
+    if (
+      splitArguments(text).some((argument) =>
+        unsafeArgument.some((pattern) => pattern.test(argument)),
+      )
+    ) {
+      found.push(call[0] + text + ")");
+    }
+  }
+  for (const handed of source.matchAll(/\.catch\(\s*console\.\w+/g)) {
+    found.push(handed[0]);
+  }
+  return found;
+}
+
 /** Fails for a file that breaks the rule and is not listed, or is listed and no longer breaks it. */
 function checkRule(
   breaks: (path: string) => boolean,
@@ -114,5 +194,43 @@ describe("the design rules of ADR-033", () => {
       [],
     );
     expect(result).toEqual({ unlisted: [], stale: [] });
+  });
+
+  it("logs the name of an error and never the error, its message or its stack (SAG-134)", () => {
+    // The one file that does is the entry of the browser: its console is the visitor's, and
+    // nothing in it reaches the logs of the Worker. Hiding the error there would only hide what
+    // went wrong from the person who is building the page.
+    const inTheBrowser = ["app/entry.client.tsx"];
+    const result = checkRule(
+      (path) => unsafeConsoleCalls(read(path)).length > 0,
+      inTheBrowser,
+    );
+    expect(result).toEqual({ unlisted: [], stale: [] });
+  });
+
+  it("knows an unsafe console call when it sees one, and lets a safe one pass", () => {
+    const unsafe = [
+      "console.error(error);",
+      'console.log("failed", err);',
+      "console.error(`failed: ${error}`);",
+      "console.warn(error.message);",
+      "console.error(String(e));",
+      'console.error("x", cause.stack);',
+      "main().catch(console.error);",
+      "console.error(\n  'a note',\n  error,\n);",
+    ];
+    const safe = [
+      'console.error("x", (error as Error).name);',
+      'console.log(JSON.stringify({ event: "a", error: error instanceof Error ? error.name : "unknown" }));',
+      "console.error(JSON.stringify(describeError(error, request)));",
+      'console.log("hello");',
+      "const e = new Error(); report(e);",
+    ];
+    for (const source of unsafe) {
+      expect(unsafeConsoleCalls(source), source).not.toEqual([]);
+    }
+    for (const source of safe) {
+      expect(unsafeConsoleCalls(source), source).toEqual([]);
+    }
   });
 });
