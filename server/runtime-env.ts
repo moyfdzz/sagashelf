@@ -36,6 +36,14 @@ export function getImageLimiter() {
   return env.IMAGE_LIMITER;
 }
 
+/** The Workers Rate Limiting binding for saving a title by opening it (see `ratelimits` in wrangler.jsonc). */
+export function getOpenLimiter() {
+  if (!env.OPEN_LIMITER) {
+    throw new Error("The OPEN_LIMITER binding is missing in wrangler.jsonc");
+  }
+  return env.OPEN_LIMITER;
+}
+
 /** The Workers Cache API, or null when the runtime has none (it may not run on every host). */
 function defaultCache(): Cache | null {
   if (typeof caches === "undefined") return null;

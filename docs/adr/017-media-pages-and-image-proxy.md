@@ -1,10 +1,10 @@
 # ADR-017: Title pages, saving on open, and the image proxy
 
-- **Status:** Accepted
+- **Status:** Accepted. The choice that anyone may save a title by opening it is superseded by [ADR-035](035-saving-a-title-needs-a-session.md); the rest stands.
 - **Date:** 2026-10-25
 - **Implementation:** Done (SAG-17), for TMDB. "Add to library" and the saga link wait for SAG-18 and the sagas tickets.
 - **Tickets:** SAG-17, SAG-15, SAG-13, SAG-18
-- **Related:** [ADR-004](004-search-strategy.md), [ADR-005](005-providers-and-licensing.md), [ADR-006](006-security-model.md), [ADR-016](016-provider-layer-and-tmdb.md)
+- **Related:** [ADR-035](035-saving-a-title-needs-a-session.md), [ADR-004](004-search-strategy.md), [ADR-005](005-providers-and-licensing.md), [ADR-006](006-security-model.md), [ADR-016](016-provider-layer-and-tmdb.md)
 
 ## Context
 
@@ -19,7 +19,7 @@ The search (SAG-15) finds titles but a result opens nothing and shows no poster,
 
 - A result we already hold links to its canonical page `/media/:type/:slug-:id`. The id is our own UUID at the end; the words before it are for people, and a wrong or old slug or type gets a `301` to the canonical address. Slugs use only `a-z`, `0-9` and hyphens, so the address needs no escaping.
 - A result that only a provider knows links to `/media/open?provider=tmdb&id=movie%2F603`. That address looks the id up first; if it is not there, it asks the provider (in the visitor's language), saves the title and its seasons with `saveMedia` and `saveParts`, and answers `302` to the canonical page. The provider and the id are validated with Zod (the id may only hold letters, digits and `_ / . -`, 64 characters at most). Asking the provider counts against `SEARCH_LIMITER` (scope `media-open`); finding a title we already hold does not. The address is `Disallow`ed in `robots.txt` and answers `Cache-Control: private, no-store`.
-- A `GET` that writes is a deliberate exception: a crawler or a prefetch can save a title by following a link. The damage is bounded, because it saves only a real title from a fixed provider, once, under a rate limit. A `POST` would have broken results opened without JavaScript.
+- A `GET` that writes is a deliberate exception: a crawler or a prefetch can save a title by following a link. The damage is bounded, because it saves only a real title from a fixed provider, once, under a rate limit. **Superseded by ADR-035 (SAG-130):** only a person with a session saves, with a limit of their own; a visitor is sent to sign in. A `POST` would have broken results opened without JavaScript.
 
 **The page** is rendered on the server: poster, title and original title, year, kind and status, synopsis, seasons with their episodes (in `<details>`), a link to the source and a link to the credits. The synopsis is shown in the visitor's language, or in the other one when that is all we hold (with a `lang` attribute). The meta tags carry the canonical link, Open Graph (`og:type` by kind, `og:image` through the proxy at `w500`) and a `twitter:card`. JSON-LD (`Movie`, `TVSeries` or `Book`) goes in as a `script:ld+json` meta entry; it is a data block, not executable, so the CSP needs no change. The `Movie`/`TVSeries` choice for anime comes from the source id (`movie/…` or `tv/…`).
 
