@@ -23,7 +23,7 @@ Never paste a secret, a connection string or the address of a Discord webhook in
 | **Stop one person**                     | In Clerk, ban the user, or delete them. Deleting fires `user.deleted`, and the webhook erases their data here.                                                                                         | There is no moderation tool yet (SAG-22). Deleting is permanent for them.                                                                                                                              |
 | **Undo a bad deployment**               | Cloudflare, the Worker, **Deployments**: the three dots of the previous version, **Rollback**. Or in your terminal `npx.cmd wrangler rollback`. Or revert the pull request: a merge to `main` deploys. | A rollback only changes the code. It does not undo a migration (they are additive and applied by hand, ADR-002, so older code normally runs on the newer schema; this is not guaranteed).              |
 | **Take the whole site off for a while** | In Cloudflare, Security, a custom rule that blocks every request (the Free plan has 5 custom rules and none is used). Delete the rule to bring the site back.                                          | Everything answers with Cloudflare's block page, including Clerk's webhook. It is reversible in a minute, which removing the domain is not.                                                            |
-| **Recover data**                        | See "Neon: restore", below.                                                                                                                                                                            | The window is **6 hours** on the Free plan (SAG-135).                                                                                                                                                  |
+| **Recover data**                        | See "Neon: restore", below.                                                                                                                                                                            | Neon's history covers **6 hours** (Free plan). Older than that: the daily encrypted copy, up to 24 hours old ([backups](backups.md)).                                                                  |
 
 How each variable is changed: Cloudflare dashboard, the Worker `sagashelf`, Settings, Variables and Secrets. `keep_vars` is on, so a deployment does not erase a variable set there. After changing one, open the page it affects and check that it changed.
 
@@ -62,7 +62,7 @@ How each variable is changed: Cloudflare dashboard, the Worker `sagashelf`, Sett
 
 ### E. Data was deleted or corrupted
 
-The Neon history is **6 hours** on the Free plan, so the first minutes matter: act before deciding why.
+The Neon history is **6 hours** on the Free plan, so the first minutes matter: act before deciding why. If more than 6 hours passed, go to the daily copy in [backups](backups.md) (kept 30 days, up to 24 hours old).
 
 1. Note the time of the last good state.
 2. Pause what writes if it keeps damaging: webhooks off (table above), sign-ups closed. If the cause is a deployment, roll back first.
