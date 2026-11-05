@@ -23,7 +23,7 @@ One person builds the product and deploys continuously. Nobody else reviews the 
 
 - **Least privilege:** workflow permissions are `contents: read`; only CodeQL adds `security-events: write`. Checkout does not persist credentials.
 - **Actions are pinned to a full commit hash** with the version in a comment, and Dependabot proposes updates weekly, grouped.
-- **Jobs:** Quality (`npm run check`), Integration (constraint tests on a throwaway Postgres 18 service container, SAG-9), E2E (Playwright and axe on desktop and Pixel 7 against the production build, in Spanish and English), Lighthouse, PR title (commitlint), gitleaks, CodeQL (JavaScript and TypeScript), dependency review (fails on high severity) and `npm audit --omit=dev` (reported, not blocking).
+- **Jobs:** Quality (`npm run check`), Integration (constraint tests on a throwaway Postgres 18 service container, SAG-9), E2E (Playwright and axe on desktop and Pixel 7 against the production build, in Spanish and English), Lighthouse, PR title (commitlint), gitleaks, CodeQL (JavaScript and TypeScript), dependency review (fails on high severity) and `npm audit --omit=dev` (reported, not blocking; changed by SAG-131, see the note under the ruleset).
 - **Lighthouse is informational for now.** Its budgets (performance 0.9, accessibility, best practices and SEO 0.95, LCP 2.5 s, CLS 0.1) warn but do not fail, because the first measurements on an almost empty page were slow and noisy. Reports are kept as artifacts and are not uploaded to a public service. It becomes blocking when the site has more pages.
 - The **PR title is linted** because the squash merge uses it as the commit message.
 
@@ -36,6 +36,7 @@ One person builds the product and deploys continuously. Nobody else reviews the 
 
 - A pull request is required, with **0 approvals** (a sole developer cannot approve their own PR), **squash merge only**, **linear history**, **no force push, no deletion**, and **no bypass actors**, so the rules also apply to the owner.
 - **Required checks:** Quality, E2E, PR title, Secrets (gitleaks), CodeQL, Dependency review and Workers Builds. Lighthouse and `npm audit` are not required. Branches are deleted automatically after a merge.
+- **Note added on 2026-11-05 (SAG-131):** the audit moved to its own workflow, `dependency-audit.yml`, and now fails on a high or critical advisory in a production dependency. It runs on PRs, on `main` and every day, so a failure emails the owner with no PR open. The owner chose to keep it **not required**: an advisory can appear on any day with no relation to the PR, the ruleset has no bypass actors, so a required audit could stop an urgent fix, and refusing merges does not remove a package already in production. Dependency review stays required for what a PR adds. It can become required later.
 - Changes to workflows and to the ruleset itself need the owner's explicit confirmation before they are merged.
 
 ## Alternatives considered

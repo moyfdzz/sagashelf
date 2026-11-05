@@ -1,0 +1,54 @@
+name: Dependency audit
+
+# A production dependency with a high or critical advisory turns this red (SAG-131). It is not a
+# required check: an advisory can appear on any day and has nothing to do with the PR, so it must
+# not stop an urgent fix. The daily run emails the owner when it fails, even with no PR open.
+# What to do when it is red: docs/incident-plan.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: npm audit (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      # npm audit reads the lockfile, so nothing is installed and no package runs here.
+      - name: Report every dependency, development tools included (never fails)
+        run: |
+          {
+            echo '### npm audit'
+            echo '```'
+            npm audit || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Audit production dependencies (fails on high or critical)
+        run: |
+          status=0
+          npm audit --omit=dev --audit-level=high > "$RUNNER_TEMP/audit.txt" || status=$?
+          {
+            echo '### npm audit --omit=dev --audit-level=high'
+            echo '```'
+            cat "$RUNNER_TEMP/audit.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/audit.txt"
+          exit "$status"
