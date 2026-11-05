@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Implementation:** Partial (SAG-135): the script, the workflow and the documents are done; the owner still has to create the key, the read-only role, the bucket and the secrets ([backups](../backups.md)), and to try one restore
+- **Implementation:** Done (SAG-135): the owner set it up on 2026-11-05 and a real copy was restored ([backups](../backups.md))
 - **Tickets:** SAG-135, SAG-29
 - **Related:** [ADR-006](006-security-model.md), [ADR-012](012-neon-over-supabase.md), [ADR-002](002-data-postgres-neon-drizzle.md)
 
@@ -44,9 +44,9 @@ The owner has few users today and expects more. A backup that depends on the own
 - **A new set of secrets in GitHub** (six, listed in [secrets](../secrets.md)) and a new thing that can break. A run that never happens sends no email: the owner looks once a month ([backups](../backups.md)).
 - **If the private key or the passphrase is lost, the copies cannot be opened.** There is no way around that by design.
 - **Personal data lives in a second place** (R2) for 30 days, encrypted. The privacy policy was not touched here; whether it should mention backups is the owner's decision with advice.
-- **The first run and the restore have not been tried against production.** The script was tried on this computer against the local database (copy, decrypt, restore, same row counts, and a role with only `SELECT` could not delete). R2 and the Neon role are tried only when the owner runs step 6 of the setup.
+- **The restore was tried once against production, on 2026-11-05.** A run made by hand put a copy in R2; it restored into a local database with the same number of users and all 29 tables; the key and passphrase in the password manager opened it; and `backup_reader` was refused a delete on Neon. The scheduled run had not happened yet when this was written, and restores are not repeated automatically.
 - The copy is up to 24 hours old. A copy every few hours is a change of the cron line if it is ever needed.
-- The R2 free tier and whether a payment method is needed to turn R2 on are described in [backups](../backups.md) with the date they were read.
+- The R2 free tier and what R2 asked for when it was turned on are described in [backups](../backups.md) with their dates. A saved card is behind it, so going over the free tier could be charged.
 
 ## Open questions
 

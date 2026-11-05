@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Built, with two parts missing: moderation (SAG-22) and a tested restore of the backups. Reviewed against the code on 2026-11-04 (SAG-29, part 1): see [the security review](../reviews/2026-11-security-review.md), which also lists the gaps found.
+- **Implementation:** Built, with one part missing: moderation (SAG-22). A restore of the daily copy was tried on 2026-11-05 (SAG-135). Reviewed against the code on 2026-11-04 (SAG-29, part 1): see [the security review](../reviews/2026-11-security-review.md), which also lists the gaps found.
 - **Tickets:** SAG-5, SAG-7, SAG-10, SAG-11, SAG-17, SAG-22, SAG-27, SAG-29
 
 ## Context
@@ -31,7 +31,7 @@ Security is layered: the repository and pipeline stop mistakes before they ship,
 | **Spam and harassment**                            | Reports, moderation states, bans, rate limits, community rules                                                                                                                                                                                                              | Routes, admin (SAG-22, SAG-26)                                                      | Partial (blocks and mutes built; reports are SAG-22) |
 | **Cost abuse of providers**                        | Per-provider rate limiter and circuit breaker, caching, local-first search                                                                                                                                                                                                  | `server/` (SAG-13, SAG-15)                                                          | Built                                                |
 | **Personal data in logs**                          | No tokens, emails or personal data in logs; generic error responses; visitor hashes with a rotating salt instead of IPs in analytics                                                                                                                                        | Everywhere (SAG-10, SAG-24, SAG-29)                                                 | Built                                                |
-| **Data loss**                                      | Neon point-in-time restore, tested on a branch before launch (window of 6 hours on the Free plan, Neon docs, read 2026-11-04); a Neon snapshot before a risky migration; a daily encrypted copy kept 30 days outside Neon ([ADR-036](036-daily-encrypted-database-copy.md)) | Neon (SAG-29)                                                                       | Partial (SAG-135)                                    |
+| **Data loss**                                      | Neon point-in-time restore, tested on a branch before launch (window of 6 hours on the Free plan, Neon docs, read 2026-11-04); a Neon snapshot before a risky migration; a daily encrypted copy kept 30 days outside Neon ([ADR-036](036-daily-encrypted-database-copy.md)) | Neon (SAG-29)                                                                       | Built (SAG-135)                                      |
 
 ### Rules that apply to every change
 
