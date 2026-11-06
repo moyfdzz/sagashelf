@@ -495,7 +495,8 @@
       "intro": "We use these providers to run the service:",
       "clerk": "Clerk: manages accounts and sign-in.",
       "neon": "Neon: hosts the database where your profile is stored.",
-      "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it against abuse, measures visits and speed with Web Analytics, and keeps a temporary copy of searches and covers for up to one day, not linked to your account.",
+      "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it against abuse, measures visits and speed with Web Analytics, and keeps a temporary copy of searches and covers for up to one day, not linked to your account. It also stores the encrypted backup copies of the database.",
+      "github": "GitHub: runs the daily job that creates the encrypted backup copies. The copies are not stored on GitHub.",
       "titles": "Title data sources (TMDB, Open Library and MangaDex): when you search or open a title, our servers send them the search text or the title's identifier to get its data. They do not receive your name, email, account or cookies. Covers are loaded through our server, so those sources do not see who visits the site.",
       "outro": "These providers may process data outside Mexico, including in the United States. We use them only to run the service."
     },
@@ -505,11 +506,11 @@
     },
     "retention": {
       "title": "How long we keep it",
-      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, follow requests, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time, and the database provider may keep backup copies for a short period."
+      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, follow requests, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time. We also keep encrypted backup copies of the database for up to 30 days, and the database provider may keep its own copies for a short period. If you delete your account, your data may remain in those copies until they expire."
     },
     "rights": {
       "title": "Your rights",
-      "body": "In your settings you can download a copy of your data (including your library), import it back, change your profile and delete your account.. For any other request (access, correction or objection to the use of your data, the ARCO rights and their equivalents in other laws) write to {{email}}."
+      "body": "In your settings you can download a copy of your data (including your library), import it back, change your profile and delete your account. For any other request (access, correction or objection to the use of your data, the ARCO rights and their equivalents in other laws) write to {{email}}."
     },
     "age": {
       "title": "Minors",
@@ -526,10 +527,10 @@
     "profile": {
       "title": "Who sees your profile",
       "intro": "Your profile is at a public address (/u/ and your username) that search engines do not index. What it shows depends on the privacy level you choose in your settings:",
-      "public": "Public: anyone, signed in or not, sees your username, your name, your picture, your bio, how many people follow you, how many you follow and how many are your friends, and the entries of your library that you marked as visible to everyone.",
-      "friends": "Private: anyone you have not blocked sees only your username, your name and your picture, and can send you a request to follow you. Your bio, your counts and your library are seen only by your friends (people who follow you and whom you follow). If you accept a request, that person follows you, but does not see your content until you follow them too; you can do that when you accept, and if their profile is also private, they have to accept your request.",
-      "private": "Total privacy: nobody but you sees your profile, not even that it exists, and nobody can send you requests.",
-      "rules": "Each entry of your library has its own level, and the stricter of the entry and your profile applies. Nobody sees your notes. The people who follow you appear in your list of followers according to the level of their own profile. If you block someone, or they block you, they stop seeing your profile and you stop seeing theirs, and the follows between you are removed.",
+      "public": "Public: anyone, signed in or not, sees your username, your name, your picture, your bio, how many people follow you, how many you follow and how many are your friends, and the entries of your library that you marked as visible to everyone. Anyone signed in can also find you by your username on the Social page.",
+      "friends": "Private: anyone you have not blocked sees only your username, your name and your picture, and can send you a request to follow you. Anyone signed in can also find you by your username on the Social page. Your bio, your counts and your library are seen only by your friends (people who follow you and whom you follow). If you accept a request, that person follows you, but does not see your content until you follow them too; you can do that when you accept, and if their profile is also private, they have to accept your request.",
+      "private": "Total privacy: nobody but you sees your profile, not even that it exists, nobody can find you in the search and nobody can send you requests.",
+      "rules": "Each entry of your library has its own level, and the stricter of the entry and your profile applies. Nobody sees your notes. The people who follow you appear in your list of followers according to the level of their own profile. If you block someone, or they block you, they stop seeing and finding your profile and you stop seeing and finding theirs, and the follows between you are removed.",
       "requests": "We keep the follow requests you send and receive until they are answered, cancelled, one of you blocks the other or one of the accounts is deleted. If you decline a request nobody is told: we keep it as declined, and to the person who sent it, it still looks sent until they cancel it. It is part of the copy of your data that you can download."
     }
   },

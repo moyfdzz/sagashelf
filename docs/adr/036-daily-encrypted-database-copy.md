@@ -43,7 +43,7 @@ The owner has few users today and expects more. A backup that depends on the own
 
 - **A new set of secrets in GitHub** (six, listed in [secrets](../secrets.md)) and a new thing that can break. A run that never happens sends no email: the owner looks once a month ([backups](../backups.md)).
 - **If the private key or the passphrase is lost, the copies cannot be opened.** There is no way around that by design.
-- **Personal data lives in a second place** (R2) for 30 days, encrypted. The privacy policy was not touched here; whether it should mention backups is the owner's decision with advice.
+- **Personal data lives in a second place** (R2) for 30 days, encrypted. The privacy policy says so since SAG-137 (the owner decided on 2026-11-05): it names the 30 days, Cloudflare and GitHub, and says that the data of a deleted account may stay in the copies until they expire.
 - **The restore was tried once against production, on 2026-11-05.** A run made by hand put a copy in R2; it restored into a local database with the same number of users and all 29 tables; the key and passphrase in the password manager opened it; and `backup_reader` was refused a delete on Neon. The scheduled run had not happened yet when this was written, and restores are not repeated automatically.
 - The copy is up to 24 hours old. A copy every few hours is a change of the cron line if it is ever needed.
 - The R2 free tier and what R2 asked for when it was turned on are described in [backups](../backups.md) with their dates. A saved card is behind it, so going over the free tier could be charged.
@@ -51,7 +51,6 @@ The owner has few users today and expects more. A backup that depends on the own
 ## Open questions
 
 - Whether to lock the bucket so the workflow's own token cannot delete copies.
-- Whether the privacy policy should say that encrypted backups are kept for 30 days.
 - Whether a second person should be able to open the copies (a second key) if the site grows.
 
 ## References

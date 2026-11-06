@@ -72,6 +72,22 @@ for (const [locale, key] of [
       await expect(main.getByText(/Biblioteca:|Library:/)).toBeVisible();
     });
 
+    test("the privacy policy says who can find a profile and how long the backups last", async ({
+      page,
+    }) => {
+      await page.goto("/privacy");
+
+      const main = page.getByRole("main");
+      await expect(main.getByText(/^(Privado|Private): /)).toContainText(
+        /página Social|Social page/,
+      );
+      await expect(
+        main.getByText(/^(Privacidad total|Total privacy): /),
+      ).toContainText(/encontrarte en la búsqueda|find you in the search/);
+      await expect(main.getByText(/30 (días|days)/)).toBeVisible();
+      await expect(main.getByText(/^GitHub: /)).toBeVisible();
+    });
+
     test("the terms link to the credits for the title data", async ({
       page,
     }) => {
