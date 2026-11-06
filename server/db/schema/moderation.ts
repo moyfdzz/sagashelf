@@ -71,7 +71,8 @@ export const reports = pgTable(
     ...timestamps,
   },
   (t) => [
-    // A person reports the same thing once, each picture apart, and again after cancelling.
+    // A person has one open report about the same thing, each picture apart. Cancelling it or
+    // having it answered frees the slot, so the person can report again (SAG-147, ADR-043).
     uniqueIndex("reports_reporter_target_active_unique")
       .on(
         t.reporterId,
@@ -79,7 +80,9 @@ export const reports = pgTable(
         t.targetId,
         sql`coalesce(${t.pictureUrl}, '')`,
       )
-      .where(sql`${t.cancelledAt} is null`),
+      .where(
+        sql`${t.cancelledAt} is null and ${t.status} in ('open', 'reviewing')`,
+      ),
     check(
       "reports_details_length_check",
       sql`char_length(${t.details}) <= 1000`,

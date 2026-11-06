@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { exportAccount } from "../server/account/export";
 import { eraseAccount } from "../server/db/erase-user";
+import { dismissReport } from "../server/db/moderation";
 import {
   prunePictureUploads,
   recordPictureUpload,
@@ -351,6 +352,116 @@ describe("cancelReport", () => {
   });
 });
 
+describe("reporting again after an answer (SAG-147, ADR-043)", () => {
+  async function answered(status: "resolved" | "dismissed" | "reviewing") {
+    const ana = await newUser();
+    const bob = await withPicture();
+    await createReport(db, userReport(ana.id, bob.id));
+    await createReport(db, pictureReport(ana.id, bob.id));
+    await db.update(reports).set({ status });
+    return { ana, bob };
+  }
+
+  it.each(["resolved", "dismissed"] as const)(
+    "lets the same person report the same user and picture again once it was %s",
+    async (status) => {
+      const { ana, bob } = await answered(status);
+
+      expect(await createReport(db, userReport(ana.id, bob.id))).toBe(
+        "reported",
+      );
+      expect(await createReport(db, pictureReport(ana.id, bob.id))).toBe(
+        "reported",
+      );
+
+      // The old rows stay as the record of what was said.
+      const rows = await db.select().from(reports);
+      expect(rows).toHaveLength(4);
+      expect(rows.filter((row) => row.status === status)).toHaveLength(2);
+      expect(rows.filter((row) => row.status === "open")).toHaveLength(2);
+    },
+  );
+
+  it("still says duplicate while the earlier report is open or being reviewed", async () => {
+    const { ana, bob } = await answered("reviewing");
+
+    expect(await createReport(db, userReport(ana.id, bob.id))).toBe(
+      "duplicate",
+    );
+    expect(await createReport(db, pictureReport(ana.id, bob.id))).toBe(
+      "duplicate",
+    );
+    expect(await db.select().from(reports)).toHaveLength(2);
+  });
+
+  it("blocks the third report while the second is open, and works with a real dismissal", async () => {
+    const admin = await newUser({ role: "admin" });
+    const ana = await newUser();
+    const bob = await withPicture();
+    await createReport(db, userReport(ana.id, bob.id));
+    const [first] = await db.select().from(reports);
+    expect(await dismissReport(db, admin.id, first?.id ?? "")).toBe(true);
+
+    expect(await createReport(db, userReport(ana.id, bob.id))).toBe("reported");
+    expect(await createReport(db, userReport(ana.id, bob.id))).toBe(
+      "duplicate",
+    );
+    expect(await db.select().from(reports)).toHaveLength(2);
+  });
+
+  it("keeps the limit of the day, so repeating is limited", async () => {
+    const ana = await newUser();
+    const targets = await Promise.all(
+      Array.from({ length: dailyReportCap }, () => newUser()),
+    );
+    for (const target of targets) {
+      await createReport(db, userReport(ana.id, target.id));
+    }
+    await db.update(reports).set({ status: "dismissed" });
+
+    const again = await createReport(
+      db,
+      userReport(ana.id, targets[0]?.id ?? ""),
+    );
+
+    expect(again).toBe("limit");
+  });
+
+  it("keeps working if the migration has not been applied yet, with the old index", async () => {
+    // The old index counts every report that is not cancelled. The code names no index, so it
+    // works before and after migration 0028, whichever order the owner applies them in.
+    const name = sql.identifier("reports_reporter_target_active_unique");
+    const columns = sql.raw(
+      `"reporter_id","target_type","target_id",coalesce("picture_url", '')`,
+    );
+    await db.execute(sql`DROP INDEX ${name}`);
+    await db.execute(
+      sql`CREATE UNIQUE INDEX ${name} ON "reports" USING btree (${columns}) WHERE "cancelled_at" is null`,
+    );
+    try {
+      const ana = await newUser();
+      const bob = await withPicture();
+
+      expect(await createReport(db, userReport(ana.id, bob.id))).toBe(
+        "reported",
+      );
+      expect(await createReport(db, userReport(ana.id, bob.id))).toBe(
+        "duplicate",
+      );
+      // With the old index an answered report still blocks: that is the bug the migration fixes.
+      await db.update(reports).set({ status: "resolved" });
+      expect(await createReport(db, userReport(ana.id, bob.id))).toBe(
+        "duplicate",
+      );
+    } finally {
+      await db.execute(sql`DROP INDEX ${name}`);
+      await db.execute(
+        sql`CREATE UNIQUE INDEX ${name} ON "reports" USING btree (${columns}) WHERE "cancelled_at" is null and "status" in ('open', 'reviewing')`,
+      );
+    }
+  });
+});
+
 describe("findMyReports", () => {
   it("finds the reporter's own standing reports, and the current picture only", async () => {
     const ana = await newUser();
@@ -387,6 +498,32 @@ describe("findMyReports", () => {
       picture: null,
     });
     expect(await findMyReports(db, bob.id, ana.id, null)).toEqual({
+      user: null,
+      picture: null,
+    });
+  });
+
+  it("forgets an answered report, so the form is offered again, and keeps one being reviewed (SAG-147)", async () => {
+    const ana = await newUser();
+    const bob = await withPicture();
+    await createReport(db, userReport(ana.id, bob.id));
+    await createReport(db, pictureReport(ana.id, bob.id));
+
+    await db
+      .update(reports)
+      .set({ status: "reviewing" })
+      .where(eq(reports.targetType, "user"));
+    await db
+      .update(reports)
+      .set({ status: "resolved" })
+      .where(eq(reports.targetType, "picture"));
+
+    const mine = await findMyReports(db, ana.id, bob.id, photo);
+    expect(mine.user?.status).toBe("reviewing");
+    expect(mine.picture).toBeNull();
+
+    await db.update(reports).set({ status: "dismissed" });
+    expect(await findMyReports(db, ana.id, bob.id, photo)).toEqual({
       user: null,
       picture: null,
     });
