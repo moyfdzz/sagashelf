@@ -123,6 +123,13 @@ export const asModerationError = (
 ): ModerationError | null =>
   moderationErrors.find((error) => error === value) ?? null;
 
+/**
+ * The detail of a refusal of Clerk, as the address gives it (SAG-151). It is only drawn as text,
+ * but it comes from the address: only a short string of safe characters is taken.
+ */
+export const asModerationDetail = (value: string | null): string | null =>
+  value !== null && /^[A-Za-z0-9_. -]{1,60}$/.test(value) ? value : null;
+
 /** A report id taken from the address (the picture to show, the action to confirm), or null. */
 export const asReportId = (value: string | null): string | null => {
   const parsed = z.uuid().safeParse(value);

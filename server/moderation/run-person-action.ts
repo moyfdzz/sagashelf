@@ -9,6 +9,7 @@ import {
   canRestrict,
   done,
   error,
+  failed,
   stopAccount,
   type ClerkUsers,
 } from "./clerk-steps";
@@ -56,7 +57,8 @@ export async function runPersonAction(
 
   const bans = form.intent === "ban_person";
   if (!canRestrict(person.state, bans)) return back(error("not_found"));
-  if (!(await stopAccount(clerk, person, bans))) return back(error("failed"));
+  const refused = await stopAccount(clerk, person, bans);
+  if (refused !== null) return back(failed(refused));
   const state = bans ? "banned" : "suspended";
   return back(
     done(await restrictAccount(db, actorId, subject, state, form.note), state),

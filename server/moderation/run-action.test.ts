@@ -177,7 +177,9 @@ describe("removing a picture", () => {
   it("changes nothing here when Clerk refuses", async () => {
     mocks.deleteUserProfileImage.mockRejectedValue(new Error("boom"));
 
-    expect(await run({ intent: "remove", id })).toBe("error=failed");
+    expect(await run({ intent: "remove", id })).toBe(
+      "error=failed&detail=Error",
+    );
     expect(mocks.recordPictureRemoved).not.toHaveBeenCalled();
   });
 });
@@ -338,16 +340,16 @@ describe("banning", () => {
 
   it("changes nothing here when Clerk refuses, at any call", async () => {
     mocks.banUser.mockRejectedValue(new Error("boom"));
-    expect(await run({ intent: "ban", id })).toBe("error=failed");
+    expect(await run({ intent: "ban", id })).toBe("error=failed&detail=Error");
 
     mocks.banUser.mockResolvedValue({});
     mocks.findReportedPerson.mockResolvedValue(person({ state: "suspended" }));
     mocks.getUser.mockRejectedValue(new Error("boom"));
-    expect(await run({ intent: "ban", id })).toBe("error=failed");
+    expect(await run({ intent: "ban", id })).toBe("error=failed&detail=Error");
 
     mocks.getUser.mockResolvedValue({ locked: true });
     mocks.unlockUser.mockRejectedValue(new Error("boom"));
-    expect(await run({ intent: "ban", id })).toBe("error=failed");
+    expect(await run({ intent: "ban", id })).toBe("error=failed&detail=Error");
 
     expect(mocks.restrictAccount).not.toHaveBeenCalled();
   });
@@ -421,11 +423,11 @@ describe("lifting", () => {
       state: "suspended",
     });
     mocks.getUser.mockRejectedValue(new Error("boom"));
-    expect(await run({ intent: "lift", id })).toBe("error=failed");
+    expect(await run({ intent: "lift", id })).toBe("error=failed&detail=Error");
 
     mocks.getUser.mockResolvedValue({ locked: true });
     mocks.unlockUser.mockRejectedValue(new Error("boom"));
-    expect(await run({ intent: "lift", id })).toBe("error=failed");
+    expect(await run({ intent: "lift", id })).toBe("error=failed&detail=Error");
 
     expect(mocks.liftRestriction).not.toHaveBeenCalled();
   });
@@ -441,7 +443,7 @@ describe("lifting", () => {
   it("changes nothing here when Clerk refuses", async () => {
     mocks.unbanUser.mockRejectedValue(new Error("boom"));
 
-    expect(await run({ intent: "lift", id })).toBe("error=failed");
+    expect(await run({ intent: "lift", id })).toBe("error=failed&detail=Error");
     expect(mocks.liftRestriction).not.toHaveBeenCalled();
   });
 });
