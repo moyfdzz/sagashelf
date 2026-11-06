@@ -47,7 +47,7 @@ People can upload a profile picture (ADR-037), and the automatic check makes mis
 
 - A person can report anything they see, and the administrator finds out in the app.
 - **An account can hide somebody's picture with one false report,** up to 20 a day. Few people use the site, and reviewing is by hand until SAG-143.
-- **Until SAG-143, reviewing means the Clerk dashboard and SQL.** A hidden picture comes back with a later `user.updated` of Clerk, and restoring one needs SQL. SAG-143 must close both.
+- **Until SAG-143, reviewing means the Clerk dashboard and SQL.** A hidden picture comes back with a later `user.updated` of Clerk, and restoring one needs SQL. SAG-143 must close both (done in the first PR, see [ADR-039](039-moderation-panel.md)).
 - **The check of drawings and anime is unknown.** The rule covers them, but Sightengine's model was not tried with them, so they depend on reports.
 - **This still does not look for known illegal material or recognize minors** (SAG-141).
 - The IP address is personal data kept for 90 days. The privacy policy names it, and the person gets it in their export.

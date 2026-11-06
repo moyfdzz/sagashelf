@@ -34,6 +34,10 @@ export const users = pgTable(
     // False when the address is the generated image of Clerk, so there is nothing to remove or to
     // report (SAG-144). True by default: a real picture must never lose its "report" link.
     hasOwnPicture: boolean("has_own_picture").notNull().default(true),
+    // The address of a picture an administrator hid or a report of minors hid (SAG-143). While it
+    // equals the address Clerk sends, `avatar_url` stays empty, so a `user.updated` cannot bring the
+    // picture back. A different address is a new picture and is shown.
+    hiddenAvatarUrl: text("hidden_avatar_url"),
     bio: text("bio"),
     locale: text("locale").notNull().default("es"),
     privacy: privacyLevel("privacy").notNull().default("public"),

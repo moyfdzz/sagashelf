@@ -1115,6 +1115,56 @@
     "signIn": "Sign in to see your progress in this saga"
   },
   "admin": {
+    "nav": {
+      "label": "Administration",
+      "sagas": "Sagas",
+      "moderation": "Moderation"
+    },
+    "moderation": {
+      "title": "Moderation",
+      "description": "Review the open reports and the pictures the moderation service refused or left close to the limit. Every action is kept in the audit log.",
+      "notices": {
+        "dismissed": "Report dismissed.",
+        "restored": "The picture is shown again and the reports are closed.",
+        "removed": "The picture was removed, in Clerk too, and the reports are resolved."
+      },
+      "errors": {
+        "invalid_request": "The action could not be read.",
+        "not_found": "That report was already answered or does not allow that action.",
+        "outdated": "The person changed their picture: this report is about an older one. Dismiss it.",
+        "failed": "Clerk did not remove the picture. Nothing was changed; try again."
+      },
+      "reports": {
+        "title": "Open reports",
+        "empty": "There are no open reports.",
+        "kind": {
+          "picture": "Picture",
+          "user": "Person"
+        },
+        "unknownReason": "Reason with no text",
+        "hidden": "The picture is hidden from everybody until you decide.",
+        "outdated": "The person already changed their picture: this report is about an older one.",
+        "sensitive": "Reported for minors: it is not shown at first.",
+        "view": "Show the picture",
+        "pictureAlt": "Profile picture of {{username}}",
+        "dismiss": "Dismiss",
+        "restore": "Restore the picture",
+        "remove": "Remove the picture",
+        "removeConfirm": "Remove the picture of {{username}}? It is deleted in Clerk too and this cannot be undone.",
+        "removeYes": "Yes, remove the picture",
+        "removeNo": "No, go back"
+      },
+      "uploads": {
+        "title": "Pictures refused or close to the limit",
+        "description": "Tries to upload a picture that the service refused, or allowed with a score close to the limit. The file is not kept: only who tried and when.",
+        "empty": "There are no tries to review.",
+        "result": {
+          "rejected": "Refused",
+          "allowed": "Allowed, close to the limit"
+        },
+        "score": "Score {{score}}"
+      }
+    },
     "sagas": {
       "title": "Sagas",
       "description": "Create, edit and publish the sagas. Only you see a draft; visitors see the published ones.",

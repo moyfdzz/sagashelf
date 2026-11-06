@@ -1115,6 +1115,56 @@
     "signIn": "Inicia sesión para ver tu progreso en esta saga"
   },
   "admin": {
+    "nav": {
+      "label": "Administración",
+      "sagas": "Sagas",
+      "moderation": "Moderación"
+    },
+    "moderation": {
+      "title": "Moderación",
+      "description": "Revisa los reportes abiertos y las fotos que el servicio de moderación rechazó o dejó cerca del límite. Cada acción queda en el registro de auditoría.",
+      "notices": {
+        "dismissed": "Reporte descartado.",
+        "restored": "La foto se muestra otra vez y los reportes quedaron cerrados.",
+        "removed": "La foto se quitó, también en Clerk, y los reportes quedaron resueltos."
+      },
+      "errors": {
+        "invalid_request": "No se pudo leer la acción.",
+        "not_found": "Ese reporte ya se respondió o no admite esa acción.",
+        "outdated": "La persona cambió de foto: este reporte es de una foto anterior. Descártalo.",
+        "failed": "Clerk no quitó la foto. No se cambió nada; inténtalo de nuevo."
+      },
+      "reports": {
+        "title": "Reportes abiertos",
+        "empty": "No hay reportes abiertos.",
+        "kind": {
+          "picture": "Foto",
+          "user": "Persona"
+        },
+        "unknownReason": "Motivo sin texto",
+        "hidden": "La foto está oculta para todos hasta que decidas.",
+        "outdated": "La persona ya cambió de foto: este reporte es de una anterior.",
+        "sensitive": "Reportada por menores: no se muestra de entrada.",
+        "view": "Ver la foto",
+        "pictureAlt": "Foto de perfil de {{username}}",
+        "dismiss": "Descartar",
+        "restore": "Restaurar la foto",
+        "remove": "Quitar la foto",
+        "removeConfirm": "¿Quitar la foto de {{username}}? Se borra también en Clerk y no se puede deshacer.",
+        "removeYes": "Sí, quitar la foto",
+        "removeNo": "No, volver"
+      },
+      "uploads": {
+        "title": "Fotos rechazadas o cerca del límite",
+        "description": "Intentos de subir una foto que el servicio rechazó, o aceptó con un puntaje cercano al límite. El archivo no se guarda: solo quién lo intentó y cuándo.",
+        "empty": "No hay intentos que revisar.",
+        "result": {
+          "rejected": "Rechazada",
+          "allowed": "Aceptada, cerca del límite"
+        },
+        "score": "Puntaje {{score}}"
+      }
+    },
     "sagas": {
       "title": "Sagas",
       "description": "Crea, edita y publica las sagas. Un borrador solo lo ves tú; los visitantes ven las publicadas.",

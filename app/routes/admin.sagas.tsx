@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { data, Form, Link, redirect } from "react-router";
 
 import type { Route } from "./+types/admin.sagas";
+import { AdminNav } from "~/components/AdminNav";
 import { ClerkSession } from "~/components/ClerkSession";
 import { getInstance } from "~/middleware/i18next";
 import { readAdminWrite } from "~server/auth/admin-write";
@@ -76,6 +77,7 @@ export default function AdminSagas({ loaderData }: Route.ComponentProps) {
       publishableKey={loaderData.publishableKey}
     >
       <main className="container mx-auto max-w-3xl px-4 py-10">
+        <AdminNav current="sagas" />
         <h1 className="text-3xl font-bold">{t("admin.sagas.title")}</h1>
         <p className="text-fg-muted mt-2">{t("admin.sagas.description")}</p>
 

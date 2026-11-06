@@ -28,8 +28,8 @@ export type ReportOutcome = "reported" | "duplicate" | "limit";
 /**
  * Records a report, tells the administrators and, for a report of minors, stops showing the picture
  * until somebody looks at it. It is one statement, so a report is never recorded without the rest.
- * The picture is only cleared here: it stays in Clerk, and the report keeps its address. A later
- * `user.updated` of Clerk can bring it back, which SAG-143 must close. The ids come from the server.
+ * The picture is cleared here and its address is kept in `hidden_avatar_url`: it stays in Clerk, and
+ * the sync of Clerk's events does not write that address back (SAG-143). The ids come from the server.
  */
 export async function createReport(
   db: SqlExecutor,
@@ -53,7 +53,7 @@ export async function createReport(
       RETURNING id
     ),
     hidden AS (
-      UPDATE users SET avatar_url = NULL
+      UPDATE users SET avatar_url = NULL, hidden_avatar_url = ${pictureUrl}
       WHERE ${hides}
         AND id = ${targetId}::uuid
         AND avatar_url = ${pictureUrl}
