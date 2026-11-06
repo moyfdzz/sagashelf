@@ -53,11 +53,13 @@ export async function applyAvatar(
   db: SqlExecutor,
   userId: string,
   avatarUrl: string | null,
+  hasOwnPicture: boolean,
   clerkUpdatedAt: Date,
 ): Promise<boolean> {
   const { rows } = await db.execute(sql`
     UPDATE users SET
       avatar_url = ${avatarUrl},
+      has_own_picture = ${hasOwnPicture ? sql`TRUE` : sql`FALSE`},
       clerk_updated_at = ${clerkUpdatedAt.toISOString()}::timestamptz,
       updated_at = now()
     WHERE id = ${userId} AND deleted_at IS NULL

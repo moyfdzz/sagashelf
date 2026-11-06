@@ -14,6 +14,7 @@ export type Profile = {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  hasOwnPicture: boolean;
   bio: string | null;
   locale: "es" | "en";
   privacy: "public" | "friends" | "private";
@@ -23,6 +24,7 @@ const profileColumns = {
   username: users.username,
   displayName: users.displayName,
   avatarUrl: users.avatarUrl,
+  hasOwnPicture: users.hasOwnPicture,
   bio: users.bio,
   locale: users.locale,
   privacy: users.privacy,
@@ -36,6 +38,7 @@ function asProfile(row: {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  hasOwnPicture: boolean;
   bio: string | null;
   locale: string;
   privacy: Profile["privacy"];

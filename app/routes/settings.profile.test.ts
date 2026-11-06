@@ -47,6 +47,7 @@ const stored = {
   username: "ana_reads",
   displayName: "Ana",
   avatarUrl: null,
+  hasOwnPicture: true,
   bio: null,
   locale: "es",
   privacy: "public",

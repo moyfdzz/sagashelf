@@ -49,6 +49,12 @@ async function reportable(
   return found && found.relationship !== "owner" ? found.owner : null;
 }
 
+/** The picture that can be reported: a person's own, and never the image Clerk generates. */
+const ownPicture = (owner: {
+  avatarUrl: string | null;
+  hasOwnPicture: boolean;
+}) => (owner.hasOwnPicture ? httpsOnly(owner.avatarUrl) : null);
+
 export async function loader(args: Route.LoaderArgs) {
   const { params, request, context } = args;
   if (!usernameShape.test(params.username)) throw notFound();
@@ -59,7 +65,7 @@ export async function loader(args: Route.LoaderArgs) {
   const db = await getDb();
   const owner = await reportable(db, user.id, params.username);
   if (!owner) throw notFound();
-  const pictureUrl = httpsOnly(owner.avatarUrl);
+  const pictureUrl = ownPicture(owner);
   if (kind === "picture" && !pictureUrl) throw notFound();
 
   const mine = await findMyReports(db, user.id, owner.id, pictureUrl);
@@ -150,8 +156,7 @@ export async function action(args: Route.ActionArgs) {
   const owner = await reportable(db, user.id, params.username);
   if (!owner) throw notFound();
   // The picture is the one the server has now, never an address sent by the form.
-  const pictureUrl =
-    form.kind === "picture" ? httpsOnly(owner.avatarUrl) : null;
+  const pictureUrl = form.kind === "picture" ? ownPicture(owner) : null;
   if (form.kind === "picture" && !pictureUrl) throw notFound();
 
   const outcome = await createReport(db, {

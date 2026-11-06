@@ -45,6 +45,7 @@ describe("planClerkEvent: users", () => {
         username: "ana_reads",
         displayName: "Ana Lopez",
         avatarUrl: "https://img.clerk.com/abc",
+        hasOwnPicture: null,
         emailCanonical: "analopez@gmail.com",
         locale: "es",
         at: new Date(updatedAt),
@@ -83,6 +84,17 @@ describe("planClerkEvent: users", () => {
     expect(name({ first_name: null, last_name: null })).toBeNull();
     expect(name({ first_name: "Ana", last_name: null })).toBe("Ana");
     expect(name({ first_name: "", last_name: "Lopez" })).toBe("Lopez");
+  });
+
+  it("says whether it is the person's own picture, and nothing when the event does not say", () => {
+    const own = (fields: Record<string, unknown>) => {
+      const plan = planClerkEvent(userEvent(fields));
+      return plan.kind === "upsert" ? plan.user.hasOwnPicture : "not-upsert";
+    };
+    expect(own({ has_image: true })).toBe(true);
+    expect(own({ has_image: false })).toBe(false);
+    expect(own({})).toBeNull();
+    expect(own({ has_image: "false" })).toBeNull();
   });
 
   it("keeps only an https avatar", () => {

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   pgTable,
@@ -30,6 +31,9 @@ export const users = pgTable(
     username: citext("username").notNull().unique(),
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
+    // False when the address is the generated image of Clerk, so there is nothing to remove or to
+    // report (SAG-144). True by default: a real picture must never lose its "report" link.
+    hasOwnPicture: boolean("has_own_picture").notNull().default(true),
     bio: text("bio"),
     locale: text("locale").notNull().default("es"),
     privacy: privacyLevel("privacy").notNull().default("public"),

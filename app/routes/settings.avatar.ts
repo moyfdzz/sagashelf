@@ -81,7 +81,7 @@ export async function action(args: Route.ActionArgs) {
   });
   const db = await getDb();
 
-  let changed: { imageUrl: string; updatedAt: number };
+  let changed: { imageUrl: string; hasImage: boolean; updatedAt: number };
   if (intent === "remove") {
     try {
       changed = await clerk.users.deleteUserProfileImage(user.clerkId);
@@ -145,6 +145,7 @@ export async function action(args: Route.ActionArgs) {
       db,
       user.id,
       changed.imageUrl.startsWith("https://") ? changed.imageUrl : null,
+      changed.hasImage,
       new Date(changed.updatedAt),
     );
   } catch (error) {

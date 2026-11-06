@@ -32,6 +32,7 @@ describe("getProfile", () => {
       username: ana.username,
       displayName: "Ana",
       avatarUrl: null,
+      hasOwnPicture: true,
       bio: "Hola",
       locale: "es",
       privacy: "public",

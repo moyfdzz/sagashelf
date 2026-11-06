@@ -124,6 +124,23 @@ describe("findProfile (SAG-107): every privacy level × every relationship, on t
     }
   }
 
+  it("says when the image is the one Clerk generates, and that a person has their own by default (SAG-144)", async () => {
+    await newUser({
+      username: "generated_one",
+      avatarUrl: "https://img.clerk.com/generated",
+      hasOwnPicture: false,
+      emailCanonical: "generated@example.test",
+    });
+    await person("own_picture");
+    const viewer = await person("a_viewer");
+
+    const generated = await findProfile(db, viewer.id, "generated_one");
+    const own = await findProfile(db, viewer.id, "own_picture");
+
+    expect(generated?.owner.hasOwnPicture).toBe(false);
+    expect(own?.owner.hasOwnPicture).toBe(true);
+  });
+
   it("never gives the bio of a locked profile to somebody who may not see the rest, even though it exists", async () => {
     const owner = await newUser({
       username: "locked_owner",
@@ -143,6 +160,7 @@ describe("findProfile (SAG-107): every privacy level × every relationship, on t
       username: "locked_owner",
       displayName: "Locked Owner",
       avatarUrl: "https://img.clerk.com/locked",
+      hasOwnPicture: true,
       bio: null,
       privacy: "friends",
     });

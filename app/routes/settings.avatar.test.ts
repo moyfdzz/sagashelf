@@ -63,12 +63,16 @@ beforeEach(() => {
     .mockResolvedValue({ verdict: "allowed", scores: { erotica: 0.01 } });
   mocks.record.mockReset().mockResolvedValue(undefined);
   mocks.moderationKeys.mockReset().mockReturnValue(moderationKeys);
-  mocks.update
-    .mockReset()
-    .mockResolvedValue({ imageUrl: newAddress, updatedAt: clerkTime });
-  mocks.remove
-    .mockReset()
-    .mockResolvedValue({ imageUrl: newAddress, updatedAt: clerkTime });
+  mocks.update.mockReset().mockResolvedValue({
+    imageUrl: newAddress,
+    hasImage: true,
+    updatedAt: clerkTime,
+  });
+  mocks.remove.mockReset().mockResolvedValue({
+    imageUrl: newAddress,
+    hasImage: true,
+    updatedAt: clerkTime,
+  });
   mocks.limit.mockReset().mockResolvedValue({ success: true });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
@@ -131,6 +135,7 @@ describe("POST /settings/avatar, uploading", () => {
       db,
       "user-from-session",
       newAddress,
+      true,
       new Date(clerkTime),
     );
   });
@@ -294,6 +299,7 @@ describe("POST /settings/avatar, uploading", () => {
   it("does not write an address that is not HTTPS", async () => {
     mocks.update.mockResolvedValue({
       imageUrl: "http://img.clerk.com/picture",
+      hasImage: true,
       updatedAt: clerkTime,
     });
 
@@ -303,6 +309,7 @@ describe("POST /settings/avatar, uploading", () => {
       db,
       "user-from-session",
       null,
+      true,
       new Date(clerkTime),
     );
   });
@@ -320,6 +327,25 @@ describe("POST /settings/avatar, removing", () => {
       db,
       "user-from-session",
       newAddress,
+      true,
+      new Date(clerkTime),
+    );
+  });
+
+  it("writes that the image is now one Clerk generated, as Clerk says (SAG-144)", async () => {
+    mocks.remove.mockResolvedValue({
+      imageUrl: newAddress,
+      hasImage: false,
+      updatedAt: clerkTime,
+    });
+
+    await send(formOf({ intent: "remove" }));
+
+    expect(mocks.apply).toHaveBeenCalledWith(
+      db,
+      "user-from-session",
+      newAddress,
+      false,
       new Date(clerkTime),
     );
   });

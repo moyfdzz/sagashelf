@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "has_own_picture" boolean DEFAULT true NOT NULL;

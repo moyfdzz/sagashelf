@@ -32,6 +32,10 @@ The picture of a profile was the one the account had in Clerk, and nobody could 
 
 **The export carries the address of the picture,** as it did, and not the file.
 
+**The control of the file is hidden from the eye, and its label is the button (SAG-144).** The browser writes "Choose File" in its own language, which the page cannot translate. The control stays in the page for the keyboard and screen readers. Removing a picture asks first, with `ConfirmDialog`.
+
+**A generated image is not a picture of the person (SAG-144).** After a picture is removed, or for an account that never had one, Clerk gives a generated image. `users.has_own_picture` (migration `0025`) follows `hasImage` of Clerk ("Returns `false` if Clerk is displaying an avatar for the user", read 2026-11-05) and `has_image` of the webhook, which is not in the pages read but is in the types of `@clerk/backend`. With it false, the page offers neither removing nor reporting the image. The column starts true for everybody and an event that does not say keeps what is there, because a mistake must lose a link to remove at worst, and never the link to report a real picture.
+
 ## Alternatives considered
 
 - **R2, with a column of our own.** It would keep the address of visitors away from Clerk for uploaded pictures, but not for the others. It needs a binding, a column read by every query of a person, a route that serves files and its own deletion. Not worth it now.

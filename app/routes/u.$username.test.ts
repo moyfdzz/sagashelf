@@ -78,6 +78,7 @@ const head = (overrides: Record<string, unknown> = {}) => ({
   username: "ana_reads",
   displayName: "Ana",
   avatarUrl: "https://img.clerk.com/ana",
+  hasOwnPicture: true,
   bio: "A bio only some may read",
   privacy: "public",
   ...overrides,
@@ -204,6 +205,7 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
         username: "ana_reads",
         displayName: "Ana",
         avatarUrl: "https://img.clerk.com/ana",
+        hasOwnPicture: true,
       });
       expect(Object.keys(result).sort()).toEqual([
         "head",
