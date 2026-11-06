@@ -78,9 +78,9 @@ describe("the moderation panel (SAG-143)", () => {
   it("draws a visible picture with no referrer, and offers to dismiss it or to remove it", async () => {
     const html = await render(<AdminModeration {...props()} />);
 
-    expect(html).toMatch(
-      new RegExp(`<img [^>]*src="${photo}"[^>]*referrerPolicy="no-referrer"`),
-    );
+    const image = html.match(/<img [^>]*>/)?.[0] ?? "";
+    expect(image).toContain(`src="${photo}"`);
+    expect(image).toContain('referrerPolicy="no-referrer"');
     expect(html).toContain("Violenta u ofensiva");
     expect(intents(html)).toEqual(["dismiss"]);
     expect(html).toContain(`href="/admin/moderation?confirm=${id}"`);
