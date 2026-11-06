@@ -495,7 +495,8 @@
       "intro": "Usamos estos proveedores para operar el servicio:",
       "clerk": "Clerk: gestiona las cuentas y el inicio de sesión.",
       "neon": "Neon: aloja la base de datos donde se guarda tu perfil.",
-      "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos, mide visitas y velocidad con Web Analytics y guarda por hasta un día una copia temporal de las búsquedas y de las portadas, sin relación con tu cuenta.",
+      "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos, mide visitas y velocidad con Web Analytics y guarda por hasta un día una copia temporal de las búsquedas y de las portadas, sin relación con tu cuenta. También guarda las copias de seguridad cifradas de la base de datos.",
+      "github": "GitHub: ejecuta la tarea diaria que crea las copias de seguridad cifradas. Las copias no se guardan en GitHub.",
       "titles": "Fuentes de datos de títulos (TMDB, Open Library y MangaDex): cuando buscas o abres un título, nuestros servidores les envían el texto de la búsqueda o el identificador del título para obtener sus datos. No reciben tu nombre, tu correo, tu cuenta ni tus cookies. Las portadas pasan por nuestro servidor, así que esas fuentes no ven quién visita el sitio.",
       "outro": "Estos proveedores pueden procesar datos fuera de México, incluso en Estados Unidos. No los usamos para nada más que operar el servicio."
     },
@@ -505,7 +506,7 @@
     },
     "retention": {
       "title": "Cuánto tiempo los conservamos",
-      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones, y tus seguimientos, solicitudes de seguimiento, bloqueos y silencios), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado, y el proveedor de la base de datos puede conservar copias de respaldo por un periodo corto."
+      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones, y tus seguimientos, solicitudes de seguimiento, bloqueos y silencios), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado. También guardamos copias de seguridad cifradas de la base de datos por hasta 30 días, y el proveedor de la base de datos puede conservar sus propias copias por un periodo corto. Si eliminas tu cuenta, tus datos pueden seguir en esas copias hasta que expiren."
     },
     "rights": {
       "title": "Tus derechos",
@@ -526,10 +527,10 @@
     "profile": {
       "title": "Quién ve tu perfil",
       "intro": "Tu perfil está en una dirección pública (/u/ y tu nombre de usuario) que no se indexa en buscadores. Lo que muestra depende del nivel de privacidad que elijas en tus ajustes:",
-      "public": "Público: cualquier persona, haya iniciado sesión o no, ve tu nombre de usuario, tu nombre, tu foto, tu biografía, cuántas personas te siguen, a cuántas sigues y cuántas son tus amistades, y las entradas de tu biblioteca que marcaste como visibles para todas las personas.",
-      "friends": "Privado: cualquier persona que no hayas bloqueado ve solo tu nombre de usuario, tu nombre y tu foto, y puede enviarte una solicitud para seguirte. Tu biografía, tus contadores y tu biblioteca solo los ven tus amistades (personas que te siguen y a las que sigues). Si aceptas una solicitud, esa persona te sigue, pero no ve tu contenido hasta que tú también la sigas; puedes hacerlo al aceptar, y si su perfil también es privado, tiene que aceptar tu solicitud.",
-      "private": "Privacidad total: nadie más que tú ve tu perfil, ni siquiera que existe, y nadie puede enviarte solicitudes.",
-      "rules": "Cada entrada de tu biblioteca tiene su propio nivel, y manda el más estricto entre el de la entrada y el de tu perfil. Tus notas no las ve nadie. Las personas que te siguen aparecen en tu lista de seguidores según el nivel de su propio perfil. Si bloqueas a alguien, o esa persona te bloquea, deja de ver tu perfil y tú el suyo, y se quitan los seguimientos entre ustedes.",
+      "public": "Público: cualquier persona, haya iniciado sesión o no, ve tu nombre de usuario, tu nombre, tu foto, tu biografía, cuántas personas te siguen, a cuántas sigues y cuántas son tus amistades, y las entradas de tu biblioteca que marcaste como visibles para todas las personas. Quien haya iniciado sesión también puede encontrarte por tu nombre de usuario en la página Social.",
+      "friends": "Privado: cualquier persona que no hayas bloqueado ve solo tu nombre de usuario, tu nombre y tu foto, y puede enviarte una solicitud para seguirte. Quien haya iniciado sesión también puede encontrarte por tu nombre de usuario en la página Social. Tu biografía, tus contadores y tu biblioteca solo los ven tus amistades (personas que te siguen y a las que sigues). Si aceptas una solicitud, esa persona te sigue, pero no ve tu contenido hasta que tú también la sigas; puedes hacerlo al aceptar, y si su perfil también es privado, tiene que aceptar tu solicitud.",
+      "private": "Privacidad total: nadie más que tú ve tu perfil, ni siquiera que existe, nadie puede encontrarte en la búsqueda y nadie puede enviarte solicitudes.",
+      "rules": "Cada entrada de tu biblioteca tiene su propio nivel, y manda el más estricto entre el de la entrada y el de tu perfil. Tus notas no las ve nadie. Las personas que te siguen aparecen en tu lista de seguidores según el nivel de su propio perfil. Si bloqueas a alguien, o esa persona te bloquea, deja de ver y de encontrar tu perfil, y tú el suyo, y se quitan los seguimientos entre ustedes.",
       "requests": "Guardamos las solicitudes para seguir que envías y las que recibes hasta que se responden, se cancelan, alguien bloquea a la otra persona o se borra una de las cuentas. Si rechazas una solicitud no se le avisa a nadie: la guardamos como rechazada, y para quien la envió sigue como enviada hasta que la cancele. Entra en la copia de tus datos que puedes descargar."
     }
   },
