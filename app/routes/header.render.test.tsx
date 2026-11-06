@@ -90,13 +90,14 @@ describe("the navigation of the header (SAG-96)", () => {
   const navHrefs = (html: string) =>
     hrefs(html.match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? "");
 
-  it("lists home, search, library, alerts, statistics and recommendations for a signed-in person", async () => {
+  it("lists home, search, library, social, alerts, statistics and recommendations for a signed-in person", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn />);
 
     expect(navHrefs(html)).toEqual([
       "/",
       "/search",
       "/library",
+      "/social",
       "/notifications",
       "/stats",
       "/recommendations",

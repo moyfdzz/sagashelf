@@ -66,6 +66,21 @@ test.describe("the public profile", () => {
   });
 });
 
+test.describe("the search of people", () => {
+  test("is not shown to a visitor, and finds nobody for them", async ({
+    request,
+  }) => {
+    const response = await request.get("/social?q=ana", { maxRedirects: 0 });
+
+    // With Clerk's keys the visitor is sent to sign in; without them (CI) nobody gets in.
+    expect([302, 303, 307, 503]).toContain(response.status());
+    if (response.status() !== 503) {
+      expect(response.headers()["location"]).toMatch(/sign-in|clerk/);
+    }
+    expect(response.headers()["cache-control"] ?? "").not.toMatch(/public/);
+  });
+});
+
 test.describe("the page of blocked and muted people", () => {
   test("is not shown to a visitor", async ({ request }) => {
     const response = await request.get("/settings/people", {

@@ -16,3 +16,9 @@ export const toPerson = (row: Record<string, unknown>): Person => ({
   displayName: text(row.display_name),
   avatarUrl: text(row.avatar_url),
 });
+
+/** A person for a page: the policy of the page allows a picture only from an HTTPS address. */
+export const personCard = (person: Person): Person => ({
+  ...person,
+  avatarUrl: person.avatarUrl?.startsWith("https://") ? person.avatarUrl : null,
+});

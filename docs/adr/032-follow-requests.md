@@ -2,7 +2,7 @@
 
 - **Status:** Accepted. The 30-day wait and the cancel that leaves a declined request alone are replaced by [ADR-034](034-cancel-a-declined-request.md).
 - **Date:** 2026-11-04
-- **Implementation:** Done (SAG-108). Searching people is SAG-115.
+- **Implementation:** Done (SAG-108). Searching people is done too (SAG-115).
 - **Tickets:** SAG-108, SAG-115
 - **Related:** [ADR-031](031-social-graph.md), [ADR-014](014-account-deletion-erases-everything.md), [ADR-030](030-new-episode-alerts.md), [ADR-018](018-personal-library.md)
 
@@ -52,6 +52,9 @@ After SAG-21 and SAG-107 only a public profile could be followed. A profile with
 - The number in the header can be a request, not only a notification, so the hidden text that a screen reader reads says "pending" and not "unread".
 - A declined request lives for 30 days at least. It is a row about a person who said no, in the data of the person who asked, and the privacy policy says so.
 - The search for people (SAG-115) can show the cards of Public and Private profiles and nothing of Total privacy, and it sends a Private profile to the same button.
+- **Built on 2026-11-05 (SAG-115).** `/social`, for a person with a session: the start of a username, at least 2 characters, 20 results at most and no pages. The levels come from `canSeeCard`; an erased account, the viewer and a block in either direction are left out, and only the card is read. So a Private profile can now be found by anybody with a session, which the settings say; Total privacy is the level for not being found.
+- **The limits slow a list of users down; they do not make one impossible.** A person with patience can try many starts. The limit is the search limiter (60 a minute), counted per person, IP address and Cloudflare location, so changing address starts a new count.
+- **No index yet.** The search reads `users` in full (a sequential scan, checked on 2026-11-05). That is nothing with few people. If the table grows, add a custom migration with `text_pattern_ops` on `lower(username::text)`.
 
 ## Open questions
 

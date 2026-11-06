@@ -14,6 +14,7 @@
     "signOut": "Cerrar sesión",
     "search": "Buscar",
     "library": "Mi biblioteca",
+    "social": "Social",
     "stats": "Estadísticas",
     "admin": "Administración",
     "recommendations": "Recomendaciones",
@@ -171,7 +172,7 @@
         "invalid_privacy": "Elige una opción de la lista.",
         "generic": "No pudimos guardar los cambios. Inténtalo de nuevo."
       },
-      "privacyHint": "Público: cualquier persona ve tu perfil. Privado: otras personas ven tu nombre de usuario, tu nombre y tu foto, y pueden pedirte seguirte; el resto solo lo ven tus amistades, que son las personas que se siguen entre sí contigo. Privacidad total: nadie más que tú ve tu perfil, ni siquiera que existe.",
+      "privacyHint": "Público: cualquier persona ve tu perfil. Privado: otras personas ven tu nombre de usuario, tu nombre y tu foto, pueden encontrarte por tu nombre de usuario y pedirte seguirte; el resto solo lo ven tus amistades, que son las personas que se siguen entre sí contigo. Privacidad total: nadie más que tú ve tu perfil, ni siquiera que existe.",
       "viewProfile": "Ver mi perfil público"
     },
     "data": {
@@ -1198,5 +1199,17 @@
       "next": "Siguiente",
       "page": "Página {{page}}"
     }
+  },
+  "social": {
+    "title": "Social",
+    "description": "Encuentra personas por su nombre de usuario.",
+    "inputLabel": "Nombre de usuario",
+    "submit": "Buscar",
+    "prompt_one": "Escribe el inicio de un nombre de usuario, de al menos {{count}} carácter.",
+    "prompt_other": "Escribe el inicio de un nombre de usuario, de al menos {{count}} caracteres.",
+    "tooShort_one": "Escribe al menos {{count}} carácter.",
+    "tooShort_other": "Escribe al menos {{count}} caracteres.",
+    "empty": "No encontramos a nadie que empiece con «{{query}}».",
+    "resultsLabel": "Personas encontradas"
   }
 }

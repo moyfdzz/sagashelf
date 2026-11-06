@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 import { data, Link } from "react-router";
 
 import type { Route } from "./+types/u.$username.$kind";
+import { PersonRow } from "~/components/PersonRow";
 import { ProfilePagination } from "~/components/ProfilePagination";
-import { linkClass, secondaryLinkClass } from "~/lib/ui";
+import { secondaryLinkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
 import {
@@ -12,6 +13,7 @@ import {
   listFriends,
   maxPage,
 } from "~server/db/people-lists";
+import { personCard } from "~server/db/person";
 import { findViewableProfile } from "~server/db/profile-lookup";
 import { getDb } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
@@ -61,13 +63,7 @@ export async function loader(args: Route.LoaderArgs) {
     username: found.owner.username,
     page,
     hasMore: list.hasMore,
-    people: list.people.map((person) => ({
-      username: person.username,
-      displayName: person.displayName,
-      avatarUrl: person.avatarUrl?.startsWith("https://")
-        ? person.avatarUrl
-        : null,
-    })),
+    people: list.people.map(personCard),
   };
 }
 
@@ -104,47 +100,9 @@ export default function People({ loaderData }: Route.ComponentProps) {
         <p className="text-fg-muted mt-8">{t("profile.people.empty")}</p>
       ) : (
         <ul aria-label={t("profile.people.label")} className="mt-6 space-y-3">
-          {people.map((person) => {
-            const shown = person.displayName ?? person.username;
-            return (
-              <li
-                key={person.username}
-                className="border-border bg-surface-raised flex items-center gap-3 rounded-md border p-3"
-              >
-                {person.avatarUrl ? (
-                  // The name is written next to it, so a screen reader skips the picture.
-                  <span aria-hidden="true" className="shrink-0">
-                    <img
-                      src={person.avatarUrl}
-                      alt={t("profile.avatarAlt", { name: shown })}
-                      width={48}
-                      height={48}
-                      loading="lazy"
-                      className="size-12 rounded-full object-cover"
-                    />
-                  </span>
-                ) : (
-                  <div
-                    aria-hidden="true"
-                    className="bg-accent text-accent-fg flex size-12 shrink-0 items-center justify-center rounded-full font-bold"
-                  >
-                    {shown.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <Link
-                    to={`/u/${encodeURIComponent(person.username)}`}
-                    className={`${linkClass} break-words`}
-                  >
-                    {shown}
-                  </Link>
-                  <p className="text-fg-muted text-sm break-words">
-                    {t("profile.handle", { username: person.username })}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
+          {people.map((person) => (
+            <PersonRow key={person.username} person={person} />
+          ))}
         </ul>
       )}
 

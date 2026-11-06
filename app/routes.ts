@@ -19,6 +19,7 @@ export default [
     "u/:username/library/:status",
     "routes/u.$username.library.$status.tsx",
   ),
+  route("social", "routes/social.tsx"),
   route("library", "routes/library.tsx"),
   route("notifications", "routes/notifications.tsx"),
   route("stats", "routes/stats.tsx"),
