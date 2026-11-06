@@ -493,7 +493,7 @@
     "processors": {
       "title": "Who it is shared with",
       "intro": "We use these providers to run the service:",
-      "clerk": "Clerk: manages accounts and sign-in.",
+      "clerk": "Clerk: manages accounts and sign-in, and hosts profile pictures. When you see a picture, your browser connects to Clerk, which receives your IP address, even if you do not have an account.",
       "neon": "Neon: hosts the database where your profile is stored.",
       "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it against abuse, measures visits and speed with Web Analytics, and keeps a temporary copy of searches and covers for up to one day, not linked to your account.",
       "titles": "Title data sources (TMDB, Open Library and MangaDex): when you search or open a title, our servers send them the search text or the title's identifier to get its data. They do not receive your name, email, account or cookies. Covers are loaded through our server, so those sources do not see who visits the site.",
