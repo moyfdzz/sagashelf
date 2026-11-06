@@ -278,7 +278,7 @@ describe("the search page loader for a person who is signed in", () => {
     expect(mocks.getEntryStatuses).not.toHaveBeenCalled();
   });
 
-  it("does not ask when there is nothing to look up, and never reads the session for an empty page", async () => {
+  it("does not ask when there is nothing to look up, and gives an empty page no library", async () => {
     mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
     mocks.runSearch.mockResolvedValue({
       results: [hit({ id: null, externalId: "movie/9" })],
@@ -295,6 +295,43 @@ describe("the search page loader for a person who is signed in", () => {
       [],
     );
     expect(empty.signedIn).toBe(false);
+  });
+});
+
+describe("a person whom an administrator restricted (SAG-150)", () => {
+  const redirect = new Response(null, {
+    status: 302,
+    headers: { Location: "/account-restricted" },
+  });
+
+  beforeEach(() => {
+    mocks.getOptionalUser.mockReset().mockRejectedValue(redirect);
+  });
+
+  it.each([
+    ["the empty page", ""],
+    ["a term that is too short", "?q=a"],
+    ["a term that is too long", `?q=${"x".repeat(200)}`],
+    ["a real search", "?q=dune"],
+    ["a tab with no term", "?type=movie"],
+  ])("is sent to the page that says why on %s", async (_name, search) => {
+    await expect(load(search)).rejects.toBe(redirect);
+  });
+
+  it("is sent before the providers or the library are asked for anything", async () => {
+    await expect(load("?q=dune")).rejects.toBe(redirect);
+
+    expect(mocks.runSearch).not.toHaveBeenCalled();
+    expect(mocks.getEntryStatuses).not.toHaveBeenCalled();
+  });
+
+  it("still gets the suggestions of the search box, which are public data and read no session", async () => {
+    mocks.getOptionalUser.mockReset();
+
+    const result = (await load("?q=dune&suggest=1")) as { signedIn: boolean };
+
+    expect(result.signedIn).toBe(false);
+    expect(mocks.getOptionalUser).not.toHaveBeenCalled();
   });
 });
 

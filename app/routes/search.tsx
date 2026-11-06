@@ -39,6 +39,13 @@ export async function loader(args: Route.LoaderArgs) {
   const type: SearchType | undefined = typeResult.success
     ? typeResult.data
     : undefined;
+  // The session is read first, for every request but the suggestions of the search box, which are
+  // public data: a suspended or banned person is sent to the page that says why on the empty page
+  // too, not only after a search (SAG-150). The same person is used for the statuses of the library.
+  const user =
+    url.searchParams.get("suggest") === "1"
+      ? null
+      : await getOptionalUser(args);
   const title = t("search.title");
   const providers = getMediaProviders();
   // Books and manga get a tab only when a provider can answer them; the others are always there.
@@ -89,10 +96,6 @@ export async function loader(args: Route.LoaderArgs) {
 
   // A signed-in person sees which of the results they already hold. The suggestions of the search
   // box ask without it (`suggest=1`), so typing does not cost a query for the person on every pause.
-  const user =
-    url.searchParams.get("suggest") === "1"
-      ? null
-      : await getOptionalUser(args);
   const held = user
     ? await getEntryStatuses(
         await getDb(),
