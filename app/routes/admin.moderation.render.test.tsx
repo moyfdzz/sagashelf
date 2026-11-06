@@ -613,7 +613,9 @@ describe("the rest of the page", () => {
       ["warned", "Aviso enviado"],
       ["suspended", "Cuenta suspendida"],
       ["banned", "Cuenta baneada"],
-      ["lifted", "Se levantó la restricción"],
+      ["lifted", "Se levantó la restricción de la cuenta"],
+      ["banned_no_clerk", "Clerk no aplicó el baneo"],
+      ["lifted_no_clerk", "Clerk no cambió nada"],
     ];
     for (const [notice, text] of notices) {
       const html = await render(<AdminModeration {...props({ notice })} />);

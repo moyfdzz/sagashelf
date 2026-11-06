@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   failed,
+  isPlanRefusal,
+  liftAccount,
   refusalDetail,
   stopAccount,
   viaClerk,
@@ -15,6 +17,10 @@ const clerkError = (status: number, codes: string[], message = "a message") =>
     status,
     errors: codes.map((code) => ({ code, message, longMessage: message })),
   });
+
+/** What Clerk throws when its plan does not include the ban. */
+const planError = () =>
+  clerkError(402, ["unsupported_subscription_plan_features"]);
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -140,15 +146,24 @@ describe("stopAccount", () => {
   });
 
   it("asks nothing of Clerk for a suspension", async () => {
-    expect(await stopAccount(clerk, account, false)).toBeNull();
+    expect(await stopAccount(clerk, account, false)).toEqual({
+      refused: null,
+      skipped: false,
+    });
     expect(clerk.banUser).not.toHaveBeenCalled();
   });
 
   it("bans, and says why when Clerk refuses", async () => {
-    expect(await stopAccount(clerk, account, true)).toBeNull();
+    expect(await stopAccount(clerk, account, true)).toEqual({
+      refused: null,
+      skipped: false,
+    });
 
     vi.mocked(clerk.banUser).mockRejectedValue(clerkError(403, ["forbidden"]));
-    expect(await stopAccount(clerk, account, true)).toBe("403 forbidden");
+    expect(await stopAccount(clerk, account, true)).toEqual({
+      refused: "403 forbidden",
+      skipped: false,
+    });
   });
 
   it("says why when Clerk cannot tell whether a suspended account is locked", async () => {
@@ -156,7 +171,82 @@ describe("stopAccount", () => {
 
     expect(
       await stopAccount(clerk, { ...account, state: "suspended" }, true),
-    ).toBe("404 not_found");
+    ).toEqual({ refused: "404 not_found", skipped: false });
     expect(clerk.banUser).not.toHaveBeenCalled();
+  });
+
+  it("skips the ban, and refuses nothing, when the plan of Clerk has none (SAG-153)", async () => {
+    vi.mocked(clerk.banUser).mockRejectedValue(planError());
+
+    expect(await stopAccount(clerk, account, true)).toEqual({
+      refused: null,
+      skipped: true,
+    });
+    expect(console.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("liftAccount (SAG-153)", () => {
+  const clerk = {
+    unbanUser: vi.fn(),
+    unlockUser: vi.fn(),
+    getUser: vi.fn(),
+  } as unknown as ClerkUsers;
+  const banned = { clerkId: "clerk_9", state: "banned" as const };
+
+  beforeEach(() => {
+    vi.mocked(clerk.unbanUser)
+      .mockReset()
+      .mockResolvedValue({} as never);
+    vi.mocked(clerk.getUser)
+      .mockReset()
+      .mockResolvedValue({ locked: false } as never);
+  });
+
+  it("unbans a banned account, and skips it when the plan has no ban", async () => {
+    expect(await liftAccount(clerk, banned)).toEqual({
+      refused: null,
+      skipped: false,
+    });
+
+    vi.mocked(clerk.unbanUser).mockRejectedValue(planError());
+    expect(await liftAccount(clerk, banned)).toEqual({
+      refused: null,
+      skipped: true,
+    });
+
+    vi.mocked(clerk.unbanUser).mockRejectedValue(clerkError(500, ["x"]));
+    expect(await liftAccount(clerk, banned)).toEqual({
+      refused: "500 x",
+      skipped: false,
+    });
+  });
+
+  it("never skips a refusal when releasing the lock of a suspension", async () => {
+    vi.mocked(clerk.getUser).mockRejectedValue(planError());
+
+    expect(await liftAccount(clerk, { ...banned, state: "suspended" })).toEqual(
+      {
+        refused: "402 unsupported_subscription_plan_features",
+        skipped: false,
+      },
+    );
+    expect(clerk.unbanUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("isPlanRefusal (SAG-153)", () => {
+  it("is true only for 402 with the plan code", () => {
+    expect(isPlanRefusal(planError())).toBe(true);
+    expect(
+      isPlanRefusal(
+        clerkError(403, ["unsupported_subscription_plan_features"]),
+      ),
+    ).toBe(false);
+    expect(isPlanRefusal(clerkError(402, ["other"]))).toBe(false);
+    expect(isPlanRefusal(clerkError(402, []))).toBe(false);
+    expect(isPlanRefusal(new Error("boom"))).toBe(false);
+    expect(isPlanRefusal(null)).toBe(false);
+    expect(isPlanRefusal({ status: 402, errors: [null] })).toBe(false);
   });
 });

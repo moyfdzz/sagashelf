@@ -1141,7 +1141,9 @@
         "warned": "Warning sent. The report is resolved.",
         "suspended": "Account suspended. The reports about this person are resolved.",
         "banned": "Account banned. Their profile is no longer seen and the reports about this person are resolved.",
-        "lifted": "The restriction of the account was lifted."
+        "banned_no_clerk": "Account banned here. Clerk did not apply the ban because its plan does not include it, but the app already blocks the person's access. Their profile is no longer seen and the reports are resolved.",
+        "lifted": "The restriction of the account was lifted.",
+        "lifted_no_clerk": "The restriction was lifted here. Clerk changed nothing because its plan does not include the ban."
       },
       "errors": {
         "invalid_request": "The action could not be read.",

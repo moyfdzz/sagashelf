@@ -20,10 +20,9 @@ import {
   done,
   error,
   failed,
+  liftAccount,
   refusalDetail,
-  releaseLock,
   stopAccount,
-  viaClerk,
   type ClerkUsers,
 } from "./clerk-steps";
 import type { moderationActionSchema } from "./panel-schema";
@@ -92,13 +91,12 @@ export async function runModerationAction(
     // Here the id is the account's, from the list of restricted accounts.
     const account = await findRestrictedAccount(db, id);
     if (!account) return error("not_found");
-    const refused = await viaClerk(() =>
-      account.state === "banned"
-        ? clerk.unbanUser(account.clerkId)
-        : releaseLock(clerk, account.clerkId),
+    const step = await liftAccount(clerk, account);
+    if (step.refused !== null) return failed(step.refused);
+    const result = done(
+      await liftRestriction(db, actorId, id),
+      step.skipped ? "lifted_no_clerk" : "lifted",
     );
-    if (refused !== null) return failed(refused);
-    const result = done(await liftRestriction(db, actorId, id), "lifted");
     // Lifted from the card of a person: the card is shown again.
     return form.intent === "lift" && form.username
       ? `person=${encodeURIComponent(form.username)}&${result}`
@@ -128,11 +126,11 @@ export async function runModerationAction(
   // Suspend (an active account) or ban (an active or a suspended one).
   const bans = intent === "ban";
   if (!canRestrict(person.state, bans)) return error("not_found");
-  const refused = await stopAccount(clerk, person, bans);
-  if (refused !== null) return failed(refused);
+  const step = await stopAccount(clerk, person, bans);
+  if (step.refused !== null) return failed(step.refused);
   const state = bans ? "banned" : "suspended";
   return done(
     await restrictAccount(db, actorId, { reportId: id }, state),
-    state,
+    step.skipped ? "banned_no_clerk" : state,
   );
 }

@@ -44,6 +44,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [038](038-reports-and-picture-records.md)        | Reports of a picture or a person, and a record of uploads                                 | Accepted | Done (SAG-142)                        |
 | [039](039-moderation-panel.md)                   | The moderation panel, and a hidden picture that stays hidden                              | Accepted | Done (SAG-143)                        |
 | [040](040-warn-suspend-ban.md)                   | Warning, suspending and banning an account                                                | Accepted | Done (SAG-143)                        |
+| [041](041-ban-when-clerk-plan-has-no-ban.md)     | A ban carries on when Clerk's plan has no ban                                             | Accepted | Done (SAG-153)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

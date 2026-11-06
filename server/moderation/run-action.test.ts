@@ -66,6 +66,17 @@ const run = (form: Record<string, string>) =>
 const order = (mock: ReturnType<typeof vi.fn>) =>
   mock.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
 
+/** What Clerk throws when its plan does not include the ban (SAG-153). */
+const planRefusal = (
+  status = 402,
+  code = "unsupported_subscription_plan_features",
+) =>
+  Object.assign(new Error("plan"), {
+    name: "ClerkAPIResponseError",
+    status,
+    errors: [{ code, message: "plan" }],
+  });
+
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -360,6 +371,44 @@ describe("banning", () => {
     expect(await run({ intent: "ban", id })).toBe("error=not_found");
   });
 
+  it("bans here when the plan of Clerk has no ban, and says so (SAG-153)", async () => {
+    mocks.banUser.mockRejectedValue(planRefusal());
+
+    expect(await run({ intent: "ban", id })).toBe("notice=banned_no_clerk");
+
+    expect(mocks.restrictAccount).toHaveBeenCalledWith(
+      db,
+      actor,
+      { reportId: id },
+      "banned",
+    );
+  });
+
+  it("still stops when Clerk refuses the ban for any other reason, even with the plan code", async () => {
+    mocks.banUser.mockRejectedValue(planRefusal(403));
+    expect(await run({ intent: "ban", id })).toBe(
+      "error=failed&detail=403%20unsupported_subscription_plan_features",
+    );
+
+    mocks.banUser.mockRejectedValue(planRefusal(402, "other_code"));
+    expect(await run({ intent: "ban", id })).toBe(
+      "error=failed&detail=402%20other_code",
+    );
+    expect(mocks.restrictAccount).not.toHaveBeenCalled();
+  });
+
+  it("does not let the plan refusal through when releasing an old lock", async () => {
+    mocks.findReportedPerson.mockResolvedValue(person({ state: "suspended" }));
+    mocks.getUser.mockResolvedValue({ locked: true });
+    mocks.unlockUser.mockRejectedValue(planRefusal());
+
+    expect(await run({ intent: "ban", id })).toBe(
+      "error=failed&detail=402%20unsupported_subscription_plan_features",
+    );
+    expect(mocks.banUser).not.toHaveBeenCalled();
+    expect(mocks.restrictAccount).not.toHaveBeenCalled();
+  });
+
   it("does not ban an administrator or oneself, and does not call Clerk", async () => {
     mocks.findReportedPerson.mockResolvedValue(person({ protected: true }));
 
@@ -429,6 +478,25 @@ describe("lifting", () => {
     mocks.unlockUser.mockRejectedValue(new Error("boom"));
     expect(await run({ intent: "lift", id })).toBe("error=failed&detail=Error");
 
+    expect(mocks.liftRestriction).not.toHaveBeenCalled();
+  });
+
+  it("lifts here when the plan of Clerk has no ban to undo, and says so (SAG-153)", async () => {
+    mocks.unbanUser.mockRejectedValue(planRefusal());
+
+    expect(await run({ intent: "lift", id })).toBe("notice=lifted_no_clerk");
+    expect(await run({ intent: "lift", id, username: "bob_reads" })).toBe(
+      "person=bob_reads&notice=lifted_no_clerk",
+    );
+    expect(mocks.liftRestriction).toHaveBeenCalledWith(db, actor, id);
+  });
+
+  it("still stops a lift when Clerk refuses the unban for another reason", async () => {
+    mocks.unbanUser.mockRejectedValue(planRefusal(500));
+
+    expect(await run({ intent: "lift", id })).toBe(
+      "error=failed&detail=500%20unsupported_subscription_plan_features",
+    );
     expect(mocks.liftRestriction).not.toHaveBeenCalled();
   });
 
