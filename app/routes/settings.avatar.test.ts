@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   claim: vi.fn(),
   apply: vi.fn(),
   moderate: vi.fn(),
+  record: vi.fn(),
   moderationKeys: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
@@ -37,6 +38,10 @@ vi.mock("~server/db/avatar", () => ({
   claimAvatarUpload: mocks.claim,
   applyAvatar: mocks.apply,
 }));
+vi.mock("~server/db/picture-uploads", () => ({
+  recordPictureUpload: mocks.record,
+  sha256Hex: async () => "fake-hash",
+}));
 vi.mock("~server/moderation/sightengine", () => ({
   moderatePicture: mocks.moderate,
 }));
@@ -53,7 +58,10 @@ beforeEach(() => {
   mocks.getDb.mockReset().mockResolvedValue(db);
   mocks.claim.mockReset().mockResolvedValue("ok");
   mocks.apply.mockReset().mockResolvedValue(true);
-  mocks.moderate.mockReset().mockResolvedValue("allowed");
+  mocks.moderate
+    .mockReset()
+    .mockResolvedValue({ verdict: "allowed", scores: { erotica: 0.01 } });
+  mocks.record.mockReset().mockResolvedValue(undefined);
   mocks.moderationKeys.mockReset().mockReturnValue(moderationKeys);
   mocks.update
     .mockReset()
@@ -136,8 +144,58 @@ describe("POST /settings/avatar, uploading", () => {
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
+  it.each([
+    ["allowed", { erotica: 0.01 }],
+    ["rejected", { erotica: 0.9 }],
+    ["unavailable", null],
+  ])(
+    "leaves a record of a try that is %s (SAG-142)",
+    async (verdict, scores) => {
+      mocks.moderate.mockResolvedValue({ verdict, scores });
+
+      const request = new Request("http://localhost/settings/avatar", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost",
+          "CF-Connecting-IP": "203.0.113.7",
+        },
+        body: formOf({
+          intent: "upload",
+          picture: new File([jpeg], "name.png"),
+        }),
+      });
+      await action({ request, context: {} } as unknown as Route.ActionArgs);
+
+      expect(mocks.record).toHaveBeenCalledWith(db, {
+        userId: "user-from-session",
+        sha256: "fake-hash",
+        result: verdict,
+        scores,
+        ipAddress: "203.0.113.7",
+      });
+    },
+  );
+
+  it("publishes nothing when the record cannot be written", async () => {
+    mocks.record.mockRejectedValue(new Error("database"));
+
+    const result = answer(await upload());
+
+    expect(result.data.error).toBe("failed");
+    expect(result.init?.status).toBe(502);
+    expectNothingSaved();
+  });
+
+  it("leaves no record for a file refused before the moderation", async () => {
+    await upload(new TextEncoder().encode("not a picture"));
+    mocks.claim.mockResolvedValue("limit");
+    await upload();
+
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
   it("saves nothing when the moderation refuses the picture", async () => {
-    mocks.moderate.mockResolvedValue("rejected");
+    mocks.moderate.mockResolvedValue({ verdict: "rejected", scores: null });
 
     const result = answer(await upload());
 
@@ -147,7 +205,7 @@ describe("POST /settings/avatar, uploading", () => {
   });
 
   it("saves nothing when the moderation cannot answer", async () => {
-    mocks.moderate.mockResolvedValue("unavailable");
+    mocks.moderate.mockResolvedValue({ verdict: "unavailable", scores: null });
 
     const result = answer(await upload());
 

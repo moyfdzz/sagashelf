@@ -4,7 +4,13 @@ import type { PictureType } from "../account/picture-file";
 
 export type ModerationKeys = { apiUser: string; apiSecret: string };
 
-export type ModerationAnswer = "allowed" | "rejected" | "unavailable";
+export type ModerationAnswer = {
+  verdict: "allowed" | "rejected" | "unavailable";
+  /** The scores that decided, kept with the record of the upload. Null with no answer. */
+  scores: Record<string, number> | null;
+};
+
+const unavailable: ModerationAnswer = { verdict: "unavailable", scores: null };
 
 const endpoint = "https://api.sightengine.com/1.0/check.json";
 
@@ -53,19 +59,18 @@ export async function moderatePicture(
     const parsed = answerSchema.safeParse(await response.json());
     if (!response.ok || !parsed.success) {
       console.error("picture moderation: no answer", response.status);
-      return "unavailable";
+      return unavailable;
     }
-    const { nudity } = parsed.data;
-    return Math.max(
-      nudity.sexual_activity,
-      nudity.sexual_display,
-      nudity.erotica,
-      nudity.very_suggestive,
-    ) >= refuseFromScore
-      ? "rejected"
-      : "allowed";
+    const { nudity: scores } = parsed.data;
+    return {
+      verdict:
+        Math.max(...Object.values(scores)) >= refuseFromScore
+          ? "rejected"
+          : "allowed",
+      scores,
+    };
   } catch (error) {
     console.error("picture moderation: failed", (error as Error).name);
-    return "unavailable";
+    return unavailable;
   }
 }

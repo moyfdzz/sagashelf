@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   findProfile: vi.fn(),
   getSocialCounts: vi.fn(),
   isMuted: vi.fn(),
+  findMyReports: vi.fn(),
   getProfileSections: vi.fn(),
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
@@ -51,6 +52,9 @@ vi.mock("~server/db/follow-requests", () => ({
   requestFollow: mocks.requestFollow,
   cancelRequest: mocks.cancelRequest,
   hasRequested: mocks.hasRequested,
+}));
+vi.mock("~server/db/reports", () => ({
+  findMyReports: mocks.findMyReports,
 }));
 vi.mock("~server/db/profile-library", () => ({
   profileStatuses: ["in_progress", "planned", "completed"],
@@ -100,6 +104,9 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ followers: 3, following: 2, friends: 1 });
   mocks.isMuted.mockReset().mockResolvedValue(false);
+  mocks.findMyReports
+    .mockReset()
+    .mockResolvedValue({ user: null, picture: null });
   mocks.getProfileSections.mockReset().mockResolvedValue(emptySections());
   mocks.followUser.mockReset().mockResolvedValue("followed");
   mocks.unfollowUser.mockReset().mockResolvedValue(undefined);

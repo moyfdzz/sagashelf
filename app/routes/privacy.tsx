@@ -39,6 +39,7 @@ export default function Privacy() {
             t("privacy.data.library"),
             t("privacy.data.viewings"),
             t("privacy.data.social"),
+            t("privacy.data.reports"),
             t("privacy.data.technical"),
             t("privacy.data.analytics"),
           ]}

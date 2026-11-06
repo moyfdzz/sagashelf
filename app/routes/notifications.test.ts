@@ -187,6 +187,39 @@ describe("the inbox of notifications (SAG-102)", () => {
       expect(result.items.map((item) => item.title)).toEqual(["Kept"]);
     });
 
+    it("tells an administrator about a report, with a link to the profile and no picture (SAG-142)", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({
+          type: "report.created",
+          payload: {
+            kind: "picture",
+            reason: "sexual_minors",
+            username: "bob_reads",
+          },
+        }),
+      ]);
+
+      const result = await load();
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: notificationId,
+          title: "report.notice.picture",
+          which: "report.reasons.sexual_minors",
+          href: "/u/bob_reads",
+          read: false,
+        }),
+      ]);
+    });
+
+    it("leaves out a report it cannot read", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({ type: "report.created", payload: { kind: "list" } }),
+      ]);
+
+      expect((await load()).items).toEqual([]);
+    });
+
     it("reads the follow requests of the person of the session, and gives only a name and a username", async () => {
       mocks.listPendingRequests.mockResolvedValue([
         {

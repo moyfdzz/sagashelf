@@ -28,6 +28,8 @@ import {
 import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
+import { reportNotice } from "~server/account/report-schema";
+import { reportCreatedType } from "~server/db/reports";
 import { episodeAiredEvent } from "~server/webhooks/events";
 import { episodeNotice } from "~server/webhooks/message";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
@@ -86,6 +88,23 @@ export async function loader(args: Route.LoaderArgs) {
     // The text is made here, in the language of the page, from the same place as the Discord
     // message. A row that says nothing readable is left out.
     items: rows.flatMap((row) => {
+      // A report, for an administrator (ADR-038): who and why, and never the picture.
+      if (row.type === reportCreatedType) {
+        const report = reportNotice(row.payload);
+        if (!report) return [];
+        return [
+          {
+            id: row.id,
+            title: t(`report.notice.${report.kind}`, {
+              username: report.username,
+            }),
+            which: t(`report.reasons.${report.reason}`),
+            href: `/u/${encodeURIComponent(report.username)}`,
+            createdAt: row.createdAt.toISOString(),
+            read: row.readAt !== null,
+          },
+        ];
+      }
       if (row.type !== episodeAiredEvent) return [];
       const notice = episodeNotice(row.payload, locale);
       if (!notice) return [];

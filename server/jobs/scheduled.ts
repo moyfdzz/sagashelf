@@ -1,4 +1,5 @@
 import { announceNewEpisodes } from "../db/episode-alerts";
+import { prunePictureUploads } from "../db/picture-uploads";
 import { proposeSagaDrafts } from "../db/saga-drafts";
 import {
   getDb,
@@ -96,8 +97,20 @@ export async function runScheduledJobs(): Promise<void> {
   }
 }
 
-/** What the second Cron Trigger runs: the next episode of the series that are due. */
+/**
+ * What the second Cron Trigger runs: the records of picture uploads past their time, then the next
+ * episode of the series that are due. The records go here because this one always runs, and the
+ * hourly one does not when the webhooks are off. One subrequest, on top of the 23 of the episodes.
+ */
 export async function runTvmazeJobs(): Promise<void> {
+  try {
+    const deleted = await prunePictureUploads(await getDb());
+    if (deleted > 0) {
+      console.log(JSON.stringify({ event: "picture_uploads.pruned", deleted }));
+    }
+  } catch (error) {
+    logJobFailed("prune-picture-uploads", error);
+  }
   try {
     const tvmaze = getTvmaze();
     if (!tvmaze) return;

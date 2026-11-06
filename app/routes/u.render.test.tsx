@@ -210,6 +210,7 @@ describe("the profile page: a locked profile shows only its card", () => {
           canRequest: true,
           requested: false,
           muted: false,
+          reported: { user: null, picture: null },
           ...overrides,
         },
       }),
@@ -251,6 +252,7 @@ describe("the profile page: the buttons", () => {
         following: false,
         canFollow: true,
         muted: false,
+        reported: { user: null, picture: null },
         ...overrides,
       },
     });
@@ -264,6 +266,59 @@ describe("the profile page: the buttons", () => {
     expect(html).toContain('action="/u/ana_reads"');
     expect(html).toContain('method="post"');
     expect(html).toContain("Bloquear oculta tu perfil para esta persona");
+  });
+
+  describe("reporting (SAG-142)", () => {
+    const pictureLink = "/u/ana_reads/report?target=picture";
+    const userLink = "/u/ana_reads/report?target=user";
+
+    it("offers a person who is signed in to report the person", async () => {
+      const html = await render(profile(member()));
+
+      expect(html).toContain(`href="${userLink}"`);
+      expect(html).toContain("Reportar usuario");
+    });
+
+    it("says what was already reported, with the same way to the page", async () => {
+      const html = await render(
+        profile(
+          member({
+            reported: {
+              user: { id: "a", reason: "spam", status: "open" },
+              picture: null,
+            },
+          }),
+        ),
+      );
+
+      expect(html).toContain("Ya reportaste a este usuario");
+      expect(html).not.toContain("Reportar usuario");
+      expect(html).toContain(`href="${userLink}"`);
+    });
+
+    it("offers to report a picture only when there is one", async () => {
+      const without = await render(
+        profile({ ...member(), head: { ...head, avatarUrl: null } }),
+      );
+      expect(without).not.toContain(pictureLink);
+
+      const withPicture = await render(
+        profile({
+          ...member(),
+          head: { ...head, avatarUrl: "https://img.clerk.com/ana" },
+        }),
+      );
+      expect(withPicture).toContain("Reportar foto");
+      expect(withPicture).toContain(`href="${pictureLink}"`);
+    });
+
+    it("offers nothing to a visitor or to the owner", async () => {
+      for (const you of [visitor, { kind: "owner" }]) {
+        const html = await render(profile(fullData({ you })));
+
+        expect(html).not.toContain("/report?target=");
+      }
+    });
   });
 
   it("offers to unfollow and unmute when they are on", async () => {

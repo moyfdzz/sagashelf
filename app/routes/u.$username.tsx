@@ -34,6 +34,7 @@ import {
 import { followUser, unfollowUser } from "~server/db/follows";
 import { getSocialCounts } from "~server/db/people-lists";
 import { findProfile } from "~server/db/profile-lookup";
+import { findMyReports } from "~server/db/reports";
 import { readForm } from "~server/http/body";
 import { posterCard } from "~server/media/poster-card";
 import { rateLimit } from "~server/rate-limit";
@@ -67,6 +68,10 @@ const notices = [
   "too_many",
   "unavailable",
   "invalid_request",
+  "report_reported",
+  "report_duplicate",
+  "report_limit",
+  "report_cancelled",
 ] as const;
 type Notice = (typeof notices)[number];
 
@@ -121,6 +126,13 @@ export async function loader(args: Route.LoaderArgs) {
               ? await hasRequested(db, viewer.id, owner.id)
               : false,
             muted: await isMuted(db, viewer.id, owner.id),
+            // Only this person's own reports, so the page tells nobody else that there are any.
+            reported: await findMyReports(
+              db,
+              viewer.id,
+              owner.id,
+              owner.avatarUrl,
+            ),
           } as const)
         : ({ kind: "visitor", signInPath: signInPath(request.url) } as const);
 
@@ -276,10 +288,12 @@ function Actions({
   you,
   username,
   name,
+  hasPicture,
 }: {
   you: You;
   username: string;
   name: string;
+  hasPicture: boolean;
 }) {
   const { t } = useTranslation();
   if (you.kind === "owner") {
@@ -374,6 +388,27 @@ function Actions({
         {button("block", t("profile.actions.block"), dangerButtonClass)}
       </div>
       <p className="text-fg-muted text-sm">{t("profile.actions.blockHint")}</p>
+      {/* The page of a report also says what was sent, and lets the person cancel it. */}
+      <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        {hasPicture ? (
+          <a
+            href={`/u/${encodeURIComponent(username)}/report?target=picture`}
+            className={linkClass}
+          >
+            {you.reported.picture
+              ? t("report.already.picture")
+              : t("profile.actions.reportPicture")}
+          </a>
+        ) : null}
+        <a
+          href={`/u/${encodeURIComponent(username)}/report?target=user`}
+          className={linkClass}
+        >
+          {you.reported.user
+            ? t("report.already.user")
+            : t("profile.actions.reportUser")}
+        </a>
+      </p>
     </div>
   );
 }
@@ -400,7 +435,12 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
       </header>
 
       <div className="mt-6">
-        <Actions you={you} username={head.username} name={name} />
+        <Actions
+          you={you}
+          username={head.username}
+          name={name}
+          hasPicture={head.avatarUrl !== null}
+        />
       </div>
 
       {/* Always in the page, so a screen reader announces the result of a button. */}

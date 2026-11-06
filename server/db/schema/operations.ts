@@ -182,7 +182,10 @@ export const notifications = pgTable(
   },
   (t) => [
     unique("notifications_user_dedupe_unique").on(t.userId, t.dedupeKey),
-    check("notifications_type_check", sql`${t.type} in ('episode.aired')`),
+    check(
+      "notifications_type_check",
+      sql`${t.type} in ('episode.aired', 'report.created')`,
+    ),
     // The page: newest first, for one person.
     index("notifications_user_created_idx").on(t.userId, t.createdAt.desc()),
     // The count in the header only looks at what is unread.

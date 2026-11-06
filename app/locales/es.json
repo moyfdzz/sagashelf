@@ -431,7 +431,7 @@
       "intro": "En tu perfil y en lo que compartas, no publiques:",
       "spam": "spam, publicidad ni contenido engañoso;",
       "piracy": "enlaces a contenido pirata o ilegal;",
-      "sexual": "contenido sexual de cualquier persona, sin importar su edad;",
+      "sexual": "Está prohibido cualquier contenido sexual. En especial, no toleramos ningún contenido que sexualice a menores de edad, incluidos dibujos, anime e imágenes generadas con IA. Eliminaremos la cuenta y podremos reportarlo a las autoridades.",
       "photos": "fotos de otras personas sin su permiso;",
       "private": "datos personales de otras personas sin su permiso."
     },
@@ -445,7 +445,7 @@
     },
     "report": {
       "title": "Avisos y consecuencias",
-      "body": "Si ves algo que rompe estas reglas, escríbenos a {{email}}. Podemos quitar contenido y suspender o eliminar cuentas que no las cumplan."
+      "body": "Si ves algo que rompe estas reglas, usa «Reportar» en el perfil de esa persona o escríbenos a {{email}}. Podemos quitar contenido y suspender o eliminar cuentas que no las cumplan."
     }
   },
   "credits": {
@@ -507,7 +507,8 @@
       "viewings": "Historial de visualizaciones: las fechas y las notas de cada vez que viste un título, si decides anotarlas.",
       "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
       "analytics": "Estadísticas de uso: medimos cuántas visitas recibe cada página y qué tan rápido carga con Cloudflare Web Analytics. Según Cloudflare, no usa cookies ni almacenamiento del navegador y no identifica a cada persona: recibe sobre todo tiempos de carga y páginas vistas.",
-      "social": "Relaciones: a quién sigues, a quién has bloqueado y a quién has silenciado, y las solicitudes para seguir que envías y recibes. La persona a la que silencias no lo sabe."
+      "social": "Relaciones: a quién sigues, a quién has bloqueado y a quién has silenciado, y las solicitudes para seguir que envías y recibes. La persona a la que silencias no lo sabe.",
+      "reports": "Reportes y fotos: los reportes que envías, y por cada foto que intentas subir, la fecha, una huella del archivo (no la imagen), el resultado de la revisión y tu dirección IP. A quien reportas no le decimos que fuiste tú."
     },
     "not": {
       "title": "Lo que no hacemos",
@@ -530,7 +531,7 @@
     },
     "retention": {
       "title": "Cuánto tiempo los conservamos",
-      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones, y tus seguimientos, solicitudes de seguimiento, bloqueos y silencios), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Los registros del servidor se conservan por un tiempo limitado. También guardamos copias de seguridad cifradas de la base de datos por hasta 30 días, y el proveedor de la base de datos puede conservar sus propias copias por un periodo corto. Si eliminas tu cuenta, tus datos pueden seguir en esas copias hasta que expiren."
+      "body": "Conservamos tus datos mientras tu cuenta exista. Si eliminas tu cuenta, borramos tu perfil, tu nombre de usuario, tu correo y todo lo que creaste (tu biblioteca con sus notas y su historial de visualizaciones, y tus seguimientos, solicitudes de seguimiento, bloqueos y silencios), y Clerk elimina tus datos de inicio de sesión. Solo queda un registro interno, sin datos personales, para que la cuenta no pueda reactivarse por error. Hay dos excepciones, para investigar abusos: el registro de cada foto que intentaste subir se conserva 90 días, aunque elimines tu cuenta, y los reportes se conservan aunque se elimine la cuenta de quien reportó o de la persona reportada, incluida la dirección de la foto reportada. Los registros del servidor se conservan por un tiempo limitado. También guardamos copias de seguridad cifradas de la base de datos por hasta 30 días, y el proveedor de la base de datos puede conservar sus propias copias por un periodo corto. Si eliminas tu cuenta, tus datos pueden seguir en esas copias hasta que expiren."
     },
     "rights": {
       "title": "Tus derechos",
@@ -822,6 +823,46 @@
       "viewings_limit": "Llegaste al máximo de veces que se pueden guardar para este título.",
       "generic": "No pudimos guardar los cambios. Inténtalo de nuevo.",
       "not_completed_read": "Solo puedes volver a leer un título completado."
+    }
+  },
+  "report": {
+    "title": {
+      "picture": "Reportar la foto de {{name}}",
+      "user": "Reportar a {{name}}"
+    },
+    "back": "Volver al perfil de {{name}}",
+    "anonymous": "Esta persona no sabrá quién la reportó.",
+    "reasonLabel": "¿Qué pasa?",
+    "reasons": {
+      "sexual_content": "Contenido sexual",
+      "sexual_minors": "Contenido sexual con menores",
+      "other_person": "Foto de otra persona",
+      "violent": "Violenta u ofensiva",
+      "spam": "Spam",
+      "harassment": "Acoso",
+      "impersonation": "Suplantación",
+      "hate": "Odio o discriminación",
+      "other": "Otra razón"
+    },
+    "minorsWarning": "Si eliges «Contenido sexual con menores», la foto se oculta de inmediato y no podrás cancelar el reporte. Elígelo solo si de verdad lo crees.",
+    "detailsLabel": "Cuéntanos más",
+    "detailsHint": "Hasta {{max}} caracteres. Es obligatorio si eliges «Otra razón».",
+    "submit": "Enviar reporte",
+    "already": {
+      "picture": "Ya reportaste esta foto",
+      "user": "Ya reportaste a este usuario"
+    },
+    "yourReason": "Tu reporte: {{reason}}.",
+    "cancel": "Cancelar reporte",
+    "cancelHint": "Puedes cancelarlo mientras nadie lo haya revisado. Para corregirlo, cancélalo y envía otro.",
+    "cannotCancel": "Este reporte ya no se puede cancelar.",
+    "notice": {
+      "picture": "Reportaron la foto de @{{username}}",
+      "user": "Reportaron a @{{username}}"
+    },
+    "errors": {
+      "details_required": "Cuéntanos qué pasa para enviar el reporte.",
+      "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
     }
   },
   "notifications": {
@@ -1180,6 +1221,8 @@
       "unmute": "Dejar de silenciar",
       "block": "Bloquear",
       "blockHint": "Bloquear oculta tu perfil para esta persona y el suyo para ti, y quita los seguimientos entre ustedes. Puedes deshacerlo en Ajustes.",
+      "reportPicture": "Reportar foto",
+      "reportUser": "Reportar usuario",
       "request": "Solicitar seguir",
       "requested": "Solicitud enviada",
       "cancelRequest": "Cancelar solicitud",
@@ -1196,7 +1239,11 @@
       "unavailable": "No se pudo hacer eso con esta persona.",
       "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo.",
       "requested": "Enviaste tu solicitud para seguir a esta persona.",
-      "request_cancelled": "Cancelaste tu solicitud."
+      "request_cancelled": "Cancelaste tu solicitud.",
+      "report_reported": "Enviamos tu reporte. Gracias por avisarnos.",
+      "report_duplicate": "Ya habías enviado ese reporte.",
+      "report_limit": "Llegaste al límite de reportes de hoy. Inténtalo mañana.",
+      "report_cancelled": "Cancelaste tu reporte."
     },
     "sections": {
       "in_progress": "Viendo o leyendo ahora",

@@ -80,21 +80,31 @@ The check `npm audit (production)` (`.github/workflows/dependency-audit.yml`) fa
 
 ### G. A profile picture breaks the rules, or may be illegal
 
-Complaints reach `contact@sagashelf.app`. Reports inside the app do not exist yet (SAG-22). The check before saving ([ADR-037](adr/037-profile-pictures.md)) makes mistakes and does not recognize known illegal material.
+Reports reach the notifications of the administrator in the app, and complaints reach `contact@sagashelf.app`. There is no page to review them yet (SAG-143). The check before saving ([ADR-037](adr/037-profile-pictures.md)) makes mistakes and does not recognize known illegal material. The records are in `picture_uploads` ([ADR-038](adr/038-reports-and-picture-records.md)), for 90 days.
 
 **A picture that breaks the rules (sexual content of an adult, a picture of somebody without permission):**
 
 1. In the Clerk dashboard, open the user and remove the picture. The page of the profile follows when Clerk sends `user.updated`.
 2. Write to the person if it is worth it. If it happens again, delete the account, as the terms allow.
 
-**A picture that may show the sexual abuse of a minor:**
+**A report of "sexual content with minors":** the picture stopped showing by itself, and it is still in Clerk. It comes back if the account changes something in Clerk, so do not wait.
 
-1. **Do not look at it again, do not download it, do not copy it and do not send it to anybody, not even as proof.** Keeping or sharing it can be a crime in itself.
-2. Note the username and the time, and only that. Do not delete anything yet if you can stop it being seen another way: close sign-ups if there are more (table above).
-3. Get legal advice **the same day**, on what must be reported, to whom and what must be kept. Cloudflare says that a site owner who finds this likely has to report it to NCMEC (CyberTipline), keep the content and the records (it mentions one year), and remove it. That is about the United States. What Mexico asks was not looked at.
-4. Remove the picture from public view as that advice says.
+1. **Do not open the address of the picture, download it, copy it or send it to anybody, not even as proof,** unless it is needed to decide. Keeping or sharing it can be a crime in itself. The owner decided on 2026-11-05 to seek no legal advice beforehand, so this caution has not been confirmed by a lawyer.
+2. Note the username and the time. From the Neon SQL Editor, the report and the records of that account are in `reports` and `picture_uploads`.
+3. **If it is real, report it to the authorities, and call them first if a child is in immediate danger.** The [CyberTipline of NCMEC](https://report.cybertip.org) takes reports from the public (its page does not address people outside the United States). Cloudflare says that a site owner who finds this likely has to report it to NCMEC, keep the content and the records (it mentions one year), and remove it. That is about the United States. What Mexico asks was not looked at, so a real case is also the moment to ask a lawyer.
+4. Delete the account as the rules say, after reporting, and do not remove the records.
 
-This page is not legal advice. SAG-141 is the ticket to prepare this before it happens.
+**If it was a mistake or a false report,** put the picture back from the Neon SQL Editor, with the address the report kept, using the owner role:
+
+```sql
+UPDATE users SET avatar_url = (
+  SELECT picture_url FROM reports WHERE id = '<the id of the report>'
+) WHERE id = (
+  SELECT target_id FROM reports WHERE id = '<the id of the report>'
+) RETURNING username;
+```
+
+Then close the report with `UPDATE reports SET status = 'dismissed', resolved_at = now() WHERE id = '<the id of the report>' RETURNING id;`. SAG-143 replaces this with a page.
 
 **If the moderation service fails or its key leaks:** nobody can upload a picture and nothing else breaks. Rotate the key as [secrets](secrets.md) says. To turn uploads off on purpose, delete `SIGHTENGINE_API_SECRET` from the Worker.
 

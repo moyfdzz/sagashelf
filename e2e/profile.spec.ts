@@ -66,6 +66,56 @@ test.describe("the public profile", () => {
   });
 });
 
+test.describe("the page of a report", () => {
+  test("is not shown to a visitor, whatever it is asked to report", async ({
+    request,
+  }) => {
+    for (const target of ["user", "picture"]) {
+      const response = await request.get(
+        `/u/ana_reads/report?target=${target}`,
+        { maxRedirects: 0 },
+      );
+
+      // With Clerk's keys the visitor is sent to sign in; without them (CI) nobody gets in.
+      expect([302, 303, 307, 503], target).toContain(response.status());
+      expect(response.headers()["cache-control"] ?? "").not.toMatch(/public/);
+    }
+  });
+
+  test("is a 404 for an address that cannot be a report", async ({
+    request,
+  }) => {
+    for (const path of [
+      "/u/ana_reads/report",
+      "/u/ana_reads/report?target=list",
+      "/u/ab/report?target=user",
+    ]) {
+      const response = await request.get(path);
+
+      expect(response.status(), path).toBe(404);
+    }
+  });
+
+  test("a report sent by a visitor, or from another site, records nothing", async ({
+    request,
+  }) => {
+    const form = { intent: "report", kind: "user", reason: "spam" };
+
+    const visitor = await request.post("/u/ana_reads/report", {
+      form,
+      maxRedirects: 0,
+    });
+    expect([302, 303, 307, 503]).toContain(visitor.status());
+
+    const otherSite = await request.post("/u/ana_reads/report", {
+      form,
+      headers: { Origin: "https://evil.example" },
+      maxRedirects: 0,
+    });
+    expect(otherSite.status()).toBeGreaterThanOrEqual(400);
+  });
+});
+
 test.describe("the search of people", () => {
   test("is not shown to a visitor, and finds nobody for them", async ({
     request,

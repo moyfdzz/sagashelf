@@ -32,6 +32,8 @@ const keptColumns: Readonly<Record<string, string>> = {
     "a report outlives the person who made it, so a moderator can still act on it",
   "reports.resolved_by": "records which moderator closed a report",
   "audit_log.actor_id": "the audit log must not lose who did what",
+  "picture_uploads.user_id":
+    "deleting an account must not erase the trace of what it tried to publish; deleted after 90 days",
 };
 
 /** Where the export shows each erased column. Each one must hold rows for a full account. */

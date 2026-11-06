@@ -6,6 +6,7 @@ import type { Route } from "./+types/settings.avatar";
 import { maxPictureBytes, pictureType } from "~server/account/picture-file";
 import { requireUser } from "~server/auth/require";
 import { applyAvatar, claimAvatarUpload } from "~server/db/avatar";
+import { recordPictureUpload, sha256Hex } from "~server/db/picture-uploads";
 import { readForm } from "~server/http/body";
 import { privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
@@ -104,9 +105,28 @@ export async function action(args: Route.ActionArgs) {
     if (claim === "gone") throw data({ error: "forbidden" }, { status: 403 });
     if (claim === "limit") return fail("limit", 429);
 
-    const answer = await moderatePicture(bytes, type, moderationKeys);
-    if (answer === "rejected") return fail("rejected", 422);
-    if (answer === "unavailable") return fail("unavailable", 503);
+    const { verdict, scores } = await moderatePicture(
+      bytes,
+      type,
+      moderationKeys,
+    );
+
+    // Every try leaves a record, and a picture with no record is not published (ADR-038).
+    try {
+      await recordPictureUpload(db, {
+        userId: user.id,
+        sha256: await sha256Hex(bytes),
+        result: verdict,
+        scores,
+        ipAddress: request.headers.get("CF-Connecting-IP"),
+      });
+    } catch (error) {
+      console.error("picture upload: no record", (error as Error).name);
+      return fail("failed", 502);
+    }
+
+    if (verdict === "rejected") return fail("rejected", 422);
+    if (verdict === "unavailable") return fail("unavailable", 503);
 
     try {
       changed = await clerk.users.updateUserProfileImage(user.clerkId, {

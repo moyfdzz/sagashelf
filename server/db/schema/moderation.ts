@@ -7,7 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
-  unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -19,6 +19,7 @@ export const reportTargetType = pgEnum("report_target_type", [
   "custom_entry",
   "list",
   "activity",
+  "picture",
 ]);
 
 export const reportReason = pgEnum("report_reason", [
@@ -27,6 +28,12 @@ export const reportReason = pgEnum("report_reason", [
   "inappropriate",
   "copyright",
   "other",
+  "sexual_content",
+  "sexual_minors",
+  "other_person",
+  "violent",
+  "impersonation",
+  "hate",
 ]);
 
 export const reportStatus = pgEnum("report_status", [
@@ -52,6 +59,10 @@ export const reports = pgTable(
     targetId: uuid("target_id").notNull(),
     reason: reportReason("reason").notNull(),
     details: text("details"),
+    // Which picture was reported, since the person can change it. The id of the target is the person.
+    pictureUrl: text("picture_url"),
+    // When the reporter took it back. It stays, as a record of what was said.
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     status: reportStatus("status").notNull().default("open"),
     resolvedBy: uuid("resolved_by").references(() => users.id, {
       onDelete: "set null",
@@ -60,12 +71,15 @@ export const reports = pgTable(
     ...timestamps,
   },
   (t) => [
-    // A person reports the same thing once.
-    unique("reports_reporter_target_unique").on(
-      t.reporterId,
-      t.targetType,
-      t.targetId,
-    ),
+    // A person reports the same thing once, each picture apart, and again after cancelling.
+    uniqueIndex("reports_reporter_target_active_unique")
+      .on(
+        t.reporterId,
+        t.targetType,
+        t.targetId,
+        sql`coalesce(${t.pictureUrl}, '')`,
+      )
+      .where(sql`${t.cancelledAt} is null`),
     check(
       "reports_details_length_check",
       sql`char_length(${t.details}) <= 1000`,
@@ -75,6 +89,39 @@ export const reports = pgTable(
       .on(t.createdAt)
       .where(sql`${t.status} in ('open', 'reviewing')`),
     index("reports_target_idx").on(t.targetType, t.targetId),
+  ],
+);
+
+/**
+ * One row for each try to upload a profile picture that reached the moderation service (SAG-142,
+ * ADR-038): who, when, the hash of the file and not the file, the answer and the IP address. It is
+ * what a report of an upload would need. It is deleted after 90 days, also for an erased account, so
+ * deleting an account does not erase the trace of what it tried to publish.
+ */
+export const pictureUploads = pgTable(
+  "picture_uploads",
+  {
+    id: primaryId(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    sha256: text("sha256").notNull(),
+    result: text("result").notNull(),
+    // The scores of the service, when it gave an answer.
+    scores: jsonb("scores").$type<Record<string, number>>(),
+    ipAddress: text("ip_address"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      "picture_uploads_result_check",
+      sql`${t.result} in ('allowed', 'rejected', 'unavailable')`,
+    ),
+    index("picture_uploads_user_idx").on(t.userId, t.createdAt.desc()),
+    // The cleanup looks at age only.
+    index("picture_uploads_created_idx").on(t.createdAt),
   ],
 );
 

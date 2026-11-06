@@ -431,7 +431,7 @@
       "intro": "On your profile and in anything you share, do not post:",
       "spam": "spam, advertising or misleading content;",
       "piracy": "links to pirated or illegal content;",
-      "sexual": "sexual content of any person, whatever their age;",
+      "sexual": "Any sexual content is forbidden. In particular, we do not tolerate any content that sexualizes minors, including drawings, anime and AI-generated images. We will delete the account and may report it to the authorities.",
       "photos": "pictures of other people without their permission;",
       "private": "other people's personal data without their permission."
     },
@@ -445,7 +445,7 @@
     },
     "report": {
       "title": "Reports and consequences",
-      "body": "If you see something that breaks these rules, write to {{email}}. We may remove content and suspend or delete accounts that do not follow them."
+      "body": "If you see something that breaks these rules, use \"Report\" on that person's profile or write to {{email}}. We may remove content and suspend or delete accounts that do not follow them."
     }
   },
   "credits": {
@@ -507,7 +507,8 @@
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
       "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views.",
-      "social": "Relationships: whom you follow, whom you blocked and whom you muted, and the follow requests you send and receive. The person you mute does not know."
+      "social": "Relationships: whom you follow, whom you blocked and whom you muted, and the follow requests you send and receive. The person you mute does not know.",
+      "reports": "Reports and pictures: the reports you send, and for each picture you try to upload, the date, a fingerprint of the file (not the image), the result of the check and your IP address. We do not tell the person you report that it was you."
     },
     "not": {
       "title": "What we do not do",
@@ -530,7 +531,7 @@
     },
     "retention": {
       "title": "How long we keep it",
-      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, follow requests, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. Server logs are kept for a limited time. We also keep encrypted backup copies of the database for up to 30 days, and the database provider may keep its own copies for a short period. If you delete your account, your data may remain in those copies until they expire."
+      "body": "We keep your data while your account exists. If you delete your account, we erase your profile, username, email and everything you created (your library with its notes and viewing history, and your follows, follow requests, blocks and mutes), and Clerk deletes your sign-in data. Only an internal record with no personal data remains, so the account cannot be reactivated by mistake. There are two exceptions, to look into abuse: the record of each picture you tried to upload is kept for 90 days, even if you delete your account, and reports are kept even if the account of the reporter or of the reported person is deleted, including the address of the reported picture. Server logs are kept for a limited time. We also keep encrypted backup copies of the database for up to 30 days, and the database provider may keep its own copies for a short period. If you delete your account, your data may remain in those copies until they expire."
     },
     "rights": {
       "title": "Your rights",
@@ -822,6 +823,46 @@
       "viewings_limit": "You reached the most times that can be saved for this title.",
       "generic": "We could not save the changes. Try again.",
       "not_completed_read": "You can only read a completed title again."
+    }
+  },
+  "report": {
+    "title": {
+      "picture": "Report the picture of {{name}}",
+      "user": "Report {{name}}"
+    },
+    "back": "Back to the profile of {{name}}",
+    "anonymous": "This person will not know who reported them.",
+    "reasonLabel": "What is wrong?",
+    "reasons": {
+      "sexual_content": "Sexual content",
+      "sexual_minors": "Sexual content with minors",
+      "other_person": "A picture of another person",
+      "violent": "Violent or offensive",
+      "spam": "Spam",
+      "harassment": "Harassment",
+      "impersonation": "Impersonation",
+      "hate": "Hate or discrimination",
+      "other": "Another reason"
+    },
+    "minorsWarning": "If you choose \"Sexual content with minors\", the picture is hidden at once and you will not be able to cancel the report. Choose it only if you truly believe it.",
+    "detailsLabel": "Tell us more",
+    "detailsHint": "Up to {{max}} characters. Required if you choose \"Another reason\".",
+    "submit": "Send report",
+    "already": {
+      "picture": "You already reported this picture",
+      "user": "You already reported this user"
+    },
+    "yourReason": "Your report: {{reason}}.",
+    "cancel": "Cancel report",
+    "cancelHint": "You can cancel it while nobody has reviewed it. To correct it, cancel it and send another one.",
+    "cannotCancel": "This report can no longer be cancelled.",
+    "notice": {
+      "picture": "The picture of @{{username}} was reported",
+      "user": "@{{username}} was reported"
+    },
+    "errors": {
+      "details_required": "Tell us what is wrong to send the report.",
+      "invalid_request": "We could not read the form. Reload the page and try again."
     }
   },
   "notifications": {
@@ -1180,6 +1221,8 @@
       "unmute": "Unmute",
       "block": "Block",
       "blockHint": "Blocking hides your profile from this person and theirs from you, and removes the follows between you. You can undo it in Settings.",
+      "reportPicture": "Report picture",
+      "reportUser": "Report user",
       "request": "Request to follow",
       "requested": "Request sent",
       "cancelRequest": "Cancel request",
@@ -1196,7 +1239,11 @@
       "unavailable": "That could not be done with this person.",
       "invalid_request": "We could not read the form. Reload the page and try again.",
       "requested": "You sent your request to follow this person.",
-      "request_cancelled": "You cancelled your request."
+      "request_cancelled": "You cancelled your request.",
+      "report_reported": "We sent your report. Thanks for telling us.",
+      "report_duplicate": "You had already sent that report.",
+      "report_limit": "You reached the limit of reports for today. Try again tomorrow.",
+      "report_cancelled": "You cancelled your report."
     },
     "sections": {
       "in_progress": "Watching or reading now",
