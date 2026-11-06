@@ -85,6 +85,41 @@ test.describe("the menu of a phone", () => {
     expect(await overflow()).toBeLessThanOrEqual(0);
   });
 
+  test("keeps the footer at the bottom of the screen on a short page (SAG-139)", async ({
+    page,
+  }) => {
+    const { width } = page.viewportSize() ?? { width: 1280 };
+    await page.setViewportSize({ width, height: 4000 });
+    await page.goto("/credits");
+
+    const footer = await page.locator("footer").boundingBox();
+
+    expect(footer).not.toBeNull();
+    expect(Math.round((footer?.y ?? 0) + (footer?.height ?? 0))).toBe(4000);
+  });
+
+  test("keeps the footer after the content on a long page (SAG-139)", async ({
+    page,
+  }) => {
+    const { width } = page.viewportSize() ?? { width: 1280 };
+    await page.setViewportSize({ width, height: 400 });
+    await page.goto("/privacy");
+
+    const footer = await page.locator("footer").boundingBox();
+    const main = await page.locator("main").boundingBox();
+    const pageHeight = await page.evaluate(
+      () => document.documentElement.scrollHeight,
+    );
+
+    expect(footer?.y ?? 0).toBeGreaterThan(400);
+    expect(footer?.y ?? 0).toBeGreaterThanOrEqual(
+      (main?.y ?? 0) + (main?.height ?? 0),
+    );
+    expect(Math.round((footer?.y ?? 0) + (footer?.height ?? 0))).toBe(
+      pageHeight,
+    );
+  });
+
   test("keeps the name, the language, the theme and the menu in one row, and opens the panel right under the button (SAG-104)", async ({
     page,
   }, testInfo) => {
