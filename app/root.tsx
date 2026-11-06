@@ -77,7 +77,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
+      {/* The middle takes what is left of the screen, so on a short page the footer stays at the bottom. */}
+      <body className="flex min-h-dvh flex-col">
         <Navbar
           savedTheme={theme}
           signedIn={signedIn}
@@ -85,7 +86,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           username={username}
           unread={unread}
         />
-        {children}
+        <div className="grow">{children}</div>
         <Footer />
         <ScrollRestoration />
         <Scripts />
