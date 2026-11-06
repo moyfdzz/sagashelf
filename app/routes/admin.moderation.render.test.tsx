@@ -84,6 +84,10 @@ describe("the moderation panel (SAG-143)", () => {
     expect(html).toContain("Violenta u ofensiva");
     expect(intents(html)).toEqual(["dismiss"]);
     expect(html).toContain(`href="/admin/moderation?confirm=${id}"`);
+    // A link of the router, so the modal opens without loading the page again.
+    const trigger = html.match(/<a [^>]*>Quitar la foto<\/a>/)?.[0] ?? "";
+    expect(trigger).toContain(`href="/admin/moderation?confirm=${id}"`);
+    expect(trigger).toContain('data-discover="true"');
     expect(html).toMatch(/<a [^>]*href="\/u\/bob"/);
   });
 
@@ -159,13 +163,38 @@ describe("the moderation panel (SAG-143)", () => {
     expect(intents(html)).toEqual(["dismiss"]);
   });
 
-  it("asks before removing, with a button that sends the removal and a way back", async () => {
+  it("opens no dialog until the address asks for it", async () => {
+    const html = await render(<AdminModeration {...props()} />);
+
+    expect(html).not.toContain("<dialog");
+    expect(intents(html)).toEqual(["dismiss"]);
+  });
+
+  it("asks before removing in a modal, with a way back and one button that sends the removal", async () => {
     const html = await render(<AdminModeration {...props({ confirm: id })} />);
 
-    expect(html).toContain("Se borra también en Clerk");
-    expect(intents(html)).toEqual(["remove"]);
-    expect(html).toContain("Sí, quitar la foto");
-    expect(html).toMatch(/<a [^>]*href="\/admin\/moderation"[^>]*>No, volver/);
+    const dialog = html.match(/<dialog[\s\S]*<\/dialog>/)?.[0] ?? "";
+    expect(dialog).toContain("Quitar la foto de bob");
+    expect(dialog).toContain("también en Clerk");
+    expect(intents(dialog)).toEqual(["remove"]);
+    expect(dialog).toContain("Sí, quitar la foto");
+    expect(dialog).toMatch(
+      /<a [^>]*href="\/admin\/moderation"[^>]*>No, volver/,
+    );
+    // The buttons of the card stay behind the dialog.
+    expect(intents(html)).toEqual(["dismiss", "remove"]);
+  });
+
+  it("keeps the background of the modal neutral: only the confirm button is red", async () => {
+    const html = await render(<AdminModeration {...props({ confirm: id })} />);
+
+    const dialog = html.match(/<dialog[\s\S]*<\/dialog>/)?.[0] ?? "";
+    expect(dialog.match(/bg-danger-bg/g)).toHaveLength(1);
+    expect(dialog).not.toContain("text-danger-fg mt-4");
+    expect(dialog).not.toContain('role="alert"');
+    expect(dialog).toMatch(
+      /<button [^>]*bg-danger-bg[^>]*>Sí, quitar la foto<\/button>/,
+    );
   });
 
   it("does not ask to remove a report that cannot be removed, even if the address says so", async () => {
@@ -175,6 +204,7 @@ describe("the moderation panel (SAG-143)", () => {
       />,
     );
 
+    expect(html).not.toContain("<dialog");
     expect(intents(html)).toEqual(["dismiss"]);
   });
 
@@ -250,6 +280,13 @@ describe("the moderation panel (SAG-143)", () => {
     expect(html).toMatch(/<a [^>]*href="\/admin\/sagas"/);
     expect(html).toMatch(
       /<a [^>]*href="\/admin\/moderation"[^>]*aria-current="page"/,
+    );
+    // They are tabs: the chosen one is filled, the other has a border.
+    expect(html).toMatch(
+      /<a [^>]*href="\/admin\/moderation"[^>]*class="[^"]*bg-accent/,
+    );
+    expect(html).toMatch(
+      /<a [^>]*href="\/admin\/sagas"[^>]*class="[^"]*border-border/,
     );
   });
 

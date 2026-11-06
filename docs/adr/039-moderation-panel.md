@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-06
 - **Implementation:** Partial: the panel with dismiss, restore and remove is done (SAG-143, first PR); warn, suspend and ban are planned (SAG-143, second PR)
-- **Tickets:** SAG-143, SAG-142, SAG-141
+- **Tickets:** SAG-143, SAG-145, SAG-142, SAG-141
 - **Related:** [ADR-038](038-reports-and-picture-records.md), [ADR-037](037-profile-pictures.md), [ADR-033](033-design-rules.md)
 
 ## Context
@@ -22,7 +22,7 @@ Reports reached the administrator as notifications (ADR-038), and a picture repo
 
 - **Dismiss** says no problem was found. It is refused for a report whose picture is hidden, since the picture would stay hidden with nobody looking.
 - **Restore** shows a hidden picture again, forgets the hidden address and closes every open report about that picture. It only writes the address back while the person has no other picture, so a newer one is never replaced.
-- **Remove** deletes the picture in Clerk, so it cannot come back with a later event, then stores what Clerk answered (the generated image) and resolves the reports. It asks to be confirmed first, on the page itself and with no JavaScript. It is refused when the person has replaced the picture since the report, because that picture is theirs and the report says nothing about it.
+- **Remove** deletes the picture in Clerk, so it cannot come back with a later event, then stores what Clerk answered (the generated image) and resolves the reports. It asks to be confirmed first in a modal (`ConfirmDialog`, SAG-125, opened with `?confirm=<id>`), which also works without JavaScript and has a neutral background with only the confirm button in red. It is refused when the person has replaced the picture since the report, because that picture is theirs and the report says nothing about it.
 
 If Clerk refuses, nothing changes here and the page says so. If Clerk deleted the picture and the local write fails, the `user.updated` that Clerk sends writes the generated image, and the reports stay open to be dismissed.
 
@@ -33,7 +33,7 @@ If Clerk refuses, nothing changes here and the page says so. If Clerk deleted th
 - **Keeping a picture hidden for good until an administrator decides, whatever comes later.** It would also hide an innocent new picture and would punish the person for the first one. Rejected.
 - **A new `report_status` value for "hidden".** Migrations run in one transaction and PostgreSQL does not let an index use a value added in the same one (ADR-038). The hidden state is the column.
 - **Showing every picture blurred.** It needs JavaScript or CSS tricks and the address would still be in the page. Not sending the address is simpler and stricter.
-- **A confirmation modal for removing.** It needs JavaScript. A second page state with a plain form works without it.
+- **A box inside the card for the confirmation, in red.** It was the first version (SAG-143). The owner found it clumsy: it reloaded the page and the red background was too much. SAG-145 replaced it with the modal of SAG-125.
 - **Doing warn, suspend and ban in the same PR.** It adds a second Clerk call, a new state of the account and a notification, and the hole of the hidden picture was the urgent part. They go in the second PR.
 
 ## Consequences

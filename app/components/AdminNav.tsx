@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
 
-import { linkClass } from "~/lib/ui";
+import { tabClass } from "~/lib/ui";
 
 /**
- * The two sections of the administration. Plain anchors: each one is a session page and has a
- * security policy of its own, which only a whole new document gets (ADR-018).
+ * The sections of the administration, as tabs like the types of the library. Plain anchors: each
+ * one is a session page and has a security policy of its own, which only a whole new document
+ * gets (ADR-018).
  */
 export function AdminNav({ current }: { current: "sagas" | "moderation" }) {
   const { t } = useTranslation();
@@ -19,18 +20,21 @@ export function AdminNav({ current }: { current: "sagas" | "moderation" }) {
 
   return (
     <nav aria-label={t("admin.nav.label")} className="mb-6">
-      <ul className="flex flex-wrap gap-x-6 gap-y-2">
-        {items.map((item) => (
-          <li key={item.key}>
-            <a
-              href={item.href}
-              className={linkClass}
-              aria-current={item.key === current ? "page" : undefined}
-            >
-              {item.label}
-            </a>
-          </li>
-        ))}
+      <ul className="flex flex-wrap gap-2">
+        {items.map((item) => {
+          const active = item.key === current;
+          return (
+            <li key={item.key}>
+              <a
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={tabClass(active)}
+              >
+                {item.label}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );

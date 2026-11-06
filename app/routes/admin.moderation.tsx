@@ -1,11 +1,12 @@
 import { createClerkClient } from "@clerk/backend";
 import { rootAuthLoader } from "@clerk/react-router/server";
 import { useTranslation } from "react-i18next";
-import { data, Form, redirect } from "react-router";
+import { data, Form, Link, redirect } from "react-router";
 
 import type { Route } from "./+types/admin.moderation";
 import { AdminNav } from "~/components/AdminNav";
 import { ClerkSession } from "~/components/ClerkSession";
+import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { useFormatters } from "~/lib/format";
 import {
   dangerButtonClass,
@@ -232,69 +233,66 @@ function ReportCard({ report, confirm }: { report: Item; confirm: boolean }) {
               <p className="text-sm">
                 {t("admin.moderation.reports.sensitive")}
               </p>
-              <a
-                href={`${back}?view=${report.id}`}
+              <Link
+                to={`${back}?view=${report.id}`}
+                preventScrollReset
                 className={secondaryLinkClass}
               >
                 {t("admin.moderation.reports.view")}
-              </a>
+              </Link>
             </div>
           ) : null}
         </div>
       ) : null}
 
+      <div className="mt-4 flex flex-wrap gap-3">
+        {report.hidden ? (
+          <ActionButton
+            intent="restore"
+            id={report.id}
+            className={secondaryButtonClass}
+          >
+            {t("admin.moderation.reports.restore")}
+          </ActionButton>
+        ) : (
+          <ActionButton
+            intent="dismiss"
+            id={report.id}
+            className={secondaryButtonClass}
+          >
+            {t("admin.moderation.reports.dismiss")}
+          </ActionButton>
+        )}
+        {actionable ? (
+          // A link of the router: the modal opens without loading the page again.
+          <Link
+            to={`${back}?confirm=${report.id}`}
+            preventScrollReset
+            className={`${dangerButtonClass} inline-block`}
+          >
+            {t("admin.moderation.reports.remove")}
+          </Link>
+        ) : null}
+      </div>
+
       {confirm && actionable ? (
-        <div
-          role="alert"
-          className="border-danger-edge bg-danger-bg text-danger-fg mt-4 space-y-3 rounded-md border p-4"
+        <ConfirmDialog
+          title={t("admin.moderation.reports.removeTitle", {
+            username: report.username,
+          })}
+          message={t("admin.moderation.reports.removeConfirm")}
+          cancelHref={back}
+          cancelLabel={t("admin.moderation.reports.removeNo")}
         >
-          <p className="font-semibold break-words">
-            {t("admin.moderation.reports.removeConfirm", {
-              username: report.username,
-            })}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <ActionButton
-              intent="remove"
-              id={report.id}
-              className={dangerButtonClass}
-            >
-              {t("admin.moderation.reports.removeYes")}
-            </ActionButton>
-            <a href={back} className={secondaryLinkClass}>
-              {t("admin.moderation.reports.removeNo")}
-            </a>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-4 flex flex-wrap gap-3">
-          {report.hidden ? (
-            <ActionButton
-              intent="restore"
-              id={report.id}
-              className={secondaryButtonClass}
-            >
-              {t("admin.moderation.reports.restore")}
-            </ActionButton>
-          ) : (
-            <ActionButton
-              intent="dismiss"
-              id={report.id}
-              className={secondaryButtonClass}
-            >
-              {t("admin.moderation.reports.dismiss")}
-            </ActionButton>
-          )}
-          {actionable ? (
-            <a
-              href={`${back}?confirm=${report.id}`}
-              className={`${dangerButtonClass} inline-block`}
-            >
-              {t("admin.moderation.reports.remove")}
-            </a>
-          ) : null}
-        </div>
-      )}
+          <ActionButton
+            intent="remove"
+            id={report.id}
+            className={dangerButtonClass}
+          >
+            {t("admin.moderation.reports.removeYes")}
+          </ActionButton>
+        </ConfirmDialog>
+      ) : null}
     </li>
   );
 }
