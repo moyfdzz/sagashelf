@@ -1,5 +1,12 @@
 import { sql } from "drizzle-orm";
-import { check, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  check,
+  date,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 import {
   citext,
@@ -39,6 +46,10 @@ export const users = pgTable(
     // When the person last changed the username (SAG-37). The server allows one change every 30
     // days by reading this; null until the first change.
     usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }),
+    // How many pictures the person tried to upload on this day, in UTC (SAG-109). Each one costs
+    // a check by the moderation service, so the count includes the ones it refused.
+    avatarUploadsDay: date("avatar_uploads_day", { mode: "string" }),
+    avatarUploadsCount: smallint("avatar_uploads_count").notNull().default(0),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },

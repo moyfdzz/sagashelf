@@ -340,6 +340,27 @@
         "generic": "We could not process the request. Try again."
       }
     },
+    "avatar": {
+      "title": "Profile picture",
+      "alt": "Profile picture of {{name}}",
+      "choose": "Choose a picture",
+      "hint": "JPEG, PNG or WebP. It is cut into a square and checked automatically before it is saved. Sexual content and pictures of other people without their permission are not allowed. You can try 5 times a day.",
+      "off": "Pictures cannot be uploaded for now.",
+      "save": "Save picture",
+      "saving": "Checking…",
+      "remove": "Remove picture",
+      "saved": "Done. Your picture changed.",
+      "errors": {
+        "unreadable": "We could not read that file as an image. Try a JPEG, PNG or WebP.",
+        "invalid_type": "That file is not a JPEG, PNG or WebP.",
+        "too_large": "That file is too big.",
+        "rejected": "This picture does not follow the Community rules. Choose another one.",
+        "limit": "You reached the limit of pictures for today. Try again tomorrow.",
+        "unavailable": "We could not check the picture right now, so it was not saved. Try again later.",
+        "failed": "We could not change the picture. Try again.",
+        "invalid_request": "We could not process the request. Try again."
+      }
+    },
     "username": {
       "submit": "Change username",
       "submitting": "Changing…",
@@ -410,6 +431,8 @@
       "intro": "On your profile and in anything you share, do not post:",
       "spam": "spam, advertising or misleading content;",
       "piracy": "links to pirated or illegal content;",
+      "sexual": "sexual content of any person, whatever their age;",
+      "photos": "pictures of other people without their permission;",
       "private": "other people's personal data without their permission."
     },
     "spoilers": {
@@ -479,7 +502,7 @@
       "intro": "We store only what is needed for your account and your library to work:",
       "account": "Account: your email, your username and, if you use a password, a protected version of it. Clerk manages the password and SagaShelf never stores it.",
       "google": "Google sign-in: if you choose it, Google shares your email, name and profile photo with Clerk. We do not access anything else in your Google account.",
-      "profile": "Profile: your display name, bio, language, privacy level and the photo you choose.",
+      "profile": "Profile: your display name, bio, language, privacy level and the photo you choose. Before a photo is sent, your browser crops and shrinks it, which also removes data the file may carry, such as the place where it was taken.",
       "library": "Library: for each title you save, its status, your progress, your score, the dates you started and finished it, how many times you watched it again, your notes and a visibility level (private by default). If you change the level of an entry, the people that level allows will see it (see \"Who sees your profile\"). Nobody else sees your notes.",
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
@@ -497,6 +520,7 @@
       "neon": "Neon: hosts the database where your profile is stored.",
       "cloudflare": "Cloudflare: hosts the site, delivers the pages, protects it against abuse, measures visits and speed with Web Analytics, and keeps a temporary copy of searches and covers for up to one day, not linked to your account. It also stores the encrypted backup copies of the database.",
       "github": "GitHub: runs the daily job that creates the encrypted backup copies. The copies are not stored on GitHub.",
+      "sightengine": "Sightengine: checks each profile picture you upload, before it is saved, to detect sexual content. It receives only the image, not your name, your email or your account. According to Sightengine, it deletes the image after processing it, and it may process it in the European Union, Canada or the United States.",
       "titles": "Title data sources (TMDB, Open Library and MangaDex): when you search or open a title, our servers send them the search text or the title's identifier to get its data. They do not receive your name, email, account or cookies. Covers are loaded through our server, so those sources do not see who visits the site.",
       "outro": "These providers may process data outside Mexico, including in the United States. We use them only to run the service."
     },

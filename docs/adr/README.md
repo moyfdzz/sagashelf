@@ -40,6 +40,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [034](034-cancel-a-declined-request.md)          | Cancelling a declined follow request, and no wait to ask again                            | Accepted | Done (SAG-123)                        |
 | [035](035-saving-a-title-needs-a-session.md)     | Only a person with a session saves a title                                                | Accepted | Done (SAG-130)                        |
 | [036](036-daily-encrypted-database-copy.md)      | A daily encrypted copy of the database, kept outside Neon                                 | Accepted | Done (SAG-135)                        |
+| [037](037-profile-pictures.md)                   | Uploading a profile picture, stored in Clerk and checked first                            | Accepted | Done (SAG-109)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

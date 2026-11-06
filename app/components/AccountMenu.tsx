@@ -18,9 +18,12 @@ const itemClass =
 export function AccountMenu({
   isAdmin = false,
   username = null,
+  avatarUrl = null,
 }: {
   isAdmin?: boolean;
   username?: string | null;
+  /** With a picture the button shows it instead of the word, which stays as its name. */
+  avatarUrl?: string | null;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -62,9 +65,27 @@ export function AccountMenu({
           }
           setOpen((value) => !value);
         }}
-        className="border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 focus-visible:outline-accent flex items-center gap-2 rounded-md border px-3 py-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+        className={`border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 focus-visible:outline-accent flex items-center gap-2 rounded-md border font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+          avatarUrl ? "h-[42px] px-2" : "px-3 py-2"
+        }`}
       >
-        {t("nav.account")}
+        {avatarUrl ? (
+          <>
+            {/* The name of the button says what it is, so a screen reader skips the picture. */}
+            <span aria-hidden="true" className="shrink-0">
+              <img
+                src={avatarUrl}
+                alt={t("nav.account")}
+                width={28}
+                height={28}
+                className="size-7 rounded-full object-cover"
+              />
+            </span>
+            <span className="sr-only">{t("nav.account")}</span>
+          </>
+        ) : (
+          t("nav.account")
+        )}
         <svg
           aria-hidden="true"
           viewBox="0 0 20 20"

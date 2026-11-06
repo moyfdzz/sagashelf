@@ -6,14 +6,15 @@ import { unreadCap } from "./notifications";
 /**
  * What the header of every page needs to know about the person of the session, read in ONE
  * statement (SAG-114): whether they are an administrator (the link to the administration, SAG-95),
- * their username (the link "Perfil" of the account menu) and how many things wait for them: the
- * notifications they have not read (SAG-102) plus the follow requests they have not answered
- * (SAG-108). Each is counted up to `unreadCap` plus one, so the header can say "99+". Before this
- * there were two reads on every page, one for the role and one for the count.
+ * their username (the link "Perfil" of the account menu), their picture (SAG-109) and how many
+ * things wait for them: the notifications they have not read (SAG-102) plus the follow requests
+ * they have not answered (SAG-108). Each is counted up to `unreadCap` plus one, so the header can
+ * say "99+". Before this there were two reads on every page, one for the role and one for the count.
  */
 export type HeaderFacts = {
   isAdmin: boolean;
   username: string;
+  avatarUrl: string | null;
   unread: number;
 };
 
@@ -27,7 +28,7 @@ export async function findHeaderFacts(
   clerkId: string,
 ): Promise<HeaderFacts | null> {
   const { rows } = await db.execute(sql`
-    SELECT u.role::text AS role, u.username::text AS username,
+    SELECT u.role::text AS role, u.username::text AS username, u.avatar_url,
            (
              SELECT count(*)::int FROM (
                SELECT 1 FROM notifications n
@@ -46,9 +47,12 @@ export async function findHeaderFacts(
   `);
   const row = rows[0];
   if (!row) return null;
+  const avatarUrl = typeof row.avatar_url === "string" ? row.avatar_url : "";
   return {
     isAdmin: row.role === "admin",
     username: String(row.username),
+    // The page allows only a picture served over HTTPS.
+    avatarUrl: avatarUrl.startsWith("https://") ? avatarUrl : null,
     unread: Number(row.unread ?? 0),
   };
 }

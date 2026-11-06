@@ -46,9 +46,10 @@ describe("the loader of the root: what the header needs (SAG-95, SAG-102, SAG-11
     const root = await load();
 
     expect(root).toMatchObject({ signedIn: true, isAdmin: true });
-    // A yes or no, the username for the link to the profile and a count: never the role, the id or
-    // the email of the person.
+    // A yes or no, the username for the link to the profile, the picture and a count: never the
+    // role, the id or the email of the person.
     expect(Object.keys(root).sort()).toEqual([
+      "avatarUrl",
       "isAdmin",
       "locale",
       "signedIn",

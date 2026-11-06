@@ -118,6 +118,7 @@ const rows: Row[] = [
   row("library.$mediaId.step.ts", "post-only", `/library/${uuid}/step`, {
     mediaId: uuid,
   }),
+  row("settings.avatar.ts", "post-only", "/settings/avatar"),
   row("settings.delete.ts", "post-only", "/settings/delete"),
   row("settings.export.ts", "post-only", "/settings/export"),
   row("settings.username.ts", "post-only", "/settings/username"),

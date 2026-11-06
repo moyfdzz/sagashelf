@@ -10,11 +10,14 @@ import { useTranslation } from "react-i18next";
 export function AccountLinks({
   isAdmin,
   username = null,
+  avatarUrl = null,
   itemClass,
 }: {
   isAdmin: boolean;
   /** The username of the person, for the link to their profile (SAG-114). Without it there is none. */
   username?: string | null;
+  /** The picture next to the link to the profile, on a phone (SAG-109). */
+  avatarUrl?: string | null;
   itemClass: string;
 }) {
   const { t } = useTranslation();
@@ -24,7 +27,24 @@ export function AccountLinks({
       {username ? (
         <li>
           <a href={`/u/${encodeURIComponent(username)}`} className={itemClass}>
-            {t("nav.profile")}
+            {avatarUrl ? (
+              <span className="flex items-center gap-2">
+                {/* The link says what it is, so a screen reader skips the picture. */}
+                <span aria-hidden="true" className="shrink-0">
+                  <img
+                    src={avatarUrl}
+                    alt={t("nav.profile")}
+                    width={28}
+                    height={28}
+                    loading="lazy"
+                    className="size-7 rounded-full object-cover"
+                  />
+                </span>
+                {t("nav.profile")}
+              </span>
+            ) : (
+              t("nav.profile")
+            )}
           </a>
         </li>
       ) : null}

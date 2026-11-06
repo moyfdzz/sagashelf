@@ -7,6 +7,7 @@ import { rootAuthLoader } from "@clerk/react-router/server";
 import type { Route } from "./+types/settings.profile";
 import type { action as deleteAction } from "./settings.delete";
 import type { action as usernameAction } from "./settings.username";
+import { AvatarField } from "~/components/AvatarField";
 import { ClerkSession } from "~/components/ClerkSession";
 import { SettingsNav } from "~/components/SettingsNav";
 import { StatusToast } from "~/components/StatusToast";
@@ -30,7 +31,12 @@ import { requireUser } from "~server/auth/require";
 import { getProfile, updateProfile } from "~server/db/profile";
 import { getUsernameChangedAt } from "~server/db/username";
 import { rateLimit } from "~server/rate-limit";
-import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
+import {
+  getClerkKeys,
+  getDb,
+  getModerationKeys,
+  getWriteLimiter,
+} from "~server/runtime-env";
 import { readForm } from "~server/http/body";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
@@ -100,6 +106,8 @@ export async function loader(args: Route.LoaderArgs) {
   return rootAuthLoader(args, () => ({
     profile,
     nextUsernameChange: nextUsernameChange?.toISOString() ?? null,
+    // A yes or no, never the keys.
+    canUploadPicture: getModerationKeys() !== null,
     title: t("settings.profile.title"),
     publishableKey: keys.publishableKey,
   }));
@@ -220,6 +228,14 @@ export default function ProfileSettings({
           </p>
         ) : null}
 
+        <AvatarField
+          avatarUrl={
+            profile.avatarUrl?.startsWith("https://") ? profile.avatarUrl : null
+          }
+          name={profile.displayName ?? profile.username}
+          canUpload={loaderData.canUploadPicture}
+        />
+
         <renamer.Form
           method="post"
           action="/settings/username"
@@ -277,12 +293,13 @@ export default function ProfileSettings({
           ) : null}
         </renamer.Form>
 
-        {/* A key from the saved values makes the fields show what was stored after a save. */}
+        {/* A key from the saved values makes the fields show what was stored after a save. The
+            picture is left out, so saving one does not throw away what is being written here. */}
         <Form
           method="post"
           id="profile"
           className="mt-8 scroll-mt-4 space-y-6"
-          key={JSON.stringify(profile)}
+          key={JSON.stringify({ ...profile, avatarUrl: null })}
         >
           <div>
             <label htmlFor="displayName" className="font-semibold">

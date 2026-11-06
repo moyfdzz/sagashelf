@@ -6,6 +6,7 @@ import {
   type ClerkKeys,
 } from "./auth/clerk-options";
 import { parseEnv, type AppEnv } from "./env";
+import type { ModerationKeys } from "./moderation/sightengine";
 import { buildProviders } from "./providers/registry";
 import { getTvmazeClient } from "./providers/tvmaze";
 import { getWikidataClient } from "./providers/wikidata";
@@ -117,6 +118,14 @@ export function getTvmaze() {
 /** Whether this deployment lets people connect a Discord webhook and delivers their events (WEBHOOKS_ENABLED). */
 export function getWebhooksEnabled(): boolean {
   return getEnv().WEBHOOKS_ENABLED === "true";
+}
+
+/** The keys of the moderation service, or null when this deployment has none and takes no pictures. */
+export function getModerationKeys(): ModerationKeys | null {
+  const { SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET } = getEnv();
+  return SIGHTENGINE_API_USER && SIGHTENGINE_API_SECRET
+    ? { apiUser: SIGHTENGINE_API_USER, apiSecret: SIGHTENGINE_API_SECRET }
+    : null;
 }
 
 /** The Clerk webhook signing secret, or null when this deployment has none. */

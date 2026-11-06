@@ -54,6 +54,8 @@ export default function Community() {
           items={[
             t("community.content.spam"),
             t("community.content.piracy"),
+            t("community.content.sexual"),
+            t("community.content.photos"),
             t("community.content.private"),
           ]}
         />
