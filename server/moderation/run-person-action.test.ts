@@ -202,7 +202,7 @@ describe("suspending and banning a person with no report (SAG-146)", () => {
     mocks.banUser.mockRejectedValue(new Error("boom"));
 
     expect(await run({ intent: "ban_person", username })).toBe(
-      "person=bob_reads&error=failed",
+      "person=bob_reads&error=failed&detail=Error",
     );
     expect(mocks.restrictAccount).not.toHaveBeenCalled();
   });

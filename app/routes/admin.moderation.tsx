@@ -33,6 +33,7 @@ import {
 import { privateRouteHeaders } from "~server/http/cache";
 import {
   asConfirmedAction,
+  asModerationDetail,
   asModerationError,
   asModerationNotice,
   asPersonConfirm,
@@ -71,6 +72,11 @@ export async function loader(args: Route.LoaderArgs) {
     publishableKey: keys.publishableKey,
     notice: asModerationNotice(params.get("notice")),
     error: asModerationError(params.get("error")),
+    // Why Clerk refused (status and code), only for the error that says so.
+    detail:
+      params.get("error") === "failed"
+        ? asModerationDetail(params.get("detail"))
+        : null,
     // The action asked to be confirmed, and the report it is about. Both or none.
     confirm:
       confirmId && confirmAction
@@ -222,7 +228,11 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
             role="alert"
             className="border-danger-edge bg-danger-bg text-danger-fg mt-4 rounded-md border px-4 py-3 font-semibold"
           >
-            {t(`admin.moderation.errors.${loaderData.error}`)}
+            {loaderData.error === "failed" && loaderData.detail
+              ? t("admin.moderation.errors.failedWith", {
+                  detail: loaderData.detail,
+                })
+              : t(`admin.moderation.errors.${loaderData.error}`)}
           </p>
         ) : null}
 

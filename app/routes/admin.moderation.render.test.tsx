@@ -92,6 +92,7 @@ const props = (extra: Record<string, unknown> = {}) =>
       notice: null,
       error: null,
       confirm: null,
+      detail: null,
       personQuery: null,
       person: null,
       personConfirm: null,
@@ -627,6 +628,34 @@ describe("the rest of the page", () => {
       const html = await render(<AdminModeration {...props({ error })} />);
       expect(html).toMatch(new RegExp(`role="alert"[^>]*>[^<]*${text}`));
     }
+  });
+
+  it("says what Clerk answered when it refused, and the plain line when it said nothing", async () => {
+    const withDetail = await render(
+      <AdminModeration
+        {...props({ error: "failed", detail: "403 feature_not_enabled" })}
+      />,
+    );
+    const without = await render(
+      <AdminModeration {...props({ error: "failed" })} />,
+    );
+    const en = await render(
+      <AdminModeration
+        {...props({ error: "failed", detail: "403 feature_not_enabled" })}
+      />,
+      "en",
+    );
+
+    expect(withDetail).toMatch(
+      /role="alert"[^>]*>[^<]*Clerk no hizo el cambio \(403 feature_not_enabled\)/,
+    );
+    expect(without).toMatch(
+      /role="alert"[^>]*>[^<]*Clerk no hizo el cambio\. No/,
+    );
+    expect(without).not.toContain("(");
+    expect(en).toContain(
+      "Clerk did not make the change (403 feature_not_enabled)",
+    );
   });
 
   it("says there is nothing to review when there is nothing", async () => {

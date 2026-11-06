@@ -1149,7 +1149,8 @@
         "outdated": "The person changed their picture: this report is about an older one. Dismiss it.",
         "not_allowed": "This account is an administrator's or is yours: nothing can be done to it.",
         "picture_hidden": "The picture is hidden: restore it or remove it first, and then warn.",
-        "failed": "Clerk did not make the change. Nothing was changed here; try again."
+        "failed": "Clerk did not make the change. Nothing was changed here; try again.",
+        "failedWith": "Clerk did not make the change ({{detail}}). Nothing was changed here; try again."
       },
       "reports": {
         "title": "Open reports",

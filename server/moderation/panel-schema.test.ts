@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   asConfirmedAction,
+  asModerationDetail,
   asModerationError,
   asModerationNotice,
   asPersonConfirm,
@@ -175,6 +176,32 @@ describe("the actions on a person with no report (SAG-146)", () => {
     expect(asPersonConfirm("ban")).toBe("ban");
     for (const other of ["remove", "lift", "warn", "", null]) {
       expect(asPersonConfirm(other)).toBeNull();
+    }
+  });
+});
+
+describe("the detail of a refusal of Clerk, from the address (SAG-151)", () => {
+  it("takes a short string of safe characters", () => {
+    for (const detail of [
+      "403 feature_not_enabled",
+      "Error",
+      "422 a_code b-code.x",
+    ]) {
+      expect(asModerationDetail(detail)).toBe(detail);
+    }
+  });
+
+  it("takes nothing else, so the address cannot write what the page says", () => {
+    for (const bad of [
+      null,
+      "",
+      "<b>bold</b>",
+      "a&b=c",
+      "line\nbreak",
+      "javascript:alert(1)",
+      "x".repeat(61),
+    ]) {
+      expect(asModerationDetail(bad)).toBeNull();
     }
   });
 });

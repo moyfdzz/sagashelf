@@ -1149,7 +1149,8 @@
         "outdated": "La persona cambió de foto: este reporte es de una foto anterior. Descártalo.",
         "not_allowed": "Esta cuenta es de administración o es la tuya: no se puede actuar sobre ella.",
         "picture_hidden": "La foto está oculta: primero restáurala o quítala, y después avisa.",
-        "failed": "Clerk no hizo el cambio. No se cambió nada aquí; inténtalo de nuevo."
+        "failed": "Clerk no hizo el cambio. No se cambió nada aquí; inténtalo de nuevo.",
+        "failedWith": "Clerk no hizo el cambio ({{detail}}). No se cambió nada aquí; inténtalo de nuevo."
       },
       "reports": {
         "title": "Reportes abiertos",

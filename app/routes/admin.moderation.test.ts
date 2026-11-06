@@ -273,6 +273,21 @@ describe("the moderation panel (SAG-143)", () => {
     }
   });
 
+  it("says why Clerk refused, only for the error that says so, and only with a safe string", async () => {
+    expect(
+      await load("?error=failed&detail=403%20feature_not_enabled"),
+    ).toMatchObject({ error: "failed", detail: "403 feature_not_enabled" });
+    expect(await load("?error=failed")).toMatchObject({ detail: null });
+    expect(
+      await load("?error=failed&detail=%3Cb%3Ebold%3C%2Fb%3E"),
+    ).toMatchObject({ error: "failed", detail: null });
+    // Another error does not carry a detail of its own.
+    expect(await load("?error=not_found&detail=403%20x")).toMatchObject({
+      error: "not_found",
+      detail: null,
+    });
+  });
+
   it("is private and not indexed", () => {
     expect(headers()).toEqual({ "Cache-Control": "private, no-store" });
     expect(meta({ loaderData: { title: "T" } } as never)).toContainEqual({

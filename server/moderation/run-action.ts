@@ -19,6 +19,8 @@ import {
   canRestrict,
   done,
   error,
+  failed,
+  refusalDetail,
   releaseLock,
   stopAccount,
   viaClerk,
@@ -70,8 +72,9 @@ export async function runModerationAction(
     try {
       changed = await clerk.deleteUserProfileImage(report.clerkId);
     } catch (thrown) {
-      console.error("moderation: Clerk refused", (thrown as Error).name);
-      return error("failed");
+      const detail = refusalDetail(thrown);
+      console.error("moderation: Clerk refused", detail);
+      return failed(detail);
     }
     return done(
       await recordPictureRemoved(db, actorId, id, {
@@ -89,12 +92,12 @@ export async function runModerationAction(
     // Here the id is the account's, from the list of restricted accounts.
     const account = await findRestrictedAccount(db, id);
     if (!account) return error("not_found");
-    const lifted = await viaClerk(() =>
+    const refused = await viaClerk(() =>
       account.state === "banned"
         ? clerk.unbanUser(account.clerkId)
         : releaseLock(clerk, account.clerkId),
     );
-    if (!lifted) return error("failed");
+    if (refused !== null) return failed(refused);
     const result = done(await liftRestriction(db, actorId, id), "lifted");
     // Lifted from the card of a person: the card is shown again.
     return form.intent === "lift" && form.username
@@ -125,7 +128,8 @@ export async function runModerationAction(
   // Suspend (an active account) or ban (an active or a suspended one).
   const bans = intent === "ban";
   if (!canRestrict(person.state, bans)) return error("not_found");
-  if (!(await stopAccount(clerk, person, bans))) return error("failed");
+  const refused = await stopAccount(clerk, person, bans);
+  if (refused !== null) return failed(refused);
   const state = bans ? "banned" : "suspended";
   return done(
     await restrictAccount(db, actorId, { reportId: id }, state),
