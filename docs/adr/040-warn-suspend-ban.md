@@ -4,6 +4,7 @@
 - **Date:** 2026-11-06
 - **Implementation:** Done (SAG-143, second PR), not tried in production yet
 - **Tickets:** SAG-143, SAG-145, SAG-146, SAG-148
+- **Amended by:** [ADR-041](041-ban-when-clerk-plan-has-no-ban.md) (a ban carries on when Clerk's plan has no ban)
 - **Related:** [ADR-039](039-moderation-panel.md), [ADR-038](038-reports-and-picture-records.md), [ADR-031](031-social-graph.md), [ADR-007](007-background-work-cron-and-outbox.md)
 
 ## Context

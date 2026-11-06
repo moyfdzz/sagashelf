@@ -214,6 +214,20 @@ describe("suspending and banning a person with no report (SAG-146)", () => {
       "person=bob_reads&error=not_found",
     );
   });
+
+  it("bans here when the plan of Clerk has no ban, and goes back to the card (SAG-153)", async () => {
+    mocks.banUser.mockRejectedValue(
+      Object.assign(new Error("plan"), {
+        status: 402,
+        errors: [{ code: "unsupported_subscription_plan_features" }],
+      }),
+    );
+
+    expect(await run({ intent: "ban_person", username })).toBe(
+      "person=bob_reads&notice=banned_no_clerk",
+    );
+    expect(mocks.restrictAccount).toHaveBeenCalled();
+  });
 });
 
 describe("who can be acted on directly (SAG-146)", () => {

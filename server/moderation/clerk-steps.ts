@@ -64,6 +64,45 @@ export async function viaClerk(
   }
 }
 
+/**
+ * Clerk answers 402 `unsupported_subscription_plan_features` when its plan does not include the
+ * ban (seen on 2026-11-06, ADR-041). Only that exact status and code: any other refusal is real.
+ */
+export function isPlanRefusal(thrown: unknown): boolean {
+  const fields = (thrown ?? {}) as { status?: unknown; errors?: unknown };
+  return (
+    fields.status === 402 &&
+    Array.isArray(fields.errors) &&
+    fields.errors.some(
+      (entry: { code?: unknown } | null) =>
+        entry?.code === "unsupported_subscription_plan_features",
+    )
+  );
+}
+
+/** How the part of Clerk went: why it refused, or null, and whether its plan had no ban to make. */
+export type ClerkStep = { refused: string | null; skipped: boolean };
+
+const clerkOk: ClerkStep = { refused: null, skipped: false };
+
+/**
+ * Runs the call that bans or unbans in Clerk. A plan without the ban is not a refusal: the app
+ * enforces the state by itself (SAG-148), so the change carries on here and `skipped` says that
+ * Clerk did not apply it. Any other refusal stops the change, as in `viaClerk`.
+ */
+async function banStep(call: () => Promise<unknown>): Promise<ClerkStep> {
+  let skipped = false;
+  const refused = await viaClerk(async () => {
+    try {
+      await call();
+    } catch (thrown) {
+      if (!isPlanRefusal(thrown)) throw thrown;
+      skipped = true;
+    }
+  });
+  return { refused, skipped };
+}
+
 /** A suspension is for an active account, and a ban for an account that is not banned yet. */
 export const canRestrict = (state: AccountState, bans: boolean) =>
   bans ? state !== "banned" : state === "active";
@@ -86,17 +125,32 @@ export async function releaseLock(
 /**
  * The part of Clerk in suspending or banning. A suspension needs nothing there. A ban bans the
  * account in Clerk, which does not expire, after releasing an old lock if the account was suspended,
- * so lifting the ban leaves nothing locked. Null when it went well, or why Clerk refused.
+ * so lifting the ban leaves nothing locked. Says why Clerk refused, or that its plan has no ban.
  */
-export function stopAccount(
+export async function stopAccount(
   clerk: ClerkUsers,
   account: { clerkId: string; state: AccountState },
   bans: boolean,
-): Promise<string | null> {
-  if (!bans) return Promise.resolve(null);
-  return viaClerk(async () => {
-    if (account.state === "suspended")
-      await releaseLock(clerk, account.clerkId);
-    return clerk.banUser(account.clerkId);
-  });
+): Promise<ClerkStep> {
+  if (!bans) return clerkOk;
+  if (account.state === "suspended") {
+    const refused = await viaClerk(() => releaseLock(clerk, account.clerkId));
+    if (refused !== null) return { refused, skipped: false };
+  }
+  return banStep(() => clerk.banUser(account.clerkId));
+}
+
+/**
+ * The part of Clerk in lifting a restriction: a ban is lifted in Clerk (unless its plan has no ban,
+ * which `banStep` lets through), a suspension only needs an old lock released.
+ */
+export async function liftAccount(
+  clerk: ClerkUsers,
+  account: { clerkId: string; state: AccountState },
+): Promise<ClerkStep> {
+  if (account.state === "banned") {
+    return banStep(() => clerk.unbanUser(account.clerkId));
+  }
+  const refused = await viaClerk(() => releaseLock(clerk, account.clerkId));
+  return { refused, skipped: false };
 }

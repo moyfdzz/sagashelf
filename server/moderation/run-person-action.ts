@@ -57,10 +57,13 @@ export async function runPersonAction(
 
   const bans = form.intent === "ban_person";
   if (!canRestrict(person.state, bans)) return back(error("not_found"));
-  const refused = await stopAccount(clerk, person, bans);
-  if (refused !== null) return back(failed(refused));
+  const step = await stopAccount(clerk, person, bans);
+  if (step.refused !== null) return back(failed(step.refused));
   const state = bans ? "banned" : "suspended";
   return back(
-    done(await restrictAccount(db, actorId, subject, state, form.note), state),
+    done(
+      await restrictAccount(db, actorId, subject, state, form.note),
+      step.skipped ? "banned_no_clerk" : state,
+    ),
   );
 }

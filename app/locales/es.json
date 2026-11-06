@@ -1141,7 +1141,9 @@
         "warned": "Aviso enviado. El reporte quedó resuelto.",
         "suspended": "Cuenta suspendida. Los reportes sobre esta persona quedaron resueltos.",
         "banned": "Cuenta baneada. Su perfil ya no se ve y los reportes sobre esta persona quedaron resueltos.",
-        "lifted": "Se levantó la restricción de la cuenta."
+        "banned_no_clerk": "Cuenta baneada aquí. Clerk no aplicó el baneo porque su plan no lo incluye, pero la aplicación ya le bloquea el acceso a la persona. Su perfil ya no se ve y los reportes quedaron resueltos.",
+        "lifted": "Se levantó la restricción de la cuenta.",
+        "lifted_no_clerk": "Se levantó la restricción aquí. Clerk no cambió nada porque su plan no incluye el baneo."
       },
       "errors": {
         "invalid_request": "No se pudo leer la acción.",

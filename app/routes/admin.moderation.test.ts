@@ -244,7 +244,14 @@ describe("the moderation panel (SAG-143)", () => {
   });
 
   it("says what happened, only with words it knows", async () => {
-    for (const notice of ["warned", "suspended", "banned", "lifted"]) {
+    for (const notice of [
+      "warned",
+      "suspended",
+      "banned",
+      "banned_no_clerk",
+      "lifted",
+      "lifted_no_clerk",
+    ]) {
       expect(await load(`?notice=${notice}`)).toMatchObject({ notice });
     }
     for (const error of ["not_allowed", "picture_hidden", "outdated"]) {

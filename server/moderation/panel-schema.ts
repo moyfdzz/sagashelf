@@ -93,7 +93,9 @@ export const moderationNotices = [
   "warned",
   "suspended",
   "banned",
+  "banned_no_clerk",
   "lifted",
+  "lifted_no_clerk",
 ] as const;
 export type ModerationNotice = (typeof moderationNotices)[number];
 
