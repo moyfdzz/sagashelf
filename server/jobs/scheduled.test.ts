@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   getWebhooksEnabled: vi.fn(),
   deliverDueEvents: vi.fn(),
   announceNewEpisodes: vi.fn(),
+  prunePictureUploads: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -32,6 +33,9 @@ vi.mock("../runtime-env", () => ({
   getWikidata: mocks.getWikidata,
   getTvmaze: mocks.getTvmaze,
   getWebhooksEnabled: mocks.getWebhooksEnabled,
+}));
+vi.mock("../db/picture-uploads", () => ({
+  prunePictureUploads: mocks.prunePictureUploads,
 }));
 vi.mock("../db/episode-alerts", () => ({
   announceNewEpisodes: mocks.announceNewEpisodes,
@@ -316,13 +320,38 @@ describe("the second Cron Trigger (SAG-90)", () => {
     );
   });
 
-  it("leaves the database asleep when TVmaze is off", async () => {
+  it("with TVmaze off, only deletes the old records of picture uploads", async () => {
+    const db = { execute: vi.fn() };
     mocks.getTvmaze.mockReturnValue(null);
+    mocks.getDb.mockResolvedValue(db);
+    mocks.prunePictureUploads.mockResolvedValue(3);
 
     await runTvmazeJobs();
 
-    expect(mocks.getDb).not.toHaveBeenCalled();
+    expect(mocks.prunePictureUploads).toHaveBeenCalledWith(db);
     expect(mocks.refreshNextEpisodes).not.toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "picture_uploads.pruned", deleted: 3 }),
+    );
+  });
+
+  it("still looks for the episodes when deleting the records fails", async () => {
+    const db = { execute: vi.fn() };
+    mocks.getTvmaze.mockReturnValue({});
+    mocks.getDb.mockResolvedValue(db);
+    mocks.prunePictureUploads.mockRejectedValue(new TypeError("no table"));
+    mocks.refreshNextEpisodes.mockResolvedValue({});
+
+    await expect(runTvmazeJobs()).resolves.toBeUndefined();
+
+    expect(mocks.refreshNextEpisodes).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "job.failed",
+        job: "prune-picture-uploads",
+        error: "TypeError",
+      }),
+    );
   });
 
   it("logs a failure by name and does not throw", async () => {

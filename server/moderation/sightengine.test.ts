@@ -22,7 +22,7 @@ describe("moderatePicture", () => {
   it("allows a picture with low scores", async () => {
     mswServer.use(sightengineAnswers({}));
 
-    expect(await check()).toBe("allowed");
+    expect((await check()).verdict).toBe("allowed");
   });
 
   it.each(["sexual_activity", "sexual_display", "erotica", "very_suggestive"])(
@@ -31,10 +31,10 @@ describe("moderatePicture", () => {
       expect(refuseFromScore).toBe(0.5);
 
       mswServer.use(sightengineAnswers({ [level]: 0.5 }));
-      expect(await check()).toBe("rejected");
+      expect((await check()).verdict).toBe("rejected");
 
       mswServer.use(sightengineAnswers({ [level]: 0.49 }));
-      expect(await check()).toBe("allowed");
+      expect((await check()).verdict).toBe("allowed");
     },
   );
 
@@ -43,7 +43,7 @@ describe("moderatePicture", () => {
       sightengineAnswers({ suggestive: 0.99, mildly_suggestive: 0.99 }),
     );
 
-    expect(await check()).toBe("allowed");
+    expect((await check()).verdict).toBe("allowed");
   });
 
   it("sends the picture and the keys in the body, never in the address", async () => {
@@ -86,17 +86,17 @@ describe("moderatePicture", () => {
       http.post(sightengineEndpoint, () => HttpResponse.json(body, { status })),
     );
 
-    expect(await check()).toBe("unavailable");
+    expect((await check()).verdict).toBe("unavailable");
   });
 
   it("says unavailable when the answer is not JSON or the service cannot be reached", async () => {
     mswServer.use(
       http.post(sightengineEndpoint, () => new HttpResponse("<html>")),
     );
-    expect(await check()).toBe("unavailable");
+    expect((await check()).verdict).toBe("unavailable");
 
     mswServer.use(http.post(sightengineEndpoint, () => HttpResponse.error()));
-    expect(await check()).toBe("unavailable");
+    expect((await check()).verdict).toBe("unavailable");
   });
 
   it("never writes the keys to a log", async () => {

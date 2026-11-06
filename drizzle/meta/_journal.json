@@ -169,6 +169,13 @@
       "when": 1793929665414,
       "tag": "0023_avatar_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793932980593,
+      "tag": "0024_reports_and_picture_uploads",
+      "breakpoints": true
     }
   ]
 }

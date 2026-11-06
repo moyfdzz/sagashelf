@@ -13,6 +13,8 @@ import {
   mediaItems,
   mutes,
   notifications,
+  pictureUploads,
+  reports,
   users,
   webhookEndpoints,
 } from "../db/schema";
@@ -71,6 +73,23 @@ export type AccountExport = {
     /** The requests waiting for the person's answer. A declined one is not listed. */
     requestsReceived: { username: string; since: string }[];
   };
+  /** The reports the person sent (SAG-142). Never the reports about them, which name somebody else. */
+  reportsMade: {
+    kind: string;
+    username: string | null;
+    reason: string;
+    details: string | null;
+    status: string;
+    cancelledAt: string | null;
+    createdAt: string;
+  }[];
+  /** The record of each picture the person tried to upload, kept 90 days. Never the image. */
+  pictureUploads: {
+    sha256: string;
+    result: string;
+    ipAddress: string | null;
+    createdAt: string;
+  }[];
 };
 
 /**
@@ -292,6 +311,33 @@ export async function exportAccount(
     )
     .orderBy(followRequests.createdAt, users.username);
 
+  const madeReports = await db
+    .select({
+      kind: reports.targetType,
+      username: users.username,
+      deletedAt: users.deletedAt,
+      reason: reports.reason,
+      details: reports.details,
+      status: reports.status,
+      cancelledAt: reports.cancelledAt,
+      createdAt: reports.createdAt,
+    })
+    .from(reports)
+    .leftJoin(users, eq(users.id, reports.targetId))
+    .where(eq(reports.reporterId, userId))
+    .orderBy(reports.createdAt);
+
+  const uploads = await db
+    .select({
+      sha256: pictureUploads.sha256,
+      result: pictureUploads.result,
+      ipAddress: pictureUploads.ipAddress,
+      createdAt: pictureUploads.createdAt,
+    })
+    .from(pictureUploads)
+    .where(eq(pictureUploads.userId, userId))
+    .orderBy(pictureUploads.createdAt);
+
   return {
     schemaVersion: 1,
     exportedAt: now.toISOString(),
@@ -336,6 +382,21 @@ export async function exportAccount(
       payload: notification.payload,
       createdAt: notification.createdAt.toISOString(),
       readAt: notification.readAt?.toISOString() ?? null,
+    })),
+    reportsMade: madeReports.map((report) => ({
+      kind: report.kind,
+      username: report.deletedAt ? null : report.username,
+      reason: report.reason,
+      details: report.details,
+      status: report.status,
+      cancelledAt: report.cancelledAt?.toISOString() ?? null,
+      createdAt: report.createdAt.toISOString(),
+    })),
+    pictureUploads: uploads.map((upload) => ({
+      sha256: upload.sha256,
+      result: upload.result,
+      ipAddress: upload.ipAddress,
+      createdAt: upload.createdAt.toISOString(),
     })),
   };
 }

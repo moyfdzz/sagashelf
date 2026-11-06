@@ -54,11 +54,11 @@ export default function Community() {
           items={[
             t("community.content.spam"),
             t("community.content.piracy"),
-            t("community.content.sexual"),
             t("community.content.photos"),
             t("community.content.private"),
           ]}
         />
+        <p className="font-semibold">{t("community.content.sexual")}</p>
       </LegalSection>
       <LegalSection title={t("community.spoilers.title")}>
         <p>{t("community.spoilers.body")}</p>
