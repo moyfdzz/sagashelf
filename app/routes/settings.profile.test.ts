@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
   updateProfile: vi.fn(),
   getUsernameChangedAt: vi.fn(),
+  moderationKeys: vi.fn((): unknown => null),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
@@ -18,6 +19,7 @@ vi.mock("~server/auth/require", () => ({ requireUser: mocks.requireUser }));
 vi.mock("~server/runtime-env", () => ({
   getDb: mocks.getDb,
   getClerkKeys: () => ({ publishableKey: "pk_test_for_the_tests" }),
+  getModerationKeys: () => mocks.moderationKeys(),
   getWriteLimiter: () => ({ limit: mocks.limit }),
 }));
 // Clerk adds its own state to what the loader returns; here it only passes the data through.

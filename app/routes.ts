@@ -39,6 +39,7 @@ export default [
   route("settings/import", "routes/settings.import.tsx"),
   route("settings/delete", "routes/settings.delete.ts"),
   route("settings/username", "routes/settings.username.ts"),
+  route("settings/avatar", "routes/settings.avatar.ts"),
   route("api/health", "routes/api.health.ts"),
   route("api/locale", "routes/api.locale.ts"),
   route("webhooks/clerk", "routes/webhooks.clerk.ts"),

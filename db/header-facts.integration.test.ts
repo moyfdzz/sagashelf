@@ -44,6 +44,7 @@ describe("findHeaderFacts (SAG-114): the three facts of the header in one read",
     expect(await findHeaderFacts(db, "user_ana")).toEqual({
       isAdmin: true,
       username: "ana_reads",
+      avatarUrl: null,
       unread: 2,
     });
   });

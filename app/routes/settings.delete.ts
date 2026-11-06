@@ -80,11 +80,20 @@ export async function action(args: Route.ActionArgs) {
   // Clerk first: if it fails nothing was erased and the person can try again. If our erasure
   // fails after Clerk deleted the account, Clerk's `user.deleted` event erases it a moment
   // later (Svix retries), so the account never stays half deleted.
+  const clerk = createClerkClient({
+    secretKey: keys.secretKey,
+    publishableKey: keys.publishableKey,
+  });
+  // The picture goes first and on its own: Clerk does not say what happens to the file when an
+  // account is deleted (ADR-037). A person with no picture of their own may get a refusal here,
+  // and that must not stop the deletion.
   try {
-    await createClerkClient({
-      secretKey: keys.secretKey,
-      publishableKey: keys.publishableKey,
-    }).users.deleteUser(user.clerkId);
+    await clerk.users.deleteUserProfileImage(user.clerkId);
+  } catch (error) {
+    console.error("account deletion: picture", (error as Error).name);
+  }
+  try {
+    await clerk.users.deleteUser(user.clerkId);
   } catch (error) {
     console.error("account deletion: Clerk refused", (error as Error).name);
     return fail("failed", 502);

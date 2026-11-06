@@ -38,7 +38,7 @@ export async function loader(args: Route.LoaderArgs) {
   // One read for the three facts of the header, and none for a visitor.
   const header = signedIn
     ? await getHeaderState(args)
-    : { isAdmin: false, username: null, unread: 0 };
+    : { isAdmin: false, username: null, avatarUrl: null, unread: 0 };
   return data({
     locale: getLocale(context),
     // The mode the person chose with the switch. With none, the page follows the system.
@@ -51,6 +51,8 @@ export async function loader(args: Route.LoaderArgs) {
     isAdmin: header.isAdmin,
     // The username, for the link "Perfil" of the account menu (SAG-114).
     username: header.username,
+    // The picture of the person, in place of the word "Cuenta" in the header (SAG-109).
+    avatarUrl: header.avatarUrl,
     // How many notifications are unread, for the link in the header (SAG-102). 99 is the most shown.
     unread: header.unread,
   });
@@ -64,6 +66,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = rootData?.isAdmin ?? false;
   const unread = rootData?.unread ?? 0;
   const username = rootData?.username ?? null;
+  const avatarUrl = rootData?.avatarUrl ?? null;
 
   return (
     <html
@@ -84,6 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           signedIn={signedIn}
           isAdmin={isAdmin}
           username={username}
+          avatarUrl={avatarUrl}
           unread={unread}
         />
         <div className="grow">{children}</div>

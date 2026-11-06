@@ -78,6 +78,26 @@ The check `npm audit (production)` (`.github/workflows/dependency-audit.yml`) fa
 2. Update the package in its own ticket. If only a package inside another one is affected and its parent has no fix yet, use `overrides` in `package.json`, and run the tests.
 3. If it cannot be fixed yet, or it does not apply, **accept it on purpose**: write the advisory, the reason and a date to look again in a Linear ticket. `npm audit` has no ignore list, so the check stays red and the daily email keeps coming until the package changes.
 
+### G. A profile picture breaks the rules, or may be illegal
+
+Complaints reach `contact@sagashelf.app`. Reports inside the app do not exist yet (SAG-22). The check before saving ([ADR-037](adr/037-profile-pictures.md)) makes mistakes and does not recognize known illegal material.
+
+**A picture that breaks the rules (sexual content of an adult, a picture of somebody without permission):**
+
+1. In the Clerk dashboard, open the user and remove the picture. The page of the profile follows when Clerk sends `user.updated`.
+2. Write to the person if it is worth it. If it happens again, delete the account, as the terms allow.
+
+**A picture that may show the sexual abuse of a minor:**
+
+1. **Do not look at it again, do not download it, do not copy it and do not send it to anybody, not even as proof.** Keeping or sharing it can be a crime in itself.
+2. Note the username and the time, and only that. Do not delete anything yet if you can stop it being seen another way: close sign-ups if there are more (table above).
+3. Get legal advice **the same day**, on what must be reported, to whom and what must be kept. Cloudflare says that a site owner who finds this likely has to report it to NCMEC (CyberTipline), keep the content and the records (it mentions one year), and remove it. That is about the United States. What Mexico asks was not looked at.
+4. Remove the picture from public view as that advice says.
+
+This page is not legal advice. SAG-141 is the ticket to prepare this before it happens.
+
+**If the moderation service fails or its key leaks:** nobody can upload a picture and nothing else breaks. Rotate the key as [secrets](secrets.md) says. To turn uploads off on purpose, delete `SIGHTENGINE_API_SECRET` from the Worker.
+
 ## Neon: restore
 
 Neon's own words, read 2026-11-04: on the Free plan the history window is up to 6 hours (up to 1 GB of change history per project), the plan includes 1 manual snapshot, and a restore applies to a root branch. Sources: [History window](https://neon.com/docs/postgres/backup-restore/history-window) and [Neon plans](https://neon.com/docs/introduction/plans).
@@ -139,6 +159,7 @@ Say what each run printed. If a run prints no `429`, do not repeat it: tell me, 
 
 - **Neon, Free plan:** history window of up to 6 hours, up to 1 GB of change history per project, 1 manual snapshot, a restore applies to root branches (neon.com/docs, 2026-11-04). The paid plans keep more history; the cost is not written here.
 - **Clerk, Access mode:** Open, Invite-only and Waitlist (API names public, restricted and waitlist); the allowlist only works in Open mode, and turning it on with no exceptions blocks all sign-ups; a restricted instance answers 403 `sign_up_mode_restricted` (clerk.com/docs, "Restricting access", 2026-11-04). The exact click path was not shown by the page; look for **Access mode**.
+- **Cloudflare, CSAM Scanning Tool:** it compares "content served for your website through the Cloudflare cache" with known lists, and says the owner likely has to report to NCMEC, keep the content and the records "for one year in the case of an investigation", and remove it (developers.cloudflare.com, "CSAM Scanning Tool", 2026-11-05).
 - **Cloudflare Workers, rollback:** from the dashboard (Deployments, the three dots of a version, Rollback) or `wrangler rollback [VERSION_ID]`; only the 100 most recent versions can be targets; it needs the Editor role on the Worker; it changes code and not connected resources (developers.cloudflare.com, "Rollbacks", 2026-11-04).
 
 ## What this plan does not decide

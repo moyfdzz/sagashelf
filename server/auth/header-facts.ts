@@ -7,10 +7,16 @@ import { getClerkKeys, getDb } from "../runtime-env";
 export type HeaderState = {
   isAdmin: boolean;
   username: string | null;
+  avatarUrl: string | null;
   unread: number;
 };
 
-const nobody: HeaderState = { isAdmin: false, username: null, unread: 0 };
+const nobody: HeaderState = {
+  isAdmin: false,
+  username: null,
+  avatarUrl: null,
+  unread: 0,
+};
 
 /**
  * What the header shows about the person of the session (SAG-114): the link to the administration

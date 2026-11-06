@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
   eraseAccount: vi.fn(),
   deleteUser: vi.fn(),
+  deleteUserProfileImage: vi.fn(),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
@@ -18,7 +19,12 @@ vi.mock("@clerk/react-router/server", () => ({
   getAuth: async () => ({ has: mocks.has }),
 }));
 vi.mock("@clerk/backend", () => ({
-  createClerkClient: () => ({ users: { deleteUser: mocks.deleteUser } }),
+  createClerkClient: () => ({
+    users: {
+      deleteUser: mocks.deleteUser,
+      deleteUserProfileImage: mocks.deleteUserProfileImage,
+    },
+  }),
 }));
 vi.mock("~server/runtime-env", () => ({
   getDb: mocks.getDb,
@@ -37,6 +43,7 @@ const db = { fake: "database" };
 const session = { id: "user-from-session", clerkId: "clerk_1", role: "user" };
 
 beforeEach(() => {
+  mocks.deleteUserProfileImage.mockReset().mockResolvedValue({});
   mocks.requireUser.mockReset().mockResolvedValue(session);
   mocks.has.mockReset().mockReturnValue(true);
   mocks.getDb.mockReset().mockResolvedValue(db);
@@ -77,6 +84,19 @@ describe("POST /settings/delete", () => {
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(302);
     expect((result as Response).headers.get("Location")).toBe("/");
+  });
+
+  it("removes the picture first, and a refusal there does not stop the deletion (SAG-109)", async () => {
+    mocks.deleteUserProfileImage.mockRejectedValue(new Error("no picture"));
+
+    await submit({ ...confirmed });
+
+    expect(mocks.deleteUserProfileImage).toHaveBeenCalledWith("clerk_1");
+    expect(
+      mocks.deleteUserProfileImage.mock.invocationCallOrder[0] ?? 0,
+    ).toBeLessThan(mocks.deleteUser.mock.invocationCallOrder[0] ?? 0);
+    expect(mocks.deleteUser).toHaveBeenCalledWith("clerk_1");
+    expect(mocks.eraseAccount).toHaveBeenCalled();
   });
 
   it("asks for the username without regard to case, and refuses a different one", async () => {

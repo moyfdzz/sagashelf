@@ -47,7 +47,8 @@ const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font
  * on 2026-11-05 with all of that, at 1280 px: one row, with about 16 px to spare in Spanish and 49 in
  * English. The row has the same width up to 1535 px. From 1536 px the row is 256 px wider, so the
  * links are 18 px again (SAG-139), with about 206 px to spare in Spanish and 243 in English, measured
- * on 2026-11-05. A new link needs those measures again.
+ * on 2026-11-05. A picture in place of the word "Cuenta" (SAG-109) makes the account button 31 px
+ * narrower in Spanish and 40 in English. A new link needs those measures again.
  *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
  * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
@@ -63,6 +64,7 @@ export function Navbar({
   signedIn,
   isAdmin = false,
   username = null,
+  avatarUrl = null,
   unread: unreadCount = 0,
 }: {
   savedTheme: Theme | null;
@@ -71,6 +73,8 @@ export function Navbar({
   isAdmin?: boolean;
   /** The username of the person, for the link "Perfil" of the account (SAG-114). */
   username?: string | null;
+  /** The picture of the person (SAG-109), for the account menu and the panel of a phone. */
+  avatarUrl?: string | null;
   /** Unread notifications (SAG-102), 100 or more meaning "more than 99". Zero draws nothing. */
   unread?: number;
 }) {
@@ -242,6 +246,7 @@ export function Navbar({
                 <AccountLinks
                   isAdmin={isAdmin}
                   username={username}
+                  avatarUrl={avatarUrl}
                   itemClass={accountItemClass}
                 />
               ) : (
@@ -264,7 +269,11 @@ export function Navbar({
         {/* Wide screens: the account is at the end of the row, as before. */}
         <div className="hidden xl:order-4 xl:block">
           {signedIn ? (
-            <AccountMenu isAdmin={isAdmin} username={username} />
+            <AccountMenu
+              isAdmin={isAdmin}
+              username={username}
+              avatarUrl={avatarUrl}
+            />
           ) : (
             // Plain anchors: the sign-in and sign-up pages have their own, wider security policy,
             // which only a new document gets.

@@ -162,6 +162,13 @@
       "when": 1793774452692,
       "tag": "0022_follow_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793929665414,
+      "tag": "0023_avatar_uploads",
+      "breakpoints": true
     }
   ]
 }

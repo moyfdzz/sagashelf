@@ -21,7 +21,7 @@ import { getHeaderState } from "./header-facts";
 
 const args = {} as LoaderFunctionArgs;
 const db = { fake: "database" };
-const nobody = { isAdmin: false, username: null, unread: 0 };
+const nobody = { isAdmin: false, username: null, avatarUrl: null, unread: 0 };
 
 beforeEach(() => {
   mocks.getAuth.mockReset().mockResolvedValue({ userId: "user_abc" });

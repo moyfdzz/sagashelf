@@ -67,6 +67,7 @@ export default function Privacy() {
             t("privacy.processors.neon"),
             t("privacy.processors.cloudflare"),
             t("privacy.processors.github"),
+            t("privacy.processors.sightengine"),
             t("privacy.processors.titles"),
           ]}
         />

@@ -37,6 +37,7 @@ vi.mock("~server/runtime-env", () => ({
   getSearchLimiter: () => ({ limit: mocks.limit }),
   getDb: mocks.getDb,
   getClerkKeys: () => null,
+  getModerationKeys: () => null,
   getWebhooksEnabled: mocks.getWebhooksEnabled,
   getClerkWebhookSecret: mocks.getClerkWebhookSecret,
 }));
@@ -147,6 +148,13 @@ const rows: Row[] = [
     params: {},
     who: "user",
     limitKey: "profile:user-1",
+  },
+  {
+    file: "settings.avatar.ts",
+    path: "/settings/avatar",
+    params: {},
+    who: "user",
+    limitKey: "avatar:user-1",
   },
   {
     file: "settings.username.ts",

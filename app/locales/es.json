@@ -340,6 +340,27 @@
         "generic": "No pudimos procesar la solicitud. Inténtalo de nuevo."
       }
     },
+    "avatar": {
+      "title": "Foto de perfil",
+      "alt": "Foto de perfil de {{name}}",
+      "choose": "Elegir una foto",
+      "hint": "JPEG, PNG o WebP. Se recorta en un cuadrado y se revisa automáticamente antes de guardarla. No se permite contenido sexual ni fotos de otras personas sin su permiso. Puedes intentarlo 5 veces al día.",
+      "off": "Por ahora no se pueden subir fotos.",
+      "save": "Guardar foto",
+      "saving": "Revisando…",
+      "remove": "Quitar foto",
+      "saved": "Listo. Tu foto cambió.",
+      "errors": {
+        "unreadable": "No pudimos leer ese archivo como una imagen. Prueba con un JPEG, PNG o WebP.",
+        "invalid_type": "Ese archivo no es un JPEG, PNG o WebP.",
+        "too_large": "Ese archivo es demasiado grande.",
+        "rejected": "Esta foto no cumple las Reglas de la comunidad. Elige otra.",
+        "limit": "Llegaste al límite de fotos de hoy. Inténtalo mañana.",
+        "unavailable": "No pudimos revisar la foto en este momento, así que no se guardó. Inténtalo más tarde.",
+        "failed": "No pudimos cambiar la foto. Inténtalo de nuevo.",
+        "invalid_request": "No pudimos procesar la solicitud. Inténtalo de nuevo."
+      }
+    },
     "username": {
       "submit": "Cambiar nombre de usuario",
       "submitting": "Cambiando…",
@@ -410,6 +431,8 @@
       "intro": "En tu perfil y en lo que compartas, no publiques:",
       "spam": "spam, publicidad ni contenido engañoso;",
       "piracy": "enlaces a contenido pirata o ilegal;",
+      "sexual": "contenido sexual de cualquier persona, sin importar su edad;",
+      "photos": "fotos de otras personas sin su permiso;",
       "private": "datos personales de otras personas sin su permiso."
     },
     "spoilers": {
@@ -479,7 +502,7 @@
       "intro": "Guardamos solo lo necesario para que tu cuenta y tu biblioteca funcionen:",
       "account": "Cuenta: tu correo, tu nombre de usuario y, si usas contraseña, una versión protegida de ella. La contraseña la gestiona Clerk y SagaShelf nunca la guarda.",
       "google": "Inicio con Google: si eliges esta opción, Google comparte con Clerk tu correo, tu nombre y tu foto de perfil. No accedemos a nada más de tu cuenta de Google.",
-      "profile": "Perfil: el nombre para mostrar, la biografía, el idioma, tu nivel de privacidad y la foto que elijas.",
+      "profile": "Perfil: el nombre para mostrar, la biografía, el idioma, tu nivel de privacidad y la foto que elijas. Antes de enviar una foto, tu navegador la recorta y la reduce, lo que también quita datos que el archivo puede llevar, como el lugar donde se tomó.",
       "library": "Biblioteca: por cada título que guardas, su estado, tu progreso, tu puntuación, las fechas en que lo empezaste y lo terminaste, cuántas veces lo has vuelto a ver, tus notas y un nivel de visibilidad (privado de forma predeterminada). Si cambias el nivel de una entrada, la verán las personas que ese nivel permita (consulta «Quién ve tu perfil»). Tus notas no las ve nadie más.",
       "viewings": "Historial de visualizaciones: las fechas y las notas de cada vez que viste un título, si decides anotarlas.",
       "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
@@ -497,6 +520,7 @@
       "neon": "Neon: aloja la base de datos donde se guarda tu perfil.",
       "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos, mide visitas y velocidad con Web Analytics y guarda por hasta un día una copia temporal de las búsquedas y de las portadas, sin relación con tu cuenta. También guarda las copias de seguridad cifradas de la base de datos.",
       "github": "GitHub: ejecuta la tarea diaria que crea las copias de seguridad cifradas. Las copias no se guardan en GitHub.",
+      "sightengine": "Sightengine: revisa cada foto de perfil que subes, antes de guardarla, para detectar contenido sexual. Recibe solo la imagen, no tu nombre, tu correo ni tu cuenta. Según Sightengine, borra la imagen después de procesarla, y puede procesarla en la Unión Europea, Canadá o Estados Unidos.",
       "titles": "Fuentes de datos de títulos (TMDB, Open Library y MangaDex): cuando buscas o abres un título, nuestros servidores les envían el texto de la búsqueda o el identificador del título para obtener sus datos. No reciben tu nombre, tu correo, tu cuenta ni tus cookies. Las portadas pasan por nuestro servidor, así que esas fuentes no ven quién visita el sitio.",
       "outro": "Estos proveedores pueden procesar datos fuera de México, incluso en Estados Unidos. No los usamos para nada más que operar el servicio."
     },

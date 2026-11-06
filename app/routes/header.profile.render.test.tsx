@@ -112,6 +112,50 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
   });
 });
 
+describe("the picture of the person (SAG-109)", () => {
+  const picture = "https://img.clerk.com/ana";
+
+  it("replaces the word on the button of the menu, and the word stays as its name", async () => {
+    const html = await render(<AccountMenu avatarUrl={picture} />);
+    const button = /<button.*?<\/button>/s.exec(html)?.[0] ?? "";
+
+    expect(button).toContain(`src="${picture}"`);
+    expect(button).toContain('<span class="sr-only">Cuenta</span>');
+    // A screen reader says the name of the button once, and skips the picture.
+    expect(button).toMatch(/<span aria-hidden="true"[^>]*><img /);
+  });
+
+  it("leaves the word when there is no picture", async () => {
+    const html = await render(<AccountMenu />);
+    const button = /<button.*?<\/button>/s.exec(html)?.[0] ?? "";
+
+    expect(button).not.toContain("<img");
+    expect(button).not.toContain("sr-only");
+    expect(button).toContain("Cuenta");
+  });
+
+  it("is next to the link to the profile in the panel of a phone, and in the menu of a wide screen", async () => {
+    const html = await render(
+      <Navbar
+        savedTheme={null}
+        signedIn
+        username="ana_reads"
+        avatarUrl={picture}
+      />,
+    );
+
+    expect(html.split(`src="${picture}"`)).toHaveLength(3);
+  });
+
+  it("is not drawn for a visitor, whatever the page was given", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn={false} avatarUrl={picture} />,
+    );
+
+    expect(html).not.toContain(picture);
+  });
+});
+
 describe("the link to the search of people (SAG-115)", () => {
   it("is in the header of a person with a session", async () => {
     const html = await render(
