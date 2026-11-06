@@ -1214,6 +1214,7 @@
           "suspended": "Suspended",
           "banned": "Banned"
         },
+        "note": "Internal note:",
         "lift": "Lift"
       },
       "uploads": {

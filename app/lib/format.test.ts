@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  adminTimeZone,
   formatDate,
   formatList,
   formatNumber,
@@ -20,6 +21,25 @@ describe("formatDate", () => {
       "10/21/26",
     );
     expect(formatDate(date, "en", { dateStyle: "short" })).toBe("10/20/26");
+  });
+});
+
+describe("adminTimeZone (SAG-154)", () => {
+  it("is Monterrey: 22:35 UTC is 16:35, in both languages, and the day can change", () => {
+    const at = new Date("2026-11-06T22:35:00Z");
+    const options = { timeStyle: "short" } as const;
+
+    expect(formatDate(at, "en", options, adminTimeZone)).toBe("4:35 PM");
+    expect(formatDate(at, "es", options, adminTimeZone)).toBe("16:35");
+    // 03:00 UTC is still the day before in Monterrey.
+    expect(
+      formatDate(
+        new Date("2026-11-07T03:00:00Z"),
+        "en",
+        { dateStyle: "short" },
+        adminTimeZone,
+      ),
+    ).toBe("11/6/26");
   });
 });
 

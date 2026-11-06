@@ -9,12 +9,13 @@ export type PanelAccount = {
   username: string;
   state: "suspended" | "banned";
   changedAt: number | null;
+  note: string | null;
 };
 
 /** The accounts that are suspended or banned, each with the button that gives it back. */
 export function RestrictedAccounts({ accounts }: { accounts: PanelAccount[] }) {
   const { t } = useTranslation();
-  const { formatDate } = useFormatters();
+  const { formatPanelTime } = useFormatters();
 
   return (
     <section aria-labelledby="moderation-accounts" className="mt-10">
@@ -46,13 +47,18 @@ export function RestrictedAccounts({ accounts }: { accounts: PanelAccount[] }) {
                 </span>
                 {account.changedAt === null ? null : (
                   <span className="ml-2">
-                    {formatDate(account.changedAt, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    {formatPanelTime(account.changedAt)}
                   </span>
                 )}
               </p>
+              {account.note ? (
+                <p className="mt-2 text-sm break-words whitespace-pre-line">
+                  <span className="font-semibold">
+                    {t("admin.moderation.accounts.note")}
+                  </span>{" "}
+                  {account.note}
+                </p>
+              ) : null}
               <div className="mt-3">
                 <ActionButton
                   intent="lift"

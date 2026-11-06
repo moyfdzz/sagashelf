@@ -256,6 +256,8 @@ export type RestrictedAccount = {
   username: string;
   state: Exclude<AccountState, "active">;
   changedAt: Date | null;
+  /** The internal note of the last restriction that matches the state, if it had one. */
+  note: string | null;
 };
 
 /** The accounts that are suspended or banned, the latest first. */
@@ -264,10 +266,18 @@ export async function listRestrictedAccounts(
   limit: number,
 ): Promise<RestrictedAccount[]> {
   const { rows } = await db.execute(sql`
-    SELECT id, clerk_id, username::text AS username, moderation_status, moderation_changed_at
-    FROM users
-    WHERE moderation_status <> 'active' AND deleted_at IS NULL
-    ORDER BY moderation_changed_at DESC NULLS LAST, id
+    SELECT u.id, u.clerk_id, u.username::text AS username, u.moderation_status,
+           u.moderation_changed_at, n.note
+    FROM users u
+    LEFT JOIN LATERAL (
+      SELECT a.metadata ->> 'note' AS note
+      FROM audit_log a
+      WHERE a.target_id = u.id AND a.action = 'account.' || u.moderation_status::text
+      ORDER BY a.created_at DESC, a.id DESC
+      LIMIT 1
+    ) n ON TRUE
+    WHERE u.moderation_status <> 'active' AND u.deleted_at IS NULL
+    ORDER BY u.moderation_changed_at DESC NULLS LAST, u.id
     LIMIT ${limit}::int
   `);
   return rows.map((row) => ({
@@ -278,6 +288,7 @@ export async function listRestrictedAccounts(
     changedAt: row.moderation_changed_at
       ? new Date(String(row.moderation_changed_at))
       : null,
+    note: row.note ? String(row.note) : null,
   }));
 }
 
