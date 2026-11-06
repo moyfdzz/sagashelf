@@ -185,6 +185,13 @@ const rows: Row[] = [
     limitKey: "webhook-clerk",
   },
   {
+    file: "admin.moderation.tsx",
+    path: "/admin/moderation",
+    params: {},
+    who: "admin",
+    limitKey: "admin:moderation:user-1",
+  },
+  {
     file: "admin.sagas.tsx",
     path: "/admin/sagas",
     params: {},

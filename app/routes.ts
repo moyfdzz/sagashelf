@@ -25,6 +25,7 @@ export default [
   route("notifications", "routes/notifications.tsx"),
   route("stats", "routes/stats.tsx"),
   route("recommendations", "routes/recommendations.tsx"),
+  route("admin/moderation", "routes/admin.moderation.tsx"),
   route("admin/sagas", "routes/admin.sagas.tsx"),
   route("admin/sagas/:id", "routes/admin.sagas.$id.tsx"),
   route("sagas/:slug", "routes/sagas.$slug.tsx"),

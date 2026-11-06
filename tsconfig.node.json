@@ -13,6 +13,7 @@
     "server/db/avatar.ts",
     "server/db/picture-uploads.ts",
     "server/db/reports.ts",
+    "server/db/moderation.ts",
     "server/db/clerk-sync.ts",
     "server/db/dates.ts",
     "server/db/erase-user.ts",

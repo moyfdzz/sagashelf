@@ -35,7 +35,7 @@ export const reasonsOf = (kind: ReportKind): readonly ReportReason[] =>
 export const isReportKind = (value: unknown): value is ReportKind =>
   reportKinds.includes(value as ReportKind);
 
-const isReportReason = (value: unknown): value is ReportReason =>
+export const isReportReason = (value: unknown): value is ReportReason =>
   reasonsOf("picture").includes(value as ReportReason) ||
   reasonsOf("user").includes(value as ReportReason);
 

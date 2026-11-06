@@ -67,7 +67,8 @@ async function upsert(
       ON CONFLICT (clerk_id) DO UPDATE SET
         username = EXCLUDED.username,
         display_name = EXCLUDED.display_name,
-        avatar_url = EXCLUDED.avatar_url,
+        avatar_url = CASE WHEN users.hidden_avatar_url IS NOT DISTINCT FROM EXCLUDED.avatar_url
+                          THEN NULL ELSE EXCLUDED.avatar_url END,
         has_own_picture = COALESCE(${ownPicture}, users.has_own_picture),
         email_canonical = EXCLUDED.email_canonical,
         clerk_updated_at = EXCLUDED.clerk_updated_at,

@@ -58,7 +58,8 @@ export async function applyAvatar(
 ): Promise<boolean> {
   const { rows } = await db.execute(sql`
     UPDATE users SET
-      avatar_url = ${avatarUrl},
+      avatar_url = CASE WHEN hidden_avatar_url IS NOT DISTINCT FROM ${avatarUrl}
+                        THEN NULL ELSE ${avatarUrl} END,
       has_own_picture = ${hasOwnPicture ? sql`TRUE` : sql`FALSE`},
       clerk_updated_at = ${clerkUpdatedAt.toISOString()}::timestamptz,
       updated_at = now()

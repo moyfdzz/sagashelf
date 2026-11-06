@@ -183,6 +183,13 @@
       "when": 1793936692338,
       "tag": "0025_has_own_picture",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793981116988,
+      "tag": "0026_hidden_avatar_url",
+      "breakpoints": true
     }
   ]
 }
