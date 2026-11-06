@@ -421,6 +421,13 @@
     "updated": "Última actualización: {{date}}",
     "consent": "Al continuar aceptas los <terms>Términos de uso</terms>, la <privacy>Política de privacidad</privacy> y las <community>Reglas de la comunidad</community>."
   },
+  "restricted": {
+    "title": "Tu cuenta está restringida",
+    "body": "Un administrador suspendió o baneó tu cuenta por no cumplir las reglas de la comunidad. Mientras dure, no puedes usar lo que necesita una cuenta.",
+    "contact": "Si crees que es un error, escríbenos a",
+    "rules": "Lee las reglas de la comunidad",
+    "signOut": "Cerrar sesión"
+  },
   "community": {
     "title": "Reglas de la comunidad",
     "description": "Cómo convivir en SagaShelf: lo que esperamos de cada persona y lo que no se permite.",

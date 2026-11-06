@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LoaderFunctionArgs } from "react-router";
 
-import { requireUser } from "./require";
+import { getOptionalUser, requireRole, requireUser } from "./require";
 
 const mocks = vi.hoisted(() => ({
   getClerkKeys: vi.fn(),
@@ -24,6 +24,28 @@ const args = (method = "POST") =>
       body: "intent=delete",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     }),
+    params: {},
+    context: {},
+  }) as unknown as LoaderFunctionArgs;
+
+/** A signed-in person whose row has this state. */
+function signedInAs(status: string, role = "user") {
+  mocks.getAuth.mockResolvedValue({ userId: "user_1" });
+  mocks.getDb.mockResolvedValue({
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => [{ id: "u1", clerkId: "user_1", role, status }],
+        }),
+      }),
+    }),
+  });
+}
+
+/** A read: a GET has no body. */
+const readArgs = () =>
+  ({
+    request: new Request("https://sagashelf.app/library"),
     params: {},
     context: {},
   }) as unknown as LoaderFunctionArgs;
@@ -91,7 +113,9 @@ describe("requireUser", () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            limit: async () => [{ id: "u1", clerkId: "user_1", role: "user" }],
+            limit: async () => [
+              { id: "u1", clerkId: "user_1", role: "user", status: "active" },
+            ],
           }),
         }),
       }),
@@ -101,5 +125,74 @@ describe("requireUser", () => {
 
     await expect(requireUser(call)).resolves.toMatchObject({ id: "u1" });
     expect(call.request.bodyUsed).toBe(false);
+  });
+
+  it("gives the route the person and nothing of the moderation state", async () => {
+    signedInAs("active");
+
+    expect(await requireUser(args())).toEqual({
+      id: "u1",
+      clerkId: "user_1",
+      role: "user",
+    });
+  });
+
+  it.each(["suspended", "banned"])(
+    "sends a %s person to the page that says why, as a new document, without touching the body",
+    async (status) => {
+      signedInAs(status);
+      const call = args();
+
+      const thrown = await refusal(requireUser(call));
+
+      expect(thrown.status).toBe(302);
+      expect(thrown.headers?.get("Location")).toBe("/account-restricted");
+      expect(call.request.bodyUsed).toBe(false);
+    },
+  );
+
+  it("does not let a restricted administrator into the administration", async () => {
+    signedInAs("banned", "admin");
+
+    const thrown = await refusal(requireRole(args(), "admin"));
+
+    expect(thrown.headers?.get("Location")).toBe("/account-restricted");
+  });
+
+  it("treats a state it does not know as a restriction, never as permission", async () => {
+    signedInAs("exiled");
+
+    const thrown = await refusal(requireUser(args()));
+
+    expect(thrown.headers?.get("Location")).toBe("/account-restricted");
+  });
+});
+
+describe("getOptionalUser", () => {
+  it("is null for a visitor, and the person for an active account", async () => {
+    expect(await getOptionalUser(readArgs())).toBeNull();
+
+    signedInAs("active");
+    expect(await getOptionalUser(readArgs())).toEqual({
+      id: "u1",
+      clerkId: "user_1",
+      role: "user",
+    });
+  });
+
+  it.each(["suspended", "banned"])(
+    "is null for a %s person: the public pages see a visitor",
+    async (status) => {
+      signedInAs(status);
+
+      expect(await getOptionalUser(readArgs())).toBeNull();
+    },
+  );
+
+  it("is null with no Clerk keys, and does not ask for the session", async () => {
+    mocks.getClerkKeys.mockReturnValue(null);
+
+    expect(await getOptionalUser(readArgs())).toBeNull();
+    expect(mocks.getAuth).not.toHaveBeenCalled();
   });
 });

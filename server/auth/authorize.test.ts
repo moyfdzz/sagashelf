@@ -39,6 +39,43 @@ describe("authorize", () => {
     });
   });
 
+  it("rejects an account that an administrator suspended or banned, with the reason, and nothing else", async () => {
+    const stopped: SessionUser = { ...ana, restricted: true };
+
+    expect(await authorize("user_ana", deps([stopped]))).toEqual({
+      ok: false,
+      reason: "restricted",
+    });
+  });
+
+  it("says restricted before it asks for a role or for Google", async () => {
+    const d = deps([{ ...boss, restricted: true }]);
+
+    expect(await authorize("user_boss", d, "admin")).toEqual({
+      ok: false,
+      reason: "restricted",
+    });
+    expect(d.hasVerifiedGoogle).not.toHaveBeenCalled();
+    expect(
+      await authorize(
+        "user_boss",
+        deps([{ ...boss, restricted: true }]),
+        "moderator",
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "restricted",
+    });
+  });
+
+  it("does not take a missing flag for a restriction", async () => {
+    expect(
+      await authorize("user_ana", deps([{ ...ana, restricted: false }])),
+    ).toMatchObject({
+      ok: true,
+    });
+  });
+
   it("denies a regular user a role they do not have", async () => {
     expect(await authorize("user_ana", deps([ana]), "admin")).toEqual({
       ok: false,

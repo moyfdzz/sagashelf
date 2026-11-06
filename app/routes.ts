@@ -12,6 +12,7 @@ export default [
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),
   route("community", "routes/community.tsx"),
+  route("account-restricted", "routes/account-restricted.tsx"),
   route("credits", "routes/credits.tsx"),
   route("u/:username", "routes/u.$username.tsx"),
   route("u/:username/report", "routes/u.$username.report.tsx"),

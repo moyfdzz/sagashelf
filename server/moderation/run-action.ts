@@ -19,6 +19,7 @@ import {
   canRestrict,
   done,
   error,
+  releaseLock,
   stopAccount,
   viaClerk,
   type ClerkUsers,
@@ -91,7 +92,7 @@ export async function runModerationAction(
     const lifted = await viaClerk(() =>
       account.state === "banned"
         ? clerk.unbanUser(account.clerkId)
-        : clerk.unlockUser(account.clerkId),
+        : releaseLock(clerk, account.clerkId),
     );
     if (!lifted) return error("failed");
     const result = done(await liftRestriction(db, actorId, id), "lifted");
