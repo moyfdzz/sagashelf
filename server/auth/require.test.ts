@@ -181,13 +181,28 @@ describe("getOptionalUser", () => {
   });
 
   it.each(["suspended", "banned"])(
-    "is null for a %s person: the public pages see a visitor",
+    "sends a %s person to the page that says why, and does not show them a page as a visitor",
     async (status) => {
       signedInAs(status);
 
-      expect(await getOptionalUser(readArgs())).toBeNull();
+      const thrown = await refusal(getOptionalUser(readArgs()));
+
+      expect(thrown.status).toBe(302);
+      expect(thrown.headers?.get("Location")).toBe("/account-restricted");
     },
   );
+
+  it("does not send a visitor, nor a signed-in person with no account, anywhere", async () => {
+    expect(await getOptionalUser(readArgs())).toBeNull();
+
+    mocks.getAuth.mockResolvedValue({ userId: "user_1" });
+    mocks.getDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => [] }) }),
+      }),
+    });
+    expect(await getOptionalUser(readArgs())).toBeNull();
+  });
 
   it("is null with no Clerk keys, and does not ask for the session", async () => {
     mocks.getClerkKeys.mockReturnValue(null);

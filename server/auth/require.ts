@@ -68,7 +68,9 @@ async function guard(args: LoaderFunctionArgs, role?: Role) {
 
 /**
  * The signed-in user from our own table, or null for a visitor with no session or no account.
- * For a public page that shows a little more to a person who is signed in.
+ * For a public page that shows a little more to a person who is signed in. A suspended or banned
+ * person is sent to the page that says why, as `requireUser` does: the header only knows that there
+ * is a session, so showing them the page as a visitor would look like somebody else's (SAG-149).
  */
 export async function getOptionalUser(
   args: LoaderFunctionArgs,
@@ -77,8 +79,8 @@ export async function getOptionalUser(
   const { userId } = await getAuth(args);
   if (!userId) return null;
   const user = await findUser(userId);
-  // A restricted person is a visitor for the pages that only look at who is signed in.
-  return user?.restricted ? null : user;
+  if (user?.restricted) throw redirectDocument(restrictedPath);
+  return user;
 }
 
 /** The signed-in user from our own table, or a redirect to sign in, or 403. */
