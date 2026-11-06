@@ -7,7 +7,11 @@ import { tabClass } from "~/lib/ui";
  * one is a session page and has a security policy of its own, which only a whole new document
  * gets (ADR-018).
  */
-export function AdminNav({ current }: { current: "sagas" | "moderation" }) {
+export function AdminNav({
+  current,
+}: {
+  current: "sagas" | "moderation" | "messages";
+}) {
   const { t } = useTranslation();
   const items = [
     { key: "sagas", href: "/admin/sagas", label: t("admin.nav.sagas") },
@@ -15,6 +19,11 @@ export function AdminNav({ current }: { current: "sagas" | "moderation" }) {
       key: "moderation",
       href: "/admin/moderation",
       label: t("admin.nav.moderation"),
+    },
+    {
+      key: "messages",
+      href: "/admin/messages",
+      label: t("admin.nav.messages"),
     },
   ] as const;
 

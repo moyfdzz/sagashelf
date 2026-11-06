@@ -34,6 +34,10 @@ import {
   warningType,
 } from "~server/account/report-schema";
 import { reportCreatedType } from "~server/db/reports";
+import {
+  contactCreatedType,
+  contactNotice,
+} from "~server/account/contact-schema";
 import { episodeAiredEvent } from "~server/webhooks/events";
 import { episodeNotice } from "~server/webhooks/message";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
@@ -104,6 +108,22 @@ export async function loader(args: Route.LoaderArgs) {
             }),
             which: t(`report.reasons.${report.reason}`),
             href: `/u/${encodeURIComponent(report.username)}`,
+            createdAt: row.createdAt.toISOString(),
+            read: row.readAt !== null,
+          },
+        ];
+      }
+      // A message of the contact page, for an administrator (SAG-110): only its kind, with a link to the
+      // list. The text and who wrote it are read there.
+      if (row.type === contactCreatedType) {
+        const message = contactNotice(row.payload);
+        if (!message) return [];
+        return [
+          {
+            id: row.id,
+            title: t("contact.notice.title"),
+            which: t(`contact.kinds.${message.kind}`),
+            href: "/admin/messages",
             createdAt: row.createdAt.toISOString(),
             read: row.readAt !== null,
           },

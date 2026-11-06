@@ -274,6 +274,29 @@ describe("the inbox of notifications (SAG-102)", () => {
       expect((await load()).items).toEqual([]);
     });
 
+    it("tells an administrator about a contact message with its kind only, and a link to the list (SAG-110)", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({
+          type: "contact.created",
+          payload: { kind: "problem", body: "never shown" },
+        }),
+        row({ type: "contact.created", payload: { kind: "nope" } }),
+      ]);
+
+      const result = await load();
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: notificationId,
+          title: "contact.notice.title",
+          which: "contact.kinds.problem",
+          href: "/admin/messages",
+          read: false,
+        }),
+      ]);
+      expect(JSON.stringify(result.items)).not.toContain("never shown");
+    });
+
     it("leaves out a report it cannot read", async () => {
       mocks.listNotifications.mockResolvedValue([
         row({ type: "report.created", payload: { kind: "list" } }),

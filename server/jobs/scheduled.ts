@@ -1,3 +1,4 @@
+import { pruneContactMessages } from "../db/contact-messages";
 import { announceNewEpisodes } from "../db/episode-alerts";
 import { prunePictureUploads } from "../db/picture-uploads";
 import { proposeSagaDrafts } from "../db/saga-drafts";
@@ -98,9 +99,10 @@ export async function runScheduledJobs(): Promise<void> {
 }
 
 /**
- * What the second Cron Trigger runs: the records of picture uploads past their time, then the next
- * episode of the series that are due. The records go here because this one always runs, and the
- * hourly one does not when the webhooks are off. One subrequest, on top of the 23 of the episodes.
+ * What the second Cron Trigger runs: the records of picture uploads and the messages of the contact
+ * page past their time, then the next episode of the series that are due. They go here because this
+ * one always runs, and the hourly one does not when the webhooks are off. Two subrequests, on top of
+ * the 23 of the episodes: 25 of the 50.
  */
 export async function runTvmazeJobs(): Promise<void> {
   try {
@@ -110,6 +112,16 @@ export async function runTvmazeJobs(): Promise<void> {
     }
   } catch (error) {
     logJobFailed("prune-picture-uploads", error);
+  }
+  try {
+    const deleted = await pruneContactMessages(await getDb());
+    if (deleted > 0) {
+      console.log(
+        JSON.stringify({ event: "contact_messages.pruned", deleted }),
+      );
+    }
+  } catch (error) {
+    logJobFailed("prune-contact-messages", error);
   }
   try {
     const tvmaze = getTvmaze();

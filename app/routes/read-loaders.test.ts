@@ -74,6 +74,7 @@ const rows: Row[] = [
   row("settings.profile.tsx", "session", "/settings/profile"),
 
   row("admin.moderation.tsx", "admin", "/admin/moderation"),
+  row("admin.messages.tsx", "admin", "/admin/messages"),
   row("admin.sagas.tsx", "admin", "/admin/sagas"),
   row("admin.sagas.$id.tsx", "admin", `/admin/sagas/${uuid}`, { id: uuid }),
 

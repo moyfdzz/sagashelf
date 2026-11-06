@@ -72,18 +72,19 @@ describe("the table of notifications (SAG-102)", () => {
     });
   });
 
-  it("accepts the three types there are, among them the warning of an administrator", async () => {
+  it("accepts the four types there are, among them the warning of an administrator and a contact message", async () => {
     const person = await newUser();
 
     for (const type of [
       "episode.aired",
       "report.created",
       "moderation.warning",
+      "contact.created",
     ]) {
       await notify(person.id, { type, dedupeKey: `k:${type}` });
     }
 
-    expect(await db.select().from(notifications)).toHaveLength(3);
+    expect(await db.select().from(notifications)).toHaveLength(4);
   });
 
   it("refuses a type nobody knows", async () => {

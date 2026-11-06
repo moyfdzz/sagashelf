@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  contactMessages,
   libraryEntries,
   mediaExternalIds,
   mediaItems,
@@ -28,7 +29,7 @@ beforeEach(async () => {
 const { newUser, newMedia } = factories(db);
 
 describe("migrations", () => {
-  it("build all 30 tables and the three extensions from zero", async () => {
+  it("build all 31 tables and the three extensions from zero", async () => {
     const tables = await db.execute<{ table_name: string }>(
       sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`,
     );
@@ -36,6 +37,7 @@ describe("migrations", () => {
       "activity",
       "audit_log",
       "blocks",
+      "contact_messages",
       "custom_entries",
       "follow_requests",
       "follows",
@@ -497,5 +499,114 @@ describe("library entries", () => {
       }),
     );
     expect(error.code).toBe("23503");
+  });
+});
+
+describe("contact messages (SAG-110)", () => {
+  const valid = { kind: "help", body: "A question" };
+
+  it("accepts a message from a signed-in person and one from a visitor with an address", async () => {
+    const ana = await newUser();
+
+    await db.insert(contactMessages).values([
+      { ...valid, userId: ana.id },
+      { ...valid, replyEmail: "visitor@example.test" },
+    ]);
+
+    expect(await db.select().from(contactMessages)).toHaveLength(2);
+  });
+
+  it("refuses a kind nobody knows, and a text that is empty or longer than 2000 characters", async () => {
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({ ...valid, kind: "spam" }),
+      ),
+    ).toEqual({ code: "23514", constraint: "contact_messages_kind_check" });
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({ ...valid, body: "" }),
+      ),
+    ).toEqual({
+      code: "23514",
+      constraint: "contact_messages_body_length_check",
+    });
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({ ...valid, body: "x".repeat(2001) }),
+      ),
+    ).toEqual({
+      code: "23514",
+      constraint: "contact_messages_body_length_check",
+    });
+    await db
+      .insert(contactMessages)
+      .values({ ...valid, body: "x".repeat(2000) });
+  });
+
+  it("refuses an address longer than 254 characters, and an address on a signed-in person's message", async () => {
+    const ana = await newUser();
+
+    expect(
+      await failsWith(
+        db
+          .insert(contactMessages)
+          .values({ ...valid, replyEmail: "a".repeat(255) }),
+      ),
+    ).toEqual({
+      code: "23514",
+      constraint: "contact_messages_reply_email_length_check",
+    });
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({
+          ...valid,
+          userId: ana.id,
+          replyEmail: "ana@example.test",
+        }),
+      ),
+    ).toEqual({
+      code: "23514",
+      constraint: "contact_messages_reply_visitor_check",
+    });
+  });
+
+  it("refuses a state nobody knows, and a state that does not match the time it was handled", async () => {
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({ ...valid, status: "closed" }),
+      ),
+    ).toEqual({ code: "23514", constraint: "contact_messages_status_check" });
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({ ...valid, status: "handled" }),
+      ),
+    ).toEqual({ code: "23514", constraint: "contact_messages_handled_check" });
+    expect(
+      await failsWith(
+        db.insert(contactMessages).values({ ...valid, handledAt: new Date() }),
+      ),
+    ).toEqual({ code: "23514", constraint: "contact_messages_handled_check" });
+  });
+
+  it("goes with the person, and keeps who handled it empty when that administrator goes", async () => {
+    const admin = await newUser({ role: "admin" });
+    const ana = await newUser();
+    await db.insert(contactMessages).values([
+      { ...valid, userId: ana.id },
+      {
+        ...valid,
+        status: "handled",
+        handledBy: admin.id,
+        handledAt: new Date(),
+      },
+    ]);
+
+    await db.delete(users).where(eq(users.id, admin.id));
+    expect(
+      (await db.select().from(contactMessages)).map((row) => row.handledBy),
+    ).toEqual([null, null]);
+
+    await db.delete(users).where(eq(users.id, ana.id));
+    expect(await db.select().from(contactMessages)).toHaveLength(1);
   });
 });

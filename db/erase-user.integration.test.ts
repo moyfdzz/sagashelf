@@ -6,6 +6,7 @@ import { eraseAccount, erasedColumns } from "../server/db/erase-user";
 import {
   activity,
   blocks,
+  contactMessages,
   customEntries,
   followRequests,
   follows,
@@ -34,6 +35,8 @@ const keptColumns: Readonly<Record<string, string>> = {
   "audit_log.actor_id": "the audit log must not lose who did what",
   "picture_uploads.user_id":
     "deleting an account must not erase the trace of what it tried to publish; deleted after 90 days",
+  "contact_messages.handled_by":
+    "records which administrator handled a message, and is emptied when that account goes",
 };
 
 /** Where the export shows each erased column. Each one must hold rows for a full account. */
@@ -50,6 +53,7 @@ const exportedColumns: Readonly<
   "mutes.muter_id": (data) => data.social.muted,
   "follow_requests.requester_id": (data) => data.social.requestsSent,
   "follow_requests.target_id": (data) => data.social.requestsReceived,
+  "contact_messages.user_id": (data) => data.contactMessages,
 };
 
 /** The erased columns that the export leaves out, with the reason. */
@@ -109,6 +113,9 @@ async function personWithEverything() {
     notes: "an old viewing",
   });
   await db.insert(customEntries).values({ mediaId: mine.id, ownerId: ana.id });
+  await db
+    .insert(contactMessages)
+    .values({ userId: ana.id, kind: "help", body: "a question of Ana" });
   const [list] = await db
     .insert(lists)
     .values({ ownerId: ana.id, title: "Best of" })

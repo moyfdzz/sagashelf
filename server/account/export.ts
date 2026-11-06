@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import type { ProfileDb } from "../db/profile";
 import {
+  contactMessages,
   customEntries,
   blocks,
   followRequests,
@@ -88,6 +89,13 @@ export type AccountExport = {
     sha256: string;
     result: string;
     ipAddress: string | null;
+    createdAt: string;
+  }[];
+  /** The messages the person sent from the contact page (SAG-110), kept 90 days. */
+  contactMessages: {
+    kind: string;
+    body: string;
+    status: string;
     createdAt: string;
   }[];
 };
@@ -338,6 +346,17 @@ export async function exportAccount(
     .where(eq(pictureUploads.userId, userId))
     .orderBy(pictureUploads.createdAt);
 
+  const sentMessages = await db
+    .select({
+      kind: contactMessages.kind,
+      body: contactMessages.body,
+      status: contactMessages.status,
+      createdAt: contactMessages.createdAt,
+    })
+    .from(contactMessages)
+    .where(eq(contactMessages.userId, userId))
+    .orderBy(contactMessages.createdAt);
+
   return {
     schemaVersion: 1,
     exportedAt: now.toISOString(),
@@ -397,6 +416,12 @@ export async function exportAccount(
       result: upload.result,
       ipAddress: upload.ipAddress,
       createdAt: upload.createdAt.toISOString(),
+    })),
+    contactMessages: sentMessages.map((message) => ({
+      kind: message.kind,
+      body: message.body,
+      status: message.status,
+      createdAt: message.createdAt.toISOString(),
     })),
   };
 }
