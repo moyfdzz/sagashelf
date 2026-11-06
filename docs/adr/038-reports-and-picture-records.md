@@ -4,6 +4,7 @@
 - **Date:** 2026-11-05
 - **Implementation:** Done (SAG-142), not tried in production yet
 - **Tickets:** SAG-142, SAG-143, SAG-141
+- **Amended by:** [ADR-043](043-report-again-after-an-answer.md) (the same person can report again once the earlier report was answered)
 - **Related:** [ADR-037](037-profile-pictures.md), [ADR-014](014-account-deletion-erases-everything.md), [ADR-031](031-social-graph.md)
 
 ## Context

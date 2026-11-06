@@ -30,6 +30,9 @@ export type ReportOutcome = "reported" | "duplicate" | "limit";
  * until somebody looks at it. It is one statement, so a report is never recorded without the rest.
  * The picture is cleared here and its address is kept in `hidden_avatar_url`: it stays in Clerk, and
  * the sync of Clerk's events does not write that address back (SAG-143). The ids come from the server.
+ * A person has one open report about the same thing (the unique index of `reports`); once it is
+ * cancelled or answered they can report again (SAG-147). `ON CONFLICT` names no index on purpose:
+ * migrations are applied by hand, so this works with the old index and with the new one (ADR-043).
  */
 export async function createReport(
   db: SqlExecutor,
@@ -47,9 +50,7 @@ export async function createReport(
       SELECT ${reporterId}::uuid, ${kind}::report_target_type, ${targetId}::uuid,
              ${reason}::report_reason, ${details}, ${pictureUrl}
       FROM recent WHERE made < ${dailyReportCap}::int
-      ON CONFLICT (reporter_id, target_type, target_id, (coalesce(picture_url, '')))
-        WHERE cancelled_at IS NULL
-      DO NOTHING
+      ON CONFLICT DO NOTHING
       RETURNING id
     ),
     hidden AS (
@@ -108,8 +109,8 @@ export async function cancelReport(
 export type MyReport = { id: string; reason: string; status: string };
 
 /**
- * The reports this person has standing about another one: the user, and the picture they have now
- * (a new picture can be reported again). Only the reporter ever reads this, so the reported person
+ * The reports this person has open about another one: the user, and the picture they have now
+ * (a new picture can be reported again). An answered report is not here, so it can be repeated. Only the reporter ever reads this, so the reported person
  * cannot see who reported them or how many times.
  */
 export async function findMyReports(
@@ -124,6 +125,7 @@ export async function findMyReports(
     WHERE reporter_id = ${reporterId}::uuid
       AND target_id = ${targetId}::uuid
       AND cancelled_at IS NULL
+      AND status IN ('open', 'reviewing')
       AND (
         target_type = 'user'
         OR (target_type = 'picture' AND picture_url = ${pictureUrl})

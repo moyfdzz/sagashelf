@@ -1,0 +1,2 @@
+DROP INDEX "reports_reporter_target_active_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "reports_reporter_target_active_unique" ON "reports" USING btree ("reporter_id","target_type","target_id",coalesce("picture_url", '')) WHERE "reports"."cancelled_at" is null and "reports"."status" in ('open', 'reviewing');
