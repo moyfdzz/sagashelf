@@ -42,7 +42,8 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [036](036-daily-encrypted-database-copy.md)      | A daily encrypted copy of the database, kept outside Neon                                 | Accepted | Done (SAG-135)                        |
 | [037](037-profile-pictures.md)                   | Uploading a profile picture, stored in Clerk and checked first                            | Accepted | Done (SAG-109)                        |
 | [038](038-reports-and-picture-records.md)        | Reports of a picture or a person, and a record of uploads                                 | Accepted | Done (SAG-142)                        |
-| [039](039-moderation-panel.md)                   | The moderation panel, and a hidden picture that stays hidden                              | Accepted | Partial (SAG-143)                     |
+| [039](039-moderation-panel.md)                   | The moderation panel, and a hidden picture that stays hidden                              | Accepted | Done (SAG-143)                        |
+| [040](040-warn-suspend-ban.md)                   | Warning, suspending and banning an account                                                | Accepted | Done (SAG-143)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

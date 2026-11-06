@@ -66,6 +66,7 @@ export function erasureCtes(clerkUpdatedAt: SQL): SQL {
         display_name = NULL,
         avatar_url = NULL,
         hidden_avatar_url = NULL,
+        privacy_before_ban = NULL,
         has_own_picture = FALSE,
         bio = NULL,
         privacy = 'private',

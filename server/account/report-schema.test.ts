@@ -5,6 +5,8 @@ import {
   reasonsOf,
   reportFormSchema,
   reportNotice,
+  warningNotice,
+  warningType,
 } from "./report-schema";
 
 const report = (fields: Record<string, string>) =>
@@ -107,5 +109,29 @@ describe("reportNotice", () => {
       reportNotice({ kind: "user", reason: "nope", username: "ana" }),
     ).toBeNull();
     expect(reportNotice({ kind: "user", reason: "spam" })).toBeNull();
+  });
+});
+
+describe("warningNotice", () => {
+  it("reads the kind and the reason, and nothing else", () => {
+    expect(
+      warningNotice({
+        kind: "picture",
+        reason: "violent",
+        reporter: "ana",
+        pictureUrl: "https://img.clerk.com/x",
+      }),
+    ).toEqual({ kind: "picture", reason: "violent" });
+  });
+
+  it("leaves out anything it cannot read", () => {
+    expect(warningNotice({})).toBeNull();
+    expect(warningNotice({ kind: "list", reason: "spam" })).toBeNull();
+    expect(warningNotice({ kind: "user", reason: "nope" })).toBeNull();
+    expect(warningNotice({ kind: "user" })).toBeNull();
+  });
+
+  it("has a type of its own, which the table of notifications allows", () => {
+    expect(warningType).toBe("moderation.warning");
   });
 });

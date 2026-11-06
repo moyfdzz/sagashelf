@@ -62,6 +62,19 @@ export const reportFormSchema = z
     }
   });
 
+/** The type of the notification a person gets when an administrator warns them (ADR-040). */
+export const warningType = "moderation.warning";
+
+/**
+ * What the notification of a warning says, from its payload, or null when it is not readable: the
+ * kind and the reason, and never who reported or the picture.
+ */
+export function warningNotice(payload: Record<string, unknown>) {
+  const { kind, reason } = payload;
+  if (!isReportKind(kind) || !isReportReason(reason)) return null;
+  return { kind, reason };
+}
+
 /**
  * What the notification of a report says, from its payload, or null when it is not readable. Only
  * the kind, the reason and the username: never the image and never who reported.

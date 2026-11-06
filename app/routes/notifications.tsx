@@ -28,7 +28,11 @@ import {
 import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
-import { reportNotice } from "~server/account/report-schema";
+import {
+  reportNotice,
+  warningNotice,
+  warningType,
+} from "~server/account/report-schema";
 import { reportCreatedType } from "~server/db/reports";
 import { episodeAiredEvent } from "~server/webhooks/events";
 import { episodeNotice } from "~server/webhooks/message";
@@ -100,6 +104,21 @@ export async function loader(args: Route.LoaderArgs) {
             }),
             which: t(`report.reasons.${report.reason}`),
             href: `/u/${encodeURIComponent(report.username)}`,
+            createdAt: row.createdAt.toISOString(),
+            read: row.readAt !== null,
+          },
+        ];
+      }
+      // A warning of an administrator (ADR-040): the kind and the reason, with a link to the rules.
+      if (row.type === warningType) {
+        const warning = warningNotice(row.payload);
+        if (!warning) return [];
+        return [
+          {
+            id: row.id,
+            title: t(`report.warning.${warning.kind}`),
+            which: t(`report.reasons.${warning.reason}`),
+            href: "/community",
             createdAt: row.createdAt.toISOString(),
             read: row.readAt !== null,
           },

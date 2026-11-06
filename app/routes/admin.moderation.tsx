@@ -1,55 +1,57 @@
 import { createClerkClient } from "@clerk/backend";
 import { rootAuthLoader } from "@clerk/react-router/server";
 import { useTranslation } from "react-i18next";
-import { data, Form, Link, redirect } from "react-router";
+import { data, redirect } from "react-router";
 
 import type { Route } from "./+types/admin.moderation";
 import { AdminNav } from "~/components/AdminNav";
 import { ClerkSession } from "~/components/ClerkSession";
-import { ConfirmDialog } from "~/components/ConfirmDialog";
-import { useFormatters } from "~/lib/format";
 import {
-  dangerButtonClass,
-  linkClass,
-  secondaryButtonClass,
-  secondaryLinkClass,
-} from "~/lib/ui";
+  ReportCard,
+  type PanelReport,
+} from "~/components/moderation/ReportCard";
+import { RestrictedAccounts } from "~/components/moderation/RestrictedAccounts";
+import { useFormatters } from "~/lib/format";
+import { linkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
-import { isReportReason } from "~server/account/report-schema";
+import { isReportReason, reasonsOf } from "~server/account/report-schema";
 import { readAdminWrite } from "~server/auth/admin-write";
 import { requireRole } from "~server/auth/require";
+import { listRestrictedAccounts } from "~server/db/account-actions";
 import {
-  dismissReport,
-  findPictureReport,
   listOpenReports,
   listSuspiciousUploads,
-  recordPictureRemoved,
-  restorePicture,
+  queuePageSize,
 } from "~server/db/moderation";
 import { privateRouteHeaders } from "~server/http/cache";
 import {
+  asConfirmedAction,
   asModerationError,
   asModerationNotice,
   asReportId,
   maxModerationFormBytes,
   moderationActionSchema,
 } from "~server/moderation/panel-schema";
+import { runModerationAction } from "~server/moderation/run-action";
 import { getClerkKeys, getDb } from "~server/runtime-env";
 
 const back = "/admin/moderation";
 
 export async function loader(args: Route.LoaderArgs) {
-  await requireRole(args, "admin");
+  const admin = await requireRole(args, "admin");
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
 
   const { t } = getInstance(args.context);
   const params = new URL(args.request.url).searchParams;
   const view = asReportId(params.get("view"));
+  const confirmId = asReportId(params.get("confirm"));
+  const confirmAction = asConfirmedAction(params.get("do"));
   const db = await getDb();
-  const [reports, uploads] = await Promise.all([
-    listOpenReports(db),
+  const [reports, uploads, accounts] = await Promise.all([
+    listOpenReports(db, admin.id),
     listSuspiciousUploads(db),
+    listRestrictedAccounts(db, queuePageSize),
   ]);
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
   return rootAuthLoader(args, () => ({
@@ -57,26 +59,46 @@ export async function loader(args: Route.LoaderArgs) {
     publishableKey: keys.publishableKey,
     notice: asModerationNotice(params.get("notice")),
     error: asModerationError(params.get("error")),
-    confirm: asReportId(params.get("confirm")),
+    // The action asked to be confirmed, and the report it is about. Both or none.
+    confirm:
+      confirmId && confirmAction
+        ? { id: confirmId, action: confirmAction }
+        : null,
     // A picture reported for minors is only sent when the reviewer asked for that one. The address
     // never reaches the browser otherwise, and only an https one is ever drawn.
-    reports: reports.map((report) => ({
-      ...report,
-      createdAt: report.createdAt.getTime(),
-      pictureUrl:
-        report.pictureUrl?.startsWith("https://") &&
-        (!report.sensitive || report.id === view)
-          ? report.pictureUrl
-          : null,
-    })),
+    reports: reports.map((report) => {
+      const warnReasons = reasonsOf(report.kind);
+      return {
+        ...report,
+        createdAt: report.createdAt.getTime(),
+        pictureUrl:
+          report.pictureUrl?.startsWith("https://") &&
+          (!report.sensitive || report.id === view)
+            ? report.pictureUrl
+            : null,
+        // The reason as the list of warnings knows it, or null for an old one with no text.
+        reasonKey: isReportReason(report.reason) ? report.reason : null,
+        warnReasons,
+        warnSelected: warnReasons.find((r) => r === report.reason) ?? "other",
+      };
+    }),
     uploads: uploads.map((upload) => ({
       ...upload,
       createdAt: upload.createdAt.getTime(),
     })),
+    accounts: accounts.map((account) => ({
+      id: account.id,
+      username: account.username,
+      state: account.state,
+      changedAt: account.changedAt?.getTime() ?? null,
+    })),
   }));
 }
 
-/** Answers a report. Every answer is audited by the data function, with the administrator of the session. */
+/**
+ * Does what the administrator asked, as the administrator of the session, and goes back to the
+ * panel saying how it went. The work is in `runModerationAction`.
+ */
 export async function action(args: Route.ActionArgs) {
   const { user, form } = await readAdminWrite(
     args,
@@ -87,50 +109,19 @@ export async function action(args: Route.ActionArgs) {
   if (!parsed.success) {
     return redirect(`${back}?error=invalid_request`, { status: 303 });
   }
-  const { intent, id } = parsed.data;
-  const db = await getDb();
-  const done = (ok: boolean, notice: string) =>
-    redirect(`${back}?${ok ? `notice=${notice}` : "error=not_found"}`, {
-      status: 303,
-    });
-
-  if (intent === "dismiss") {
-    return done(await dismissReport(db, user.id, id), "dismissed");
-  }
-  if (intent === "restore") {
-    return done(await restorePicture(db, user.id, id), "restored");
-  }
-
-  // Removing deletes the picture in Clerk, so it cannot come back with a later event. Only the
-  // picture that was reported: a newer one is the person's and this report says nothing about it.
-  const report = await findPictureReport(db, id);
-  if (!report) return redirect(`${back}?error=not_found`, { status: 303 });
-  if (!report.current) {
-    return redirect(`${back}?error=outdated`, { status: 303 });
-  }
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
   const clerk = createClerkClient({
     secretKey: keys.secretKey,
     publishableKey: keys.publishableKey,
   });
-  let changed: { imageUrl: string; hasImage: boolean; updatedAt: number };
-  try {
-    changed = await clerk.users.deleteUserProfileImage(report.clerkId);
-  } catch (error) {
-    console.error("moderation: Clerk refused", (error as Error).name);
-    return redirect(`${back}?error=failed`, { status: 303 });
-  }
-  return done(
-    await recordPictureRemoved(db, user.id, id, {
-      avatarUrl: changed.imageUrl.startsWith("https://")
-        ? changed.imageUrl
-        : null,
-      hasOwnPicture: changed.hasImage,
-      updatedAt: new Date(changed.updatedAt),
-    }),
-    "removed",
+  const result = await runModerationAction(
+    await getDb(),
+    clerk.users,
+    user.id,
+    parsed.data,
   );
+  return redirect(`${back}?${result}`, { status: 303 });
 }
 
 // A page with an administrator's work is never kept by a shared cache, and not indexed.
@@ -143,163 +134,33 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-type Item = Route.ComponentProps["loaderData"]["reports"][number];
-
-function ActionButton({
-  intent,
-  id,
-  className,
-  children,
-}: {
-  intent: "dismiss" | "restore" | "remove";
-  id: string;
-  className: string;
-  children: string;
-}) {
-  return (
-    <Form method="post" reloadDocument>
-      <input type="hidden" name="intent" value={intent} />
-      <input type="hidden" name="id" value={id} />
-      <button type="submit" className={className}>
-        {children}
-      </button>
-    </Form>
-  );
-}
-
-function ReportCard({ report, confirm }: { report: Item; confirm: boolean }) {
-  const { t } = useTranslation();
-  const { formatDate } = useFormatters();
-  const isPicture = report.kind === "picture";
-  // Only a picture that is still the person's can be judged, and a hidden one cannot be dismissed.
-  const actionable = isPicture && report.current;
-
-  return (
-    <li className="border-border bg-surface-raised rounded-md border p-4">
-      <p className="font-semibold break-words">
-        <span className="text-fg-muted mr-2">
-          {t(`admin.moderation.reports.kind.${report.kind}`)}
-        </span>
-        <a
-          href={`/u/${encodeURIComponent(report.username)}`}
-          className={linkClass}
-        >
-          {report.username}
-        </a>
-      </p>
-      <p className="text-fg-muted mt-1 text-sm">
-        <span className="font-semibold">
-          {isReportReason(report.reason)
-            ? t(`report.reasons.${report.reason}`)
-            : t("admin.moderation.reports.unknownReason")}
-        </span>
-        <span className="ml-2">
-          {formatDate(report.createdAt, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </span>
-      </p>
-      {report.details ? (
-        <p className="mt-2 break-words whitespace-pre-line">{report.details}</p>
-      ) : null}
-
-      {isPicture ? (
-        <div className="mt-3">
-          {report.hidden ? (
-            <p className="text-sm font-semibold">
-              {t("admin.moderation.reports.hidden")}
-            </p>
-          ) : null}
-          {!report.current ? (
-            <p className="text-fg-muted text-sm">
-              {t("admin.moderation.reports.outdated")}
-            </p>
-          ) : report.pictureUrl ? (
-            // The address comes from our own database and is https; it is drawn with no referrer.
-            <img
-              src={report.pictureUrl}
-              alt={t("admin.moderation.reports.pictureAlt", {
-                username: report.username,
-              })}
-              referrerPolicy="no-referrer"
-              loading="lazy"
-              width={160}
-              height={160}
-              className="mt-2 size-40 rounded-md object-cover"
-            />
-          ) : report.sensitive ? (
-            <div className="mt-2 space-y-2">
-              <p className="text-sm">
-                {t("admin.moderation.reports.sensitive")}
-              </p>
-              <Link
-                to={`${back}?view=${report.id}`}
-                preventScrollReset
-                className={secondaryLinkClass}
-              >
-                {t("admin.moderation.reports.view")}
-              </Link>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap gap-3">
-        {report.hidden ? (
-          <ActionButton
-            intent="restore"
-            id={report.id}
-            className={secondaryButtonClass}
-          >
-            {t("admin.moderation.reports.restore")}
-          </ActionButton>
-        ) : (
-          <ActionButton
-            intent="dismiss"
-            id={report.id}
-            className={secondaryButtonClass}
-          >
-            {t("admin.moderation.reports.dismiss")}
-          </ActionButton>
-        )}
-        {actionable ? (
-          // A link of the router: the modal opens without loading the page again.
-          <Link
-            to={`${back}?confirm=${report.id}`}
-            preventScrollReset
-            className={`${dangerButtonClass} inline-block`}
-          >
-            {t("admin.moderation.reports.remove")}
-          </Link>
-        ) : null}
-      </div>
-
-      {confirm && actionable ? (
-        <ConfirmDialog
-          title={t("admin.moderation.reports.removeTitle", {
-            username: report.username,
-          })}
-          message={t("admin.moderation.reports.removeConfirm")}
-          cancelHref={back}
-          cancelLabel={t("admin.moderation.reports.removeNo")}
-        >
-          <ActionButton
-            intent="remove"
-            id={report.id}
-            className={dangerButtonClass}
-          >
-            {t("admin.moderation.reports.removeYes")}
-          </ActionButton>
-        </ConfirmDialog>
-      ) : null}
-    </li>
-  );
-}
-
 export default function AdminModeration({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { formatDate, formatNumber } = useFormatters();
+
+  const cards: PanelReport[] = loaderData.reports.map((report) => ({
+    id: report.id,
+    kind: report.kind,
+    reasonText: report.reasonKey
+      ? t(`report.reasons.${report.reasonKey}`)
+      : null,
+    details: report.details,
+    createdAt: report.createdAt,
+    username: report.username,
+    pictureUrl: report.pictureUrl,
+    hidden: report.hidden,
+    current: report.current,
+    sensitive: report.sensitive,
+    account: report.account,
+    protected: report.protected,
+    warn: {
+      options: report.warnReasons.map((reason) => ({
+        value: reason,
+        label: t(`report.reasons.${reason}`),
+      })),
+      selected: report.warnSelected,
+    },
+  }));
 
   return (
     <ClerkSession
@@ -334,22 +195,28 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
           <h2 id="moderation-reports" className="text-xl font-semibold">
             {t("admin.moderation.reports.title")}
           </h2>
-          {loaderData.reports.length === 0 ? (
+          {cards.length === 0 ? (
             <p className="text-fg-muted mt-2">
               {t("admin.moderation.reports.empty")}
             </p>
           ) : (
             <ul className="mt-3 space-y-3">
-              {loaderData.reports.map((report) => (
+              {cards.map((card) => (
                 <ReportCard
-                  key={report.id}
-                  report={report}
-                  confirm={loaderData.confirm === report.id}
+                  key={card.id}
+                  report={card}
+                  confirm={
+                    loaderData.confirm?.id === card.id
+                      ? loaderData.confirm.action
+                      : null
+                  }
                 />
               ))}
             </ul>
           )}
         </section>
+
+        <RestrictedAccounts accounts={loaderData.accounts} />
 
         <section aria-labelledby="moderation-uploads" className="mt-10">
           <h2 id="moderation-uploads" className="text-xl font-semibold">

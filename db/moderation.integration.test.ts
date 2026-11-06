@@ -141,6 +141,7 @@ describe("a hidden picture and the events of Clerk", () => {
 
 describe("listOpenReports", () => {
   it("lists minors first, then the oldest, with no reporter", async () => {
+    const admin = await newUser({ role: "admin" });
     const ana = await newUser();
     const bob = await withPicture();
     const carl = await withPicture("https://img.clerk.com/carl");
@@ -150,7 +151,7 @@ describe("listOpenReports", () => {
       pictureUrl: "https://img.clerk.com/carl",
     });
 
-    const queue = await listOpenReports(db);
+    const queue = await listOpenReports(db, admin.id);
 
     expect(queue.map((r) => r.reason)).toEqual(["sexual_minors", "violent"]);
     expect(queue[0]).toMatchObject({
@@ -159,6 +160,8 @@ describe("listOpenReports", () => {
       hidden: true,
       current: true,
       sensitive: true,
+      account: "active",
+      protected: false,
     });
     expect(queue[1]).toMatchObject({ hidden: false, sensitive: false });
     expect(JSON.stringify(queue)).not.toContain(ana.username);
@@ -166,6 +169,7 @@ describe("listOpenReports", () => {
   });
 
   it("leaves out cancelled, dismissed and resolved reports", async () => {
+    const admin = await newUser({ role: "admin" });
     const ana = await newUser();
     const bob = await withPicture();
     await createReport(db, pictureReport(ana.id, bob.id));
@@ -180,13 +184,14 @@ describe("listOpenReports", () => {
       .update(reports)
       .set({ status: "dismissed" })
       .where(eq(reports.id, first?.id ?? ""));
-    expect(await listOpenReports(db)).toHaveLength(1);
+    expect(await listOpenReports(db, admin.id)).toHaveLength(1);
 
     await db.update(reports).set({ cancelledAt: new Date() });
-    expect(await listOpenReports(db)).toHaveLength(0);
+    expect(await listOpenReports(db, admin.id)).toHaveLength(0);
   });
 
   it("says a report of an old picture is not current", async () => {
+    const admin = await newUser({ role: "admin" });
     const ana = await newUser();
     const bob = await withPicture();
     await createReport(db, pictureReport(ana.id, bob.id));
@@ -195,7 +200,7 @@ describe("listOpenReports", () => {
       .set({ avatarUrl: newer })
       .where(eq(users.id, bob.id));
 
-    const [item] = await listOpenReports(db);
+    const [item] = await listOpenReports(db, admin.id);
 
     expect(item?.current).toBe(false);
   });

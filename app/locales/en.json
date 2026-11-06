@@ -866,6 +866,10 @@
       "picture": "The picture of @{{username}} was reported",
       "user": "@{{username}} was reported"
     },
+    "warning": {
+      "picture": "An administrator reviewed a report about your picture and found that it breaks the community rules. If it happens again, your account may be suspended.",
+      "user": "An administrator reviewed a report about your profile and found that it breaks the community rules. If it happens again, your account may be suspended."
+    },
     "errors": {
       "details_required": "Tell us what is wrong to send the report.",
       "invalid_request": "We could not read the form. Reload the page and try again."
@@ -1126,13 +1130,19 @@
       "notices": {
         "dismissed": "Report dismissed.",
         "restored": "The picture is shown again and the reports are closed.",
-        "removed": "The picture was removed, in Clerk too, and the reports are resolved."
+        "removed": "The picture was removed, in Clerk too, and the reports are resolved.",
+        "warned": "Warning sent. The report is resolved.",
+        "suspended": "Account suspended. The reports about this person are resolved.",
+        "banned": "Account banned. Their profile is no longer seen and the reports about this person are resolved.",
+        "lifted": "The restriction of the account was lifted."
       },
       "errors": {
         "invalid_request": "The action could not be read.",
         "not_found": "That report was already answered or does not allow that action.",
         "outdated": "The person changed their picture: this report is about an older one. Dismiss it.",
-        "failed": "Clerk did not remove the picture. Nothing was changed; try again."
+        "not_allowed": "This account is an administrator's or is yours: nothing can be done to it.",
+        "picture_hidden": "The picture is hidden: restore it or remove it first, and then warn.",
+        "failed": "Clerk did not make the change. Nothing was changed here; try again."
       },
       "reports": {
         "title": "Open reports",
@@ -1150,10 +1160,43 @@
         "dismiss": "Dismiss",
         "restore": "Restore the picture",
         "remove": "Remove the picture",
-        "removeTitle": "Remove the picture of {{username}}",
-        "removeConfirm": "The picture is deleted in Clerk too and this cannot be undone.",
-        "removeYes": "Yes, remove the picture",
-        "removeNo": "No, go back"
+        "personActions": "About the person",
+        "account": {
+          "suspended": "Account suspended",
+          "banned": "Account banned"
+        },
+        "protected": "This account is an administrator's or is yours: nothing can be done to it.",
+        "warnReason": "Reason for the warning",
+        "warn": "Warn",
+        "suspend": "Suspend",
+        "ban": "Ban"
+      },
+      "confirm": {
+        "no": "No, go back",
+        "remove": {
+          "title": "Remove the picture of {{username}}",
+          "message": "The picture is deleted in Clerk too and this cannot be undone.",
+          "yes": "Yes, remove the picture"
+        },
+        "suspend": {
+          "title": "Suspend {{username}}",
+          "message": "They cannot sign in until you lift the suspension, and their profile stays visible. The open reports about this person are closed.",
+          "yes": "Yes, suspend"
+        },
+        "ban": {
+          "title": "Ban {{username}}",
+          "message": "They cannot sign in and their profile stops being seen. You can lift the ban later. The open reports about this person are closed, except the one of a hidden picture.",
+          "yes": "Yes, ban"
+        }
+      },
+      "accounts": {
+        "title": "Suspended or banned accounts",
+        "empty": "There are no suspended or banned accounts.",
+        "state": {
+          "suspended": "Suspended",
+          "banned": "Banned"
+        },
+        "lift": "Lift"
       },
       "uploads": {
         "title": "Pictures refused or close to the limit",
