@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   listOpenReports: vi.fn(),
   listSuspiciousUploads: vi.fn(),
   listRestrictedAccounts: vi.fn(),
+  findPersonByUsername: vi.fn(),
   runModerationAction: vi.fn(),
   getClerkKeys: vi.fn(),
   clerkUsers: { marker: "clerk users" },
@@ -31,6 +32,7 @@ vi.mock("~server/db/moderation", () => ({
 }));
 vi.mock("~server/db/account-actions", () => ({
   listRestrictedAccounts: mocks.listRestrictedAccounts,
+  findPersonByUsername: mocks.findPersonByUsername,
 }));
 vi.mock("~server/moderation/run-action", () => ({
   runModerationAction: mocks.runModerationAction,
@@ -70,6 +72,7 @@ beforeEach(() => {
   mocks.listOpenReports.mockReset().mockResolvedValue([report()]);
   mocks.listSuspiciousUploads.mockReset().mockResolvedValue([]);
   mocks.listRestrictedAccounts.mockReset().mockResolvedValue([]);
+  mocks.findPersonByUsername.mockReset().mockResolvedValue(null);
   mocks.runModerationAction.mockReset().mockResolvedValue("notice=dismissed");
   mocks.readAdminWrite.mockReset().mockResolvedValue({
     user: { id: "admin-1" },
@@ -279,6 +282,116 @@ describe("the moderation panel (SAG-143)", () => {
   });
 });
 
+describe("acting on a person with no report (SAG-146)", () => {
+  const found = {
+    userId: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70",
+    clerkId: "clerk_private_id",
+    username: "bob_reads",
+    displayName: "Bob",
+    state: "active",
+    protected: false,
+  };
+
+  type PersonLoaded = {
+    personQuery: string | null;
+    person: Record<string, unknown> | null;
+    personConfirm: string | null;
+    personWarnReasons: string[];
+    confirm: unknown;
+  };
+
+  it("looks nobody up until a username is asked for", async () => {
+    const result = (await load()) as unknown as PersonLoaded;
+
+    expect(mocks.findPersonByUsername).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ personQuery: null, person: null });
+  });
+
+  it("finds the person by username as the administrator of the session, and sends the card", async () => {
+    mocks.findPersonByUsername.mockResolvedValue(found);
+
+    const result = (await load("?person=bob_reads")) as unknown as PersonLoaded;
+
+    expect(mocks.findPersonByUsername).toHaveBeenCalledWith(
+      { fake: "database" },
+      "admin-1",
+      "bob_reads",
+    );
+    expect(result.personQuery).toBe("bob_reads");
+    expect(result.person).toEqual({
+      id: found.userId,
+      username: "bob_reads",
+      displayName: "Bob",
+      account: "active",
+      protected: false,
+    });
+    // The Clerk id stays on the server.
+    expect(JSON.stringify(result)).not.toContain("clerk_private_id");
+  });
+
+  it("says what was searched when nobody has the username", async () => {
+    const result = (await load(
+      "?person=ghost_user",
+    )) as unknown as PersonLoaded;
+
+    expect(result).toMatchObject({ personQuery: "ghost_user", person: null });
+  });
+
+  it("does not search for something that cannot be a username", async () => {
+    for (const search of [
+      "?person=ab",
+      "?person=has%20space",
+      "?person=a%2Fb",
+      `?person=${"x".repeat(31)}`,
+      "?person=",
+    ]) {
+      const result = (await load(search)) as unknown as PersonLoaded;
+      expect(result.personQuery).toBeNull();
+    }
+    expect(mocks.findPersonByUsername).not.toHaveBeenCalled();
+  });
+
+  it("gives the reasons for a person to warn with", async () => {
+    const result = (await load()) as unknown as PersonLoaded;
+
+    expect(result.personWarnReasons).toEqual([
+      "spam",
+      "harassment",
+      "impersonation",
+      "hate",
+      "other",
+    ]);
+  });
+
+  it("asks to confirm suspending or banning the person of the card, and nothing else", async () => {
+    mocks.findPersonByUsername.mockResolvedValue(found);
+
+    for (const action of ["suspend", "ban"]) {
+      expect(await load(`?person=bob_reads&do=${action}`)).toMatchObject({
+        personConfirm: action,
+      });
+    }
+    for (const action of ["remove", "lift", "warn", "x"]) {
+      expect(await load(`?person=bob_reads&do=${action}`)).toMatchObject({
+        personConfirm: null,
+      });
+    }
+  });
+
+  it("asks for no modal without a person found, nor when a report asks for its own", async () => {
+    expect(await load("?person=ghost_user&do=ban")).toMatchObject({
+      personConfirm: null,
+    });
+
+    mocks.findPersonByUsername.mockResolvedValue(found);
+    const both = await load(`?person=bob_reads&confirm=${reportId}&do=ban`);
+    expect(both).toMatchObject({
+      personConfirm: null,
+      confirm: { id: reportId, action: "ban" },
+    });
+  });
+});
+
 describe("answering a report (SAG-143)", () => {
   it("uses the write checks of the administration, with a small limit", async () => {
     await submit({ intent: "dismiss", id: reportId });
@@ -286,7 +399,7 @@ describe("answering a report (SAG-143)", () => {
     expect(mocks.readAdminWrite).toHaveBeenCalledWith(
       expect.anything(),
       "moderation",
-      1024,
+      2048,
     );
   });
 
@@ -314,6 +427,48 @@ describe("answering a report (SAG-143)", () => {
     );
   });
 
+  it("hands a direct action to the work with the username and the note, and an empty note as none", async () => {
+    await submit({
+      intent: "ban_person",
+      username: "bob_reads",
+      note: "  seen twice  ",
+    });
+    await submit({ intent: "suspend_person", username: "bob_reads", note: "" });
+    await submit({
+      intent: "warn_person",
+      username: "bob_reads",
+      reason: "spam",
+    });
+
+    expect(mocks.runModerationAction.mock.calls.map((call) => call[3])).toEqual(
+      [
+        { intent: "ban_person", username: "bob_reads", note: "seen twice" },
+        { intent: "suspend_person", username: "bob_reads", note: null },
+        {
+          intent: "warn_person",
+          username: "bob_reads",
+          reason: "spam",
+          note: null,
+        },
+      ],
+    );
+  });
+
+  it("goes back to the card of the person when the work says so", async () => {
+    mocks.runModerationAction.mockResolvedValue(
+      "person=bob_reads&notice=banned",
+    );
+
+    const response = await submit({
+      intent: "ban_person",
+      username: "bob_reads",
+    });
+
+    expect(response.headers.get("Location")).toBe(
+      "/admin/moderation?person=bob_reads&notice=banned",
+    );
+  });
+
   it("passes the reason of a warning, and no other field", async () => {
     await submit({ intent: "warn", id: reportId, reason: "harassment" });
 
@@ -333,6 +488,11 @@ describe("answering a report (SAG-143)", () => {
       { intent: "warn", id: reportId },
       { intent: "ban", id: reportId, reason: "spam" },
       { intent: "lift", id: reportId, role: "admin" },
+      { intent: "ban_person", username: "bob_reads", id: reportId },
+      { intent: "ban_person", username: "a b" },
+      { intent: "warn_person", username: "bob_reads" },
+      { intent: "suspend_person", username: "bob_reads", reason: "spam" },
+      { intent: "ban_person", username: "bob_reads", note: "x".repeat(201) },
     ];
     for (const form of forms) {
       const response = await submit(form);

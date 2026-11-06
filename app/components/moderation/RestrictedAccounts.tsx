@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { ActionButton } from "~/components/moderation/ReportCard";
+import { ActionButton } from "~/components/moderation/ActionButton";
 import { useFormatters } from "~/lib/format";
 import { linkClass, secondaryButtonClass } from "~/lib/ui";
 
@@ -56,7 +56,7 @@ export function RestrictedAccounts({ accounts }: { accounts: PanelAccount[] }) {
               <div className="mt-3">
                 <ActionButton
                   intent="lift"
-                  id={account.id}
+                  fields={{ id: account.id }}
                   className={secondaryButtonClass}
                 >
                   {t("admin.moderation.accounts.lift")}

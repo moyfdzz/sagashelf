@@ -1189,6 +1189,14 @@
           "yes": "Sí, banear"
         }
       },
+      "person": {
+        "title": "Actuar sobre una persona",
+        "description": "Si notaste algo que nadie reportó, busca a la persona por su nombre de usuario y avísale, suspéndela o banéala. Cada acción queda en el registro de auditoría.",
+        "label": "Nombre de usuario",
+        "search": "Buscar",
+        "notFound": "No encontramos a nadie con el usuario «{{username}}».",
+        "note": "Nota interna (opcional, solo queda en el registro)"
+      },
       "accounts": {
         "title": "Cuentas suspendidas o baneadas",
         "empty": "No hay cuentas suspendidas ni baneadas.",

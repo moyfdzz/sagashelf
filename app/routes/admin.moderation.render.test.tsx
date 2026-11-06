@@ -92,6 +92,10 @@ const props = (extra: Record<string, unknown> = {}) =>
       notice: null,
       error: null,
       confirm: null,
+      personQuery: null,
+      person: null,
+      personConfirm: null,
+      personWarnReasons: userReasons,
       reports: [report()],
       accounts: [],
       uploads: [],
@@ -406,6 +410,162 @@ describe("the restricted accounts (ADR-040)", () => {
 
     expect(html).toContain("No hay cuentas suspendidas ni baneadas.");
     expect(intents(html)).not.toContain("lift");
+  });
+});
+
+describe("acting on a person with no report (SAG-146)", () => {
+  const person = (fields: Record<string, unknown> = {}) => ({
+    id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70",
+    username: "bob_reads",
+    displayName: "Bob",
+    account: "active",
+    protected: false,
+    ...fields,
+  });
+  const found = (
+    fields: Record<string, unknown> = {},
+    extra: Record<string, unknown> = {},
+  ) =>
+    props({
+      personQuery: "bob_reads",
+      person: person(fields),
+      reports: [],
+      ...extra,
+    });
+
+  it("has a search by username that sends a GET, and no card until somebody is searched", async () => {
+    const html = await render(<AdminModeration {...props()} />);
+
+    expect(html).toContain("Actuar sobre una persona");
+    const form =
+      html.match(/<form [^>]*method="get"[^>]*>[\s\S]*?<\/form>/)?.[0] ?? "";
+    expect(form).toContain('name="person"');
+    expect(form).toContain(">Buscar<");
+    expect(html).not.toContain("No encontramos a nadie");
+    expect(html).not.toContain('name="username"');
+  });
+
+  it("says when nobody has the username that was searched, and keeps it in the box", async () => {
+    const html = await render(
+      <AdminModeration {...props({ personQuery: "ghost_user" })} />,
+    );
+
+    expect(html).toContain(
+      "No encontramos a nadie con el usuario «ghost_user».",
+    );
+    expect(html).toMatch(
+      /name="person"[^>]*value="ghost_user"|value="ghost_user"[^>]*name="person"/,
+    );
+  });
+
+  it("draws the card of the person with a link to the profile, and the actions by username", async () => {
+    const html = await render(<AdminModeration {...found()} />);
+
+    expect(html).toMatch(/<a [^>]*href="\/u\/bob_reads"/);
+    expect(html).toContain("Bob");
+    expect(intents(html)).toEqual(["warn_person"]);
+    expect(html).toContain('name="username" value="bob_reads"');
+    // No id of a person is sent by the warning, and no report either.
+    const warning =
+      html.match(
+        /<form [^>]*>(?:(?!<\/form>)[\s\S])*value="warn_person"[\s\S]*?<\/form>/,
+      )?.[0] ?? "";
+    expect(warning).not.toContain('name="id"');
+    expect(warning).toContain('name="note"');
+    expect(warning).toContain("Nota interna");
+    expect(warning).toMatch(/<option value="harassment" selected/);
+    expect(html).toContain(
+      'href="/admin/moderation?person=bob_reads&amp;do=suspend"',
+    );
+    expect(html).toContain(
+      'href="/admin/moderation?person=bob_reads&amp;do=ban"',
+    );
+  });
+
+  it("offers to lift the restriction of a suspended or banned person, with the card to come back to", async () => {
+    for (const account of ["suspended", "banned"]) {
+      const html = await render(<AdminModeration {...found({ account })} />);
+
+      const lift =
+        html.match(
+          /<form [^>]*>(?:(?!<\/form>)[\s\S])*value="lift"[\s\S]*?<\/form>/,
+        )?.[0] ?? "";
+      expect(lift).toContain(
+        'name="id" value="0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70"',
+      );
+      expect(lift).toContain('name="username" value="bob_reads"');
+      expect(lift).toContain(">Levantar<");
+    }
+    const active = await render(<AdminModeration {...found()} />);
+    expect(intents(active)).not.toContain("lift");
+  });
+
+  it("offers nothing on an administrator or on oneself", async () => {
+    const html = await render(
+      <AdminModeration {...found({ protected: true, account: "suspended" })} />,
+    );
+
+    expect(html).toContain("no se puede actuar sobre ella");
+    expect(intents(html)).toEqual([]);
+    expect(html).not.toContain("do=ban");
+  });
+
+  it.each([
+    ["suspend", "Suspender a bob_reads", "Sí, suspender", "suspend_person"],
+    ["ban", "Banear a bob_reads", "Sí, banear", "ban_person"],
+  ])(
+    "asks before %s in a modal with a note, that goes back to the card",
+    async (action, title, yes, intent) => {
+      const html = await render(
+        <AdminModeration {...found({}, { personConfirm: action })} />,
+      );
+
+      const dialog = dialogOf(html);
+      expect(dialog).toContain(title);
+      expect(dialog).toContain(yes);
+      expect(intents(dialog)).toEqual([intent]);
+      expect(dialog).toContain('name="username" value="bob_reads"');
+      expect(dialog).toContain('name="note"');
+      expect(dialog).toMatch(/maxLength="200"/);
+      // The note sits above the buttons and still travels with the form of the confirm button.
+      const noteInput =
+        dialog.match(/<input [^>]*name="note"[^>]*>/)?.[0] ?? "";
+      const formId = noteInput.match(/ form="([^"]+)"/)?.[1] ?? "";
+      expect(formId).not.toBe("");
+      expect(dialog).toContain(`id="${formId}"`);
+      expect(dialog.indexOf('name="note"')).toBeLessThan(
+        dialog.indexOf("No, volver"),
+      );
+      expect(dialog).toMatch(
+        /<a [^>]*href="\/admin\/moderation\?person=bob_reads"[^>]*>No, volver/,
+      );
+      // Neutral background, and only the confirm button is red.
+      expect(dialog.match(/bg-danger-bg/g)).toHaveLength(1);
+    },
+  );
+
+  it("does not open for an action that cannot be taken, even if the address says so", async () => {
+    const cases: [string, Record<string, unknown>][] = [
+      ["suspend", { account: "suspended" }],
+      ["suspend", { account: "banned" }],
+      ["ban", { account: "banned" }],
+      ["ban", { protected: true }],
+    ];
+    for (const [action, fields] of cases) {
+      const html = await render(
+        <AdminModeration {...found(fields, { personConfirm: action })} />,
+      );
+
+      expect(html).not.toContain("<dialog");
+    }
+  });
+
+  it("is written in English", async () => {
+    const html = await render(<AdminModeration {...found()} />, "en");
+
+    expect(html).toContain("Act on a person");
+    expect(html).toContain(">Search<");
+    expect(html).toContain("Internal note");
   });
 });
 
