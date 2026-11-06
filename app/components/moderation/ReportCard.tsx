@@ -74,7 +74,7 @@ export function ReportCard({
   confirm: ConfirmAction | null;
 }) {
   const { t } = useTranslation();
-  const { formatDate } = useFormatters();
+  const { formatPanelTime } = useFormatters();
   const isPicture = report.kind === "picture";
   // Only a picture that is still the person's can be judged, and a hidden one cannot be dismissed.
   const actionable = isPicture && report.current;
@@ -101,12 +101,7 @@ export function ReportCard({
         <span className="font-semibold">
           {report.reasonText ?? t("admin.moderation.reports.unknownReason")}
         </span>
-        <span className="ml-2">
-          {formatDate(report.createdAt, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </span>
+        <span className="ml-2">{formatPanelTime(report.createdAt)}</span>
       </p>
       {report.details ? (
         <p className="mt-2 break-words whitespace-pre-line">{report.details}</p>

@@ -127,6 +127,7 @@ describe("the moderation panel (SAG-143)", () => {
         username: "carl",
         state: "banned",
         changedAt: new Date("2026-11-06T10:00:00Z"),
+        note: "repeated spam",
       },
     ]);
 
@@ -150,6 +151,7 @@ describe("the moderation panel (SAG-143)", () => {
           username: "carl",
           state: "banned",
           changedAt: Date.parse("2026-11-06T10:00:00Z"),
+          note: "repeated spam",
         },
       ],
       uploads: [],
@@ -164,6 +166,7 @@ describe("the moderation panel (SAG-143)", () => {
         username: "carl",
         state: "suspended",
         changedAt: null,
+        note: null,
       },
     ]);
 

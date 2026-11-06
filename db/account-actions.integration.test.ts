@@ -509,6 +509,38 @@ describe("listRestrictedAccounts and the queue", () => {
     expect(list.some((a) => a.id === dana.id || a.id === admin.id)).toBe(false);
   });
 
+  it("gives the internal note of the restriction that matches the state now (SAG-154)", async () => {
+    const admin = await newUser({ role: "admin" });
+    const ana = await newUser();
+    const bob = await newUser();
+    const carl = await newUser();
+    const dana = await newUser();
+    const as = (person: { id: string }) => ({ userId: person.id });
+    // Suspended with a note, then banned with another: the ban's note is the one.
+    await restrictAccount(db, admin.id, as(ana), "suspended", "first warning");
+    await restrictAccount(db, admin.id, as(ana), "banned", "second, for good");
+    // Restricted with no note.
+    await restrictAccount(db, admin.id, as(bob), "banned");
+    // Suspended with a note, lifted, and suspended again with no note: the old note is not shown.
+    await restrictAccount(db, admin.id, as(carl), "suspended", "old reason");
+    await liftRestriction(db, admin.id, carl.id);
+    await restrictAccount(db, admin.id, as(carl), "suspended");
+    // A note of a ban does not show on a suspension that came after a lift.
+    await restrictAccount(db, admin.id, as(dana), "banned", "banned once");
+    await liftRestriction(db, admin.id, dana.id);
+    await restrictAccount(db, admin.id, as(dana), "suspended", "now suspended");
+
+    const list = await listRestrictedAccounts(db, 50);
+    const noteOf = (person: { id: string }) =>
+      list.find((account) => account.id === person.id)?.note;
+
+    expect(list).toHaveLength(4);
+    expect(noteOf(ana)).toBe("second, for good");
+    expect(noteOf(bob)).toBeNull();
+    expect(noteOf(carl)).toBeNull();
+    expect(noteOf(dana)).toBe("now suspended");
+  });
+
   it("shows the state of the account in the queue, and who is protected", async () => {
     const { admin, ana, bob, id } = await scene(pictureReport);
     await createReport(db, userReport(admin.id, ana.id));

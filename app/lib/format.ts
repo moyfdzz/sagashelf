@@ -4,6 +4,14 @@ import { useTranslation } from "react-i18next";
 // fixed time zone instead of each machine's own. Pass the user's zone once it is known.
 export const defaultTimeZone = "UTC";
 
+/**
+ * The moderation panel is read by the owner in Monterrey, so its times are shown there (SAG-154,
+ * ADR-042). A fixed zone keeps server and browser printing the same text. Mexico has no daylight
+ * saving time since 2022, and the zone database would handle it if that changed. Every other page
+ * stays in `defaultTimeZone`.
+ */
+export const adminTimeZone = "America/Monterrey";
+
 export function formatDate(
   value: Date | number,
   locale: string,
@@ -66,6 +74,14 @@ export function useFormatters() {
   return {
     formatDate: (value: Date | number, options?: Intl.DateTimeFormatOptions) =>
       formatDate(value, locale, options),
+    /** A date and a time in the zone of the moderation panel: the one rule for its three lists. */
+    formatPanelTime: (value: Date | number) =>
+      formatDate(
+        value,
+        locale,
+        { dateStyle: "medium", timeStyle: "short" },
+        adminTimeZone,
+      ),
     formatNumber: (value: number, options?: Intl.NumberFormatOptions) =>
       formatNumber(value, locale, options),
     formatRelativeTime: (value: Date | number) =>

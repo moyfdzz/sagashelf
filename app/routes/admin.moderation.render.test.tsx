@@ -389,8 +389,15 @@ describe("the restricted accounts (ADR-040)", () => {
       username: "carl",
       state: "banned",
       changedAt: Date.parse("2026-11-06T10:00:00Z"),
+      note: "Spam repetido con <b>enlaces</b>",
     },
-    { id: "u2", username: "dana", state: "suspended", changedAt: null },
+    {
+      id: "u2",
+      username: "dana",
+      state: "suspended",
+      changedAt: null,
+      note: null,
+    },
   ];
 
   it("lists them with their state and a button to lift each, which names the account", async () => {
@@ -404,6 +411,23 @@ describe("the restricted accounts (ADR-040)", () => {
     expect(html).toContain('name="id" value="u1"');
     expect(html).toContain('name="id" value="u2"');
     expect(html).toContain(">Levantar<");
+  });
+
+  it("shows the internal note of the restriction only when there is one, as plain text (SAG-154)", async () => {
+    const html = await render(<AdminModeration {...props({ accounts })} />);
+
+    expect(html.match(/Nota interna:/g)).toHaveLength(1);
+    expect(html).toContain("Spam repetido");
+    expect(html).toContain("&lt;b&gt;enlaces&lt;/b&gt;");
+    expect(html).not.toContain("<b>enlaces");
+  });
+
+  it("shows the time in Monterrey, not in UTC (SAG-154)", async () => {
+    const html = await render(<AdminModeration {...props({ accounts })} />);
+
+    // 10:00 UTC is 4:00 in Monterrey.
+    expect(html).toMatch(/6 nov 2026,\s4:00/);
+    expect(html).not.toContain("10:00");
   });
 
   it("says there are none when there are none", async () => {
@@ -576,6 +600,14 @@ describe("the rest of the page", () => {
 
     expect(html).toMatch(/<form [^>]*method="post"/);
     expect(html).toContain(`name="id" value="${id}"`);
+  });
+
+  it("shows the time of a report in Monterrey (SAG-154)", async () => {
+    const html = await render(<AdminModeration {...props()} />);
+
+    // 12:00 UTC is 6:00 in Monterrey.
+    expect(html).toMatch(/6 nov 2026,\s6:00/);
+    expect(html).not.toContain("12:00");
   });
 
   it("lists the uploads with their answer, their score and the date", async () => {

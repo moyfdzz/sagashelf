@@ -123,6 +123,7 @@ export async function loader(args: Route.LoaderArgs) {
       username: account.username,
       state: account.state,
       changedAt: account.changedAt?.getTime() ?? null,
+      note: account.note,
     })),
   }));
 }
@@ -168,7 +169,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export default function AdminModeration({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
-  const { formatDate, formatNumber } = useFormatters();
+  const { formatPanelTime, formatNumber } = useFormatters();
 
   const cards: PanelReport[] = loaderData.reports.map((report) => ({
     id: report.id,
@@ -308,10 +309,7 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
                       })}
                     </span>
                     <span className="ml-2">
-                      {formatDate(upload.createdAt, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
+                      {formatPanelTime(upload.createdAt)}
                     </span>
                   </p>
                 </li>
