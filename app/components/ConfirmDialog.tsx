@@ -9,6 +9,11 @@ type Props = {
   /** Where Cancel, Escape and a click outside the box go: back to the page, nothing is sent. */
   cancelHref: string;
   cancelLabel: string;
+  /**
+   * Something to fill in under the message, such as a note. It sits outside the form of the confirm
+   * action, so its fields name that form with the attribute `form`.
+   */
+  extra?: ReactNode;
   /** The confirm action, a form with its own button. */
   children: ReactNode;
 };
@@ -27,6 +32,7 @@ export function ConfirmDialog({
   message,
   cancelHref,
   cancelLabel,
+  extra,
   children,
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -73,6 +79,7 @@ export function ConfirmDialog({
             {title}
           </h2>
           <p>{message}</p>
+          {extra}
           <div className="flex flex-wrap justify-end gap-2">
             {/* A link of the router, so what is being written in the page behind is not lost. */}
             <Link

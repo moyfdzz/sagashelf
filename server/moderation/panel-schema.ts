@@ -1,7 +1,28 @@
 import { z } from "zod";
 
-/** The forms of the panel carry an action, an id and at most a reason, nothing else. */
-export const maxModerationFormBytes = 1024;
+import { usernameShape } from "../account/profile-schema";
+
+/** The forms of the panel carry an action, an id or a username, a reason and a short note. */
+export const maxModerationFormBytes = 2048;
+
+/** The longest internal note. Only the audit log keeps it, and the person never sees it. */
+export const maxNoteLength = 200;
+
+/** A username as the form or the address gives it, or null if it cannot be one. */
+export const asPersonName = (value: string | null): string | null => {
+  const name = value?.trim() ?? "";
+  return usernameShape.test(name) ? name : null;
+};
+
+const personName = z.string().trim().regex(usernameShape);
+
+/** An internal note: only the audit log keeps it, and an empty one is none. */
+const note = z
+  .string()
+  .trim()
+  .max(maxNoteLength)
+  .optional()
+  .transform((value) => value || null);
 
 const answer = <Intent extends string>(intent: Intent) =>
   z.strictObject({ intent: z.literal(intent), id: z.uuid() });
@@ -9,7 +30,8 @@ const answer = <Intent extends string>(intent: Intent) =>
 /**
  * What an administrator can do from the panel. The id is the one of a report, except for `lift`,
  * which names the account. The reason of a warning is checked against the kind of the report by the
- * route, which has read it.
+ * route, which has read it. The `_person` actions (SAG-146) are about a person named by username,
+ * with no report: the server finds the person, and the form never carries their id.
  */
 export const moderationActionSchema = z.discriminatedUnion("intent", [
   answer("dismiss"),
@@ -17,11 +39,32 @@ export const moderationActionSchema = z.discriminatedUnion("intent", [
   answer("remove"),
   answer("suspend"),
   answer("ban"),
-  answer("lift"),
+  // `username` only says which card of the panel to show again afterwards.
+  z.strictObject({
+    intent: z.literal("lift"),
+    id: z.uuid(),
+    username: personName.optional(),
+  }),
   z.strictObject({
     intent: z.literal("warn"),
     id: z.uuid(),
     reason: z.string().max(40),
+  }),
+  z.strictObject({
+    intent: z.literal("warn_person"),
+    username: personName,
+    reason: z.string().max(40),
+    note,
+  }),
+  z.strictObject({
+    intent: z.literal("suspend_person"),
+    username: personName,
+    note,
+  }),
+  z.strictObject({
+    intent: z.literal("ban_person"),
+    username: personName,
+    note,
   }),
 ]);
 
@@ -33,6 +76,14 @@ export const asConfirmedAction = (
   value: string | null,
 ): ConfirmedAction | null =>
   confirmedActions.find((action) => action === value) ?? null;
+
+/** The actions on a person with no report that ask to be confirmed: a picture is not theirs here. */
+export const asPersonConfirm = (
+  value: string | null,
+): "suspend" | "ban" | null => {
+  const action = asConfirmedAction(value);
+  return action === "suspend" || action === "ban" ? action : null;
+};
 
 /** What the page says after an action. Anything else in the address is ignored. */
 export const moderationNotices = [

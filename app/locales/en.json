@@ -1189,6 +1189,14 @@
           "yes": "Yes, ban"
         }
       },
+      "person": {
+        "title": "Act on a person",
+        "description": "If you noticed something that nobody reported, find the person by username and warn, suspend or ban them. Every action is kept in the audit log.",
+        "label": "Username",
+        "search": "Search",
+        "notFound": "Nobody has the username «{{username}}».",
+        "note": "Internal note (optional, kept only in the log)"
+      },
       "accounts": {
         "title": "Suspended or banned accounts",
         "empty": "There are no suspended or banned accounts.",

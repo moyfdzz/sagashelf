@@ -184,7 +184,12 @@ describe("warning", () => {
       "notice=warned",
     );
 
-    expect(mocks.warnPerson).toHaveBeenCalledWith(db, actor, id, "harassment");
+    expect(mocks.warnPerson).toHaveBeenCalledWith(
+      db,
+      actor,
+      { reportId: id },
+      "harassment",
+    );
   });
 
   it("takes the reasons of a picture for a report of a picture, and not those of a person", async () => {
@@ -253,7 +258,7 @@ describe("suspending", () => {
     expect(mocks.restrictAccount).toHaveBeenCalledWith(
       db,
       actor,
-      id,
+      { reportId: id },
       "suspended",
     );
     expect(order(mocks.lockUser)).toBeLessThan(order(mocks.restrictAccount));
@@ -290,7 +295,12 @@ describe("banning", () => {
 
     expect(mocks.banUser).toHaveBeenCalledWith("clerk_9");
     expect(mocks.unlockUser).not.toHaveBeenCalled();
-    expect(mocks.restrictAccount).toHaveBeenCalledWith(db, actor, id, "banned");
+    expect(mocks.restrictAccount).toHaveBeenCalledWith(
+      db,
+      actor,
+      { reportId: id },
+      "banned",
+    );
     expect(order(mocks.banUser)).toBeLessThan(order(mocks.restrictAccount));
   });
 
@@ -345,6 +355,17 @@ describe("lifting", () => {
     expect(mocks.unlockUser).not.toHaveBeenCalled();
     expect(mocks.liftRestriction).toHaveBeenCalledWith(db, actor, id);
     expect(order(mocks.unbanUser)).toBeLessThan(order(mocks.liftRestriction));
+  });
+
+  it("goes back to the card of the person when it was lifted from there", async () => {
+    expect(await run({ intent: "lift", id, username: "bob_reads" })).toBe(
+      "person=bob_reads&notice=lifted",
+    );
+
+    mocks.findRestrictedAccount.mockResolvedValue(null);
+    expect(await run({ intent: "lift", id, username: "bob_reads" })).toBe(
+      "error=not_found",
+    );
   });
 
   it("unlocks a suspended account", async () => {

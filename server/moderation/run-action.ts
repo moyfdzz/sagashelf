@@ -1,4 +1,4 @@
-import type { ClerkClient } from "@clerk/backend";
+import type { z } from "zod";
 
 import { isReportReason, reasonsOf } from "../account/report-schema";
 import {
@@ -15,35 +15,23 @@ import {
   recordPictureRemoved,
   restorePicture,
 } from "../db/moderation";
-import type { z } from "zod";
+import {
+  canRestrict,
+  done,
+  error,
+  stopAccount,
+  viaClerk,
+  type ClerkUsers,
+} from "./clerk-steps";
 import type { moderationActionSchema } from "./panel-schema";
+import { runPersonAction } from "./run-person-action";
 
-/** What the panel needs of Clerk: the calls that change a picture or stop a sign-in. */
-export type ClerkUsers = Pick<
-  ClerkClient["users"],
-  "deleteUserProfileImage" | "banUser" | "unbanUser" | "lockUser" | "unlockUser"
->;
+export type { ClerkUsers } from "./clerk-steps";
 
 export type ModerationForm = z.infer<typeof moderationActionSchema>;
 
-const notice = (word: string) => `notice=${word}`;
-const error = (word: string) => `error=${word}`;
-const done = (ok: boolean, word: string) =>
-  ok ? notice(word) : error("not_found");
-
-/** Runs a call to Clerk. A refusal is told as `failed` and nothing changes here. */
-async function viaClerk(call: () => Promise<unknown>): Promise<boolean> {
-  try {
-    await call();
-    return true;
-  } catch (thrown) {
-    console.error("moderation: Clerk refused", (thrown as Error).name);
-    return false;
-  }
-}
-
 /**
- * Does what an administrator asked from the panel (SAG-143, ADR-039, ADR-040) and says how it went,
+ * Does what an administrator asked from the panel (SAG-143, SAG-146, ADR-039, ADR-040) and says how it went,
  * as the query of the address the page goes back to. `actorId` is the administrator of the session.
  * Where Clerk has a part, it goes first: if it refuses, nothing is written here, and if the write
  * here fails after Clerk did, asking again repeats Clerk's call, which changes nothing, and writes.
@@ -54,6 +42,14 @@ export async function runModerationAction(
   actorId: string,
   form: ModerationForm,
 ): Promise<string> {
+  // A person named by username, with no report.
+  if (
+    form.intent === "warn_person" ||
+    form.intent === "suspend_person" ||
+    form.intent === "ban_person"
+  ) {
+    return runPersonAction(db, clerk, actorId, form);
+  }
   const { intent, id } = form;
 
   if (intent === "dismiss") {
@@ -98,7 +94,11 @@ export async function runModerationAction(
         : clerk.unlockUser(account.clerkId),
     );
     if (!lifted) return error("failed");
-    return done(await liftRestriction(db, actorId, id), "lifted");
+    const result = done(await liftRestriction(db, actorId, id), "lifted");
+    // Lifted from the card of a person: the card is shown again.
+    return form.intent === "lift" && form.username
+      ? `person=${encodeURIComponent(form.username)}&${result}`
+      : result;
   }
 
   // The rest is about the person of an open report.
@@ -115,23 +115,19 @@ export async function runModerationAction(
     ) {
       return error("invalid_request");
     }
-    return done(await warnPerson(db, actorId, id, form.reason), "warned");
+    return done(
+      await warnPerson(db, actorId, { reportId: id }, form.reason),
+      "warned",
+    );
   }
 
-  // Suspend (an active account) or ban (an active or a suspended one, which is unlocked first so the
-  // lift of the ban leaves nothing locked in Clerk).
+  // Suspend (an active account) or ban (an active or a suspended one).
   const bans = intent === "ban";
-  if (person.state === "banned" || (!bans && person.state !== "active")) {
-    return error("not_found");
-  }
-  const stopped = await viaClerk(async () => {
-    if (!bans) return clerk.lockUser(person.clerkId);
-    if (person.state === "suspended") await clerk.unlockUser(person.clerkId);
-    return clerk.banUser(person.clerkId);
-  });
-  if (!stopped) return error("failed");
+  if (!canRestrict(person.state, bans)) return error("not_found");
+  if (!(await stopAccount(clerk, person, bans))) return error("failed");
+  const state = bans ? "banned" : "suspended";
   return done(
-    await restrictAccount(db, actorId, id, bans ? "banned" : "suspended"),
-    bans ? "banned" : "suspended",
+    await restrictAccount(db, actorId, { reportId: id }, state),
+    state,
   );
 }

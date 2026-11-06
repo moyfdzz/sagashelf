@@ -1,17 +1,19 @@
 import { useTranslation } from "react-i18next";
-import { Form, Link } from "react-router";
+import { Link } from "react-router";
 
 import { ConfirmDialog } from "~/components/ConfirmDialog";
+import {
+  ActionButton,
+  moderationPage,
+} from "~/components/moderation/ActionButton";
+import { PersonActions } from "~/components/moderation/PersonActions";
 import { useFormatters } from "~/lib/format";
 import {
   dangerButtonClass,
-  inputClass,
   linkClass,
   secondaryButtonClass,
   secondaryLinkClass,
 } from "~/lib/ui";
-
-export const moderationPage = "/admin/moderation";
 
 export type ConfirmAction = "remove" | "suspend" | "ban";
 
@@ -35,29 +37,6 @@ export type PanelReport = {
   warn: { options: { value: string; label: string }[]; selected: string };
 };
 
-/** A button that sends one action on one id as a POST of its own, and loads the page again. */
-export function ActionButton({
-  intent,
-  id,
-  className,
-  children,
-}: {
-  intent: "dismiss" | "restore" | "remove" | "suspend" | "ban" | "lift";
-  id: string;
-  className: string;
-  children: string;
-}) {
-  return (
-    <Form method="post" reloadDocument>
-      <input type="hidden" name="intent" value={intent} />
-      <input type="hidden" name="id" value={id} />
-      <button type="submit" className={className}>
-        {children}
-      </button>
-    </Form>
-  );
-}
-
 function Confirmation({
   report,
   action,
@@ -77,88 +56,12 @@ function Confirmation({
     >
       <ActionButton
         intent={action}
-        id={report.id}
+        fields={{ id: report.id }}
         className={dangerButtonClass}
       >
         {t(`admin.moderation.confirm.${action}.yes`)}
       </ActionButton>
     </ConfirmDialog>
-  );
-}
-
-/** The actions on the person of the report: warn, suspend or ban. */
-function PersonActions({ report }: { report: PanelReport }) {
-  const { t } = useTranslation();
-  const open = (action: ConfirmAction) =>
-    `${moderationPage}?confirm=${report.id}&do=${action}`;
-
-  if (report.protected) {
-    return (
-      <p className="text-fg-muted mt-4 text-sm">
-        {t("admin.moderation.reports.protected")}
-      </p>
-    );
-  }
-  return (
-    <div className="mt-4 space-y-3">
-      <p className="text-fg-muted text-sm font-semibold">
-        {t("admin.moderation.reports.personActions")}
-        {report.account === "active" ? null : (
-          <span className="text-fg ml-2">
-            {t(`admin.moderation.reports.account.${report.account}`)}
-          </span>
-        )}
-      </p>
-      <div className="flex flex-wrap items-end gap-3">
-        {report.account === "active" && !report.hidden ? (
-          <Form
-            method="post"
-            reloadDocument
-            className="flex flex-wrap items-end gap-3"
-          >
-            <input type="hidden" name="intent" value="warn" />
-            <input type="hidden" name="id" value={report.id} />
-            <label className="block">
-              <span className="text-sm font-semibold">
-                {t("admin.moderation.reports.warnReason")}
-              </span>
-              <select
-                name="reason"
-                defaultValue={report.warn.selected}
-                className={`${inputClass} w-auto`}
-              >
-                {report.warn.options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="submit" className={secondaryButtonClass}>
-              {t("admin.moderation.reports.warn")}
-            </button>
-          </Form>
-        ) : null}
-        {report.account === "active" ? (
-          <Link
-            to={open("suspend")}
-            preventScrollReset
-            className={`${secondaryButtonClass} inline-block`}
-          >
-            {t("admin.moderation.reports.suspend")}
-          </Link>
-        ) : null}
-        {report.account !== "banned" ? (
-          <Link
-            to={open("ban")}
-            preventScrollReset
-            className={`${dangerButtonClass} inline-block`}
-          >
-            {t("admin.moderation.reports.ban")}
-          </Link>
-        ) : null}
-      </div>
-    </div>
   );
 }
 
@@ -254,7 +157,7 @@ export function ReportCard({
         {report.hidden ? (
           <ActionButton
             intent="restore"
-            id={report.id}
+            fields={{ id: report.id }}
             className={secondaryButtonClass}
           >
             {t("admin.moderation.reports.restore")}
@@ -262,7 +165,7 @@ export function ReportCard({
         ) : (
           <ActionButton
             intent="dismiss"
-            id={report.id}
+            fields={{ id: report.id }}
             className={secondaryButtonClass}
           >
             {t("admin.moderation.reports.dismiss")}
@@ -280,7 +183,13 @@ export function ReportCard({
         ) : null}
       </div>
 
-      <PersonActions report={report} />
+      <PersonActions
+        target={{ kind: "report", id: report.id }}
+        account={report.account}
+        isProtected={report.protected}
+        pictureHidden={report.hidden}
+        warn={report.warn}
+      />
 
       {confirm && asking ? (
         <Confirmation report={report} action={confirm} />

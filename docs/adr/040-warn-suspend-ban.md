@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-06
 - **Implementation:** Done (SAG-143, second PR), not tried in production yet
-- **Tickets:** SAG-143, SAG-145
+- **Tickets:** SAG-143, SAG-145, SAG-146
 - **Related:** [ADR-039](039-moderation-panel.md), [ADR-038](038-reports-and-picture-records.md), [ADR-031](031-social-graph.md), [ADR-007](007-background-work-cron-and-outbox.md)
 
 ## Context
@@ -30,11 +30,14 @@ The panel of ADR-039 could dismiss a report and act on a picture, but a report o
 
 **Not exported.** The export does not carry the moderation state, as it does not carry the reports about the person. The erasure clears `privacy_before_ban`.
 
+**Direct actions (SAG-146).** An administrator can also warn, suspend, ban and lift **with no report**, from the box "Act on a person" of the panel: they type a username and get the card of that person. The server finds the person by username (a private profile too, since the panel is for an administrator) and uses the same rules and the same statements as for a report: nothing is done to an administrator or to oneself, an erased account does not exist, and a warning takes a reason of the list for a person. The form never carries the id of the person. The data functions take a report or a person (`Subject`) and share the one query that decides who can be acted on (`subjectRows`), so the rule is written once. A direct warning can be repeated, since no report is closed by it. The audit row says `direct` and carries an optional internal note of up to 200 characters, which the person never sees. Suspending or banning also resolves the open reports about the person, as before. No migration was needed.
+
 ## Alternatives considered
 
 - **Free text in the warning.** More control for the administrator, but a way to leak who reported, and a piece of writing for each warning. Rejected for now.
 - **A suspension with an end date.** Needs a job and a subrequest. Rejected until it hurts.
 - **Hiding a banned account in every query** (`moderation_status <> 'banned'`). Many queries to change and easy to forget one. The privacy level is the one place that already decides this.
+- **Buttons on the profile of the person** for an administrator. The profile is a public page (`private, no-store`, not a session page) and `u.$username.tsx` is near the limit of 600 lines. A link "Moderate" that opens the card in the panel can come later, in its own ticket.
 - **Erasing a banned account.** It frees the username and the email, which is the opposite of a ban.
 
 ## Consequences

@@ -4,7 +4,10 @@ import {
   asConfirmedAction,
   asModerationError,
   asModerationNotice,
+  asPersonConfirm,
+  asPersonName,
   asReportId,
+  maxNoteLength,
   moderationActionSchema,
 } from "./panel-schema";
 
@@ -78,5 +81,100 @@ describe("what the address may carry", () => {
     expect(asReportId(id)).toBe(id);
     expect(asReportId("nope")).toBeNull();
     expect(asReportId(null)).toBeNull();
+  });
+});
+
+describe("the actions on a person with no report (SAG-146)", () => {
+  const parse = (form: Record<string, unknown>) =>
+    moderationActionSchema.safeParse(form);
+
+  it("takes a username, and trims it", () => {
+    const parsed = parse({ intent: "ban_person", username: "  bob_reads " });
+
+    expect(parsed.success && parsed.data).toEqual({
+      intent: "ban_person",
+      username: "bob_reads",
+      note: null,
+    });
+  });
+
+  it("takes an internal note, trims it, and reads an empty one as none", () => {
+    expect(
+      parse({ intent: "suspend_person", username: "bob_reads", note: " why " })
+        .data,
+    ).toMatchObject({ note: "why" });
+    for (const note of ["", "   "]) {
+      expect(
+        parse({ intent: "suspend_person", username: "bob_reads", note }).data,
+      ).toMatchObject({ note: null });
+    }
+  });
+
+  it("takes a note of the length that is allowed, and no longer", () => {
+    expect(maxNoteLength).toBe(200);
+    const ok = "x".repeat(maxNoteLength);
+    expect(
+      parse({ intent: "ban_person", username: "bob_reads", note: ok }).success,
+    ).toBe(true);
+    expect(
+      parse({ intent: "ban_person", username: "bob_reads", note: ok + "x" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("takes a warning with a reason, and needs it", () => {
+    expect(
+      parse({ intent: "warn_person", username: "bob_reads", reason: "spam" })
+        .success,
+    ).toBe(true);
+    expect(
+      parse({ intent: "warn_person", username: "bob_reads" }).success,
+    ).toBe(false);
+  });
+
+  it("refuses a username that cannot be one, an id in its place, and any other field", () => {
+    for (const form of [
+      { intent: "ban_person", username: "ab" },
+      { intent: "ban_person", username: "has space" },
+      { intent: "ban_person", username: "a/b_c" },
+      { intent: "ban_person", username: "x".repeat(31) },
+      { intent: "ban_person", username: "" },
+      { intent: "ban_person" },
+      { intent: "ban_person", id },
+      { intent: "ban_person", username: "bob_reads", id },
+      { intent: "suspend_person", username: "bob_reads", reason: "spam" },
+      {
+        intent: "warn_person",
+        username: "bob_reads",
+        reason: "spam",
+        role: "admin",
+      },
+    ]) {
+      expect(parse(form).success).toBe(false);
+    }
+  });
+
+  it("lets a lift say which card to come back to, and only with a username", () => {
+    expect(parse({ intent: "lift", id, username: "bob_reads" }).success).toBe(
+      true,
+    );
+    expect(parse({ intent: "lift", id }).success).toBe(true);
+    expect(parse({ intent: "lift", id, username: "a b" }).success).toBe(false);
+  });
+
+  it("reads a username from the address, or nothing", () => {
+    expect(asPersonName("bob_reads")).toBe("bob_reads");
+    expect(asPersonName("  bob_reads ")).toBe("bob_reads");
+    for (const bad of ["ab", "a b", "a/b_c", "", "  ", null, "x".repeat(31)]) {
+      expect(asPersonName(bad)).toBeNull();
+    }
+  });
+
+  it("confirms only suspending and banning a person, never removing a picture", () => {
+    expect(asPersonConfirm("suspend")).toBe("suspend");
+    expect(asPersonConfirm("ban")).toBe("ban");
+    for (const other of ["remove", "lift", "warn", "", null]) {
+      expect(asPersonConfirm(other)).toBeNull();
+    }
   });
 });

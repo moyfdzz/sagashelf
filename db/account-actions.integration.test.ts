@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  findPersonByUsername,
   findReportedPerson,
   findRestrictedAccount,
   liftRestriction,
@@ -134,7 +135,9 @@ describe("warnPerson", () => {
   it("tells the person with the kind and the reason, resolves the report and audits it", async () => {
     const { admin, ana, bob, id } = await scene();
 
-    expect(await warnPerson(db, admin.id, id, "harassment")).toBe(true);
+    expect(await warnPerson(db, admin.id, { reportId: id }, "harassment")).toBe(
+      true,
+    );
 
     const [note] = await warnings();
     expect(note).toMatchObject({
@@ -165,7 +168,9 @@ describe("warnPerson", () => {
   it("warns for a report of a picture that is not hidden", async () => {
     const { admin, bob, id } = await scene(pictureReport);
 
-    expect(await warnPerson(db, admin.id, id, "violent")).toBe(true);
+    expect(await warnPerson(db, admin.id, { reportId: id }, "violent")).toBe(
+      true,
+    );
 
     expect((await warnings())[0]).toMatchObject({
       userId: bob.id,
@@ -178,7 +183,9 @@ describe("warnPerson", () => {
       pictureReport(a, b, { reason: "sexual_minors" }),
     );
 
-    expect(await warnPerson(db, admin.id, id, "sexual_minors")).toBe(false);
+    expect(
+      await warnPerson(db, admin.id, { reportId: id }, "sexual_minors"),
+    ).toBe(false);
 
     expect(await warnings()).toHaveLength(0);
     expect((await reportsNow())[0]?.status).toBe("open");
@@ -187,14 +194,18 @@ describe("warnPerson", () => {
 
   it("refuses an administrator, oneself, a second time and an erased person", async () => {
     const { admin, bob, id } = await scene();
-    expect(await warnPerson(db, bob.id, id, "spam")).toBe(false);
+    expect(await warnPerson(db, bob.id, { reportId: id }, "spam")).toBe(false);
 
     await db.update(users).set({ role: "admin" }).where(eq(users.id, bob.id));
-    expect(await warnPerson(db, admin.id, id, "spam")).toBe(false);
+    expect(await warnPerson(db, admin.id, { reportId: id }, "spam")).toBe(
+      false,
+    );
     await db.update(users).set({ role: "user" }).where(eq(users.id, bob.id));
 
-    expect(await warnPerson(db, admin.id, id, "spam")).toBe(true);
-    expect(await warnPerson(db, admin.id, id, "spam")).toBe(false);
+    expect(await warnPerson(db, admin.id, { reportId: id }, "spam")).toBe(true);
+    expect(await warnPerson(db, admin.id, { reportId: id }, "spam")).toBe(
+      false,
+    );
     expect(await db.select().from(auditLog)).toHaveLength(1);
   });
 });
@@ -206,7 +217,9 @@ describe("restrictAccount", () => {
     });
     await createReport(db, pictureReport(ana.id, bob.id));
 
-    expect(await restrictAccount(db, admin.id, id, "suspended")).toBe(true);
+    expect(
+      await restrictAccount(db, admin.id, { reportId: id }, "suspended"),
+    ).toBe(true);
 
     const row = await rowOf(bob.id);
     expect(row).toMatchObject({
@@ -231,7 +244,9 @@ describe("restrictAccount", () => {
     const { admin, bob, id } = await scene(userReport, { privacy: "public" });
     expect(await findViewableProfile(db, null, bob.username)).not.toBeNull();
 
-    expect(await restrictAccount(db, admin.id, id, "banned")).toBe(true);
+    expect(
+      await restrictAccount(db, admin.id, { reportId: id }, "banned"),
+    ).toBe(true);
 
     expect(await rowOf(bob.id)).toMatchObject({
       moderationStatus: "banned",
@@ -248,12 +263,17 @@ describe("restrictAccount", () => {
     const { admin, ana, bob, id } = await scene(userReport, {
       privacy: "friends",
     });
-    await restrictAccount(db, admin.id, id, "suspended");
+    await restrictAccount(db, admin.id, { reportId: id }, "suspended");
     await createReport(db, pictureReport(ana.id, bob.id));
     const second = (await reportsNow()).find((r) => r.status === "open");
 
     expect(
-      await restrictAccount(db, admin.id, second?.id ?? "", "banned"),
+      await restrictAccount(
+        db,
+        admin.id,
+        { reportId: second?.id ?? "" },
+        "banned",
+      ),
     ).toBe(true);
 
     expect(await rowOf(bob.id)).toMatchObject({
@@ -265,12 +285,17 @@ describe("restrictAccount", () => {
 
   it("does not suspend an account that is suspended already, and leaves its report open", async () => {
     const { admin, ana, bob, id } = await scene();
-    await restrictAccount(db, admin.id, id, "suspended");
+    await restrictAccount(db, admin.id, { reportId: id }, "suspended");
     await createReport(db, pictureReport(ana.id, bob.id));
     const open = (await reportsNow()).find((r) => r.status === "open");
 
     expect(
-      await restrictAccount(db, admin.id, open?.id ?? "", "suspended"),
+      await restrictAccount(
+        db,
+        admin.id,
+        { reportId: open?.id ?? "" },
+        "suspended",
+      ),
     ).toBe(false);
 
     expect((await reportsNow()).find((r) => r.id === open?.id)?.status).toBe(
@@ -285,16 +310,26 @@ describe("restrictAccount", () => {
 
   it("does not suspend a banned account, nor ban a banned one", async () => {
     const { admin, ana, bob, id } = await scene();
-    await restrictAccount(db, admin.id, id, "banned");
+    await restrictAccount(db, admin.id, { reportId: id }, "banned");
     await createReport(db, pictureReport(ana.id, bob.id));
     const open = (await reportsNow()).find((r) => r.status === "open");
 
     expect(
-      await restrictAccount(db, admin.id, open?.id ?? "", "suspended"),
+      await restrictAccount(
+        db,
+        admin.id,
+        { reportId: open?.id ?? "" },
+        "suspended",
+      ),
     ).toBe(false);
-    expect(await restrictAccount(db, admin.id, open?.id ?? "", "banned")).toBe(
-      false,
-    );
+    expect(
+      await restrictAccount(
+        db,
+        admin.id,
+        { reportId: open?.id ?? "" },
+        "banned",
+      ),
+    ).toBe(false);
     expect(await rowOf(bob.id)).toMatchObject({ privacyBeforeBan: "public" });
   });
 
@@ -304,7 +339,9 @@ describe("restrictAccount", () => {
     );
     await createReport(db, userReport(ana.id, bob.id));
 
-    expect(await restrictAccount(db, admin.id, id, "banned")).toBe(true);
+    expect(
+      await restrictAccount(db, admin.id, { reportId: id }, "banned"),
+    ).toBe(true);
 
     const rows = await reportsNow();
     expect(rows.find((r) => r.id === id)?.status).toBe("open");
@@ -317,10 +354,14 @@ describe("restrictAccount", () => {
 
   it("refuses an administrator and oneself, and changes nothing", async () => {
     const { admin, bob, id } = await scene();
-    expect(await restrictAccount(db, bob.id, id, "banned")).toBe(false);
+    expect(await restrictAccount(db, bob.id, { reportId: id }, "banned")).toBe(
+      false,
+    );
 
     await db.update(users).set({ role: "admin" }).where(eq(users.id, bob.id));
-    expect(await restrictAccount(db, admin.id, id, "suspended")).toBe(false);
+    expect(
+      await restrictAccount(db, admin.id, { reportId: id }, "suspended"),
+    ).toBe(false);
 
     expect(await rowOf(bob.id)).toMatchObject({ moderationStatus: "active" });
     expect((await reportsNow())[0]?.status).toBe("open");
@@ -331,7 +372,9 @@ describe("restrictAccount", () => {
     const { admin, id } = await scene();
     await db.update(reports).set({ status: "dismissed" });
 
-    expect(await restrictAccount(db, admin.id, id, "banned")).toBe(false);
+    expect(
+      await restrictAccount(db, admin.id, { reportId: id }, "banned"),
+    ).toBe(false);
   });
 
   it("accepts only the three states the table knows", async () => {
@@ -351,7 +394,7 @@ describe("restrictAccount", () => {
 describe("erasing a banned account", () => {
   it("forgets the level kept for the ban and keeps the state of the account", async () => {
     const { admin, bob, id } = await scene(userReport, { privacy: "public" });
-    await restrictAccount(db, admin.id, id, "banned");
+    await restrictAccount(db, admin.id, { reportId: id }, "banned");
 
     await eraseAccount(db, bob.clerkId);
 
@@ -368,7 +411,7 @@ describe("lifting", () => {
     const { admin, ana, bob, id } = await scene(userReport, {
       privacy: "friends",
     });
-    await restrictAccount(db, admin.id, id, "banned");
+    await restrictAccount(db, admin.id, { reportId: id }, "banned");
     expect(await findRestrictedAccount(db, bob.id)).toEqual({
       clerkId: bob.clerkId,
       state: "banned",
@@ -392,7 +435,12 @@ describe("lifting", () => {
 
     await createReport(db, pictureReport(ana.id, bob.id));
     const open = (await reportsNow()).find((r) => r.status === "open");
-    await restrictAccount(db, admin.id, open?.id ?? "", "suspended");
+    await restrictAccount(
+      db,
+      admin.id,
+      { reportId: open?.id ?? "" },
+      "suspended",
+    );
     expect(await liftRestriction(db, admin.id, bob.id)).toBe(true);
     expect(await rowOf(bob.id)).toMatchObject({
       moderationStatus: "active",
@@ -402,7 +450,7 @@ describe("lifting", () => {
 
   it("does not change the level the person chose after a suspension", async () => {
     const { admin, bob, id } = await scene(userReport, { privacy: "public" });
-    await restrictAccount(db, admin.id, id, "suspended");
+    await restrictAccount(db, admin.id, { reportId: id }, "suspended");
     await db
       .update(users)
       .set({ privacy: "friends" })
@@ -418,7 +466,7 @@ describe("lifting", () => {
     expect(await liftRestriction(db, admin.id, bob.id)).toBe(false);
     expect(await findRestrictedAccount(db, bob.id)).toBeNull();
 
-    await restrictAccount(db, admin.id, id, "suspended");
+    await restrictAccount(db, admin.id, { reportId: id }, "suspended");
     expect(await liftRestriction(db, admin.id, bob.id)).toBe(true);
     expect(await liftRestriction(db, admin.id, bob.id)).toBe(false);
 
@@ -476,5 +524,279 @@ describe("listRestrictedAccounts and the queue", () => {
     expect(
       (await listOpenReports(db, admin.id)).find((r) => r.id === id)?.protected,
     ).toBe(true);
+  });
+});
+
+describe("findPersonByUsername (SAG-146)", () => {
+  it("finds a person by username whatever their privacy, with the state of the account", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ privacy: "private", displayName: "Bob" });
+
+    expect(await findPersonByUsername(db, admin.id, bob.username)).toEqual({
+      userId: bob.id,
+      clerkId: bob.clerkId,
+      username: bob.username,
+      displayName: "Bob",
+      state: "active",
+      protected: false,
+    });
+  });
+
+  it("says when the person is an administrator, or is the one asking", async () => {
+    const admin = await newUser({ role: "admin" });
+    const other = await newUser({ role: "admin" });
+
+    expect(
+      (await findPersonByUsername(db, admin.id, other.username))?.protected,
+    ).toBe(true);
+    expect(
+      (await findPersonByUsername(db, admin.id, admin.username))?.protected,
+    ).toBe(true);
+  });
+
+  it("does not tell the case of the name apart, and finds nothing for an erased account or a name that does not exist", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ username: "Bob_Reads" });
+
+    expect(
+      await findPersonByUsername(db, admin.id, "bob_reads"),
+    ).not.toBeNull();
+    expect(await findPersonByUsername(db, admin.id, "nobody_here")).toBeNull();
+    await eraseAccount(db, bob.clerkId);
+    expect(await findPersonByUsername(db, admin.id, "Bob_Reads")).toBeNull();
+  });
+
+  it("shows the state of a suspended or banned account", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ moderationStatus: "banned" });
+
+    expect(
+      (await findPersonByUsername(db, admin.id, bob.username))?.state,
+    ).toBe("banned");
+  });
+});
+
+describe("warning a person with no report (SAG-146)", () => {
+  it("sends the warning as about the person, with the reason and nothing else, and audits it as direct with the note", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser();
+
+    expect(
+      await warnPerson(
+        db,
+        admin.id,
+        { userId: bob.id },
+        "harassment",
+        "saw it in a list",
+      ),
+    ).toBe(true);
+
+    const [note] = await warnings();
+    expect(note).toMatchObject({ userId: bob.id, type: "moderation.warning" });
+    expect(note?.payload).toEqual({ kind: "user", reason: "harassment" });
+    expect(note?.dedupeKey).toMatch(/^warning:[0-9a-f-]{36}$/);
+    const [entry] = await db.select().from(auditLog);
+    expect(entry).toMatchObject({
+      actorId: admin.id,
+      action: "account.warned",
+      targetType: "user",
+      targetId: bob.id,
+      metadata: {
+        direct: true,
+        reason: "harassment",
+        note: "saw it in a list",
+      },
+    });
+    // No report is involved, and the note never reaches the person.
+    expect(entry?.metadata).not.toHaveProperty("reportId");
+    expect(JSON.stringify(note)).not.toContain("saw it in a list");
+  });
+
+  it("can warn the same person again, which a report cannot", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser();
+
+    expect(await warnPerson(db, admin.id, { userId: bob.id }, "spam")).toBe(
+      true,
+    );
+    expect(await warnPerson(db, admin.id, { userId: bob.id }, "spam")).toBe(
+      true,
+    );
+
+    expect(await warnings()).toHaveLength(2);
+  });
+
+  it("leaves the reports of the person open, and leaves out the note when there is none", async () => {
+    const { admin, bob } = await scene();
+
+    await warnPerson(db, admin.id, { userId: bob.id }, "spam");
+
+    expect((await reportsNow())[0]?.status).toBe("open");
+    const [entry] = await db.select().from(auditLog);
+    expect(entry?.metadata).not.toHaveProperty("note");
+  });
+
+  it("refuses an administrator, oneself and an erased account", async () => {
+    const admin = await newUser({ role: "admin" });
+    const other = await newUser({ role: "admin" });
+    const bob = await newUser();
+    await eraseAccount(db, bob.clerkId);
+
+    for (const id of [admin.id, other.id, bob.id]) {
+      expect(await warnPerson(db, admin.id, { userId: id }, "spam")).toBe(
+        false,
+      );
+    }
+    expect(await warnings()).toHaveLength(0);
+    expect(await db.select().from(auditLog)).toHaveLength(0);
+  });
+
+  it("refuses an id that is not a person", async () => {
+    const admin = await newUser({ role: "admin" });
+
+    expect(
+      await warnPerson(
+        db,
+        admin.id,
+        { userId: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f" },
+        "spam",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("suspending and banning a person with no report (SAG-146)", () => {
+  it("suspends: keeps the profile, audits it as direct with the note and closes the open reports about the person", async () => {
+    const { admin, ana, bob } = await scene(userReport, { privacy: "friends" });
+    await createReport(db, pictureReport(ana.id, bob.id));
+
+    expect(
+      await restrictAccount(
+        db,
+        admin.id,
+        { userId: bob.id },
+        "suspended",
+        "ignored a warning",
+      ),
+    ).toBe(true);
+
+    expect(await rowOf(bob.id)).toMatchObject({
+      moderationStatus: "suspended",
+      privacy: "friends",
+    });
+    expect((await reportsNow()).map((r) => r.status)).toEqual([
+      "resolved",
+      "resolved",
+    ]);
+    const [entry] = await db.select().from(auditLog);
+    expect(entry).toMatchObject({
+      action: "account.suspended",
+      targetId: bob.id,
+      metadata: {
+        direct: true,
+        from: "active",
+        reports: 2,
+        note: "ignored a warning",
+      },
+    });
+    expect(entry?.metadata).not.toHaveProperty("reportId");
+  });
+
+  it("bans: hides the profile with the level it had, and gives it back on lifting", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ privacy: "public" });
+
+    expect(
+      await restrictAccount(db, admin.id, { userId: bob.id }, "banned"),
+    ).toBe(true);
+
+    expect(await rowOf(bob.id)).toMatchObject({
+      moderationStatus: "banned",
+      privacy: "private",
+      privacyBeforeBan: "public",
+    });
+    expect(await findViewableProfile(db, null, bob.username)).toBeNull();
+    await liftRestriction(db, admin.id, bob.id);
+    expect(await findViewableProfile(db, null, bob.username)).not.toBeNull();
+  });
+
+  it("bans a suspended account, and refuses to suspend or ban what is already restricted", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ privacy: "friends" });
+    await restrictAccount(db, admin.id, { userId: bob.id }, "suspended");
+
+    expect(
+      await restrictAccount(db, admin.id, { userId: bob.id }, "suspended"),
+    ).toBe(false);
+    expect(
+      await restrictAccount(db, admin.id, { userId: bob.id }, "banned"),
+    ).toBe(true);
+    expect(await rowOf(bob.id)).toMatchObject({ privacyBeforeBan: "friends" });
+    expect(
+      await restrictAccount(db, admin.id, { userId: bob.id }, "banned"),
+    ).toBe(false);
+  });
+
+  it("leaves a report of a hidden picture open, as with a report", async () => {
+    const { admin, ana, bob, id } = await scene((a, b) =>
+      pictureReport(a, b, { reason: "sexual_minors" }),
+    );
+    await createReport(db, userReport(ana.id, bob.id));
+
+    await restrictAccount(db, admin.id, { userId: bob.id }, "banned");
+
+    const rows = await reportsNow();
+    expect(rows.find((r) => r.id === id)?.status).toBe("open");
+    expect(rows.find((r) => r.targetType === "user")?.status).toBe("resolved");
+  });
+
+  it("refuses an administrator, oneself and an erased account, and changes nothing", async () => {
+    const admin = await newUser({ role: "admin" });
+    const other = await newUser({ role: "admin" });
+    const bob = await newUser();
+    await eraseAccount(db, bob.clerkId);
+
+    for (const id of [admin.id, other.id, bob.id]) {
+      expect(
+        await restrictAccount(db, admin.id, { userId: id }, "banned"),
+      ).toBe(false);
+    }
+    expect(await rowOf(other.id)).toMatchObject({ moderationStatus: "active" });
+    expect(await db.select().from(auditLog)).toHaveLength(0);
+  });
+});
+
+describe("the guards that do not depend on the role (SAG-146)", () => {
+  // The data layer does not know that its caller is an administrator, so each guard stands alone.
+  it("does not act on the person who asks, even if they were not an administrator", async () => {
+    const ana = await newUser();
+
+    expect(await warnPerson(db, ana.id, { userId: ana.id }, "spam")).toBe(
+      false,
+    );
+    expect(
+      await restrictAccount(db, ana.id, { userId: ana.id }, "suspended"),
+    ).toBe(false);
+    expect(await rowOf(ana.id)).toMatchObject({ moderationStatus: "active" });
+    expect(await db.select().from(auditLog)).toHaveLength(0);
+  });
+
+  it("says a person is protected when they are the one who asks, even if they were not an administrator", async () => {
+    const ana = await newUser();
+
+    expect(
+      (await findPersonByUsername(db, ana.id, ana.username))?.protected,
+    ).toBe(true);
+  });
+
+  it("finds nothing for an account that is marked as erased, whatever its username", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser();
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(eq(users.id, bob.id));
+
+    expect(await findPersonByUsername(db, admin.id, bob.username)).toBeNull();
   });
 });

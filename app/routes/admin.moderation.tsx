@@ -10,6 +10,10 @@ import {
   ReportCard,
   type PanelReport,
 } from "~/components/moderation/ReportCard";
+import {
+  PersonSearch,
+  type PanelPerson,
+} from "~/components/moderation/PersonSearch";
 import { RestrictedAccounts } from "~/components/moderation/RestrictedAccounts";
 import { useFormatters } from "~/lib/format";
 import { linkClass } from "~/lib/ui";
@@ -17,7 +21,10 @@ import { getInstance } from "~/middleware/i18next";
 import { isReportReason, reasonsOf } from "~server/account/report-schema";
 import { readAdminWrite } from "~server/auth/admin-write";
 import { requireRole } from "~server/auth/require";
-import { listRestrictedAccounts } from "~server/db/account-actions";
+import {
+  findPersonByUsername,
+  listRestrictedAccounts,
+} from "~server/db/account-actions";
 import {
   listOpenReports,
   listSuspiciousUploads,
@@ -28,6 +35,8 @@ import {
   asConfirmedAction,
   asModerationError,
   asModerationNotice,
+  asPersonConfirm,
+  asPersonName,
   asReportId,
   maxModerationFormBytes,
   moderationActionSchema,
@@ -48,10 +57,13 @@ export async function loader(args: Route.LoaderArgs) {
   const confirmId = asReportId(params.get("confirm"));
   const confirmAction = asConfirmedAction(params.get("do"));
   const db = await getDb();
-  const [reports, uploads, accounts] = await Promise.all([
+  // The person asked for in the box "Act on a person" (SAG-146), found by username.
+  const personName = asPersonName(params.get("person"));
+  const [reports, uploads, accounts, person] = await Promise.all([
     listOpenReports(db, admin.id),
     listSuspiciousUploads(db),
     listRestrictedAccounts(db, queuePageSize),
+    personName ? findPersonByUsername(db, admin.id, personName) : null,
   ]);
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
   return rootAuthLoader(args, () => ({
@@ -64,6 +76,20 @@ export async function loader(args: Route.LoaderArgs) {
       confirmId && confirmAction
         ? { id: confirmId, action: confirmAction }
         : null,
+    personQuery: personName,
+    person: person
+      ? {
+          id: person.userId,
+          username: person.username,
+          displayName: person.displayName,
+          account: person.state,
+          protected: person.protected,
+        }
+      : null,
+    // A modal for the person of the card. A report has its own, so only one is ever asked for.
+    personConfirm:
+      person && !confirmId ? asPersonConfirm(params.get("do")) : null,
+    personWarnReasons: reasonsOf("user"),
     // A picture reported for minors is only sent when the reviewer asked for that one. The address
     // never reaches the browser otherwise, and only an https one is ever drawn.
     reports: reports.map((report) => {
@@ -162,6 +188,15 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
     },
   }));
 
+  const person: PanelPerson | null = loaderData.person;
+  const personWarn = {
+    options: loaderData.personWarnReasons.map((reason) => ({
+      value: reason,
+      label: t(`report.reasons.${reason}`),
+    })),
+    selected: "harassment",
+  };
+
   return (
     <ClerkSession
       clerkState={loaderData}
@@ -191,7 +226,14 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
           </p>
         ) : null}
 
-        <section aria-labelledby="moderation-reports" className="mt-8">
+        <PersonSearch
+          query={loaderData.personQuery}
+          person={person}
+          confirm={loaderData.personConfirm}
+          warn={personWarn}
+        />
+
+        <section aria-labelledby="moderation-reports" className="mt-10">
           <h2 id="moderation-reports" className="text-xl font-semibold">
             {t("admin.moderation.reports.title")}
           </h2>
