@@ -493,7 +493,7 @@
     "processors": {
       "title": "Con quién se comparten",
       "intro": "Usamos estos proveedores para operar el servicio:",
-      "clerk": "Clerk: gestiona las cuentas y el inicio de sesión.",
+      "clerk": "Clerk: gestiona las cuentas y el inicio de sesión, y aloja las fotos de perfil. Cuando ves una foto, tu navegador se conecta a Clerk, que recibe tu dirección IP, aunque no tengas cuenta.",
       "neon": "Neon: aloja la base de datos donde se guarda tu perfil.",
       "cloudflare": "Cloudflare: aloja el sitio, entrega las páginas, lo protege contra abusos, mide visitas y velocidad con Web Analytics y guarda por hasta un día una copia temporal de las búsquedas y de las portadas, sin relación con tu cuenta. También guarda las copias de seguridad cifradas de la base de datos.",
       "github": "GitHub: ejecuta la tarea diaria que crea las copias de seguridad cifradas. Las copias no se guardan en GitHub.",

@@ -93,15 +93,46 @@ test.describe("security headers", () => {
       expect(nonces.every((nonce) => nonce === firstNonce)).toBe(true);
     });
 
-    test("the home page keeps the strict CSP and ships no Clerk origin", async ({
+    test("the home page keeps the strict CSP, with Clerk only for the profile pictures", async ({
       request,
     }) => {
       const csp =
         (await request.get("/")).headers()["content-security-policy"] ?? "";
 
       expect(csp).toContain("style-src 'self';");
-      expect(csp).not.toContain("clerk");
+      expect(csp).toContain("img-src 'self' data: https://img.clerk.com;");
+      expect(csp.replace("https://img.clerk.com", "")).not.toContain("clerk");
       expect(csp).not.toContain("cloudflare.com");
+    });
+
+    test("a page loads a profile picture of Clerk and blocks an image of another site (SAG-138)", async ({
+      page,
+    }) => {
+      const pixel = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+        "base64",
+      );
+      for (const origin of ["https://img.clerk.com", "https://example.com"]) {
+        await page.route(`${origin}/**`, (route) =>
+          route.fulfill({ contentType: "image/png", body: pixel }),
+        );
+      }
+      await page.goto("/privacy");
+
+      const loads = (src: string) =>
+        page.evaluate(
+          (address) =>
+            new Promise<boolean>((resolve) => {
+              const image = new Image();
+              image.onload = () => resolve(true);
+              image.onerror = () => resolve(false);
+              image.src = address;
+            }),
+          src,
+        );
+
+      expect(await loads("https://img.clerk.com/a-picture")).toBe(true);
+      expect(await loads("https://example.com/a-picture")).toBe(false);
     });
 
     test("load, hydrate and switch language without a single CSP violation", async ({

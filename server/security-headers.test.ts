@@ -48,8 +48,18 @@ describe("buildContentSecurityPolicy", () => {
     expect(directives["default-src"]).toEqual(["'self'"]);
   });
 
+  it("allows the profile pictures of Clerk, only as images", () => {
+    expect(directives["img-src"]).toEqual([
+      "'self'",
+      "data:",
+      "https://img.clerk.com",
+    ]);
+  });
+
   it("does not allow any other origin", () => {
-    expect(policy).not.toMatch(/https?:\/\//);
+    expect(policy.replace("https://img.clerk.com", "")).not.toMatch(
+      /https?:\/\//,
+    );
   });
 });
 
@@ -97,7 +107,11 @@ describe("buildContentSecurityPolicy for the sign-in pages", () => {
   });
 
   it("is not used when there is no Frontend API host", () => {
-    expect(buildContentSecurityPolicy("abc123")).not.toContain("clerk");
+    const strict = buildContentSecurityPolicy("abc123");
+
+    expect(strict).not.toContain("protect.clerk.com");
+    expect(strict).not.toContain("challenges.cloudflare.com");
+    expect(strict).not.toContain("unsafe-inline");
   });
 });
 
@@ -146,10 +160,9 @@ describe("buildContentSecurityPolicy for the settings pages", () => {
       "auth",
     );
     expect(policy).not.toBe(wide);
-    // No Turnstile, no Clerk Protect, no Clerk images, no inline styles and no frames.
+    // No Turnstile, no Clerk Protect, no inline styles and no frames.
     expect(policy).not.toContain("challenges.cloudflare.com");
     expect(policy).not.toContain("protect.clerk.com");
-    expect(policy).not.toContain("img.clerk.com");
     expect(directives["style-src"]).toEqual(["'self'"]);
     expect(directives["frame-src"]).toEqual(["'none'"]);
   });
@@ -161,6 +174,10 @@ describe("buildContentSecurityPolicy for the settings pages", () => {
     expect(directives["object-src"]).toEqual(["'none'"]);
     expect(directives["base-uri"]).toEqual(["'none'"]);
     expect(directives["form-action"]).toEqual(["'self'"]);
+  });
+
+  it("allows the profile pictures, which the settings draw", () => {
+    expect(directives["img-src"]).toContain("https://img.clerk.com");
   });
 
   it("is the strict policy when there is no Frontend API host", () => {

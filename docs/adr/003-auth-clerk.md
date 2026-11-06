@@ -38,6 +38,8 @@ Unit tests pin the exact lists, and an e2e test checks that the home page keeps 
 
 The settings pages (`isSessionPage`) get a narrower policy, built by `buildSessionContentSecurityPolicy`: the strict one plus the Frontend API host in `script-src` and `connect-src`, and `worker-src 'self' blob:`. There is nothing to draw, so no Turnstile, Clerk Protect, Clerk images, inline styles or frames are added. Unit tests pin it and check that none of those appear.
 
+**Changed on 2026-11-05 (SAG-138).** Every page now allows `img.clerk.com` in `img-src`, because profile pictures are served from there and are drawn on `/u/`, on `/social` and in the settings. The stricter list blocked them in production, and no test combined a picture with the policy of the production build. The other origins of Clerk stay where this section says. The browser of whoever sees a picture connects to Clerk, even without an account, so the privacy policy says so. Serving the pictures through our own server would avoid that, and was left for later because it is more work.
+
 **Verified in a browser on 2026-10-22, on a preview with a real session:** Clerk's script loaded under this narrow policy, the Network tab showed repeated `tokens` and `touch` requests to the instance's Frontend API answering `200`, the console had no policy violation (only Clerk's notice about development keys), and a form left open for more than a minute was saved without sending the person to sign in. If a later Clerk version needs another origin, the console names it: add only that one, with a test.
 
 ## The webhook

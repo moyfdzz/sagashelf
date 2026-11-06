@@ -5,10 +5,17 @@ export function generateNonce(): string {
 }
 
 /**
+ * Where images may come from, the same on every page. Profile pictures are served by Clerk and are
+ * drawn on public profiles, on the search of people and in the settings (SAG-138).
+ */
+const imageSources = "img-src 'self' data: https://img.clerk.com";
+
+/**
  * Content Security Policy for HTML pages. Only the site's own origin is allowed,
- * plus scripts that carry this response's nonce. When a feature needs another
- * origin (Clerk, Turnstile, the image proxy), add exactly that origin to the
- * one directive that needs it, in the ticket that introduces the feature.
+ * plus scripts that carry this response's nonce and the origin of the profile
+ * pictures. When a feature needs another origin (Clerk, Turnstile, the image proxy),
+ * add exactly that origin to the one directive that needs it, in the ticket that
+ * introduces the feature.
  */
 export function buildContentSecurityPolicy(
   nonce: string,
@@ -25,7 +32,7 @@ export function buildContentSecurityPolicy(
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
     "style-src 'self'",
-    "img-src 'self' data:",
+    imageSources,
     "font-src 'self'",
     "connect-src 'self'",
     "frame-src 'none'",
@@ -53,7 +60,7 @@ function buildAuthContentSecurityPolicy(
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' ${fapi} https://challenges.cloudflare.com https://*.protect.clerk.com`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://img.clerk.com",
+    imageSources,
     "font-src 'self'",
     `connect-src 'self' ${fapi} https://*.protect.clerk.com:*`,
     "frame-src https://challenges.cloudflare.com https://*.protect.clerk.com",
@@ -88,8 +95,8 @@ export function isSessionPage(pathname: string): boolean {
 
 /**
  * The CSP of the pages in `isSessionPage` (SAG-12): the strict policy, plus the two origins that
- * Clerk's script needs to load and to renew the session, and `blob:` workers. There is nothing
- * to draw, so no inline styles, no images and no frames are added.
+ * Clerk's script needs to load and to renew the session, and `blob:` workers. Clerk draws nothing
+ * here, so no inline styles and no frames are added.
  * Source: https://clerk.com/docs/guides/secure/best-practices/csp-headers (read 2026-10-21).
  */
 function buildSessionContentSecurityPolicy(
@@ -101,7 +108,7 @@ function buildSessionContentSecurityPolicy(
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' ${fapi}`,
     "style-src 'self'",
-    "img-src 'self' data:",
+    imageSources,
     "font-src 'self'",
     `connect-src 'self' ${fapi}`,
     "frame-src 'none'",
