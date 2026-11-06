@@ -46,7 +46,7 @@ The picture of a profile was the one the account had in Clerk, and nobody could 
 - **This does not make it impossible.** The check makes mistakes both ways, it does not look for known illegal material, and a normal picture of a child is not detected. Reports inside the app wait for SAG-22, so complaints reach `contact@sagashelf.app`. Scenario G of the [incident plan](../incident-plan.md) says what to do.
 - Clerk's backend answers for this were read in its documentation and mocked in the tests. **Not stated by Clerk, and to be tried in production:** the accepted size and types, what `image_url` becomes after removing a picture, whether `user.updated` is sent, and whether signing in with Google brings back the old picture.
 - Pictures are served from `img.clerk.com`, so the browser of whoever sees one still connects to Clerk.
-- If the migration is not applied before the merge, the header and every page that reads these columns can fail. It must go first.
+- **The migration must go before the merge.** Without it the pages keep working, but an upload fails and so does the erasure of an account, in the settings and on the `user.deleted` event, since it resets the new columns. The account would be gone from Clerk and still here.
 
 ## Open questions
 
