@@ -65,6 +65,7 @@ export function erasureCtes(clerkUpdatedAt: SQL): SQL {
         avatar_uploads_count = 0,
         display_name = NULL,
         avatar_url = NULL,
+        has_own_picture = FALSE,
         bio = NULL,
         privacy = 'private',
         clerk_updated_at = ${clerkUpdatedAt},

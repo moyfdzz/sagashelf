@@ -465,6 +465,7 @@ describe("findViewableProfile: every privacy level × every relationship, on the
       username: "head_owner",
       displayName: "Head Owner",
       avatarUrl: "https://img.clerk.com/head",
+      hasOwnPicture: true,
       bio: "A bio",
       privacy: "public",
     });

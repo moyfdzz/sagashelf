@@ -39,6 +39,13 @@ async function upsert(
 ): Promise<SyncResult> {
   const u = op.user;
   const at = u.at.toISOString();
+  // An event that does not say keeps what is there, and a new row starts with the default.
+  const ownPicture =
+    u.hasOwnPicture === null
+      ? sql`NULL::boolean`
+      : u.hasOwnPicture
+        ? sql`TRUE`
+        : sql`FALSE`;
   // `ON CONFLICT (clerk_id)` is the update path. The role, privacy, bio and deleted_at are not
   // in the SET list on purpose: this endpoint never changes them. A row only moves forward in
   // time, and a deleted account is not brought back.
@@ -51,14 +58,17 @@ async function upsert(
     ),
     written AS (
       INSERT INTO users
-        (clerk_id, username, display_name, avatar_url, email_canonical, locale, clerk_updated_at)
+        (clerk_id, username, display_name, avatar_url, has_own_picture, email_canonical, locale,
+         clerk_updated_at)
       SELECT ${u.clerkId}, ${u.username}, ${u.displayName}, ${u.avatarUrl},
+             COALESCE(${ownPicture}, TRUE),
              ${u.emailCanonical}, ${u.locale}, ${at}::timestamptz
       WHERE EXISTS (SELECT 1 FROM seen)
       ON CONFLICT (clerk_id) DO UPDATE SET
         username = EXCLUDED.username,
         display_name = EXCLUDED.display_name,
         avatar_url = EXCLUDED.avatar_url,
+        has_own_picture = COALESCE(${ownPicture}, users.has_own_picture),
         email_canonical = EXCLUDED.email_canonical,
         clerk_updated_at = EXCLUDED.clerk_updated_at,
         updated_at = now()

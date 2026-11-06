@@ -38,6 +38,7 @@ const owner = {
   username: "bob_reads",
   displayName: "Bob",
   avatarUrl: picture,
+  hasOwnPicture: true,
 };
 const someId = "018f0000-0000-7000-8000-000000000000";
 
@@ -167,6 +168,22 @@ describe("POST /u/:username/report", () => {
     expect(mocks.createReport).not.toHaveBeenCalled();
   });
 
+  it("refuses a report of the image Clerk generates, and takes one of the person (SAG-144)", async () => {
+    mocks.findProfile.mockResolvedValue({
+      owner: { ...owner, hasOwnPicture: false },
+      relationship: "none",
+      view: "card",
+    });
+
+    await expect(
+      send({ intent: "report", kind: "picture", reason: "violent" }),
+    ).rejects.toMatchObject({ init: { status: 404 } });
+    expect(mocks.createReport).not.toHaveBeenCalled();
+
+    await send({ intent: "report", kind: "user", reason: "spam" });
+    expect(mocks.createReport).toHaveBeenCalledTimes(1);
+  });
+
   it("asks for the text of the reason other", async () => {
     const result = answer(
       await send({ intent: "report", kind: "user", reason: "other" }),
@@ -283,6 +300,19 @@ describe("GET /u/:username/report", () => {
     await expect(open("picture")).rejects.toMatchObject({
       init: { status: 404 },
     });
+  });
+
+  it("is a 404 for a picture that is the image Clerk generates", async () => {
+    mocks.findProfile.mockResolvedValue({
+      owner: { ...owner, hasOwnPicture: false },
+      relationship: "none",
+      view: "card",
+    });
+
+    await expect(open("picture")).rejects.toMatchObject({
+      init: { status: 404 },
+    });
+    expect((await open("user")).kind).toBe("user");
   });
 
   it("shows a standing report, and lets it go only when it can", async () => {

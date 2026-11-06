@@ -234,6 +234,7 @@ export default function ProfileSettings({
           }
           name={profile.displayName ?? profile.username}
           canUpload={loaderData.canUploadPicture}
+          canRemove={profile.hasOwnPicture}
         />
 
         <renamer.Form
@@ -299,7 +300,11 @@ export default function ProfileSettings({
           method="post"
           id="profile"
           className="mt-8 scroll-mt-4 space-y-6"
-          key={JSON.stringify({ ...profile, avatarUrl: null })}
+          key={JSON.stringify({
+            ...profile,
+            avatarUrl: null,
+            hasOwnPicture: null,
+          })}
         >
           <div>
             <label htmlFor="displayName" className="font-semibold">

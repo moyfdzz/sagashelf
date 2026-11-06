@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { secondaryLinkClass } from "~/lib/ui";
 
@@ -74,9 +74,16 @@ export function ConfirmDialog({
           </h2>
           <p>{message}</p>
           <div className="flex flex-wrap justify-end gap-2">
-            <a data-cancel href={cancelHref} className={secondaryLinkClass}>
+            {/* A link of the router, so what is being written in the page behind is not lost. */}
+            <Link
+              data-cancel
+              to={cancelHref}
+              replace
+              preventScrollReset
+              className={secondaryLinkClass}
+            >
               {cancelLabel}
-            </a>
+            </Link>
             {children}
           </div>
         </div>

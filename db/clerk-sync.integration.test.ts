@@ -75,6 +75,74 @@ describe("user.created", () => {
 });
 
 describe("replaying an event", () => {
+  describe("whether the picture is the person's own (SAG-144)", () => {
+    const updated = (at: number, fields: Record<string, unknown>) => {
+      const event = created({ updated_at: at, ...fields });
+      return { ...event, type: "user.updated" };
+    };
+
+    it("starts as the event says, and as a real picture when it does not say", async () => {
+      await apply("evt_a", created({ id: "user_a", has_image: false }));
+      await apply(
+        "evt_b",
+        created({
+          id: "user_b",
+          username: "bea_reads",
+          has_image: true,
+          email_addresses: [
+            {
+              id: "idn_1",
+              email_address: "bea@example.test",
+              verification: { status: "verified" },
+            },
+          ],
+        }),
+      );
+      await apply(
+        "evt_c",
+        created({
+          id: "user_c",
+          username: "cam_reads",
+          email_addresses: [
+            {
+              id: "idn_1",
+              email_address: "cam@example.test",
+              verification: { status: "verified" },
+            },
+          ],
+        }),
+      );
+
+      const rows = await allUsers();
+      const own = (id: string) =>
+        rows.find((row) => row.clerkId === id)?.hasOwnPicture;
+      expect(own("user_a")).toBe(false);
+      expect(own("user_b")).toBe(true);
+      expect(own("user_c")).toBe(true);
+    });
+
+    it("follows a later event, and keeps its value when one does not say", async () => {
+      await apply("evt_1", created({ has_image: true }));
+
+      await apply("evt_2", updated(t0 + 60_000, { has_image: false }));
+      expect((await allUsers())[0]?.hasOwnPicture).toBe(false);
+
+      await apply("evt_3", updated(t0 + 120_000, {}));
+      expect((await allUsers())[0]?.hasOwnPicture).toBe(false);
+    });
+
+    it("does not change with an older event", async () => {
+      await apply(
+        "evt_1",
+        created({ has_image: true, updated_at: t0 + 60_000 }),
+      );
+
+      await apply("evt_2", updated(t0 + 1000, { has_image: false }));
+
+      expect((await allUsers())[0]?.hasOwnPicture).toBe(true);
+    });
+  });
+
   it("changes the database once, however many times it is delivered", async () => {
     const results = [
       await apply("evt_1", created()),

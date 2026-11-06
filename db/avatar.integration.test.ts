@@ -93,7 +93,7 @@ describe("applyAvatar", () => {
     const ana = await newUser();
 
     expect(
-      await applyAvatar(db, ana.id, "https://img.clerk.com/new", later),
+      await applyAvatar(db, ana.id, "https://img.clerk.com/new", true, later),
     ).toBe(true);
 
     const row = await rowOf(ana.id);
@@ -103,19 +103,28 @@ describe("applyAvatar", () => {
 
   it("changes nothing when a newer event was already applied", async () => {
     const ana = await newUser();
-    await applyAvatar(db, ana.id, "https://img.clerk.com/newer", later);
+    await applyAvatar(db, ana.id, "https://img.clerk.com/newer", true, later);
 
     expect(
       await applyAvatar(
         db,
         ana.id,
         "https://img.clerk.com/older",
+        true,
         new Date(later.getTime() - 1000),
       ),
     ).toBe(false);
     expect((await rowOf(ana.id))?.avatarUrl).toBe(
       "https://img.clerk.com/newer",
     );
+  });
+
+  it("writes whether it is the person's own picture", async () => {
+    const ana = await newUser();
+
+    await applyAvatar(db, ana.id, "https://img.clerk.com/made", false, later);
+
+    expect((await rowOf(ana.id))?.hasOwnPicture).toBe(false);
   });
 
   it("touches only that person, and never an erased account", async () => {
@@ -125,7 +134,7 @@ describe("applyAvatar", () => {
     await eraseAccount(db, ana.clerkId);
 
     expect(
-      await applyAvatar(db, ana.id, "https://img.clerk.com/new", later),
+      await applyAvatar(db, ana.id, "https://img.clerk.com/new", true, later),
     ).toBe(false);
     expect((await rowOf(ana.id))?.avatarUrl).toBeNull();
     expect((await rowOf(bob.id))?.avatarUrl).toBe(bobBefore);
@@ -157,6 +166,7 @@ describe("the picture elsewhere", () => {
       db,
       ana.id,
       "https://img.clerk.com/ana",
+      true,
       new Date(Date.now() + 60_000),
     );
 
@@ -166,5 +176,6 @@ describe("the picture elsewhere", () => {
     expect(row?.avatarUrl).toBeNull();
     expect(row?.avatarUploadsDay).toBeNull();
     expect(row?.avatarUploadsCount).toBe(0);
+    expect(row?.hasOwnPicture).toBe(false);
   });
 });

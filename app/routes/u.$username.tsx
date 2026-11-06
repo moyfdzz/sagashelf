@@ -142,6 +142,8 @@ export async function loader(args: Route.LoaderArgs) {
     // The picture is only ever an HTTPS address of ours or Clerk's; the policy of the page allows
     // only that origin.
     avatarUrl: owner.avatarUrl?.startsWith("https://") ? owner.avatarUrl : null,
+    // The generated image of Clerk is nothing to report (SAG-144).
+    hasOwnPicture: owner.hasOwnPicture,
   };
   const base = {
     title: t("app.pageTitle", {
@@ -284,6 +286,9 @@ function Avatar({
 
 type You = Route.ComponentProps["loaderData"]["you"];
 
+const reportClass = (reported: boolean) =>
+  `${reported ? secondaryButtonClass : dangerButtonClass} inline-block`;
+
 function Actions({
   you,
   username,
@@ -386,14 +391,12 @@ function Actions({
           ? button("unmute", t("profile.actions.unmute"), secondaryButtonClass)
           : button("mute", t("profile.actions.mute"), secondaryButtonClass)}
         {button("block", t("profile.actions.block"), dangerButtonClass)}
-      </div>
-      <p className="text-fg-muted text-sm">{t("profile.actions.blockHint")}</p>
-      {/* The page of a report also says what was sent, and lets the person cancel it. */}
-      <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        {/* Each one is red until it is used. The page of a report then says what was sent, and
+            lets the person cancel it, so it stays a link. */}
         {hasPicture ? (
           <a
             href={`/u/${encodeURIComponent(username)}/report?target=picture`}
-            className={linkClass}
+            className={reportClass(you.reported.picture !== null)}
           >
             {you.reported.picture
               ? t("report.already.picture")
@@ -402,13 +405,14 @@ function Actions({
         ) : null}
         <a
           href={`/u/${encodeURIComponent(username)}/report?target=user`}
-          className={linkClass}
+          className={reportClass(you.reported.user !== null)}
         >
           {you.reported.user
             ? t("report.already.user")
             : t("profile.actions.reportUser")}
         </a>
-      </p>
+      </div>
+      <p className="text-fg-muted text-sm">{t("profile.actions.blockHint")}</p>
     </div>
   );
 }
@@ -439,7 +443,7 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
           you={you}
           username={head.username}
           name={name}
-          hasPicture={head.avatarUrl !== null}
+          hasPicture={head.avatarUrl !== null && head.hasOwnPicture}
         />
       </div>
 

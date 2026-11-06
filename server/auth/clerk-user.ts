@@ -56,6 +56,8 @@ export type MirrorUser = {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  /** Whether that is the person's own picture and not one Clerk generated. Null when not said. */
+  hasOwnPicture: boolean | null;
   emailCanonical: string;
   locale: "es" | "en";
   /** The time Clerk gave to this version of the user. */
@@ -75,6 +77,7 @@ type ClerkUserData = {
   first_name?: unknown;
   last_name?: unknown;
   image_url?: unknown;
+  has_image?: unknown;
   locale?: unknown;
   primary_email_address_id?: unknown;
   email_addresses?: unknown;
@@ -186,6 +189,8 @@ export function planClerkEvent(event: ClerkEventLike): ClerkOperation {
       username,
       displayName: displayNameOf(data),
       avatarUrl: httpsUrl(data.image_url),
+      hasOwnPicture:
+        typeof data.has_image === "boolean" ? data.has_image : null,
       emailCanonical,
       locale: asString(data.locale)?.toLowerCase().startsWith("en")
         ? "en"

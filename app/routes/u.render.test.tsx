@@ -49,6 +49,7 @@ const head = {
   username: "ana_reads",
   displayName: "Ana",
   avatarUrl: "https://img.clerk.com/ana",
+  hasOwnPicture: true,
 };
 
 const entry = {
@@ -310,6 +311,49 @@ describe("the profile page: the buttons", () => {
       );
       expect(withPicture).toContain("Reportar foto");
       expect(withPicture).toContain(`href="${pictureLink}"`);
+    });
+
+    it("draws them as red buttons beside the one to block, until they are used", async () => {
+      const html = await render(profile(member()));
+      const of = (word: string) =>
+        new RegExp(`<a [^>]*>${word}</a>`).exec(html)?.[0] ?? "";
+
+      expect(of("Reportar foto")).toContain("text-danger-fg");
+      expect(of("Reportar usuario")).toContain("text-danger-fg");
+      const row =
+        /<div class="flex flex-wrap items-start gap-2">.*?<\/div>/s.exec(
+          html,
+        )?.[0] ?? "";
+      expect(row).toContain("Bloquear");
+      expect(row).toContain("Reportar foto");
+      expect(row).toContain("Reportar usuario");
+    });
+
+    it("does not draw a used one in red", async () => {
+      const html = await render(
+        profile(
+          member({
+            reported: {
+              user: null,
+              picture: { id: "a", reason: "violent", status: "open" },
+            },
+          }),
+        ),
+      );
+      const used =
+        /<a [^>]*>Ya reportaste esta foto<\/a>/.exec(html)?.[0] ?? "";
+
+      expect(used).not.toBe("");
+      expect(used).not.toContain("text-danger-fg");
+    });
+
+    it("offers nothing to report on the image Clerk generates (SAG-144)", async () => {
+      const html = await render(
+        profile({ ...member(), head: { ...head, hasOwnPicture: false } }),
+      );
+
+      expect(html).not.toContain(pictureLink);
+      expect(html).toContain(`href="${userLink}"`);
     });
 
     it("offers nothing to a visitor or to the owner", async () => {

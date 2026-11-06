@@ -58,6 +58,7 @@ export type ProfileHead = {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  hasOwnPicture: boolean;
   bio: string | null;
   privacy: Level;
 };
@@ -76,7 +77,7 @@ async function loadProfile(
   username: string,
 ): Promise<{ head: ProfileHead; relationship: Relationship } | null> {
   const { rows } = await db.execute(sql`
-    SELECT id, username, display_name, avatar_url, bio, privacy
+    SELECT id, username, display_name, avatar_url, has_own_picture, bio, privacy
     FROM users
     WHERE username = ${username} AND deleted_at IS NULL
   `);
@@ -87,6 +88,7 @@ async function loadProfile(
     username: String(row.username),
     displayName: text(row.display_name),
     avatarUrl: text(row.avatar_url),
+    hasOwnPicture: row.has_own_picture === true,
     bio: text(row.bio),
     privacy: asLevel(row.privacy),
   };
