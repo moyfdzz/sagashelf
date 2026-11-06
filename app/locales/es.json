@@ -866,6 +866,10 @@
       "picture": "Reportaron la foto de @{{username}}",
       "user": "Reportaron a @{{username}}"
     },
+    "warning": {
+      "picture": "Un administrador revisó un reporte sobre tu foto y encontró que no cumple las reglas de la comunidad. Si vuelve a pasar, tu cuenta puede suspenderse.",
+      "user": "Un administrador revisó un reporte sobre tu perfil y encontró que no cumple las reglas de la comunidad. Si vuelve a pasar, tu cuenta puede suspenderse."
+    },
     "errors": {
       "details_required": "Cuéntanos qué pasa para enviar el reporte.",
       "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
@@ -1126,13 +1130,19 @@
       "notices": {
         "dismissed": "Reporte descartado.",
         "restored": "La foto se muestra otra vez y los reportes quedaron cerrados.",
-        "removed": "La foto se quitó, también en Clerk, y los reportes quedaron resueltos."
+        "removed": "La foto se quitó, también en Clerk, y los reportes quedaron resueltos.",
+        "warned": "Aviso enviado. El reporte quedó resuelto.",
+        "suspended": "Cuenta suspendida. Los reportes sobre esta persona quedaron resueltos.",
+        "banned": "Cuenta baneada. Su perfil ya no se ve y los reportes sobre esta persona quedaron resueltos.",
+        "lifted": "Se levantó la restricción de la cuenta."
       },
       "errors": {
         "invalid_request": "No se pudo leer la acción.",
         "not_found": "Ese reporte ya se respondió o no admite esa acción.",
         "outdated": "La persona cambió de foto: este reporte es de una foto anterior. Descártalo.",
-        "failed": "Clerk no quitó la foto. No se cambió nada; inténtalo de nuevo."
+        "not_allowed": "Esta cuenta es de administración o es la tuya: no se puede actuar sobre ella.",
+        "picture_hidden": "La foto está oculta: primero restáurala o quítala, y después avisa.",
+        "failed": "Clerk no hizo el cambio. No se cambió nada aquí; inténtalo de nuevo."
       },
       "reports": {
         "title": "Reportes abiertos",
@@ -1150,10 +1160,43 @@
         "dismiss": "Descartar",
         "restore": "Restaurar la foto",
         "remove": "Quitar la foto",
-        "removeTitle": "Quitar la foto de {{username}}",
-        "removeConfirm": "La foto se borra también en Clerk y no se puede deshacer.",
-        "removeYes": "Sí, quitar la foto",
-        "removeNo": "No, volver"
+        "personActions": "Sobre la persona",
+        "account": {
+          "suspended": "Cuenta suspendida",
+          "banned": "Cuenta baneada"
+        },
+        "protected": "Esta cuenta es de administración o es la tuya: no se puede actuar sobre ella.",
+        "warnReason": "Motivo del aviso",
+        "warn": "Avisar",
+        "suspend": "Suspender",
+        "ban": "Banear"
+      },
+      "confirm": {
+        "no": "No, volver",
+        "remove": {
+          "title": "Quitar la foto de {{username}}",
+          "message": "La foto se borra también en Clerk y no se puede deshacer.",
+          "yes": "Sí, quitar la foto"
+        },
+        "suspend": {
+          "title": "Suspender a {{username}}",
+          "message": "No podrá iniciar sesión hasta que levantes la suspensión, y su perfil sigue visible. Los reportes abiertos sobre esta persona se cierran.",
+          "yes": "Sí, suspender"
+        },
+        "ban": {
+          "title": "Banear a {{username}}",
+          "message": "No podrá iniciar sesión y su perfil dejará de verse. Puedes levantar el ban después. Los reportes abiertos sobre esta persona se cierran, menos el de una foto oculta.",
+          "yes": "Sí, banear"
+        }
+      },
+      "accounts": {
+        "title": "Cuentas suspendidas o baneadas",
+        "empty": "No hay cuentas suspendidas ni baneadas.",
+        "state": {
+          "suspended": "Suspendida",
+          "banned": "Baneada"
+        },
+        "lift": "Levantar"
       },
       "uploads": {
         "title": "Fotos rechazadas o cerca del límite",

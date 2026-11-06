@@ -27,16 +27,28 @@ export type QueueReport = {
   current: boolean;
   /** A reviewer must ask to see it. */
   sensitive: boolean;
+  /** What was already done to the account (ADR-040). */
+  account: "active" | "suspended" | "banned";
+  /** An administrator, or the one asking: nothing is done to the person from the panel. */
+  protected: boolean;
 };
 
-/** The reports nobody has answered, with what the reviewer needs. Never who reported. */
-export async function listOpenReports(db: SqlExecutor): Promise<QueueReport[]> {
+/**
+ * The reports nobody has answered, with what the reviewer needs. Never who reported. `actorId` is
+ * the administrator of the session, whose own reports cannot be acted on.
+ */
+export async function listOpenReports(
+  db: SqlExecutor,
+  actorId: string,
+): Promise<QueueReport[]> {
   const { rows } = await db.execute(sql`
     SELECT r.id, r.target_type::text AS kind, r.reason::text AS reason, r.details,
            r.created_at, u.username::text AS username, r.picture_url,
            (r.target_type = 'picture' AND u.hidden_avatar_url = r.picture_url) AS hidden,
            (r.target_type = 'picture'
-             AND (u.avatar_url = r.picture_url OR u.hidden_avatar_url = r.picture_url)) AS current
+             AND (u.avatar_url = r.picture_url OR u.hidden_avatar_url = r.picture_url)) AS current,
+           u.moderation_status AS account,
+           (u.role = 'admin' OR u.id = ${actorId}::uuid) AS protected
     FROM reports r
     JOIN users u ON u.id = r.target_id
     WHERE r.status IN ('open', 'reviewing') AND r.cancelled_at IS NULL
@@ -55,6 +67,11 @@ export async function listOpenReports(db: SqlExecutor): Promise<QueueReport[]> {
     hidden: row.hidden === true,
     current: row.current === true,
     sensitive: row.reason === hidingReason,
+    account:
+      row.account === "suspended" || row.account === "banned"
+        ? row.account
+        : "active",
+    protected: row.protected === true,
   }));
 }
 

@@ -1,0 +1,55 @@
+# ADR-040: Warning, suspending and banning an account
+
+- **Status:** Accepted
+- **Date:** 2026-11-06
+- **Implementation:** Done (SAG-143, second PR), not tried in production yet
+- **Tickets:** SAG-143, SAG-145
+- **Related:** [ADR-039](039-moderation-panel.md), [ADR-038](038-reports-and-picture-records.md), [ADR-031](031-social-graph.md), [ADR-007](007-background-work-cron-and-outbox.md)
+
+## Context
+
+The panel of ADR-039 could dismiss a report and act on a picture, but a report of a person could only be dismissed. The ticket (SAG-143) also asked for warning, suspending and banning, each with an `audit_log` entry. The owner chose on 2026-11-06 to follow the recommendations below.
+
+## Decision
+
+**Who can be acted on.** Anyone but an administrator and the administrator who is asking. The data functions check it in SQL, and the page does not offer the buttons.
+
+**Warning** is a notification, not an email (the app sends none). The administrator picks a reason from the list of the kind of the report (the same reasons as the report form, never free text), starting on the reason of the report. The person gets a row of `notifications` of the type `moderation.warning` with exactly the kind and the reason, so it says nothing of who reported, which report or which picture. The page of notifications draws a fixed text in the language of the person, with the reason and a link to the community rules. A warning resolves its report. It is refused while the reported picture is hidden: that one is restored or removed first, or the picture would stay hidden with no open report. The type needed a new value in `notifications_type_check`.
+
+**Suspending** locks the account in Clerk (`lockUser`) and keeps `users.moderation_status = 'suspended'`. It has **no timer**: it lasts until an administrator lifts it from the list of restricted accounts. Clerk's `lockUser` takes only the user id, so a timer would need a job to lift it, and the crons are full: of the 50 subrequests, the first uses 49, the second up to 24 and the third 43 (`docs/agent-notes.md`). The profile stays visible. A timer can be added later with its own job.
+
+**Banning** bans the account in Clerk (`banUser`) and keeps `moderation_status = 'banned'`. Banning an account that is suspended unlocks it first, so lifting the ban leaves nothing locked. The profile stops being seen: the level of the profile is put at `private`, and the level it had is kept in `users.privacy_before_ban` to be given back when the ban is lifted. This reuses the one policy of ADR-031 (`private` means nobody sees it, not even that it exists), so every screen that shows a person hides it without touching dozens of queries. The account is not erased: its row, username and canonical email stay reserved, so the same email cannot create another account here.
+
+**Lifting** unlocks or unbans in Clerk and gives the account back, and the profile its level. A level the person changed after a suspension is not overwritten, since a suspension never touched it.
+
+**Order.** Clerk goes first, then one statement here that changes the account, resolves the reports and writes the audit row. If Clerk refuses, nothing changes here. If the write here fails after Clerk did, asking again repeats Clerk's call, which changes nothing, and writes.
+
+**Reports.** Suspending or banning resolves every open report about the person, except one about a picture that is hidden: it stays open to be restored or removed, or the picture would stay hidden after a lift.
+
+**Audit.** `account.warned`, `account.suspended`, `account.banned` and `account.lifted`, with the ids and the reasons and never a name or an address.
+
+**Not exported.** The export does not carry the moderation state, as it does not carry the reports about the person. The erasure clears `privacy_before_ban`.
+
+## Alternatives considered
+
+- **Free text in the warning.** More control for the administrator, but a way to leak who reported, and a piece of writing for each warning. Rejected for now.
+- **A suspension with an end date.** Needs a job and a subrequest. Rejected until it hurts.
+- **Hiding a banned account in every query** (`moderation_status <> 'banned'`). Many queries to change and easy to forget one. The privacy level is the one place that already decides this.
+- **Erasing a banned account.** It frees the username and the email, which is the opposite of a ban.
+
+## Consequences
+
+- A banned person who deletes the account from the Clerk dashboard is erased as any other, which frees their username and email. Nothing here stops that.
+- The page "Reglas de la comunidad" already says that accounts can be suspended or erased and gives a contact email, which is also how a person can ask for a review. There is no appeal form.
+- A banned or suspended person's existing sessions: Clerk is expected to end them on lock and ban. **Not verified**; the owner tries it in production with a test account.
+- If the administrator changes an account in the Clerk dashboard, the state here does not follow, since the sync of events does not read it.
+- The migration 0027 adds two columns and a level to `users` and a value to the check of `notifications`; it changes no data.
+
+## Open questions
+
+- Whether a warning needs a counter (a second warning could suggest a suspension). Not built.
+- Whether the banned profile of someone with followers should keep counting in their followers' lists. It follows what a Total privacy profile does today.
+
+## References
+
+- `@clerk/backend` (the version in `package.json`), `UserApi`: `banUser`, `unbanUser`, `lockUser` and `unlockUser`, each taking the user id. Read from the type definitions on 2026-11-06.

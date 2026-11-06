@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-06
-- **Implementation:** Partial: the panel with dismiss, restore and remove is done (SAG-143, first PR); warn, suspend and ban are planned (SAG-143, second PR)
+- **Implementation:** Done (SAG-143): the panel with dismiss, restore and remove in the first PR, and warn, suspend and ban in the second ([ADR-040](040-warn-suspend-ban.md))
 - **Tickets:** SAG-143, SAG-145, SAG-142, SAG-141
 - **Related:** [ADR-038](038-reports-and-picture-records.md), [ADR-037](037-profile-pictures.md), [ADR-033](033-design-rules.md)
 
@@ -34,14 +34,14 @@ If Clerk refuses, nothing changes here and the page says so. If Clerk deleted th
 - **A new `report_status` value for "hidden".** Migrations run in one transaction and PostgreSQL does not let an index use a value added in the same one (ADR-038). The hidden state is the column.
 - **Showing every picture blurred.** It needs JavaScript or CSS tricks and the address would still be in the page. Not sending the address is simpler and stricter.
 - **A box inside the card for the confirmation, in red.** It was the first version (SAG-143). The owner found it clumsy: it reloaded the page and the red background was too much. SAG-145 replaced it with the modal of SAG-125.
-- **Doing warn, suspend and ban in the same PR.** It adds a second Clerk call, a new state of the account and a notification, and the hole of the hidden picture was the urgent part. They go in the second PR.
+- **Doing warn, suspend and ban in the same PR.** It adds a second Clerk call, a new state of the account and a notification, and the hole of the hidden picture was the urgent part. They went in the second PR.
 
 ## Consequences
 
 - A hidden picture no longer comes back with a `user.updated`, and restoring one no longer needs SQL.
 - The reviewer sees a picture reported for sexual content that is not about minors without asking. That is a choice of this PR and can be tightened.
 - The export does not carry the hidden address, as it does not carry the reports about the person: it is moderation state, not something the person gave.
-- A report of a person (not a picture) can only be dismissed for now. Warn, suspend and ban come in the second PR.
+- A report of a person (not a picture) could only be dismissed in the first PR. Warn, suspend and ban came in the second, and are in [ADR-040](040-warn-suspend-ban.md).
 - `reports.status` is `dismissed` or `resolved`, and the audit log says which action did it.
 - Applying the migration is a step by hand before the code is used (an added nullable column, so no snapshot is needed).
 

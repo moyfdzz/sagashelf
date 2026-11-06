@@ -8,21 +8,17 @@ const mocks = vi.hoisted(() => ({
   readAdminWrite: vi.fn(),
   listOpenReports: vi.fn(),
   listSuspiciousUploads: vi.fn(),
-  findPictureReport: vi.fn(),
-  dismissReport: vi.fn(),
-  restorePicture: vi.fn(),
-  recordPictureRemoved: vi.fn(),
+  listRestrictedAccounts: vi.fn(),
+  runModerationAction: vi.fn(),
   getClerkKeys: vi.fn(),
-  deleteUserProfileImage: vi.fn(),
+  clerkUsers: { marker: "clerk users" },
 }));
 
 vi.mock("@clerk/react-router/server", () => ({
   rootAuthLoader: async (_args: unknown, callback: () => unknown) => callback(),
 }));
 vi.mock("@clerk/backend", () => ({
-  createClerkClient: () => ({
-    users: { deleteUserProfileImage: mocks.deleteUserProfileImage },
-  }),
+  createClerkClient: () => ({ users: mocks.clerkUsers }),
 }));
 vi.mock("~server/auth/require", () => ({ requireRole: mocks.requireRole }));
 vi.mock("~server/auth/admin-write", () => ({
@@ -31,10 +27,13 @@ vi.mock("~server/auth/admin-write", () => ({
 vi.mock("~server/db/moderation", () => ({
   listOpenReports: mocks.listOpenReports,
   listSuspiciousUploads: mocks.listSuspiciousUploads,
-  findPictureReport: mocks.findPictureReport,
-  dismissReport: mocks.dismissReport,
-  restorePicture: mocks.restorePicture,
-  recordPictureRemoved: mocks.recordPictureRemoved,
+  queuePageSize: 50,
+}));
+vi.mock("~server/db/account-actions", () => ({
+  listRestrictedAccounts: mocks.listRestrictedAccounts,
+}));
+vi.mock("~server/moderation/run-action", () => ({
+  runModerationAction: mocks.runModerationAction,
 }));
 vi.mock("~server/runtime-env", () => ({
   getDb: async () => ({ fake: "database" }),
@@ -58,6 +57,8 @@ const report = (fields: Record<string, unknown> = {}) => ({
   hidden: false,
   current: true,
   sensitive: false,
+  account: "active",
+  protected: false,
   ...fields,
 });
 
@@ -68,17 +69,8 @@ beforeEach(() => {
     .mockReturnValue({ publishableKey: "pk", secretKey: "sk" });
   mocks.listOpenReports.mockReset().mockResolvedValue([report()]);
   mocks.listSuspiciousUploads.mockReset().mockResolvedValue([]);
-  mocks.findPictureReport
-    .mockReset()
-    .mockResolvedValue({ id: reportId, clerkId: "clerk_1", current: true });
-  mocks.dismissReport.mockReset().mockResolvedValue(true);
-  mocks.restorePicture.mockReset().mockResolvedValue(true);
-  mocks.recordPictureRemoved.mockReset().mockResolvedValue(true);
-  mocks.deleteUserProfileImage.mockReset().mockResolvedValue({
-    imageUrl: "https://img.clerk.com/generated",
-    hasImage: false,
-    updatedAt: 1_793_900_000_000,
-  });
+  mocks.listRestrictedAccounts.mockReset().mockResolvedValue([]);
+  mocks.runModerationAction.mockReset().mockResolvedValue("notice=dismissed");
   mocks.readAdminWrite.mockReset().mockResolvedValue({
     user: { id: "admin-1" },
     form: { intent: "dismiss", id: reportId },
@@ -91,6 +83,17 @@ const load = (search = "") =>
     params: {},
     context: {},
   } as unknown as Route.LoaderArgs);
+
+type Loaded = {
+  confirm: { id: string; action: string } | null;
+  reports: {
+    pictureUrl: string | null;
+    reasonKey: string | null;
+    warnReasons: string[];
+    warnSelected: string;
+  }[];
+  accounts: unknown[];
+};
 
 const submit = (form: Record<string, string>) => {
   mocks.readAdminWrite.mockResolvedValue({ user: { id: "admin-1" }, form });
@@ -113,18 +116,57 @@ async function refusal(promise: Promise<unknown>) {
 }
 
 describe("the moderation panel (SAG-143)", () => {
-  it("asks for an administrator and lists the reports and the uploads", async () => {
+  it("asks for an administrator and lists the reports, the restricted accounts and the uploads", async () => {
+    mocks.listRestrictedAccounts.mockResolvedValue([
+      {
+        id: "u1",
+        clerkId: "clerk_1",
+        username: "carl",
+        state: "banned",
+        changedAt: new Date("2026-11-06T10:00:00Z"),
+      },
+    ]);
+
     const result = await load();
 
     expect(mocks.requireRole).toHaveBeenCalledWith(expect.anything(), "admin");
+    // The reports are asked for with the administrator of the session, to protect their own.
+    expect(mocks.listOpenReports).toHaveBeenCalledWith(
+      { fake: "database" },
+      "admin-1",
+    );
     expect(result).toMatchObject({
       publishableKey: "pk",
       notice: null,
       error: null,
       confirm: null,
       reports: [{ id: reportId, username: "bob", pictureUrl: picture }],
+      accounts: [
+        {
+          id: "u1",
+          username: "carl",
+          state: "banned",
+          changedAt: Date.parse("2026-11-06T10:00:00Z"),
+        },
+      ],
       uploads: [],
     });
+  });
+
+  it("does not send the Clerk id of a restricted account to the page", async () => {
+    mocks.listRestrictedAccounts.mockResolvedValue([
+      {
+        id: "u1",
+        clerkId: "clerk_secretish",
+        username: "carl",
+        state: "suspended",
+        changedAt: null,
+      },
+    ]);
+
+    const result = await load();
+
+    expect(JSON.stringify(result)).not.toContain("clerk_secretish");
   });
 
   it("reads nothing for somebody who is not an administrator, nor with no Clerk keys", async () => {
@@ -139,21 +181,51 @@ describe("the moderation panel (SAG-143)", () => {
     expect(mocks.listOpenReports).not.toHaveBeenCalled();
   });
 
+  it("gives each report the reasons a warning can use, those of its kind, and starts on its own", async () => {
+    mocks.listOpenReports.mockResolvedValue([
+      report(),
+      report({ id: "two", kind: "user", reason: "spam" }),
+      report({ id: "three", kind: "user", reason: "copyright" }),
+    ]);
+
+    const { reports } = (await load()) as unknown as Loaded;
+
+    expect(reports[0]).toMatchObject({
+      reasonKey: "violent",
+      warnSelected: "violent",
+    });
+    expect(reports[0]?.warnReasons).toEqual([
+      "sexual_content",
+      "sexual_minors",
+      "other_person",
+      "violent",
+      "other",
+    ]);
+    expect(reports[1]?.warnReasons).toEqual([
+      "spam",
+      "harassment",
+      "impersonation",
+      "hate",
+      "other",
+    ]);
+    // An old reason that has no text is not shown, and the warning starts on "other".
+    expect(reports[2]).toMatchObject({
+      reasonKey: null,
+      warnSelected: "other",
+    });
+  });
+
   it("does not send the address of a picture reported for minors until that one is asked for", async () => {
     mocks.listOpenReports.mockResolvedValue([
       report({ sensitive: true, hidden: true }),
       report({ id: "other", sensitive: true, hidden: true }),
     ]);
 
-    const closed = (await load()) as {
-      reports: { pictureUrl: string | null }[];
-    };
+    const closed = (await load()) as unknown as Loaded;
     expect(closed.reports.map((r) => r.pictureUrl)).toEqual([null, null]);
     expect(JSON.stringify(closed)).not.toContain(picture);
 
-    const opened = (await load(`?view=${reportId}`)) as {
-      reports: { pictureUrl: string | null }[];
-    };
+    const opened = (await load(`?view=${reportId}`)) as unknown as Loaded;
     expect(opened.reports.map((r) => r.pictureUrl)).toEqual([picture, null]);
   });
 
@@ -163,24 +235,39 @@ describe("the moderation panel (SAG-143)", () => {
       report({ id: "two", pictureUrl: "javascript:alert(1)" }),
     ]);
 
-    const result = (await load()) as {
-      reports: { pictureUrl: string | null }[];
-    };
+    const result = (await load()) as unknown as Loaded;
 
     expect(result.reports.map((r) => r.pictureUrl)).toEqual([null, null]);
   });
 
-  it("says what happened and what to confirm, only with words and ids it knows", async () => {
-    expect(await load("?notice=restored")).toMatchObject({
-      notice: "restored",
+  it("says what happened, only with words it knows", async () => {
+    for (const notice of ["warned", "suspended", "banned", "lifted"]) {
+      expect(await load(`?notice=${notice}`)).toMatchObject({ notice });
+    }
+    for (const error of ["not_allowed", "picture_hidden", "outdated"]) {
+      expect(await load(`?error=${error}`)).toMatchObject({ error });
+    }
+    expect(await load("?notice=%3Cb%3E&error=x")).toMatchObject({
+      notice: null,
+      error: null,
     });
-    expect(await load("?error=outdated")).toMatchObject({ error: "outdated" });
-    expect(await load(`?confirm=${reportId}`)).toMatchObject({
-      confirm: reportId,
-    });
-    expect(
-      await load("?notice=%3Cb%3E&error=x&confirm=nope&view=nope"),
-    ).toMatchObject({ notice: null, error: null, confirm: null });
+  });
+
+  it("asks to confirm an action of the list on a report, and only with both", async () => {
+    for (const action of ["remove", "suspend", "ban"]) {
+      expect(await load(`?confirm=${reportId}&do=${action}`)).toMatchObject({
+        confirm: { id: reportId, action },
+      });
+    }
+    for (const search of [
+      `?confirm=${reportId}`,
+      "?do=ban",
+      `?confirm=${reportId}&do=lift`,
+      `?confirm=${reportId}&do=dismiss`,
+      "?confirm=nope&do=ban",
+    ]) {
+      expect(await load(search)).toMatchObject({ confirm: null });
+    }
   });
 
   it("is private and not indexed", () => {
@@ -203,124 +290,49 @@ describe("answering a report (SAG-143)", () => {
     );
   });
 
-  it("dismisses as the administrator of the session", async () => {
-    const response = await submit({ intent: "dismiss", id: reportId });
+  it("hands the form, the database, Clerk and the administrator of the session to the work", async () => {
+    await submit({ intent: "ban", id: reportId });
 
-    expect(mocks.dismissReport).toHaveBeenCalledWith(
+    expect(mocks.runModerationAction).toHaveBeenCalledWith(
       { fake: "database" },
+      mocks.clerkUsers,
       "admin-1",
-      reportId,
-    );
-    expect(response.status).toBe(303);
-    expect(response.headers.get("Location")).toBe(
-      "/admin/moderation?notice=dismissed",
+      { intent: "ban", id: reportId },
     );
   });
 
-  it("restores as the administrator of the session", async () => {
-    const response = await submit({ intent: "restore", id: reportId });
+  it("goes back to the panel saying how it went", async () => {
+    mocks.runModerationAction.mockResolvedValue("notice=banned");
+    const ok = await submit({ intent: "ban", id: reportId });
+    expect(ok.status).toBe(303);
+    expect(ok.headers.get("Location")).toBe("/admin/moderation?notice=banned");
 
-    expect(mocks.restorePicture).toHaveBeenCalledWith(
-      { fake: "database" },
-      "admin-1",
-      reportId,
-    );
-    expect(response.headers.get("Location")).toBe(
-      "/admin/moderation?notice=restored",
-    );
-  });
-
-  it("says not found when the data function changed nothing", async () => {
-    mocks.dismissReport.mockResolvedValue(false);
-    mocks.restorePicture.mockResolvedValue(false);
-
-    for (const intent of ["dismiss", "restore"]) {
-      const response = await submit({ intent, id: reportId });
-      expect(response.headers.get("Location")).toBe(
-        "/admin/moderation?error=not_found",
-      );
-    }
-  });
-
-  it("deletes the picture in Clerk first, and then writes what Clerk answered", async () => {
-    const response = await submit({ intent: "remove", id: reportId });
-
-    expect(mocks.deleteUserProfileImage).toHaveBeenCalledWith("clerk_1");
-    expect(mocks.recordPictureRemoved).toHaveBeenCalledWith(
-      { fake: "database" },
-      "admin-1",
-      reportId,
-      {
-        avatarUrl: "https://img.clerk.com/generated",
-        hasOwnPicture: false,
-        updatedAt: new Date(1_793_900_000_000),
-      },
-    );
-    expect(
-      mocks.deleteUserProfileImage.mock.invocationCallOrder[0],
-    ).toBeLessThan(mocks.recordPictureRemoved.mock.invocationCallOrder[0] ?? 0);
-    expect(response.headers.get("Location")).toBe(
-      "/admin/moderation?notice=removed",
-    );
-  });
-
-  it("does not store an address that is not https", async () => {
-    mocks.deleteUserProfileImage.mockResolvedValue({
-      imageUrl: "http://img.clerk.com/generated",
-      hasImage: false,
-      updatedAt: 1,
-    });
-
-    await submit({ intent: "remove", id: reportId });
-
-    expect(mocks.recordPictureRemoved.mock.calls[0]?.[3].avatarUrl).toBeNull();
-  });
-
-  it("touches nothing in Clerk for a report that is not open, or not of a picture", async () => {
-    mocks.findPictureReport.mockResolvedValue(null);
-
-    const response = await submit({ intent: "remove", id: reportId });
-
-    expect(mocks.deleteUserProfileImage).not.toHaveBeenCalled();
-    expect(mocks.recordPictureRemoved).not.toHaveBeenCalled();
-    expect(response.headers.get("Location")).toBe(
-      "/admin/moderation?error=not_found",
-    );
-  });
-
-  it("does not delete a picture the person has replaced since", async () => {
-    mocks.findPictureReport.mockResolvedValue({
-      id: reportId,
-      clerkId: "clerk_1",
-      current: false,
-    });
-
-    const response = await submit({ intent: "remove", id: reportId });
-
-    expect(mocks.deleteUserProfileImage).not.toHaveBeenCalled();
-    expect(response.headers.get("Location")).toBe(
-      "/admin/moderation?error=outdated",
-    );
-  });
-
-  it("changes nothing here when Clerk refuses", async () => {
-    mocks.deleteUserProfileImage.mockRejectedValue(new Error("boom"));
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-
-    const response = await submit({ intent: "remove", id: reportId });
-
-    expect(mocks.recordPictureRemoved).not.toHaveBeenCalled();
-    expect(response.headers.get("Location")).toBe(
+    mocks.runModerationAction.mockResolvedValue("error=failed");
+    const failed = await submit({ intent: "ban", id: reportId });
+    expect(failed.headers.get("Location")).toBe(
       "/admin/moderation?error=failed",
     );
   });
 
+  it("passes the reason of a warning, and no other field", async () => {
+    await submit({ intent: "warn", id: reportId, reason: "harassment" });
+
+    expect(mocks.runModerationAction.mock.calls[0]?.[3]).toEqual({
+      intent: "warn",
+      id: reportId,
+      reason: "harassment",
+    });
+  });
+
   it("writes nothing for a form that is not an action, or that carries more", async () => {
     const forms: Record<string, string>[] = [
-      { intent: "ban", id: reportId },
+      { intent: "delete", id: reportId },
       { intent: "dismiss", id: "not-an-id" },
       { intent: "dismiss" },
       { intent: "dismiss", id: reportId, status: "resolved" },
+      { intent: "warn", id: reportId },
+      { intent: "ban", id: reportId, reason: "spam" },
+      { intent: "lift", id: reportId, role: "admin" },
     ];
     for (const form of forms) {
       const response = await submit(form);
@@ -328,12 +340,19 @@ describe("answering a report (SAG-143)", () => {
         "/admin/moderation?error=invalid_request",
       );
     }
-    expect(mocks.dismissReport).not.toHaveBeenCalled();
-    expect(mocks.restorePicture).not.toHaveBeenCalled();
-    expect(mocks.deleteUserProfileImage).not.toHaveBeenCalled();
+    expect(mocks.runModerationAction).not.toHaveBeenCalled();
   });
 
-  it("lets the refusals of the write checks through, and writes nothing", async () => {
+  it("is a 503 with no Clerk keys, and does nothing", async () => {
+    mocks.getClerkKeys.mockReturnValue(null);
+
+    expect(
+      (await refusal(submit({ intent: "ban", id: reportId }))).init?.status,
+    ).toBe(503);
+    expect(mocks.runModerationAction).not.toHaveBeenCalled();
+  });
+
+  it("lets the refusals of the write checks through, and does nothing", async () => {
     const refused = { init: { status: 429 } };
     mocks.readAdminWrite.mockRejectedValue(refused);
 
@@ -348,6 +367,6 @@ describe("answering a report (SAG-143)", () => {
         } as unknown as Route.ActionArgs),
       ),
     ).toBe(refused);
-    expect(mocks.dismissReport).not.toHaveBeenCalled();
+    expect(mocks.runModerationAction).not.toHaveBeenCalled();
   });
 });

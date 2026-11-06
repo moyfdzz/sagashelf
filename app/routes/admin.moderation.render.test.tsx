@@ -15,6 +15,8 @@ vi.mock("~server/runtime-env", () => ({}));
 vi.mock("~server/auth/require", () => ({}));
 vi.mock("~server/auth/admin-write", () => ({}));
 vi.mock("~server/db/moderation", () => ({}));
+vi.mock("~server/db/account-actions", () => ({}));
+vi.mock("~server/moderation/run-action", () => ({}));
 vi.mock("~/components/ClerkSession", () => ({
   ClerkSession: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -42,11 +44,22 @@ async function render(
 
 const id = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 const photo = "https://img.clerk.com/photo-one";
+const pictureReasons = [
+  "sexual_content",
+  "sexual_minors",
+  "other_person",
+  "violent",
+  "other",
+];
+const userReasons = ["spam", "harassment", "impersonation", "hate", "other"];
 
 const report = (fields: Record<string, unknown> = {}) => ({
   id,
   kind: "picture",
   reason: "violent",
+  reasonKey: "violent",
+  warnReasons: pictureReasons,
+  warnSelected: "violent",
   details: null,
   createdAt: Date.parse("2026-11-06T12:00:00Z"),
   username: "bob",
@@ -54,8 +67,22 @@ const report = (fields: Record<string, unknown> = {}) => ({
   hidden: false,
   current: true,
   sensitive: false,
+  account: "active",
+  protected: false,
   ...fields,
 });
+
+const personReport = (fields: Record<string, unknown> = {}) =>
+  report({
+    kind: "user",
+    reason: "spam",
+    reasonKey: "spam",
+    warnReasons: userReasons,
+    warnSelected: "spam",
+    pictureUrl: null,
+    current: false,
+    ...fields,
+  });
 
 const props = (extra: Record<string, unknown> = {}) =>
   ({
@@ -66,6 +93,7 @@ const props = (extra: Record<string, unknown> = {}) =>
       error: null,
       confirm: null,
       reports: [report()],
+      accounts: [],
       uploads: [],
       ...extra,
     },
@@ -73,6 +101,9 @@ const props = (extra: Record<string, unknown> = {}) =>
 
 const intents = (html: string) =>
   [...html.matchAll(/name="intent" value="(\w+)"/g)].map((m) => m[1]);
+
+const dialogOf = (html: string) =>
+  html.match(/<dialog[\s\S]*<\/dialog>/)?.[0] ?? "";
 
 describe("the moderation panel (SAG-143)", () => {
   it("draws a visible picture with no referrer, and offers to dismiss it or to remove it", async () => {
@@ -82,11 +113,12 @@ describe("the moderation panel (SAG-143)", () => {
     expect(image).toContain(`src="${photo}"`);
     expect(image).toContain('referrerPolicy="no-referrer"');
     expect(html).toContain("Violenta u ofensiva");
-    expect(intents(html)).toEqual(["dismiss"]);
-    expect(html).toContain(`href="/admin/moderation?confirm=${id}"`);
+    expect(intents(html)).toEqual(["dismiss", "warn"]);
     // A link of the router, so the modal opens without loading the page again.
     const trigger = html.match(/<a [^>]*>Quitar la foto<\/a>/)?.[0] ?? "";
-    expect(trigger).toContain(`href="/admin/moderation?confirm=${id}"`);
+    expect(trigger).toContain(
+      `href="/admin/moderation?confirm=${id}&amp;do=remove"`,
+    );
     expect(trigger).toContain('data-discover="true"');
     expect(html).toMatch(/<a [^>]*href="\/u\/bob"/);
   });
@@ -98,6 +130,7 @@ describe("the moderation panel (SAG-143)", () => {
           reports: [
             report({
               reason: "sexual_minors",
+              reasonKey: "sexual_minors",
               pictureUrl: null,
               hidden: true,
               sensitive: true,
@@ -113,12 +146,17 @@ describe("the moderation panel (SAG-143)", () => {
     expect(html).toContain("La foto está oculta para todos");
   });
 
-  it("offers to restore a hidden picture and never to dismiss it", async () => {
+  it("offers to restore a hidden picture and never to dismiss it or to warn before", async () => {
     const html = await render(
       <AdminModeration
         {...props({
           reports: [
-            report({ reason: "sexual_minors", hidden: true, sensitive: true }),
+            report({
+              reason: "sexual_minors",
+              reasonKey: "sexual_minors",
+              hidden: true,
+              sensitive: true,
+            }),
           ],
         })}
       />,
@@ -127,53 +165,138 @@ describe("the moderation panel (SAG-143)", () => {
     expect(html).toContain("<img");
     expect(intents(html)).toEqual(["restore"]);
     expect(html).toContain("Quitar la foto");
+    // Suspending and banning stay, since the person can be stopped while the picture is decided.
+    expect(html).toContain("Suspender");
+    expect(html).toContain("Banear");
   });
 
-  it("offers only to dismiss a report of a picture the person has replaced", async () => {
+  it("offers only to dismiss a picture the person has replaced, and still the actions on the person", async () => {
     const html = await render(
       <AdminModeration {...props({ reports: [report({ current: false })] })} />,
     );
 
     expect(html).not.toContain("<img");
     expect(html).toContain("ya cambió de foto");
-    expect(intents(html)).toEqual(["dismiss"]);
-    expect(html).not.toContain("?confirm=");
-  });
-
-  it("offers only to dismiss a report of a person, with what the reporter wrote", async () => {
-    const html = await render(
-      <AdminModeration
-        {...props({
-          reports: [
-            report({
-              kind: "user",
-              reason: "spam",
-              details: "sells things",
-              pictureUrl: null,
-              current: false,
-            }),
-          ],
-        })}
-      />,
-    );
-
-    expect(html).toContain("Persona");
-    expect(html).toContain("Spam");
-    expect(html).toContain("sells things");
-    expect(intents(html)).toEqual(["dismiss"]);
+    expect(intents(html)).toEqual(["dismiss", "warn"]);
+    expect(html).not.toContain("do=remove");
   });
 
   it("opens no dialog until the address asks for it", async () => {
     const html = await render(<AdminModeration {...props()} />);
 
     expect(html).not.toContain("<dialog");
+  });
+
+  it("says a reason that has no text instead of breaking", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({
+          reports: [personReport({ reason: "copyright", reasonKey: null })],
+        })}
+      />,
+    );
+
+    expect(html).toContain("Motivo sin texto");
+  });
+});
+
+describe("the actions on the person (SAG-143, ADR-040)", () => {
+  it("offers a warning with a list of the reasons of the kind, starting on the reason of the report", async () => {
+    const html = await render(
+      <AdminModeration {...props({ reports: [personReport()] })} />,
+    );
+
+    expect(html).toContain("Sobre la persona");
+    const form =
+      html.match(
+        /<form [^>]*>(?:(?!<\/form>)[\s\S])*value="warn"[\s\S]*?<\/form>/,
+      )?.[0] ?? "";
+    expect(form).toContain('name="reason"');
+    expect(form).toContain("Motivo del aviso");
+    expect(form).toContain(`name="id" value="${id}"`);
+    expect(form).toMatch(/<option value="spam" selected/);
+    for (const reason of userReasons) {
+      expect(form).toContain(`<option value="${reason}"`);
+    }
+    expect(form).not.toContain('<option value="violent"');
+    expect(form).toContain(">Avisar<");
+  });
+
+  it("offers the reasons of a picture for a report of a picture", async () => {
+    const html = await render(<AdminModeration {...props()} />);
+
+    expect(html).toMatch(/<option value="violent" selected/);
+    expect(html).toContain('<option value="sexual_content"');
+    expect(html).not.toContain('<option value="harassment"');
+  });
+
+  it("offers to suspend or ban an active account, as links that open a modal", async () => {
+    const html = await render(
+      <AdminModeration {...props({ reports: [personReport()] })} />,
+    );
+
+    for (const action of ["suspend", "ban"]) {
+      const link =
+        html.match(new RegExp(`<a [^>]*do=${action}"[^>]*>[^<]*</a>`))?.[0] ??
+        "";
+      expect(link).toContain(
+        `href="/admin/moderation?confirm=${id}&amp;do=${action}"`,
+      );
+      expect(link).toContain('data-discover="true"');
+    }
+  });
+
+  it("offers only to ban an account that is suspended, and says so", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({ reports: [personReport({ account: "suspended" })] })}
+      />,
+    );
+
+    expect(html).toContain("Cuenta suspendida");
+    expect(html).not.toContain("do=suspend");
+    expect(html).toContain("do=ban");
+    // A warning is for an active account.
+    expect(intents(html)).not.toContain("warn");
+  });
+
+  it("offers nothing to do to an account that is banned, and says so", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({ reports: [personReport({ account: "banned" })] })}
+      />,
+    );
+
+    expect(html).toContain("Cuenta baneada");
+    expect(html).not.toContain("do=suspend");
+    expect(html).not.toContain("do=ban");
     expect(intents(html)).toEqual(["dismiss"]);
   });
 
-  it("asks before removing in a modal, with a way back and one button that sends the removal", async () => {
-    const html = await render(<AdminModeration {...props({ confirm: id })} />);
+  it("offers nothing on the person of an administrator or of oneself", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({ reports: [personReport({ protected: true })] })}
+      />,
+    );
 
-    const dialog = html.match(/<dialog[\s\S]*<\/dialog>/)?.[0] ?? "";
+    expect(html).toContain("no se puede actuar sobre ella");
+    expect(intents(html)).toEqual(["dismiss"]);
+    expect(html).not.toContain("do=ban");
+    expect(html).not.toContain("<select");
+  });
+});
+
+describe("the modals (SAG-143, SAG-145)", () => {
+  const asking = (action: string, fields: Record<string, unknown> = {}) => ({
+    confirm: { id, action },
+    reports: [report(fields)],
+  });
+
+  it("asks before removing a picture, with a way back and one button that sends the removal", async () => {
+    const html = await render(<AdminModeration {...props(asking("remove"))} />);
+
+    const dialog = dialogOf(html);
     expect(dialog).toContain("Quitar la foto de bob");
     expect(dialog).toContain("también en Clerk");
     expect(intents(dialog)).toEqual(["remove"]);
@@ -181,48 +304,117 @@ describe("the moderation panel (SAG-143)", () => {
     expect(dialog).toMatch(
       /<a [^>]*href="\/admin\/moderation"[^>]*>No, volver/,
     );
-    // The buttons of the card stay behind the dialog.
-    expect(intents(html)).toEqual(["dismiss", "remove"]);
   });
 
-  it("keeps the background of the modal neutral: only the confirm button is red", async () => {
-    const html = await render(<AdminModeration {...props({ confirm: id })} />);
+  it.each([
+    ["suspend", "Suspender a bob", "Sí, suspender", "no podrá iniciar sesión"],
+    ["ban", "Banear a bob", "Sí, banear", "dejará de verse"],
+  ])(
+    "asks before %s, naming the person and what happens",
+    async (action, title, yes, effect) => {
+      const html = await render(
+        <AdminModeration
+          {...props(asking(action, { kind: "user", current: false }))}
+        />,
+      );
 
-    const dialog = html.match(/<dialog[\s\S]*<\/dialog>/)?.[0] ?? "";
-    expect(dialog.match(/bg-danger-bg/g)).toHaveLength(1);
-    expect(dialog).not.toContain("text-danger-fg mt-4");
-    expect(dialog).not.toContain('role="alert"');
-    expect(dialog).toMatch(
-      /<button [^>]*bg-danger-bg[^>]*>Sí, quitar la foto<\/button>/,
-    );
+      const dialog = dialogOf(html);
+      expect(dialog).toContain(title);
+      expect(dialog.toLowerCase()).toContain(effect);
+      expect(intents(dialog)).toEqual([action]);
+      expect(dialog).toContain(yes);
+      expect(dialog).toMatch(
+        /<a [^>]*href="\/admin\/moderation"[^>]*>No, volver/,
+      );
+    },
+  );
+
+  it("keeps the background neutral in every modal: only the confirm button is red", async () => {
+    for (const action of ["remove", "suspend", "ban"]) {
+      const html = await render(<AdminModeration {...props(asking(action))} />);
+
+      const dialog = dialogOf(html);
+      expect(dialog.match(/bg-danger-bg/g)).toHaveLength(1);
+      expect(dialog).not.toContain('role="alert"');
+      expect(dialog).toMatch(/<button [^>]*bg-danger-bg[^>]*>Sí, /);
+    }
   });
 
-  it("does not ask to remove a report that cannot be removed, even if the address says so", async () => {
+  it("does not open for an action that cannot be taken, even if the address says so", async () => {
+    const cases: [string, Record<string, unknown>][] = [
+      ["remove", { current: false }],
+      ["suspend", { protected: true }],
+      ["ban", { protected: true }],
+      ["ban", { account: "banned" }],
+    ];
+    for (const [action, fields] of cases) {
+      const html = await render(
+        <AdminModeration {...props(asking(action, fields))} />,
+      );
+
+      expect(html).not.toContain("<dialog");
+    }
+  });
+
+  it("opens for the report named and not for another", async () => {
     const html = await render(
       <AdminModeration
-        {...props({ confirm: id, reports: [report({ current: false })] })}
+        {...props({
+          confirm: { id, action: "ban" },
+          reports: [
+            report({
+              id: "0199a3c2-7d4e-7b1a-8c3f-000000000000",
+              username: "ana",
+            }),
+            report(),
+          ],
+        })}
       />,
     );
 
-    expect(html).not.toContain("<dialog");
-    expect(intents(html)).toEqual(["dismiss"]);
+    expect(dialogOf(html)).toContain("Banear a bob");
+    expect(html.match(/<dialog/g)).toHaveLength(1);
+  });
+});
+
+describe("the restricted accounts (ADR-040)", () => {
+  const accounts = [
+    {
+      id: "u1",
+      username: "carl",
+      state: "banned",
+      changedAt: Date.parse("2026-11-06T10:00:00Z"),
+    },
+    { id: "u2", username: "dana", state: "suspended", changedAt: null },
+  ];
+
+  it("lists them with their state and a button to lift each, which names the account", async () => {
+    const html = await render(<AdminModeration {...props({ accounts })} />);
+
+    expect(html).toContain("Cuentas suspendidas o baneadas");
+    expect(html).toContain("Baneada");
+    expect(html).toContain("Suspendida");
+    expect(html).toMatch(/<a [^>]*href="\/u\/carl"/);
+    expect(intents(html).filter((i) => i === "lift")).toHaveLength(2);
+    expect(html).toContain('name="id" value="u1"');
+    expect(html).toContain('name="id" value="u2"');
+    expect(html).toContain(">Levantar<");
   });
 
+  it("says there are none when there are none", async () => {
+    const html = await render(<AdminModeration {...props()} />);
+
+    expect(html).toContain("No hay cuentas suspendidas ni baneadas.");
+    expect(intents(html)).not.toContain("lift");
+  });
+});
+
+describe("the rest of the page", () => {
   it("sends the id and the action as hidden fields of a POST, and nothing else", async () => {
     const html = await render(<AdminModeration {...props()} />);
 
     expect(html).toMatch(/<form [^>]*method="post"/);
     expect(html).toContain(`name="id" value="${id}"`);
-  });
-
-  it("says a reason that has no text instead of breaking", async () => {
-    const html = await render(
-      <AdminModeration
-        {...props({ reports: [report({ reason: "copyright" })] })}
-      />,
-    );
-
-    expect(html).toContain("Motivo sin texto");
   });
 
   it("lists the uploads with their answer, their score and the date", async () => {
@@ -255,16 +447,26 @@ describe("the moderation panel (SAG-143)", () => {
     expect(html).toContain("Aceptada, cerca del límite");
   });
 
-  it("says what happened, and why an action did not", async () => {
-    const done = await render(
-      <AdminModeration {...props({ notice: "restored" })} />,
-    );
-    const failed = await render(
-      <AdminModeration {...props({ error: "failed" })} />,
-    );
-
-    expect(done).toMatch(/role="status"[^>]*>[^<]*se muestra otra vez/);
-    expect(failed).toMatch(/role="alert"[^>]*>[^<]*Clerk no quitó la foto/);
+  it("says what happened, and why an action did not, for each new word", async () => {
+    const notices: [string, string][] = [
+      ["warned", "Aviso enviado"],
+      ["suspended", "Cuenta suspendida"],
+      ["banned", "Cuenta baneada"],
+      ["lifted", "Se levantó la restricción"],
+    ];
+    for (const [notice, text] of notices) {
+      const html = await render(<AdminModeration {...props({ notice })} />);
+      expect(html).toMatch(new RegExp(`role="status"[^>]*>[^<]*${text}`));
+    }
+    const errors: [string, string][] = [
+      ["failed", "Clerk no hizo el cambio"],
+      ["not_allowed", "no se puede actuar sobre ella"],
+      ["picture_hidden", "primero restáurala o quítala"],
+    ];
+    for (const [error, text] of errors) {
+      const html = await render(<AdminModeration {...props({ error })} />);
+      expect(html).toMatch(new RegExp(`role="alert"[^>]*>[^<]*${text}`));
+    }
   });
 
   it("says there is nothing to review when there is nothing", async () => {
@@ -274,14 +476,13 @@ describe("the moderation panel (SAG-143)", () => {
     expect(html).toContain("No hay intentos que revisar.");
   });
 
-  it("links both sections of the administration with plain anchors", async () => {
+  it("shows the sections of the administration as tabs, with plain anchors", async () => {
     const html = await render(<AdminModeration {...props()} />);
 
     expect(html).toMatch(/<a [^>]*href="\/admin\/sagas"/);
     expect(html).toMatch(
       /<a [^>]*href="\/admin\/moderation"[^>]*aria-current="page"/,
     );
-    // They are tabs: the chosen one is filled, the other has a border.
     expect(html).toMatch(
       /<a [^>]*href="\/admin\/moderation"[^>]*class="[^"]*bg-accent/,
     );
@@ -291,10 +492,16 @@ describe("the moderation panel (SAG-143)", () => {
   });
 
   it("is written in English for an English page", async () => {
-    const html = await render(<AdminModeration {...props()} />, "en");
+    const html = await render(
+      <AdminModeration {...props({ reports: [personReport()] })} />,
+      "en",
+    );
 
     expect(html).toContain("Open reports");
-    expect(html).toContain("Dismiss");
-    expect(html).toContain("Remove the picture");
+    expect(html).toContain("About the person");
+    expect(html).toContain(">Warn<");
+    expect(html).toContain(">Suspend<");
+    expect(html).toContain(">Ban<");
+    expect(html).toContain("Suspended or banned accounts");
   });
 });

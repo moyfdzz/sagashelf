@@ -212,6 +212,68 @@ describe("the inbox of notifications (SAG-102)", () => {
       ]);
     });
 
+    it("tells a person that an administrator warned them, with the kind and the reason and a link to the rules (ADR-040)", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({
+          type: "moderation.warning",
+          payload: { kind: "picture", reason: "violent" },
+        }),
+        row({
+          id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70",
+          type: "moderation.warning",
+          payload: { kind: "user", reason: "harassment" },
+        }),
+      ]);
+
+      const result = await load();
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: notificationId,
+          title: "report.warning.picture",
+          which: "report.reasons.violent",
+          href: "/community",
+          read: false,
+        }),
+        expect.objectContaining({
+          title: "report.warning.user",
+          which: "report.reasons.harassment",
+          href: "/community",
+        }),
+      ]);
+    });
+
+    it("says nothing in a warning of who reported or what the picture was", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({
+          type: "moderation.warning",
+          payload: {
+            kind: "picture",
+            reason: "violent",
+            reporter: "ana",
+            pictureUrl: "https://img.clerk.com/secretish",
+          },
+        }),
+      ]);
+
+      const result = await load();
+
+      expect(JSON.stringify(result.items)).not.toContain("ana");
+      expect(JSON.stringify(result.items)).not.toContain("secretish");
+    });
+
+    it("leaves out a warning it cannot read", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({ type: "moderation.warning", payload: { kind: "list" } }),
+        row({
+          type: "moderation.warning",
+          payload: { kind: "user", reason: "nope" },
+        }),
+      ]);
+
+      expect((await load()).items).toEqual([]);
+    });
+
     it("leaves out a report it cannot read", async () => {
       mocks.listNotifications.mockResolvedValue([
         row({ type: "report.created", payload: { kind: "list" } }),
