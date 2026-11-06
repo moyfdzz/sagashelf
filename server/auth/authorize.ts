@@ -1,8 +1,18 @@
 export type Role = "user" | "moderator" | "admin";
 
-export type SessionUser = { id: string; clerkId: string; role: Role };
+export type SessionUser = {
+  id: string;
+  clerkId: string;
+  role: Role;
+  /**
+   * True when an administrator suspended or banned the account (SAG-148, ADR-040). The state is
+   * read from our own table on every request, so it does not depend on the session that Clerk
+   * already issued, nor on how long a lock of Clerk lasts.
+   */
+  restricted?: boolean;
+};
 
-export type Denial = "signed_out" | "no_account" | "forbidden";
+export type Denial = "signed_out" | "no_account" | "restricted" | "forbidden";
 
 export type AuthResult =
   { ok: true; user: SessionUser } | { ok: false; reason: Denial };
@@ -29,6 +39,8 @@ export async function authorize(
 
   const user = await deps.findUser(clerkId);
   if (!user) return { ok: false, reason: "no_account" };
+  // Before the role: a restricted person gets nothing that needs a session, whatever they are.
+  if (user.restricted) return { ok: false, reason: "restricted" };
 
   if (role === "admin") {
     // The administrator signs in with Google, which carries the 2-step verification.

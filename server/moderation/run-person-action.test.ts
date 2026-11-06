@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   banUser: vi.fn(),
   lockUser: vi.fn(),
   unlockUser: vi.fn(),
+  getUser: vi.fn(),
 }));
 
 vi.mock("../db/account-actions", () => ({
@@ -36,6 +37,7 @@ const clerk = {
   unbanUser: vi.fn(),
   lockUser: mocks.lockUser,
   unlockUser: mocks.unlockUser,
+  getUser: mocks.getUser,
 } as unknown as ClerkUsers;
 
 const actor = "admin-1";
@@ -63,6 +65,7 @@ beforeEach(() => {
   mocks.findPersonByUsername.mockResolvedValue(person());
   mocks.warnPerson.mockResolvedValue(true);
   mocks.restrictAccount.mockResolvedValue(true);
+  mocks.getUser.mockResolvedValue({ locked: false });
   for (const call of [mocks.banUser, mocks.lockUser, mocks.unlockUser]) {
     call.mockResolvedValue({});
   }
@@ -118,12 +121,11 @@ describe("a warning to a person with no report (SAG-146)", () => {
 });
 
 describe("suspending and banning a person with no report (SAG-146)", () => {
-  it("locks in Clerk first and then keeps the state here, with the note", async () => {
+  it("keeps the state here, with the note, and asks nothing of Clerk", async () => {
     expect(
       await run({ intent: "suspend_person", username, note: "spam in lists" }),
     ).toBe("person=bob_reads&notice=suspended");
 
-    expect(mocks.lockUser).toHaveBeenCalledWith("clerk_9");
     expect(mocks.restrictAccount).toHaveBeenCalledWith(
       db,
       actor,
@@ -131,7 +133,10 @@ describe("suspending and banning a person with no report (SAG-146)", () => {
       "suspended",
       "spam in lists",
     );
-    expect(order(mocks.lockUser)).toBeLessThan(order(mocks.restrictAccount));
+    // The app enforces a suspension on every request, and the lock of Clerk expires (SAG-148).
+    for (const call of Object.values(clerk)) {
+      expect(call).not.toHaveBeenCalled();
+    }
   });
 
   it("bans in Clerk first and then keeps the state here", async () => {
@@ -151,14 +156,26 @@ describe("suspending and banning a person with no report (SAG-146)", () => {
     expect(order(mocks.banUser)).toBeLessThan(order(mocks.restrictAccount));
   });
 
-  it("unlocks a suspended account before banning it", async () => {
+  it("releases an old lock of a suspended account before banning it", async () => {
+    mocks.findPersonByUsername.mockResolvedValue(
+      person({ state: "suspended" }),
+    );
+    mocks.getUser.mockResolvedValue({ locked: true });
+
+    await run({ intent: "ban_person", username });
+
+    expect(order(mocks.unlockUser)).toBeLessThan(order(mocks.banUser));
+  });
+
+  it("does not unlock a suspended account that has no lock", async () => {
     mocks.findPersonByUsername.mockResolvedValue(
       person({ state: "suspended" }),
     );
 
     await run({ intent: "ban_person", username });
 
-    expect(order(mocks.unlockUser)).toBeLessThan(order(mocks.banUser));
+    expect(mocks.unlockUser).not.toHaveBeenCalled();
+    expect(mocks.banUser).toHaveBeenCalledWith("clerk_9");
   });
 
   it("does not suspend what is suspended or banned, nor ban what is banned", async () => {
@@ -181,10 +198,10 @@ describe("suspending and banning a person with no report (SAG-146)", () => {
     expect(mocks.restrictAccount).not.toHaveBeenCalled();
   });
 
-  it("changes nothing here when Clerk refuses", async () => {
-    mocks.lockUser.mockRejectedValue(new Error("boom"));
+  it("changes nothing here when Clerk refuses the ban", async () => {
+    mocks.banUser.mockRejectedValue(new Error("boom"));
 
-    expect(await run({ intent: "suspend_person", username })).toBe(
+    expect(await run({ intent: "ban_person", username })).toBe(
       "person=bob_reads&error=failed",
     );
     expect(mocks.restrictAccount).not.toHaveBeenCalled();

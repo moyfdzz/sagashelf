@@ -421,6 +421,13 @@
     "updated": "Last updated: {{date}}",
     "consent": "By continuing you accept the <terms>Terms of use</terms>, the <privacy>Privacy policy</privacy> and the <community>Community rules</community>."
   },
+  "restricted": {
+    "title": "Your account is restricted",
+    "body": "An administrator suspended or banned your account for breaking the community rules. While it lasts, you cannot use what needs an account.",
+    "contact": "If you think this is a mistake, write to us at",
+    "rules": "Read the community rules",
+    "signOut": "Sign out"
+  },
   "community": {
     "title": "Community rules",
     "description": "How to get along on SagaShelf: what we expect from everyone and what is not allowed.",

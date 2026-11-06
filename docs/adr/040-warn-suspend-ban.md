@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-06
 - **Implementation:** Done (SAG-143, second PR), not tried in production yet
-- **Tickets:** SAG-143, SAG-145, SAG-146
+- **Tickets:** SAG-143, SAG-145, SAG-146, SAG-148
 - **Related:** [ADR-039](039-moderation-panel.md), [ADR-038](038-reports-and-picture-records.md), [ADR-031](031-social-graph.md), [ADR-007](007-background-work-cron-and-outbox.md)
 
 ## Context
@@ -16,11 +16,13 @@ The panel of ADR-039 could dismiss a report and act on a picture, but a report o
 
 **Warning** is a notification, not an email (the app sends none). The administrator picks a reason from the list of the kind of the report (the same reasons as the report form, never free text), starting on the reason of the report. The person gets a row of `notifications` of the type `moderation.warning` with exactly the kind and the reason, so it says nothing of who reported, which report or which picture. The page of notifications draws a fixed text in the language of the person, with the reason and a link to the community rules. A warning resolves its report. It is refused while the reported picture is hidden: that one is restored or removed first, or the picture would stay hidden with no open report. The type needed a new value in `notifications_type_check`.
 
-**Suspending** locks the account in Clerk (`lockUser`) and keeps `users.moderation_status = 'suspended'`. It has **no timer**: it lasts until an administrator lifts it from the list of restricted accounts. Clerk's `lockUser` takes only the user id, so a timer would need a job to lift it, and the crons are full: of the 50 subrequests, the first uses 49, the second up to 24 and the third 43 (`docs/agent-notes.md`). The profile stays visible. A timer can be added later with its own job.
+**The app enforces the state, not Clerk (SAG-148).** `findUser` in `server/auth/require.ts` reads `users.moderation_status` on every request. A suspended or banned person is refused by everything that needs a session (`requireUser` and `requireRole` redirect to `/account-restricted`, as a new document) and is a visitor for the public pages that look at who is signed in (`getOptionalUser`). It does not depend on the session that Clerk already issued, so a person who is signed in loses access on the next request, and it does not depend on how long Clerk keeps a lock. The page `/account-restricted` is the same for every account (nothing about why or who), gives the contact address of the community rules and a button to sign out. A restricted person cannot export or delete their account from the app, since those routes need a session: deleting would free the username and the email, which is a way around a ban. They write to the contact address.
 
-**Banning** bans the account in Clerk (`banUser`) and keeps `moderation_status = 'banned'`. Banning an account that is suspended unlocks it first, so lifting the ban leaves nothing locked. The profile stops being seen: the level of the profile is put at `private`, and the level it had is kept in `users.privacy_before_ban` to be given back when the ban is lifted. This reuses the one policy of ADR-031 (`private` means nobody sees it, not even that it exists), so every screen that shows a person hides it without touching dozens of queries. The account is not erased: its row, username and canonical email stay reserved, so the same email cannot create another account here.
+**Suspending** keeps `users.moderation_status = 'suspended'` and asks nothing of Clerk. It has **no timer**: it lasts until an administrator lifts it from the list of restricted accounts. The first version (SAG-143) also locked the account in Clerk (`lockUser`) and said that this had no timer. That was wrong: the type definitions of Clerk say a lock lasts "until the lock expires or is manually unlocked. By default, lockout duration is 1 hour", it does not end the sessions that are open, and the sign-in page shows "try again in 59 minutes", which explains nothing. The owner found it trying the panel in production. The lock was dropped. A timer for a suspension can be added later with a job of its own, and the crons are full: of the 50 subrequests, the first uses 49, the second up to 24 and the third 43 (`docs/agent-notes.md`). The profile stays visible.
 
-**Lifting** unlocks or unbans in Clerk and gives the account back, and the profile its level. A level the person changed after a suspension is not overwritten, since a suspension never touched it.
+**Banning** bans the account in Clerk (`banUser`, which does not expire) and keeps `moderation_status = 'banned'`; the app refuses it from the next request, as with a suspension. Banning an account that is suspended releases a lock of Clerk first if it has one (an earlier version made them), so lifting the ban leaves nothing locked. The profile stops being seen: the level of the profile is put at `private`, and the level it had is kept in `users.privacy_before_ban` to be given back when the ban is lifted. This reuses the one policy of ADR-031 (`private` means nobody sees it, not even that it exists), so every screen that shows a person hides it without touching dozens of queries. The account is not erased: its row, username and canonical email stay reserved, so the same email cannot create another account here.
+
+**Lifting** unbans a banned account in Clerk, releases a lock of Clerk on a suspended one if it has one (it asks Clerk first, so it does not fail on an account that is not locked), and gives the account back, and the profile its level. A level the person changed after a suspension is not overwritten, since a suspension never touched it.
 
 **Order.** Clerk goes first, then one statement here that changes the account, resolves the reports and writes the audit row. If Clerk refuses, nothing changes here. If the write here fails after Clerk did, asking again repeats Clerk's call, which changes nothing, and writes.
 
@@ -44,7 +46,7 @@ The panel of ADR-039 could dismiss a report and act on a picture, but a report o
 
 - A banned person who deletes the account from the Clerk dashboard is erased as any other, which frees their username and email. Nothing here stops that.
 - The page "Reglas de la comunidad" already says that accounts can be suspended or erased and gives a contact email, which is also how a person can ask for a review. There is no appeal form.
-- A banned or suspended person's existing sessions: Clerk is expected to end them on lock and ban. **Not verified**; the owner tries it in production with a test account.
+- The sessions of a restricted person stay valid in Clerk, and the app ignores them: every request asks our table. Clerk's own pages (sign-in, the user menu) still work for them, which is how they sign out.
 - If the administrator changes an account in the Clerk dashboard, the state here does not follow, since the sync of events does not read it.
 - The migration 0027 adds two columns and a level to `users` and a value to the check of `notifications`; it changes no data.
 
@@ -55,4 +57,4 @@ The panel of ADR-039 could dismiss a report and act on a picture, but a report o
 
 ## References
 
-- `@clerk/backend` (the version in `package.json`), `UserApi`: `banUser`, `unbanUser`, `lockUser` and `unlockUser`, each taking the user id. Read from the type definitions on 2026-11-06.
+- `@clerk/backend` (the version in `package.json`), `UserApi`: `banUser`, `unbanUser`, `lockUser` and `unlockUser`, each taking the user id. The comment of `lockUser` says: "they are not allowed to sign in again until the lock expires or is manually unlocked. By default, lockout duration is 1 hour". Read from the type definitions on 2026-11-06.

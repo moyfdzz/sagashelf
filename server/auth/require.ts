@@ -5,17 +5,27 @@ import { data, redirectDocument, type LoaderFunctionArgs } from "react-router";
 
 import { authorize, type Role, type SessionUser } from "./authorize";
 import { signInPath } from "./sign-in-url";
+
+/** Where a suspended or banned person is sent: a page that says why and lets them sign out. */
+export const restrictedPath = "/account-restricted";
 import { getClerkKeys, getDb } from "../runtime-env";
 import { users } from "../db/schema";
 
 async function findUser(clerkId: string): Promise<SessionUser | null> {
   const db = await getDb();
   const [row] = await db
-    .select({ id: users.id, clerkId: users.clerkId, role: users.role })
+    .select({
+      id: users.id,
+      clerkId: users.clerkId,
+      role: users.role,
+      status: users.moderationStatus,
+    })
     .from(users)
     .where(eq(users.clerkId, clerkId))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  const { status, ...user } = row;
+  return status === "active" ? user : { ...user, restricted: true };
 }
 
 async function hasVerifiedGoogle(clerkId: string): Promise<boolean> {
@@ -48,6 +58,10 @@ async function guard(args: LoaderFunctionArgs, role?: Role) {
     // page would leave a blank screen.
     throw redirectDocument(signInPath(args.request.url));
   }
+  if (result.reason === "restricted") {
+    // A page that says why, and lets the person sign out. A whole new document, like the sign-in.
+    throw redirectDocument(restrictedPath);
+  }
   // Same answer for "no account" and "wrong role": it does not tell which one failed.
   throw data({ error: "forbidden" }, { status: 403 });
 }
@@ -61,7 +75,10 @@ export async function getOptionalUser(
 ): Promise<SessionUser | null> {
   if (!getClerkKeys()) return null;
   const { userId } = await getAuth(args);
-  return userId ? findUser(userId) : null;
+  if (!userId) return null;
+  const user = await findUser(userId);
+  // A restricted person is a visitor for the pages that only look at who is signed in.
+  return user?.restricted ? null : user;
 }
 
 /** The signed-in user from our own table, or a redirect to sign in, or 403. */

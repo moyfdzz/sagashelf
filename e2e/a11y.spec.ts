@@ -6,6 +6,7 @@ const pages = [
   { name: "privacy", path: "/privacy" },
   { name: "terms", path: "/terms" },
   { name: "community", path: "/community" },
+  { name: "account restricted", path: "/account-restricted" },
   { name: "credits", path: "/credits" },
   { name: "404", path: "/does-not-exist" },
 ];
