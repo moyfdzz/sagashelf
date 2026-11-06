@@ -1150,7 +1150,8 @@
         "dismiss": "Descartar",
         "restore": "Restaurar la foto",
         "remove": "Quitar la foto",
-        "removeConfirm": "¿Quitar la foto de {{username}}? Se borra también en Clerk y no se puede deshacer.",
+        "removeTitle": "Quitar la foto de {{username}}",
+        "removeConfirm": "La foto se borra también en Clerk y no se puede deshacer.",
         "removeYes": "Sí, quitar la foto",
         "removeNo": "No, volver"
       },

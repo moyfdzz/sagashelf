@@ -1150,7 +1150,8 @@
         "dismiss": "Dismiss",
         "restore": "Restore the picture",
         "remove": "Remove the picture",
-        "removeConfirm": "Remove the picture of {{username}}? It is deleted in Clerk too and this cannot be undone.",
+        "removeTitle": "Remove the picture of {{username}}",
+        "removeConfirm": "The picture is deleted in Clerk too and this cannot be undone.",
         "removeYes": "Yes, remove the picture",
         "removeNo": "No, go back"
       },
