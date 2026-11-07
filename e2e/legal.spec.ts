@@ -21,6 +21,11 @@ const pages = [
     es: { title: "Créditos" },
     en: { title: "Credits" },
   },
+  {
+    path: "/contact",
+    es: { title: "Contacto" },
+    en: { title: "Contact" },
+  },
 ];
 
 for (const [locale, key] of [

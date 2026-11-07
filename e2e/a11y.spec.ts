@@ -8,6 +8,8 @@ const pages = [
   { name: "community", path: "/community" },
   { name: "account restricted", path: "/account-restricted" },
   { name: "credits", path: "/credits" },
+  { name: "contact", path: "/contact" },
+  { name: "contact, message sent", path: "/contact?sent=1" },
   { name: "404", path: "/does-not-exist" },
 ];
 

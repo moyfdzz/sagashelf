@@ -46,7 +46,8 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [040](040-warn-suspend-ban.md)                   | Warning, suspending and banning an account                                                | Accepted | Done (SAG-143)                        |
 | [041](041-ban-when-clerk-plan-has-no-ban.md)     | A ban carries on when Clerk's plan has no ban                                             | Accepted | Done (SAG-153)                        |
 | [042](042-moderation-panel-time-zone.md)         | The moderation panel shows times in Monterrey                                             | Accepted | Done (SAG-154)                        |
-| [043](043-report-again-after-an-answer.md)       | A person can report the same thing again after an answer                                  | Accepted | Partial (SAG-147)                     |
+| [043](043-report-again-after-an-answer.md)       | A person can report the same thing again after an answer                                  | Accepted | Done (SAG-147)                        |
+| [044](044-contact-page.md)                       | A contact page, with the messages kept in the database                                    | Accepted | Done (SAG-110)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

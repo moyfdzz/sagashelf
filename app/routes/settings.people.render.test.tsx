@@ -179,7 +179,7 @@ describe("the legal pages after the profiles (SAG-107)", () => {
   });
 
   it("show the new date, in both languages", async () => {
-    expect(await render(<Privacy />)).toContain("5 de noviembre de 2026");
-    expect(await render(<Terms />, "en")).toContain("November 5, 2026");
+    expect(await render(<Privacy />)).toContain("6 de noviembre de 2026");
+    expect(await render(<Terms />, "en")).toContain("November 6, 2026");
   });
 });

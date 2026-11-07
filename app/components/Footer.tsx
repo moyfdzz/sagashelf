@@ -23,6 +23,9 @@ export function Footer() {
         <Link to="/credits" className={linkClass}>
           {t("footer.credits")}
         </Link>
+        <Link to="/contact" className={linkClass}>
+          {t("footer.contact")}
+        </Link>
       </nav>
     </footer>
   );

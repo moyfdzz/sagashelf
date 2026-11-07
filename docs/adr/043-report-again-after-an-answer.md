@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-06
-- **Implementation:** Done (SAG-147), migration 0028 not applied in production yet
+- **Implementation:** Done (SAG-147), migration 0028 applied in production on 2026-11-06
 - **Tickets:** SAG-147
 - **Related:** [ADR-038](038-reports-and-picture-records.md) (this changes only the part about who can report again), [ADR-040](040-warn-suspend-ban.md)
 
