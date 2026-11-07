@@ -42,7 +42,11 @@ vi.mock("~server/runtime-env", () => ({
   getClerkWebhookSecret: mocks.getClerkWebhookSecret,
 }));
 
-type Who = "user" | "optional" | "admin" | "none" | "signature";
+/**
+ * `anyone` is a form that a visitor and a signed-in person can both send (the contact page): a
+ * visitor is not sent to sign in, and is limited under a key of their own.
+ */
+type Who = "user" | "optional" | "anyone" | "admin" | "none" | "signature";
 
 type Row = {
   /** The route file, as it is in `app/routes`. */
@@ -64,6 +68,13 @@ const rows: Row[] = [
     params: {},
     who: "none",
     limitKey: "locale",
+  },
+  {
+    file: "contact.tsx",
+    path: "/contact",
+    params: {},
+    who: "anyone",
+    limitKey: "contact:user-1",
   },
   {
     file: "library.$mediaId.tsx",
@@ -369,6 +380,32 @@ describe.each(rows)("$file", (row) => {
       expect(mocks.getDb).not.toHaveBeenCalled();
     });
   }
+});
+
+describe("a form anyone can send (the contact page, SAG-110)", () => {
+  const contact = rows.find((row) => row.file === "contact.tsx");
+  if (!contact) throw new Error("no row for contact.tsx");
+
+  it("limits a visitor under a key of their own, before the form is read or the database opened", async () => {
+    mocks.getOptionalUser.mockResolvedValue(null);
+    mocks.limit.mockResolvedValue({ success: false });
+
+    const result = await run(contact, post(contact));
+
+    expect(statusOf(result.value)).toBe(429);
+    expect(mocks.limit.mock.calls[0]?.[0].key).toBe("contact:visitor:unknown");
+    expect(mocks.getDb).not.toHaveBeenCalled();
+  });
+
+  it("does not send a visitor to sign in: it goes on to read the form", async () => {
+    mocks.getOptionalUser.mockResolvedValue(null);
+
+    const result = await run(contact, post(contact));
+
+    // The table posts a form with no fields, which is refused as a form, not as a visitor.
+    expect(statusOf(result.value)).toBe(400);
+    expect(mocks.limit).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("what some routes ask between the session and the limit", () => {

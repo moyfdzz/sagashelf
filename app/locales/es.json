@@ -415,7 +415,8 @@
     "privacy": "Política de privacidad",
     "terms": "Términos de uso",
     "community": "Reglas de la comunidad",
-    "credits": "Créditos"
+    "credits": "Créditos",
+    "contact": "Contacto"
   },
   "legal": {
     "updated": "Última actualización: {{date}}",
@@ -518,6 +519,7 @@
       "profile": "Perfil: el nombre para mostrar, la biografía, el idioma, tu nivel de privacidad y la foto que elijas. Antes de enviar una foto, tu navegador la recorta y la reduce, lo que también quita datos que el archivo puede llevar, como el lugar donde se tomó.",
       "library": "Biblioteca: por cada título que guardas, su estado, tu progreso, tu puntuación, las fechas en que lo empezaste y lo terminaste, cuántas veces lo has vuelto a ver, tus notas y un nivel de visibilidad (privado de forma predeterminada). Si cambias el nivel de una entrada, la verán las personas que ese nivel permita (consulta «Quién ve tu perfil»). Tus notas no las ve nadie más.",
       "viewings": "Historial de visualizaciones: las fechas y las notas de cada vez que viste un título, si decides anotarlas.",
+      "contact": "Mensajes de contacto: lo que escribes en la página de contacto (el tipo de mensaje, el texto y, si no iniciaste sesión y quieres que te respondamos, el correo que dejes) se guarda para atenderlo, lo ve solo quien administra el sitio y se borra a los 90 días. Si lo enviaste con tu cuenta, también se borra cuando eliminas la cuenta y va en tu exportación de datos.",
       "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
       "analytics": "Estadísticas de uso: medimos cuántas visitas recibe cada página y qué tan rápido carga con Cloudflare Web Analytics. Según Cloudflare, no usa cookies ni almacenamiento del navegador y no identifica a cada persona: recibe sobre todo tiempos de carga y páginas vistas.",
       "social": "Relaciones: a quién sigues, a quién has bloqueado y a quién has silenciado, y las solicitudes para seguir que envías y recibes. La persona a la que silencias no lo sabe.",
@@ -560,7 +562,7 @@
     },
     "contact": {
       "title": "Contacto",
-      "body": "Escríbenos a {{email}}."
+      "body": "Escríbenos a {{email}} o usa la página de contacto, que tiene su enlace al pie de cada página."
     },
     "profile": {
       "title": "Quién ve tu perfil",
@@ -1126,6 +1128,30 @@
     "signIn": "Inicia sesión para ver tu progreso en esta saga"
   },
   "contact": {
+    "title": "Contacto",
+    "description": "Escríbenos para dar tu opinión, avisar de un problema o pedir ayuda con SagaShelf.",
+    "intro": "Cuéntanos qué piensas, qué no funciona o en qué necesitas ayuda. Lo lee una persona.",
+    "kindLabel": "¿Qué quieres decirnos?",
+    "bodyLabel": "Tu mensaje",
+    "bodyHint": "Hasta {{max}} caracteres.",
+    "signedIn": "Lo enviarás con tu cuenta, así que no necesitas dejar un correo.",
+    "emailLabel": "Tu correo (opcional)",
+    "emailHint": "Solo lo usamos para responderte. Si no lo escribes, no podremos contestarte. Se borra con el mensaje.",
+    "trapLabel": "No llenes este campo",
+    "submit": "Enviar mensaje",
+    "sent": {
+      "title": "Mensaje enviado. Gracias.",
+      "body": "Lo leeremos pronto. Si dejaste un correo, te responderemos ahí.",
+      "another": "Enviar otro mensaje"
+    },
+    "errors": {
+      "body_invalid": "Escribe un mensaje de entre 1 y {{max}} caracteres.",
+      "email_invalid": "Ese correo no parece válido. Revísalo o déjalo vacío.",
+      "invalid_request": "No pudimos leer el formulario. Inténtalo de nuevo.",
+      "limit": "Enviaste demasiados mensajes por hoy. Inténtalo de nuevo mañana."
+    },
+    "alternative": "También puedes escribir a {{email}}.",
+    "privacy": "Cómo guardamos tu mensaje",
     "kinds": {
       "feedback": "Comentario",
       "problem": "Un problema",
