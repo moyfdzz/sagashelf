@@ -192,6 +192,13 @@ const rows: Row[] = [
     limitKey: "admin:moderation:user-1",
   },
   {
+    file: "admin.messages.tsx",
+    path: "/admin/messages",
+    params: {},
+    who: "admin",
+    limitKey: "admin:messages:user-1",
+  },
+  {
     file: "admin.sagas.tsx",
     path: "/admin/sagas",
     params: {},

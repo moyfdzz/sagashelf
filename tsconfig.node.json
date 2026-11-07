@@ -10,6 +10,8 @@
     "db/**/*",
     "server/db/schema/**/*",
     "server/account/report-schema.ts",
+    "server/account/contact-schema.ts",
+    "server/db/contact-messages.ts",
     "server/db/avatar.ts",
     "server/db/picture-uploads.ts",
     "server/db/reports.ts",

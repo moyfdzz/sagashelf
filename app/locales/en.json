@@ -1125,11 +1125,50 @@
     "notHeld": "Works with no link are not in the SagaShelf catalog yet: open them from the search to track them.",
     "signIn": "Sign in to see your progress in this saga"
   },
+  "contact": {
+    "kinds": {
+      "feedback": "Feedback",
+      "problem": "A problem",
+      "help": "Help"
+    },
+    "notice": {
+      "title": "New contact message"
+    }
+  },
   "admin": {
     "nav": {
       "label": "Administration",
       "sagas": "Sagas",
-      "moderation": "Moderation"
+      "moderation": "Moderation",
+      "messages": "Messages"
+    },
+    "messages": {
+      "title": "Messages",
+      "description": "What people wrote from the contact page. Each message is deleted by itself after 90 days.",
+      "empty": "There are no messages.",
+      "fromVisitor": "Visitor",
+      "replyTo": "Reply to:",
+      "sentAt": "Sent",
+      "state": {
+        "new": "New",
+        "handled": "Handled"
+      },
+      "markHandled": "Mark as handled",
+      "reopen": "Mark as new",
+      "delete": "Delete",
+      "confirmTitle": "Delete this message?",
+      "confirmBody": "It is deleted for good and cannot be undone.",
+      "confirmYes": "Yes, delete",
+      "confirmNo": "Cancel",
+      "notices": {
+        "handled": "Message marked as handled.",
+        "reopened": "Message marked as new.",
+        "deleted": "Message deleted."
+      },
+      "errors": {
+        "invalid_request": "The action could not be read.",
+        "not_found": "That message no longer exists or was already in that state."
+      }
     },
     "moderation": {
       "title": "Moderation",

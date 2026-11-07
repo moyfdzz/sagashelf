@@ -1,3 +1,4 @@
+export * from "./contact";
 export * from "./library";
 export * from "./lists";
 export * from "./media";

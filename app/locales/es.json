@@ -1125,11 +1125,50 @@
     "notHeld": "Las obras sin enlace todavía no están en el catálogo de SagaShelf: ábrelas desde la búsqueda para seguirlas.",
     "signIn": "Inicia sesión para ver tu progreso en esta saga"
   },
+  "contact": {
+    "kinds": {
+      "feedback": "Comentario",
+      "problem": "Un problema",
+      "help": "Ayuda"
+    },
+    "notice": {
+      "title": "Nuevo mensaje de contacto"
+    }
+  },
   "admin": {
     "nav": {
       "label": "Administración",
       "sagas": "Sagas",
-      "moderation": "Moderación"
+      "moderation": "Moderación",
+      "messages": "Mensajes"
+    },
+    "messages": {
+      "title": "Mensajes",
+      "description": "Lo que escribió la gente desde la página de contacto. Cada mensaje se borra solo a los 90 días.",
+      "empty": "No hay mensajes.",
+      "fromVisitor": "Visitante",
+      "replyTo": "Responder a:",
+      "sentAt": "Enviado",
+      "state": {
+        "new": "Nuevo",
+        "handled": "Atendido"
+      },
+      "markHandled": "Marcar como atendido",
+      "reopen": "Marcar como nuevo",
+      "delete": "Borrar",
+      "confirmTitle": "¿Borrar este mensaje?",
+      "confirmBody": "Se borra del todo y no se puede deshacer.",
+      "confirmYes": "Sí, borrar",
+      "confirmNo": "Cancelar",
+      "notices": {
+        "handled": "Mensaje marcado como atendido.",
+        "reopened": "Mensaje marcado como nuevo.",
+        "deleted": "Mensaje borrado."
+      },
+      "errors": {
+        "invalid_request": "No se pudo leer la acción.",
+        "not_found": "Ese mensaje ya no existe o ya estaba en ese estado."
+      }
     },
     "moderation": {
       "title": "Moderación",

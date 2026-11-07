@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   deliverDueEvents: vi.fn(),
   announceNewEpisodes: vi.fn(),
   prunePictureUploads: vi.fn(),
+  pruneContactMessages: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -36,6 +37,9 @@ vi.mock("../runtime-env", () => ({
 }));
 vi.mock("../db/picture-uploads", () => ({
   prunePictureUploads: mocks.prunePictureUploads,
+}));
+vi.mock("../db/contact-messages", () => ({
+  pruneContactMessages: mocks.pruneContactMessages,
 }));
 vi.mock("../db/episode-alerts", () => ({
   announceNewEpisodes: mocks.announceNewEpisodes,
@@ -333,6 +337,27 @@ describe("the second Cron Trigger (SAG-90)", () => {
     expect(console.log).toHaveBeenCalledWith(
       JSON.stringify({ event: "picture_uploads.pruned", deleted: 3 }),
     );
+  });
+
+  it("deletes the old messages of the contact page too, and goes on when that fails (SAG-110)", async () => {
+    const db = { execute: vi.fn() };
+    mocks.getTvmaze.mockReturnValue({});
+    mocks.getDb.mockResolvedValue(db);
+    mocks.prunePictureUploads.mockResolvedValue(0);
+    mocks.pruneContactMessages.mockResolvedValue(2);
+    mocks.refreshNextEpisodes.mockResolvedValue({});
+
+    await runTvmazeJobs();
+
+    expect(mocks.pruneContactMessages).toHaveBeenCalledWith(db);
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "contact_messages.pruned", deleted: 2 }),
+    );
+
+    mocks.pruneContactMessages.mockRejectedValue(new TypeError("no table"));
+    mocks.refreshNextEpisodes.mockClear();
+    await expect(runTvmazeJobs()).resolves.toBeUndefined();
+    expect(mocks.refreshNextEpisodes).toHaveBeenCalled();
   });
 
   it("still looks for the episodes when deleting the records fails", async () => {
