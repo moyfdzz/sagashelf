@@ -147,7 +147,7 @@ describe("the import page", () => {
     expect(html).toContain('href="/library"');
   });
 
-  it("draws the links to other pages as buttons, not as hyperlinks", async () => {
+  it("draws the way back as a back link and the next step as a button", async () => {
     const page = await render("es", <SettingsImport {...props()} />);
     const done = await render(
       "es",
@@ -162,11 +162,15 @@ describe("the import page", () => {
 
     const back = /<a[^>]*href="\/settings\/profile#data"[^>]*>/.exec(page)?.[0];
     const library = /<a[^>]*href="\/library"[^>]*>/.exec(done)?.[0];
-    for (const tag of [back, library]) {
-      expect(tag).toContain("border-input-edge");
-      expect(tag).toContain("whitespace-nowrap");
-      expect(tag).not.toContain("underline");
-    }
+    // A back link is a link with an arrow (SAG-156), not a button.
+    expect(back).toContain("hover:text-link-hover");
+    expect(back).not.toContain("border-input-edge");
+    expect(page).toMatch(
+      /<a[^>]*href="\/settings\/profile#data"[^>]*><svg[^>]*lucide-arrow-left/,
+    );
+    expect(library).toContain("border-input-edge");
+    expect(library).toContain("whitespace-nowrap");
+    expect(library).not.toContain("underline");
   });
 
   it("shows the message of an error", async () => {

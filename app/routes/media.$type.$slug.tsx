@@ -4,6 +4,7 @@ import { data, Link, redirect } from "react-router";
 
 import { externalLinkClass, linkClass, textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
+import { BackLink } from "~/components/BackLink";
 import { TitleLibrary } from "~/components/TitleLibrary";
 import { TvmazeLink } from "~/components/TvmazeLink";
 import { WikidataLink } from "~/components/WikidataLink";
@@ -282,7 +283,7 @@ function utcDayStart(value: string): number {
  * this very page as the `Referer`, and then the loader has none, so the link is kept here from
  * the first load. A new title (another `key`) starts again.
  */
-function BackLink({
+function WayBack({
   toSearch,
   toEntry,
 }: {
@@ -295,9 +296,9 @@ function BackLink({
   if (first.toSearch) {
     return (
       <p className="mb-6">
-        <Link to={first.toSearch} className={linkClass}>
+        <BackLink to={first.toSearch} router>
           {t("media.backToSearch")}
-        </Link>
+        </BackLink>
       </p>
     );
   }
@@ -306,9 +307,7 @@ function BackLink({
       <p className="mb-6">
         {/* A plain link: the entry page has its own security policy, which only a new document
             gets. */}
-        <a href={first.toEntry} className={linkClass}>
-          {t("media.backToEntry")}
-        </a>
+        <BackLink to={first.toEntry}>{t("media.backToEntry")}</BackLink>
       </p>
     );
   }
@@ -322,7 +321,7 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
-      <BackLink
+      <WayBack
         key={item.id}
         toSearch={item.backToSearch}
         toEntry={item.backToEntry}

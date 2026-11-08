@@ -2,12 +2,8 @@ import { useTranslation } from "react-i18next";
 import { data, Form, redirect } from "react-router";
 
 import type { Route } from "./+types/u.$username.report";
-import {
-  dangerButtonClass,
-  inputClass,
-  linkClass,
-  primaryButtonClass,
-} from "~/lib/ui";
+import { BackLink } from "~/components/BackLink";
+import { dangerButtonClass, inputClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import {
   canCancelReport,
@@ -185,9 +181,7 @@ export default function Report({
         {t(`report.title.${kind}`, { name })}
       </h1>
       <p className="mt-2">
-        <a href={back} className={linkClass}>
-          {t("report.back", { name })}
-        </a>
+        <BackLink to={back}>{t("report.back", { name })}</BackLink>
       </p>
 
       {existing ? (

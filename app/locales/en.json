@@ -100,8 +100,8 @@
       "statusLabel": "Change the status",
       "failed": "The change could not be saved. Try again."
     },
-    "backToSearch": "← Back to the results",
-    "backToEntry": "← Back to my entry",
+    "backToSearch": "Back to the results",
+    "backToEntry": "Back to my entry",
     "genres": "Genres",
     "otherFormats": "Other formats of this story",
     "formats": {
@@ -1386,7 +1386,7 @@
         "wikidata": "Suggested by Wikidata"
       },
       "edit": {
-        "back": "← All sagas",
+        "back": "All sagas",
         "state": "Status",
         "draftNote": "It is a draft: visitors do not see it.",
         "publishedNote": "It is published: anyone can see it.",

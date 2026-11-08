@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+
+import { BackLink } from "~/components/BackLink";
 
 type ErrorPageProps = {
   status: number;
@@ -16,12 +17,11 @@ export function ErrorPage({ status, title, message }: ErrorPageProps) {
       <p className="text-accent text-6xl font-bold">{status}</p>
       <h1 className="mt-4 text-2xl font-semibold">{title}</h1>
       <p className="text-fg-muted mt-2">{message}</p>
-      <Link
-        to="/"
-        className="bg-accent text-accent-fg mt-8 inline-block rounded-md px-4 py-2 font-medium"
-      >
-        {t("errors.backHome")}
-      </Link>
+      <p className="mt-8">
+        <BackLink to="/" router>
+          {t("errors.backHome")}
+        </BackLink>
+      </p>
     </main>
   );
 }

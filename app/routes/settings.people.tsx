@@ -4,8 +4,9 @@ import { data, Form, useNavigation } from "react-router";
 import { z } from "zod";
 
 import type { Route } from "./+types/settings.people";
+import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
-import { secondaryButtonClass, secondaryLinkClass } from "~/lib/ui";
+import { secondaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -182,9 +183,9 @@ export default function People({
         <p className="text-fg-muted mt-2">{t("settings.people.description")}</p>
         {/* A plain link: the settings pages have a security policy of their own (ADR-018). */}
         <p className="mt-4">
-          <a href="/settings/profile" className={secondaryLinkClass}>
+          <BackLink to="/settings/profile">
             {t("settings.people.back")}
-          </a>
+          </BackLink>
         </p>
 
         {/* Always in the page, so a screen reader announces each message that appears in it. */}

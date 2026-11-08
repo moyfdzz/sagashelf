@@ -4,6 +4,7 @@ import { data, Form, useNavigation } from "react-router";
 import { z } from "zod";
 
 import type { Route } from "./+types/settings.import";
+import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import { primaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -179,9 +180,9 @@ export default function SettingsImport({
         <p>
           {/* A plain link: the settings page has its own security policy, which only a new
               document gets. */}
-          <a href="/settings/profile#data" className={secondaryLinkClass}>
+          <BackLink to="/settings/profile#data">
             {t("settings.import.back")}
-          </a>
+          </BackLink>
         </p>
         <h1 className="mt-4 text-3xl font-bold">
           {t("settings.import.title")}
