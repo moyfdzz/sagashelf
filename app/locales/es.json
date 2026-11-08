@@ -628,6 +628,7 @@
   },
   "library": {
     "title": "Mi biblioteca",
+    "listsLink": "Mis listas",
     "description": "Los títulos que sigues, con tu estado, progreso y puntuación.",
     "notes": {
       "button": "Ver las notas de {{title}}",
@@ -1168,6 +1169,7 @@
     "empty": "Aún no tienes listas.",
     "new": {
       "title": "Nueva lista",
+      "link": "Crear lista",
       "submit": "Crear lista"
     },
     "fields": {
@@ -1193,7 +1195,9 @@
     },
     "card": {
       "items_one": "{{count}} título",
-      "items_other": "{{count}} títulos"
+      "items_other": "{{count}} títulos",
+      "edit": "Editar la lista «{{name}}»",
+      "delete": "Borrar la lista «{{name}}»"
     },
     "notices": {
       "created": "Lista creada.",
@@ -1215,7 +1219,7 @@
       "delete": "Borrar lista"
     },
     "confirm": {
-      "title": "¿Borrar esta lista?",
+      "title": "¿Borrar «{{name}}»?",
       "body": "Se borra la lista con todo lo que tiene. No se puede deshacer.",
       "yes": "Sí, borrar",
       "no": "Cancelar"

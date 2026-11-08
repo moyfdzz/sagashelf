@@ -628,6 +628,7 @@
   },
   "library": {
     "title": "My library",
+    "listsLink": "My lists",
     "description": "The titles you follow, with your status, progress and score.",
     "notes": {
       "button": "See the notes of {{title}}",
@@ -1168,6 +1169,7 @@
     "empty": "You have no lists yet.",
     "new": {
       "title": "New list",
+      "link": "Create list",
       "submit": "Create list"
     },
     "fields": {
@@ -1193,7 +1195,9 @@
     },
     "card": {
       "items_one": "{{count}} title",
-      "items_other": "{{count}} titles"
+      "items_other": "{{count}} titles",
+      "edit": "Edit the list “{{name}}”",
+      "delete": "Delete the list “{{name}}”"
     },
     "notices": {
       "created": "List created.",
@@ -1215,7 +1219,7 @@
       "delete": "Delete list"
     },
     "confirm": {
-      "title": "Delete this list?",
+      "title": "Delete “{{name}}”?",
       "body": "The list is deleted with everything in it. This cannot be undone.",
       "yes": "Yes, delete",
       "no": "Cancel"

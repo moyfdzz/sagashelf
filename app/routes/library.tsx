@@ -3,6 +3,7 @@ import { data, Link } from "react-router";
 
 import type { Route } from "./+types/library";
 import {
+  forwardLinkClass,
   linkClass,
   secondaryLinkClass,
   segmentClass,
@@ -112,7 +113,13 @@ export default function Library({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="container mx-auto max-w-4xl px-4 py-10">
-      <h1 className="text-3xl font-bold">{t("library.title")}</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <h1 className="text-3xl font-bold">{t("library.title")}</h1>
+        {/* A page of the session: a plain anchor, which loads a whole new document (ADR-018). */}
+        <a href="/lists" className={`${forwardLinkClass} inline-block py-2.5`}>
+          {t("library.listsLink")}
+        </a>
+      </div>
       <p className="text-fg-muted mt-2">{t("library.description")}</p>
 
       <nav aria-label={t("library.tabs.label")} className="mt-6">

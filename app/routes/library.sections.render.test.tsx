@@ -138,6 +138,24 @@ describe("the tabs", () => {
     expect(html).toContain('href="/library?type=book"');
   });
 
+  it("links to the lists of the person, in both languages, as a plain anchor (SAG-113)", async () => {
+    const es = await render(
+      "es",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+    const en = await render(
+      "en",
+      <Library {...props({ sections: threeEntries() })} />,
+    );
+
+    // A page of the session: no `data-discover`, which only a link of the router carries (ADR-018).
+    expect(es).toMatch(/<a [^>]*href="\/lists"[^>]*>Mis listas<\/a>/);
+    expect(en).toMatch(/<a [^>]*href="\/lists"[^>]*>My lists<\/a>/);
+    expect(es.match(/<a [^>]*href="\/lists"[^>]*>/)?.[0]).not.toContain(
+      "data-discover",
+    );
+  });
+
   it("keeps the search and the filters when the tab changes, and starts every section again", async () => {
     const html = await render(
       "es",
