@@ -1169,6 +1169,8 @@
     "empty": "You have no lists yet.",
     "new": {
       "title": "New list",
+      "intro": "Give it a name and choose who can see it.",
+      "back": "My lists",
       "link": "Create list",
       "submit": "Create list"
     },

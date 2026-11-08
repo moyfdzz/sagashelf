@@ -55,6 +55,17 @@ export async function listOwnLists(
   return rows.map(toList);
 }
 
+/** How many lists the person has, for the page that makes one to know that the limit is reached. */
+export async function countOwnLists(
+  db: SqlExecutor,
+  ownerId: string,
+): Promise<number> {
+  const { rows } = await db.execute(sql`
+    SELECT count(*)::int AS made FROM lists WHERE owner_id = ${ownerId}::uuid
+  `);
+  return Number(rows[0]?.made ?? 0);
+}
+
 /** One list of the person, or null when there is none with that id that is theirs. */
 export async function getOwnList(
   db: SqlExecutor,

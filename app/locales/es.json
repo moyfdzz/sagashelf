@@ -1169,6 +1169,8 @@
     "empty": "Aún no tienes listas.",
     "new": {
       "title": "Nueva lista",
+      "intro": "Ponle un nombre y decide quién puede verla.",
+      "back": "Mis listas",
       "link": "Crear lista",
       "submit": "Crear lista"
     },

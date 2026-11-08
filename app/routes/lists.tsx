@@ -1,32 +1,19 @@
 import { rootAuthLoader } from "@clerk/react-router/server";
 import { useTranslation } from "react-i18next";
-import { data, Form, redirect } from "react-router";
+import { data, Form } from "react-router";
 
 import type { Route } from "./+types/lists";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListCard } from "~/components/lists/ListCard";
-import { ListFields, type ListValues } from "~/components/lists/ListFields";
 import { dangerButtonClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { listOwnLists } from "~server/db/lists";
-import { readForm } from "~server/http/body";
-import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
-import { checkWrite } from "~server/http/write-guard";
-import { asListId, runCreateList } from "~server/lists/actions";
-import {
-  asListNotice,
-  listVisibilities,
-  maxListDescription,
-  maxLists,
-  maxListsFormBytes,
-  maxListTitle,
-} from "~server/lists/schema";
-import { rateLimit } from "~server/rate-limit";
-import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
-
-const noValues: ListValues = { title: "", description: "", visibility: "" };
+import { mergePrivateHeaders } from "~server/http/cache";
+import { asListId } from "~server/lists/actions";
+import { asListNotice, maxLists } from "~server/lists/schema";
+import { getClerkKeys, getDb } from "~server/runtime-env";
 
 export async function loader(args: Route.LoaderArgs) {
   const user = await requireUser(args);
@@ -54,51 +41,12 @@ export async function loader(args: Route.LoaderArgs) {
     })),
     atLimit: lists.length >= maxLists,
     maxLists,
-    maxTitle: maxListTitle,
-    maxDescription: maxListDescription,
-    levels: listVisibilities,
   }));
 }
 
-const fail = (status: number) =>
-  data(
-    { error: "invalid_request" as const },
-    { status, headers: privateHeaders },
-  );
-
-/**
- * Creates a list for the person of the session and goes to its page. The checks come first and in
- * this order: the size and the `Origin`, who is writing, the rate limit, and then the form. A form
- * that was refused comes back with what was written. The work is in `runCreateList`.
- */
-export async function action(args: Route.ActionArgs) {
-  const { request } = args;
-
-  // A page on another site must not be able to make a list in somebody's name.
-  const unsafe = checkWrite(request, maxListsFormBytes);
-  if (unsafe) return fail(unsafe === "too_large" ? 413 : 403);
-
-  const user = await requireUser(args);
-  const limited = await rateLimit(
-    getWriteLimiter(),
-    request,
-    `lists:${user.id}`,
-  );
-  if (limited) return limited;
-
-  const result = await runCreateList(
-    await getDb(),
-    user.id,
-    await readForm(request, maxListsFormBytes),
-  );
-  if (result.ok) return redirect(result.to, { status: 303 });
-  return data(
-    { error: result.error, values: result.values },
-    { status: result.status, headers: privateHeaders },
-  );
-}
-
-// A page with a person's things is never kept by a shared cache, and not indexed.
+// A page with a person's things is never kept by a shared cache, and not indexed. The lists are
+// made at `/lists/new` and changed at `/lists/:id`: this page only reads them (and asks before a
+// delete, which is done by the page of the list).
 export const headers = mergePrivateHeaders;
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -108,15 +56,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export default function Lists({
-  loaderData,
-  actionData,
-}: Route.ComponentProps) {
+export default function Lists({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { lists, atLimit } = loaderData;
-  const error = actionData && "error" in actionData ? actionData.error : null;
-  const values =
-    actionData && "values" in actionData ? actionData.values : noValues;
 
   return (
     <ClerkSession
@@ -126,12 +68,21 @@ export default function Lists({
       <main className="container mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-bold">{t("lists.title")}</h1>
         <p className="text-fg-muted mt-2">{t("lists.intro")}</p>
-        {/* Goes to the heading of the form below, with no script: the next Tab is its first field. */}
-        <p className="mt-4">
-          <a href="#new-list" className={`${primaryButtonClass} inline-block`}>
-            {t("lists.new.link")}
-          </a>
-        </p>
+        {atLimit ? (
+          <p className="text-fg-muted mt-4">
+            {t("lists.errors.limit", { max: loaderData.maxLists })}
+          </p>
+        ) : (
+          <p className="mt-4">
+            {/* A page of the session: a plain anchor, which loads a whole new document (ADR-018). */}
+            <a
+              href="/lists/new"
+              className={`${primaryButtonClass} inline-block`}
+            >
+              {t("lists.new.link")}
+            </a>
+          </p>
+        )}
 
         {loaderData.notice ? (
           <p
@@ -151,40 +102,6 @@ export default function Lists({
             ))}
           </ul>
         )}
-
-        <section aria-labelledby="new-list" className="mt-10">
-          <h2 id="new-list" className="scroll-mt-6 text-xl font-semibold">
-            {t("lists.new.title")}
-          </h2>
-          {atLimit ? (
-            <p className="text-fg-muted mt-2">
-              {t("lists.errors.limit", { max: loaderData.maxLists })}
-            </p>
-          ) : (
-            <Form method="post" reloadDocument className="mt-4 space-y-6">
-              <input type="hidden" name="intent" value="create" />
-              <ListFields
-                idPrefix="new"
-                values={values}
-                error={error}
-                levels={loaderData.levels}
-                maxTitle={loaderData.maxTitle}
-                maxDescription={loaderData.maxDescription}
-              />
-              {error ? (
-                <p
-                  role="alert"
-                  className="text-danger-text text-sm font-semibold"
-                >
-                  {t(`lists.errors.${error}`, { max: loaderData.maxLists })}
-                </p>
-              ) : null}
-              <button type="submit" className={primaryButtonClass}>
-                {t("lists.new.submit")}
-              </button>
-            </Form>
-          )}
-        </section>
 
         {loaderData.confirming ? (
           <ConfirmDialog

@@ -52,7 +52,7 @@ export function ListCard({ list }: { list: ListSummary }) {
           title={edit}
           className={iconButtonClass}
         >
-          <Pencil aria-hidden="true" className="size-5" />
+          <Pencil aria-hidden="true" className="size-4" />
         </a>
         <Link
           to={`/lists?confirm=${list.id}`}
@@ -61,7 +61,7 @@ export function ListCard({ list }: { list: ListSummary }) {
           title={remove}
           className={dangerIconButtonClass}
         >
-          <Trash2 aria-hidden="true" className="size-5" />
+          <Trash2 aria-hidden="true" className="size-4" />
         </Link>
       </div>
     </li>
