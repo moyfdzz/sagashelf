@@ -4,7 +4,8 @@ import { z } from "zod";
 
 import type { Route } from "./+types/u.$username";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
-import { PosterGrid } from "~/components/PosterGrid";
+import { ProfileLists } from "~/components/lists/ProfileLists";
+import { ProfileSection } from "~/components/ProfileSection";
 import { StatusRegion } from "~/components/StatusRegion";
 import {
   dangerButtonClass,
@@ -24,7 +25,6 @@ import {
 import {
   profileStatuses,
   getProfileSections,
-  type ProfileStatus,
 } from "~server/db/profile-library";
 import {
   blockUser,
@@ -35,6 +35,7 @@ import {
 import { followUser, unfollowUser } from "~server/db/follows";
 import { getSocialCounts } from "~server/db/people-lists";
 import { findProfile } from "~server/db/profile-lookup";
+import { listViewableLists, visibleListLevels } from "~server/db/profile-lists";
 import { findMyReports } from "~server/db/reports";
 import { readForm } from "~server/http/body";
 import { posterCard } from "~server/media/poster-card";
@@ -171,15 +172,28 @@ export async function loader(args: Route.LoaderArgs) {
     return { ...base, view: "card" as const };
   }
 
-  const [counts, sections] = await Promise.all([
+  const [counts, sections, lists] = await Promise.all([
     getSocialCounts(db, owner.id),
     getProfileSections(db, owner.id, owner.privacy, relationship, locale),
+    // Only the lists this viewer may see: the strictest of the list and the profile (ADR-045).
+    listViewableLists(
+      db,
+      owner.id,
+      visibleListLevels(relationship, owner.privacy),
+    ),
   ]);
   return {
     ...base,
     view: "full" as const,
+    name,
     bio: owner.bio,
     counts,
+    lists: lists.map(({ id, title, description, items }) => ({
+      id,
+      title,
+      description,
+      items,
+    })),
     sections: profileStatuses.map((status) => ({
       status,
       total: sections[status].total,
@@ -488,9 +502,10 @@ function FullProfile({
   username: string;
 }) {
   const { t } = useTranslation();
-  const { bio, counts, sections } = loaderData;
+  const { bio, counts, sections, lists } = loaderData;
   const base = `/u/${encodeURIComponent(username)}`;
-  const empty = sections.every((section) => section.total === 0);
+  const empty =
+    lists.length === 0 && sections.every((section) => section.total === 0);
 
   return (
     <>
@@ -518,13 +533,21 @@ function FullProfile({
         </ul>
       </nav>
 
+      {lists.length > 0 ? (
+        <ProfileLists
+          lists={lists}
+          username={username}
+          name={loaderData.name}
+        />
+      ) : null}
+
       {empty ? (
         <p className="text-fg-muted mt-8">{t("profile.empty")}</p>
       ) : (
         sections
           .filter((section) => section.total > 0)
           .map((section) => (
-            <Section
+            <ProfileSection
               key={section.status}
               section={section}
               profilePath={base}
@@ -532,45 +555,5 @@ function FullProfile({
           ))
       )}
     </>
-  );
-}
-
-function Section({
-  section,
-  profilePath,
-}: {
-  section: Extract<
-    Route.ComponentProps["loaderData"],
-    { view: "full" }
-  >["sections"][number];
-  profilePath: string;
-}) {
-  const { t } = useTranslation();
-  const status: ProfileStatus = section.status;
-  const titleId = `section-${status}`;
-  return (
-    <section aria-labelledby={titleId} className="mt-8">
-      <h2 id={titleId} className="text-xl font-bold">
-        {t(`profile.sections.${status}`)}
-      </h2>
-      {section.total > section.entries.length ? (
-        <p className="text-fg-muted text-sm">
-          {t("profile.sections.shown", {
-            shown: section.entries.length,
-            total: section.total,
-          })}{" "}
-          <Link
-            to={`${profilePath}/library/${status}`}
-            aria-label={t("profile.sections.seeAllLabel", {
-              section: t(`profile.sections.${status}`),
-            })}
-            className={linkClass}
-          >
-            {t("profile.sections.seeAll")}
-          </Link>
-        </p>
-      ) : null}
-      <PosterGrid entries={section.entries} />
-    </section>
   );
 }

@@ -86,6 +86,10 @@ const rows: Row[] = [
   row("u.$username.report.tsx", "session", "/u/ana/report?target=user", {
     username: "ana",
   }),
+  row("u.$username.lists.$id.tsx", "visitor", `/u/ana/lists/${uuid}`, {
+    username: "ana",
+    id: uuid,
+  }),
   row("u.$username.$kind.tsx", "visitor", "/u/ana/followers", {
     username: "ana",
     kind: "followers",

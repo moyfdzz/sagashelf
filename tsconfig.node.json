@@ -14,6 +14,7 @@
     "server/db/contact-messages.ts",
     "server/db/lists.ts",
     "server/db/list-items.ts",
+    "server/db/profile-lists.ts",
     "server/lists/schema.ts",
     "server/db/avatar.ts",
     "server/db/picture-uploads.ts",

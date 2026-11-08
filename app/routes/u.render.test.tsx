@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
 import People from "./u.$username.$kind";
+import ProfileList from "./u.$username.lists.$id";
 import ProfileSectionPage from "./u.$username.library.$status";
 import Profile from "./u.$username";
 import { resources } from "~/locales";
@@ -23,6 +24,8 @@ vi.mock("~server/db/people-lists", () => ({
   listFriends: vi.fn(),
 }));
 vi.mock("~server/db/profile-library", () => ({}));
+vi.mock("~server/db/profile-lists", () => ({}));
+vi.mock("~server/lists/actions", () => ({}));
 
 async function render(
   element: ReactNode,
@@ -77,6 +80,8 @@ const fullData = (overrides: Record<string, unknown> = {}) => ({
   you: visitor,
   notice: null,
   view: "full" as const,
+  name: "Ana",
+  lists: [],
   bio: "I watch too much television",
   counts: { followers: 3, following: 1, friends: 1 },
   sections: [
@@ -149,6 +154,22 @@ describe("the profile page: a profile seen in full (SAG-107)", () => {
     );
 
     expect(html).toContain("Todavía no hay nada público en esta biblioteca.");
+  });
+
+  it("shows the lists with a link to each, the count of titles and no section title for none (SAG-113)", async () => {
+    const lists = [
+      { id: "list-1", title: "Best sci-fi", description: "Space", items: 4 },
+    ];
+    const html = await render(profile(fullData({ lists })));
+
+    expect(html).toContain("Listas");
+    expect(html).toContain('href="/u/ana_reads/lists/list-1"');
+    expect(html).toContain("Best sci-fi");
+    expect(html).toContain("Space");
+    expect(html).not.toContain("Todavía no hay nada público");
+    expect(await render(profile(fullData()))).not.toContain(
+      'id="section-lists"',
+    );
   });
 
   it("uses an initial when there is no picture, and the username when there is no name", async () => {
@@ -679,5 +700,68 @@ describe("the page of a section of a profile (SAG-127)", () => {
 
     expect(html).toContain("No titles here.");
     expect(html).toMatch(/<h1[^>]*>Completed<\/h1>/);
+  });
+});
+
+describe("the page of a list of somebody else (SAG-113)", () => {
+  const listPage = (loaderData: unknown) => (
+    <ProfileList
+      {...({ loaderData } as unknown as Parameters<typeof ProfileList>[0])}
+    />
+  );
+  const listData = (overrides: Record<string, unknown> = {}) => ({
+    title: "x",
+    username: "ana_reads",
+    name: "Ana",
+    isOwner: false,
+    list: {
+      id: "list-1",
+      title: "Best sci-fi",
+      description: "Space",
+      items: 1,
+    },
+    titles: [
+      {
+        mediaId: "m1",
+        title: "Arrival",
+        type: "movie",
+        year: 2016,
+        href: "/media/movie/arrival-m1",
+      },
+    ],
+    ...overrides,
+  });
+
+  it("shows the name, who made it, the description and the titles in order, as links", async () => {
+    const html = await render(listPage(listData()));
+
+    expect(html).toMatch(/<h1[^>]*>Best sci-fi<\/h1>/);
+    expect(html).toContain("Una lista de");
+    expect(html).toContain('href="/u/ana_reads"');
+    expect(html).toContain("Space");
+    expect(html).toContain('href="/media/movie/arrival-m1"');
+    expect(html).toContain("2016");
+  });
+
+  it("has no forms and no notes: it is only for reading", async () => {
+    const html = await render(listPage(listData()));
+
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain("<textarea");
+    expect(html).not.toContain("Editar esta lista");
+  });
+
+  it("gives the owner a plain link to edit it, which is a page of the session", async () => {
+    const html = await render(listPage(listData({ isOwner: true })));
+
+    expect(html).toContain('href="/lists/list-1"');
+    expect(html).toContain("Editar esta lista");
+  });
+
+  it("says when there are no titles, in English", async () => {
+    const html = await render(listPage(listData({ titles: [] })), "en");
+
+    expect(html).toContain("This list has no titles yet.");
+    expect(html).toContain("A list by");
   });
 });

@@ -48,7 +48,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [042](042-moderation-panel-time-zone.md)         | The moderation panel shows times in Monterrey                                             | Accepted | Done (SAG-154)                        |
 | [043](043-report-again-after-an-answer.md)       | A person can report the same thing again after an answer                                  | Accepted | Done (SAG-147)                        |
 | [044](044-contact-page.md)                       | A contact page, with the messages kept in the database                                    | Accepted | Done (SAG-110)                        |
-| [045](045-lists.md)                              | Lists of titles, with a soft limit and the strictest level                                | Accepted | Partial (SAG-113)                     |
+| [045](045-lists.md)                              | Lists of titles, with a soft limit and the strictest level                                | Accepted | Complete (SAG-113)                    |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 
