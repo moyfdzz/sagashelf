@@ -112,8 +112,8 @@ const rows: Row[] = [
     limitKey: "library:user-1",
   },
   {
-    file: "lists.tsx",
-    path: "/lists",
+    file: "lists.new.tsx",
+    path: "/lists/new",
     params: {},
     who: "user",
     limitKey: "lists:user-1",

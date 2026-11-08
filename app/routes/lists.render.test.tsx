@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import Lists from "./lists";
 import List from "./lists.$id";
+import NewList from "./lists.new";
 import { resources } from "~/locales";
 
 // The loaders and the actions are tested in their own files; here only the pages are drawn.
@@ -67,13 +68,28 @@ const listsProps = (
       lists: [summary()],
       atLimit: false,
       maxLists: 50,
+      ...extra,
+    },
+    actionData,
+  }) as unknown as Parameters<typeof Lists>[0];
+
+const newProps = (
+  extra: Record<string, unknown> = {},
+  actionData?: Record<string, unknown>,
+) =>
+  ({
+    loaderData: {
+      title: "Nueva lista | SagaShelf",
+      publishableKey: "pk_test_x",
+      atLimit: false,
+      maxLists: 50,
       maxTitle: 100,
       maxDescription: 500,
       levels,
       ...extra,
     },
     actionData,
-  }) as unknown as Parameters<typeof Lists>[0];
+  }) as unknown as Parameters<typeof NewList>[0];
 
 const listProps = (
   extra: Record<string, unknown> = {},
@@ -105,15 +121,13 @@ const radio = (html: string, level: string) =>
   html.match(new RegExp(`<input[^>]*value="${level}"[^>]*>`))?.[0] ?? "";
 
 describe("the page of the lists of a person (SAG-113)", () => {
-  it("offers to make the first list, private unless the person says otherwise", async () => {
+  it("says there are none, and has no form: a list is made on its own page", async () => {
     const html = await render(<Lists {...listsProps({ lists: [] })} />);
 
     expect(html).toContain("Aún no tienes listas.");
-    expect(html).toContain('name="intent" value="create"');
-    expect(html).toContain("Crear lista");
-    expect(radio(html, "private")).toContain("checked");
-    expect(radio(html, "public")).not.toContain("checked");
-    expect(radio(html, "friends")).not.toContain("checked");
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain('name="title"');
+    expect(html).not.toContain("Nueva lista");
   });
 
   it("lists each list with a link to it, who sees it and how many titles it has", async () => {
@@ -143,15 +157,19 @@ describe("the page of the lists of a person (SAG-113)", () => {
     expect(html).toContain("Slow ones");
   });
 
-  it("has a button that goes to the form of a new list, under the introduction", async () => {
+  it("has a button that goes to the page of a new list, under the introduction, as a plain anchor", async () => {
     const html = await render(<Lists {...listsProps()} />);
 
-    expect(html).toMatch(/<a [^>]*href="#new-list"[^>]*>Crear lista<\/a>/);
-    expect(html).toContain('id="new-list"');
-    expect(html.indexOf('href="#new-list"')).toBeGreaterThan(
+    const button = html.match(
+      /<a [^>]*href="\/lists\/new"[^>]*>Crear lista<\/a>/,
+    );
+    expect(button).not.toBeNull();
+    // A page of the session loads a whole new document: no `data-discover` (ADR-018).
+    expect(button?.[0]).not.toContain("data-discover");
+    expect(html.indexOf('href="/lists/new"')).toBeGreaterThan(
       html.indexOf("Agrupa títulos"),
     );
-    expect(html.indexOf('href="#new-list"')).toBeLessThan(
+    expect(html.indexOf('href="/lists/new"')).toBeLessThan(
       html.indexOf(`href="/lists/${id}"`),
     );
   });
@@ -165,18 +183,19 @@ describe("the page of the lists of a person (SAG-113)", () => {
       />,
     );
 
-    const edit = html.match(
-      new RegExp(
-        `<a [^>]*aria-label="Editar la lista «Anime»"[^>]*href="/lists/${otherId}"|<a [^>]*href="/lists/${otherId}"[^>]*aria-label="Editar la lista «Anime»"`,
-      ),
-    );
-    const remove = html.match(
-      new RegExp(
-        `<a [^>]*href="/lists\\?confirm=${otherId}"[^>]*aria-label="Borrar la lista «Anime»"|<a [^>]*aria-label="Borrar la lista «Anime»"[^>]*href="/lists\\?confirm=${otherId}"`,
-      ),
-    );
-    expect(edit).not.toBeNull();
-    expect(remove?.[0]).toContain("bg-danger-bg");
+    // The whole tag of the link that has the name, whatever the order of its attributes.
+    const tag = (label: string) =>
+      html.match(new RegExp(`<a [^>]*aria-label="${label}"[^>]*>`))?.[0] ?? "";
+    const edit = tag("Editar la lista «Anime»");
+    const remove = tag("Borrar la lista «Anime»");
+    expect(edit).toContain(`href="/lists/${otherId}"`);
+    expect(remove).toContain(`href="/lists?confirm=${otherId}"`);
+    expect(remove).toContain("bg-danger-bg");
+    expect(edit).not.toContain("bg-danger-bg");
+    // The owner chose small ones (32 px) over 40 px on 2026-11-08.
+    expect(edit).toContain("size-8");
+    expect(remove).toContain("size-8");
+    expect(html).not.toContain("size-10");
     // The icons are drawn, hidden from a screen reader, and nothing else is written in the buttons.
     expect(html.match(/<svg [^>]*aria-hidden="true"/g)?.length).toBe(4);
     expect(html).toContain("lucide-pencil");
@@ -222,10 +241,10 @@ describe("the page of the lists of a person (SAG-113)", () => {
     expect(html).not.toContain("<i>slanted");
   });
 
-  it("does not offer the form at the limit, and says why", async () => {
+  it("does not offer to make another list at the limit, and says why", async () => {
     const html = await render(<Lists {...listsProps({ atLimit: true })} />);
 
-    expect(html).not.toContain('name="intent" value="create"');
+    expect(html).not.toContain('href="/lists/new"');
     expect(html).toContain("Llegaste al límite de 50 listas");
   });
 
@@ -240,10 +259,46 @@ describe("the page of the lists of a person (SAG-113)", () => {
     }
   });
 
+  it("is written in English too", async () => {
+    const html = await render(
+      <Lists {...listsProps({ lists: [summary({ items: 1 })] })} />,
+      "en",
+    );
+
+    expect(html).toContain("My lists");
+    expect(html).toContain("1 title");
+    expect(html).toContain("Create list");
+  });
+});
+
+describe("the page that makes a list (SAG-113)", () => {
+  it("has the form, private unless the person says otherwise, and a way back", async () => {
+    const html = await render(<NewList {...newProps()} />);
+
+    expect(html).toContain("Nueva lista");
+    expect(html).toContain("Ponle un nombre y decide quién puede verla.");
+    expect(html).toContain('name="intent" value="create"');
+    expect(html).toContain("Crear lista");
+    expect(radio(html, "private")).toContain("checked");
+    expect(radio(html, "public")).not.toContain("checked");
+    expect(radio(html, "friends")).not.toContain("checked");
+    const back = html.match(/<a [^>]*href="\/lists"[^>]*>Mis listas<\/a>/);
+    expect(back?.[0]).toContain("py-2.5");
+    expect(back?.[0]).not.toContain("data-discover");
+  });
+
+  it("does not draw the form at the limit, and says why", async () => {
+    const html = await render(<NewList {...newProps({ atLimit: true })} />);
+
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain('name="intent" value="create"');
+    expect(html).toContain("Llegaste al límite de 50 listas");
+  });
+
   it("brings back what was written, with the reason, when a form was refused", async () => {
     const html = await render(
-      <Lists
-        {...listsProps(
+      <NewList
+        {...newProps(
           {},
           {
             error: "duplicate",
@@ -268,16 +323,13 @@ describe("the page of the lists of a person (SAG-113)", () => {
   });
 
   it("is written in English too", async () => {
-    const html = await render(
-      <Lists {...listsProps({ lists: [summary({ items: 1 })] })} />,
-      "en",
-    );
+    const html = await render(<NewList {...newProps()} />, "en");
 
-    expect(html).toContain("My lists");
-    expect(html).toContain("1 title");
     expect(html).toContain("New list");
+    expect(html).toContain("Give it a name and choose who can see it.");
     expect(html).toContain("Create list");
     expect(html).toContain("Who can see it");
+    expect(html).toMatch(/<a [^>]*href="\/lists"[^>]*>My lists<\/a>/);
   });
 });
 

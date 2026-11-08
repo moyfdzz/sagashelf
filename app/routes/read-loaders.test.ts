@@ -65,6 +65,7 @@ const rows: Row[] = [
   row("library.tsx", "session", "/library"),
   row("library.$mediaId.tsx", "session", `/library/${uuid}`, { mediaId: uuid }),
   row("lists.tsx", "session", "/lists"),
+  row("lists.new.tsx", "session", "/lists/new"),
   row("lists.$id.tsx", "session", `/lists/${uuid}`, { id: uuid }),
   row("notifications.tsx", "session", "/notifications"),
   row("recommendations.tsx", "session", "/recommendations"),

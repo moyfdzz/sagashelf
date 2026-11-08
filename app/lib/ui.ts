@@ -8,12 +8,14 @@ const focus =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2";
 
 /**
- * A button that is only an icon (SAG-113): a square of 40 px, the least that is easy to tap. It has
- * no text, so the element that uses it must carry an `aria-label`, and the icon is hidden from a
- * screen reader. The second is for an action that destroys something.
+ * A button that is only an icon (SAG-113): a square of 32 px, which the owner chose on 2026-11-08
+ * over 40 px as too big. It is above the 24 px that WCAG 2.2 asks of a target (2.5.8), and the
+ * space between two of them is 8 px, but it is smaller than the 40 px of the buttons with text. It
+ * has no text, so the element that uses it must carry an `aria-label`, and the icon is hidden from
+ * a screen reader. The second is for an action that destroys something.
  */
-export const iconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-10 items-center justify-center rounded-md border hover:brightness-95`;
-export const dangerIconButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} inline-flex size-10 items-center justify-center rounded-md border hover:brightness-95`;
+export const iconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-8 items-center justify-center rounded-md border hover:brightness-95`;
+export const dangerIconButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} inline-flex size-8 items-center justify-center rounded-md border hover:brightness-95`;
 
 export const primaryButtonClass = `bg-accent text-accent-fg ${focus} rounded-md px-4 py-2 font-semibold transition hover:brightness-95 disabled:opacity-60`;
 

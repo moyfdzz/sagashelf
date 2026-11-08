@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  countOwnLists,
   createList,
   deleteList,
   getOwnList,
@@ -142,6 +143,25 @@ describe("createList", () => {
     expect(
       (await createList(db, ana.id, fields({ title: "One more" }))).outcome,
     ).toBe("limit");
+  });
+});
+
+describe("countOwnLists", () => {
+  it("counts the lists of the person and no one else's", async () => {
+    const ana = await newUser();
+    const ben = await newUser();
+    await insertList(ana.id, "One");
+    await insertList(ana.id, "Two");
+    await insertList(ben.id, "Not hers");
+
+    expect(await countOwnLists(db, ana.id)).toBe(2);
+    expect(await countOwnLists(db, ben.id)).toBe(1);
+  });
+
+  it("is zero for a person with no lists", async () => {
+    const ana = await newUser();
+
+    expect(await countOwnLists(db, ana.id)).toBe(0);
   });
 });
 
