@@ -415,7 +415,8 @@
     "privacy": "Privacy policy",
     "terms": "Terms of use",
     "community": "Community rules",
-    "credits": "Credits"
+    "credits": "Credits",
+    "contact": "Contact"
   },
   "legal": {
     "updated": "Last updated: {{date}}",
@@ -518,6 +519,7 @@
       "profile": "Profile: your display name, bio, language, privacy level and the photo you choose. Before a photo is sent, your browser crops and shrinks it, which also removes data the file may carry, such as the place where it was taken.",
       "library": "Library: for each title you save, its status, your progress, your score, the dates you started and finished it, how many times you watched it again, your notes and a visibility level (private by default). If you change the level of an entry, the people that level allows will see it (see \"Who sees your profile\"). Nobody else sees your notes.",
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
+      "contact": "Contact messages: what you write on the contact page (the kind of message, the text and, if you were not signed in and want a reply, the email you leave) is kept to handle it, is seen only by whoever runs the site and is deleted after 90 days. If you sent it with your account, it is also deleted when you delete your account and is in your data export.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
       "analytics": "Usage statistics: we measure how many visits each page gets and how fast it loads with Cloudflare Web Analytics. According to Cloudflare, it uses no cookies or browser storage and does not identify each person: it mostly receives load timings and page views.",
       "social": "Relationships: whom you follow, whom you blocked and whom you muted, and the follow requests you send and receive. The person you mute does not know.",
@@ -560,7 +562,7 @@
     },
     "contact": {
       "title": "Contact",
-      "body": "Write to us at {{email}}."
+      "body": "Write to us at {{email}} or use the contact page, linked at the foot of every page."
     },
     "profile": {
       "title": "Who sees your profile",
@@ -1126,6 +1128,30 @@
     "signIn": "Sign in to see your progress in this saga"
   },
   "contact": {
+    "title": "Contact",
+    "description": "Write to us to share your opinion, report a problem or ask for help with SagaShelf.",
+    "intro": "Tell us what you think, what is not working or what you need help with. A person reads it.",
+    "kindLabel": "What do you want to tell us?",
+    "bodyLabel": "Your message",
+    "bodyHint": "Up to {{max}} characters.",
+    "signedIn": "It will be sent with your account, so you do not need to leave an email.",
+    "emailLabel": "Your email (optional)",
+    "emailHint": "We only use it to answer you. If you leave it empty, we cannot reply. It is deleted with the message.",
+    "trapLabel": "Do not fill in this field",
+    "submit": "Send message",
+    "sent": {
+      "title": "Message sent. Thank you.",
+      "body": "We will read it soon. If you left an email, we will answer there.",
+      "another": "Send another message"
+    },
+    "errors": {
+      "body_invalid": "Write a message of 1 to {{max}} characters.",
+      "email_invalid": "That email does not look valid. Check it or leave it empty.",
+      "invalid_request": "We could not read the form. Try again.",
+      "limit": "You sent too many messages today. Try again tomorrow."
+    },
+    "alternative": "You can also write to {{email}}.",
+    "privacy": "How we keep your message",
     "kinds": {
       "feedback": "Feedback",
       "problem": "A problem",
