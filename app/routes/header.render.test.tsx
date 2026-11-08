@@ -61,8 +61,9 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
     const without = hrefs(await render(<AccountMenu />));
     const withAdmin = hrefs(await render(<AccountMenu isAdmin />));
 
-    expect(without).toEqual(["/settings/profile", "/sign-out"]);
+    expect(without).toEqual(["/lists", "/settings/profile", "/sign-out"]);
     expect(withAdmin).toEqual([
+      "/lists",
       "/settings/profile",
       "/admin/sagas",
       "/sign-out",

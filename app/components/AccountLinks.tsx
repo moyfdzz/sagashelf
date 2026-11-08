@@ -49,6 +49,11 @@ export function AccountLinks({
         </li>
       ) : null}
       <li>
+        <a href="/lists" className={itemClass}>
+          {t("nav.lists")}
+        </a>
+      </li>
+      <li>
         <a href="/settings/profile" className={itemClass}>
           {t("nav.settings")}
         </a>

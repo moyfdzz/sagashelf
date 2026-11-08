@@ -37,6 +37,8 @@ export default [
   route("library/:mediaId", "routes/library.$mediaId.tsx"),
   route("library/:mediaId/step", "routes/library.$mediaId.step.ts"),
   route("library/:mediaId/status", "routes/library.$mediaId.status.ts"),
+  route("lists", "routes/lists.tsx"),
+  route("lists/:id", "routes/lists.$id.tsx"),
   route("settings/profile", "routes/settings.profile.tsx"),
   route("settings/notifications", "routes/settings.notifications.tsx"),
   route("settings/people", "routes/settings.people.tsx"),

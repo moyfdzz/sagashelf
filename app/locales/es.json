@@ -14,6 +14,7 @@
     "signOut": "Cerrar sesión",
     "search": "Buscar",
     "library": "Mi biblioteca",
+    "lists": "Mis listas",
     "social": "Social",
     "stats": "Estadísticas",
     "admin": "Administración",
@@ -1159,6 +1160,65 @@
     },
     "notice": {
       "title": "Nuevo mensaje de contacto"
+    }
+  },
+  "lists": {
+    "title": "Mis listas",
+    "intro": "Agrupa títulos como quieras y decide quién puede verlos.",
+    "empty": "Aún no tienes listas.",
+    "new": {
+      "title": "Nueva lista",
+      "submit": "Crear lista"
+    },
+    "fields": {
+      "title": "Nombre",
+      "titleHint": "Hasta {{max}} caracteres. Cada lista tiene un nombre distinto.",
+      "description": "Descripción (opcional)",
+      "descriptionHint": "Hasta {{max}} caracteres.",
+      "visibility": "Quién puede verla"
+    },
+    "visibility": {
+      "public": {
+        "label": "Pública",
+        "hint": "Quien pueda ver tu perfil."
+      },
+      "friends": {
+        "label": "Amistades",
+        "hint": "Solo las personas que son tus amistades."
+      },
+      "private": {
+        "label": "Privada",
+        "hint": "Solo tú."
+      }
+    },
+    "card": {
+      "items_one": "{{count}} título",
+      "items_other": "{{count}} títulos"
+    },
+    "notices": {
+      "created": "Lista creada.",
+      "saved": "Cambios guardados.",
+      "deleted": "Lista borrada."
+    },
+    "errors": {
+      "invalid_request": "Revisa el nombre y la descripción: el nombre no puede quedar vacío ni pasar del límite.",
+      "duplicate": "Ya tienes una lista con ese nombre.",
+      "limit": "Llegaste al límite de {{max}} listas. Borra una para crear otra.",
+      "not_found": "Esa lista ya no existe."
+    },
+    "detail": {
+      "back": "Mis listas",
+      "save": "Guardar cambios",
+      "titles": "Títulos",
+      "noTitles": "Esta lista aún no tiene títulos.",
+      "dangerTitle": "Borrar la lista",
+      "delete": "Borrar lista"
+    },
+    "confirm": {
+      "title": "¿Borrar esta lista?",
+      "body": "Se borra la lista con todo lo que tiene. No se puede deshacer.",
+      "yes": "Sí, borrar",
+      "no": "Cancelar"
     }
   },
   "admin": {
