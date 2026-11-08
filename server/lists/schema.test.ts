@@ -59,6 +59,23 @@ describe("the form of a list (SAG-113)", () => {
     ).toBe(false);
   });
 
+  it("saves the new lines of a description as one character, like the note of a title (SAG-163)", () => {
+    // 500 characters once each `\r\n` counts as one, but more than 500 as the browser sends them.
+    const typed = `${"a".repeat(maxListDescription - 4)}\r\nb\r\nc`;
+    expect(typed.length).toBeGreaterThan(maxListDescription);
+
+    const parsed = createListSchema.safeParse(create({ description: typed }));
+
+    expect(parsed.data?.description).toBe(
+      `${"a".repeat(maxListDescription - 4)}\nb\nc`,
+    );
+    expect(
+      createListSchema.safeParse(
+        create({ description: `${"a".repeat(maxListDescription)}\r\nb` }),
+      ).success,
+    ).toBe(false);
+  });
+
   it.each([
     ["an empty title", { title: "" }],
     ["a title of only spaces", { title: "   " }],
@@ -128,6 +145,16 @@ describe("the forms of the titles of a list (SAG-113)", () => {
     expect(parsed.data?.note).toBe(`${"a".repeat(maxItemNote - 4)}\nb\nc`);
     // The limit still holds once the lines are counted as one.
     expect(parse(`${"a".repeat(maxItemNote)}\r\nb`).success).toBe(false);
+  });
+
+  it("saves a lone carriage return as a new line too", () => {
+    const parsed = noteItemSchema.parse({
+      intent: "note_item",
+      mediaId: media,
+      note: "a\rb\r\nc",
+    });
+
+    expect(parsed.note).toBe("a\nb\nc");
   });
 
   it("takes a move only up or down, and only with the fields of the form", () => {

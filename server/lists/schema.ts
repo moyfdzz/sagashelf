@@ -23,6 +23,11 @@ export const maxListsFormBytes = 4 * 1024;
 
 const characters = (text: string) => [...text].length;
 
+// A browser counts a new line in a textarea as one character for `maxlength` but sends it as `\r\n`,
+// which is two; the database counts what is saved. Saving `\n` makes the two counts agree, so a text
+// the page let the person write is never refused as too long. Used by every textarea of the lists.
+const newLines = (text: string) => text.replace(/\r\n?/g, "\n");
+
 const title = z
   .string()
   .trim()
@@ -32,6 +37,7 @@ const title = z
 const description = z
   .string()
   .trim()
+  .transform(newLines)
   .refine((text) => characters(text) <= maxListDescription)
   .transform((text) => (text === "" ? null : text));
 
@@ -57,14 +63,11 @@ export const deleteListSchema = z.strictObject({
 
 const mediaId = z.uuid();
 
-// A browser counts a new line in a textarea as one character for `maxlength` but sends it as `\r\n`,
-// which is two; the database counts what is saved. Saving `\n` makes the two counts agree, so a note
-// the page let the person write is never refused as too long. An empty note is no note: the column
-// holds null, not an empty text.
+// An empty note is no note: the column holds null, not an empty text.
 const itemNote = z
   .string()
   .trim()
-  .transform((text) => text.replace(/\r\n/g, "\n"))
+  .transform(newLines)
   .refine((text) => characters(text) <= maxItemNote)
   .transform((text) => (text === "" ? null : text));
 
