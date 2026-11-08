@@ -39,10 +39,12 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
 
     expect(hrefs(html)).toEqual([
       "/u/ana_reads",
+      "/lists",
       "/settings/profile",
       "/sign-out",
     ]);
     expect(html).toMatch(/<a [^>]*href="\/u\/ana_reads"[^>]*>Perfil<\/a>/);
+    expect(html).toMatch(/<a [^>]*href="\/lists"[^>]*>Mis listas<\/a>/);
   });
 
   it("goes before the administration for an administrator, which stays above sign out", async () => {
@@ -50,6 +52,7 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
 
     expect(hrefs(html)).toEqual([
       "/u/ana_reads",
+      "/lists",
       "/settings/profile",
       "/admin/sagas",
       "/sign-out",
@@ -59,7 +62,7 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
   it("is not there without a username, instead of a link to nowhere", async () => {
     const html = await render(<AccountMenu />);
 
-    expect(hrefs(html)).toEqual(["/settings/profile", "/sign-out"]);
+    expect(hrefs(html)).toEqual(["/lists", "/settings/profile", "/sign-out"]);
     expect(html).not.toContain("Perfil");
   });
 

@@ -14,6 +14,7 @@
     "signOut": "Sign out",
     "search": "Search",
     "library": "My library",
+    "lists": "My lists",
     "social": "Social",
     "stats": "Statistics",
     "admin": "Administration",
@@ -1159,6 +1160,65 @@
     },
     "notice": {
       "title": "New contact message"
+    }
+  },
+  "lists": {
+    "title": "My lists",
+    "intro": "Group titles however you like and choose who can see them.",
+    "empty": "You have no lists yet.",
+    "new": {
+      "title": "New list",
+      "submit": "Create list"
+    },
+    "fields": {
+      "title": "Name",
+      "titleHint": "Up to {{max}} characters. Each list has a different name.",
+      "description": "Description (optional)",
+      "descriptionHint": "Up to {{max}} characters.",
+      "visibility": "Who can see it"
+    },
+    "visibility": {
+      "public": {
+        "label": "Public",
+        "hint": "Anyone who can see your profile."
+      },
+      "friends": {
+        "label": "Friends",
+        "hint": "Only the people who are your friends."
+      },
+      "private": {
+        "label": "Private",
+        "hint": "Only you."
+      }
+    },
+    "card": {
+      "items_one": "{{count}} title",
+      "items_other": "{{count}} titles"
+    },
+    "notices": {
+      "created": "List created.",
+      "saved": "Changes saved.",
+      "deleted": "List deleted."
+    },
+    "errors": {
+      "invalid_request": "Check the name and the description: the name cannot be empty or over the limit.",
+      "duplicate": "You already have a list with that name.",
+      "limit": "You reached the limit of {{max}} lists. Delete one to make another.",
+      "not_found": "That list no longer exists."
+    },
+    "detail": {
+      "back": "My lists",
+      "save": "Save changes",
+      "titles": "Titles",
+      "noTitles": "This list has no titles yet.",
+      "dangerTitle": "Delete the list",
+      "delete": "Delete list"
+    },
+    "confirm": {
+      "title": "Delete this list?",
+      "body": "The list is deleted with everything in it. This cannot be undone.",
+      "yes": "Yes, delete",
+      "no": "Cancel"
     }
   },
   "admin": {
