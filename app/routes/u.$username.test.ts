@@ -61,13 +61,7 @@ vi.mock("~server/db/profile-library", () => ({
   profileStatuses: ["in_progress", "planned", "completed"],
   getProfileSections: mocks.getProfileSections,
 }));
-vi.mock("~server/db/profile-lists", async () => ({
-  // The rule of the levels is pure, so the real one is used and only the database is replaced.
-  visibleListLevels: (
-    await vi.importActual<typeof import("~server/db/profile-lists")>(
-      "~server/db/profile-lists",
-    )
-  ).visibleListLevels,
+vi.mock("~server/db/profile-lists", () => ({
   listViewableLists: mocks.listViewableLists,
 }));
 vi.mock("~/middleware/i18next", () => ({
@@ -341,9 +335,7 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
           id: "list-1",
           title: "Best sci-fi",
           description: "Space",
-          visibility: "public",
           items: 4,
-          updatedAt: new Date(),
         },
       ]);
 
@@ -356,15 +348,16 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
       expect(JSON.stringify(result)).not.toContain("updatedAt");
     });
 
+    // Which levels that allows is worked out inside the data function and tested there, against the
+    // database (`db/profile-lists.integration.test.ts`): the route only says who is looking.
     it.each([
-      ["stranger", "public", ["public"]],
-      ["friend", "public", ["public", "friends"]],
-      ["friend", "friends", ["public", "friends"]],
-      ["owner", "friends", ["public", "friends", "private"]],
-      ["follower", "public", ["public"]],
+      ["stranger", "public"],
+      ["friend", "friends"],
+      ["owner", "private"],
+      ["follower", "public"],
     ])(
-      "asks for the lists of a %s of a %s profile with the levels %j only",
-      async (relationship, privacy, expected) => {
+      "says who is looking, a %s of a %s profile, and passes no levels",
+      async (relationship, privacy) => {
         mocks.findProfile.mockResolvedValue({
           owner: head({ privacy }),
           relationship,
@@ -373,11 +366,10 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
 
         await load();
 
-        expect(mocks.listViewableLists).toHaveBeenCalledWith(
-          db,
-          "owner-id",
-          expected,
-        );
+        expect(mocks.listViewableLists).toHaveBeenCalledWith(db, "owner-id", {
+          relationship,
+          profileLevel: privacy,
+        });
       },
     );
 

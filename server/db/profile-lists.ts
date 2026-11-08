@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 
 import type { Locale } from "../providers/types";
-import type { ListVisibility } from "../lists/schema";
 import {
   canView,
   levels,
@@ -9,7 +8,6 @@ import {
   type Relationship,
 } from "../social/can-view";
 import type { SqlExecutor } from "./clerk-sync";
-import { asDate } from "./dates";
 import { localizedTitleSql } from "./titles";
 
 /**
@@ -19,7 +17,17 @@ import { localizedTitleSql } from "./titles";
  * query, so a list the viewer may not see never leaves the database. A title is read only through
  * its list with the same filter, and the note of a title is not read at all: it is private to the
  * owner. Ask for any of this only after `findViewableProfile` found the profile.
+ *
+ * Every function takes **who is looking and the level of the profile** (`ListViewing`), never a list
+ * of levels: the levels are worked out here, once, so a route cannot forget them or pass too many
+ * (SAG-163).
  */
+
+/** Who is looking, and the privacy level of the profile they are looking at. */
+export type ListViewing = {
+  relationship: Relationship;
+  profileLevel: Level;
+};
 
 /** The levels of list that the viewer may see on this profile: the ones `canView` allows. */
 export function visibleListLevels(
@@ -39,37 +47,39 @@ export type ViewableList = {
   id: string;
   title: string;
   description: string | null;
-  visibility: ListVisibility;
   /** How many titles it holds. */
   items: number;
-  updatedAt: Date;
 };
-
-const asVisibility = (value: unknown): ListVisibility =>
-  value === "public" || value === "friends" ? value : "private";
 
 const toList = (row: Record<string, unknown>): ViewableList => ({
   id: String(row.id),
   title: String(row.title),
   description: row.description ? String(row.description) : null,
-  visibility: asVisibility(row.visibility),
   items: Number(row.items),
-  updatedAt: asDate(row.updated_at),
 });
+
+/**
+ * The lists of the owner at the allowed levels, as a statement ready to take more conditions. Both
+ * ways to read a list build on it, so the filter by level is written once.
+ */
+const viewableLists = (ownerId: string, allowed: readonly Level[]) => sql`
+  SELECT l.id, l.title, l.description,
+         (SELECT count(*)::int FROM list_items i WHERE i.list_id = l.id) AS items
+  FROM lists l
+  WHERE l.owner_id = ${ownerId}::uuid
+    AND l.visibility::text IN (${inLevels(allowed)})
+`;
 
 /** The lists of the owner that the viewer may see, the one changed last first. */
 export async function listViewableLists(
   db: SqlExecutor,
   ownerId: string,
-  allowed: readonly Level[],
+  viewing: ListViewing,
 ): Promise<ViewableList[]> {
+  const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return [];
   const { rows } = await db.execute(sql`
-    SELECT l.id, l.title, l.description, l.visibility, l.updated_at,
-           (SELECT count(*)::int FROM list_items i WHERE i.list_id = l.id) AS items
-    FROM lists l
-    WHERE l.owner_id = ${ownerId}::uuid
-      AND l.visibility::text IN (${inLevels(allowed)})
+    ${viewableLists(ownerId, allowed)}
     ORDER BY l.updated_at DESC, l.id DESC
   `);
   return rows.map(toList);
@@ -80,16 +90,13 @@ export async function getViewableList(
   db: SqlExecutor,
   ownerId: string,
   id: string,
-  allowed: readonly Level[],
+  viewing: ListViewing,
 ): Promise<ViewableList | null> {
+  const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return null;
   const { rows } = await db.execute(sql`
-    SELECT l.id, l.title, l.description, l.visibility, l.updated_at,
-           (SELECT count(*)::int FROM list_items i WHERE i.list_id = l.id) AS items
-    FROM lists l
-    WHERE l.id = ${id}::uuid
-      AND l.owner_id = ${ownerId}::uuid
-      AND l.visibility::text IN (${inLevels(allowed)})
+    ${viewableLists(ownerId, allowed)}
+      AND l.id = ${id}::uuid
   `);
   const row = rows[0];
   return row ? toList(row) : null;
@@ -107,9 +114,10 @@ export async function listViewableItems(
   db: SqlExecutor,
   ownerId: string,
   listId: string,
-  allowed: readonly Level[],
+  viewing: ListViewing,
   locale: Locale,
 ): Promise<ViewableItem[]> {
+  const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return [];
   const { rows } = await db.execute(sql`
     SELECT i.media_id, m.type, m.year, ${localizedTitleSql("m", locale)} AS title

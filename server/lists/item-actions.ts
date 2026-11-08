@@ -32,10 +32,14 @@ const itemSchema = z.discriminatedUnion("intent", [
   noteItemSchema,
 ]);
 
-/** The intents this module answers, so the route knows which module a form is for. */
-export const itemIntents = ["remove_item", "move_item", "note_item"] as const;
+/** The intents this module answers, read from the schema so they are written once. */
+export const itemIntents = itemSchema.options.map(
+  (option) => option.shape.intent.value,
+);
+export type ItemIntent = (typeof itemIntents)[number];
 
-export const isItemIntent = (value: unknown): boolean =>
+/** So the route knows which module a form is for. */
+export const isItemIntent = (value: unknown): value is ItemIntent =>
   itemIntents.some((intent) => intent === value);
 
 const refused = (error: ListItemError, status: number): ItemActionOutcome => ({
@@ -54,7 +58,7 @@ export async function runItemAction(
   const parsed = itemSchema.safeParse(form);
   if (!parsed.success) {
     return refused(
-      form.intent === "note_item" ? "invalid_note" : "invalid_request",
+      form.intent === "note_item" ? "invalid_note" : "invalid_item_request",
       400,
     );
   }

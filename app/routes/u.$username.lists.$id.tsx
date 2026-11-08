@@ -8,14 +8,10 @@ import { getInstance, getLocale } from "~/middleware/i18next";
 import { usernameShape } from "~server/account/profile-schema";
 import { getOptionalUser } from "~server/auth/require";
 import { findViewableProfile } from "~server/db/profile-lookup";
-import {
-  getViewableList,
-  listViewableItems,
-  visibleListLevels,
-} from "~server/db/profile-lists";
+import { getViewableList, listViewableItems } from "~server/db/profile-lists";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { asListId } from "~server/lists/actions";
-import { mediaPath } from "~server/media/slug";
+import { listTitleView } from "~server/lists/title-view";
 import { getDb } from "~server/runtime-env";
 
 // A list that does not exist, a bad id, a list the viewer may not see, a profile that may not be
@@ -37,13 +33,17 @@ export async function loader(args: Route.LoaderArgs) {
   if (!found) throw notFound();
   const { owner, relationship } = found;
 
-  // The levels of list this viewer may see are decided once, by the strictest of the list and the
-  // profile, and every statement below has them in its `WHERE`.
-  const allowed = visibleListLevels(relationship, owner.privacy);
-  const list = await getViewableList(db, owner.id, listId, allowed);
-  if (!list) throw notFound();
+  // The data functions work out which levels of list this viewer may see from who they are and the
+  // level of the profile (the strictest of the list and the profile, ADR-045).
+  const viewing = { relationship, profileLevel: owner.privacy };
   const locale = getLocale(context) === "en" ? "en" : "es";
-  const items = await listViewableItems(db, owner.id, listId, allowed, locale);
+  // Both statements filter by those levels, so a list the viewer may not see gives no titles
+  // either, and the 404 below drops them. Asking together saves a round trip.
+  const [list, items] = await Promise.all([
+    getViewableList(db, owner.id, listId, viewing),
+    listViewableItems(db, owner.id, listId, viewing, locale),
+  ]);
+  if (!list) throw notFound();
 
   const { t } = getInstance(context);
   return {
@@ -62,17 +62,7 @@ export async function loader(args: Route.LoaderArgs) {
       description: list.description,
       items: list.items,
     },
-    titles: items.map((item) => ({
-      mediaId: item.mediaId,
-      title: item.title,
-      type: item.type,
-      year: item.year,
-      href: mediaPath(
-        item.type as Parameters<typeof mediaPath>[0],
-        item.title,
-        item.mediaId,
-      ),
-    })),
+    titles: items.map(listTitleView),
   };
 }
 
@@ -132,13 +122,21 @@ export default function ProfileList({ loaderData }: Route.ComponentProps) {
               className="border-border bg-surface-raised rounded-md border p-4"
             >
               <p className="font-semibold break-words">
-                <Link to={item.href} className={linkClass}>
-                  {item.title}
-                </Link>
+                {item.href ? (
+                  <Link to={item.href} className={linkClass}>
+                    {item.title}
+                  </Link>
+                ) : (
+                  item.title
+                )}
               </p>
               <p className="text-fg-muted mt-1 text-sm">
-                {t(`media.kinds.${item.type as "movie"}`)}
-                {item.year ? <span className="ml-2">{item.year}</span> : null}
+                {item.type ? t(`media.kinds.${item.type}`) : null}
+                {item.year ? (
+                  <span className={item.type ? "ml-2" : undefined}>
+                    {item.year}
+                  </span>
+                ) : null}
               </p>
             </li>
           ))}

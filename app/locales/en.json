@@ -1214,6 +1214,7 @@
       "duplicate": "You already have a list with that name.",
       "limit": "You reached the limit of {{max}} lists. Delete one to make another.",
       "not_found": "That list no longer exists.",
+      "invalid_item_request": "We could not read the title's form. Reload the page and try again.",
       "invalid_note": "The note is too long. It can have up to {{max}} characters.",
       "item_not_found": "That title is no longer in the list."
     },
@@ -1247,6 +1248,7 @@
       "firstList": "Create your first list",
       "inAll": "This title is already in all your lists.",
       "inLists": "It is in:",
+      "separator": ", ",
       "added": "Title added to the list.",
       "already": "That title was already in the list.",
       "errors": {

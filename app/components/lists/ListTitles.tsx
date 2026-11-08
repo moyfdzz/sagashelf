@@ -9,11 +9,15 @@ import {
   secondaryButtonClass,
 } from "~/lib/ui";
 
+/**
+ * The kind and the address are null for a title with no page of its own (one the person made for
+ * themselves): it is drawn as plain text with no kind beside it.
+ */
 export type ListTitle = {
   mediaId: string;
   title: string;
-  href: string;
-  type: string;
+  href: string | null;
+  type: "anime" | "movie" | "series" | "book" | "manga" | null;
   year: number | null;
   note: string | null;
 };
@@ -44,13 +48,21 @@ export function ListTitles({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-semibold break-words">
-                <Link to={item.href} className={linkClass}>
-                  {item.title}
-                </Link>
+                {item.href ? (
+                  <Link to={item.href} className={linkClass}>
+                    {item.title}
+                  </Link>
+                ) : (
+                  item.title
+                )}
               </p>
               <p className="text-fg-muted mt-1 text-sm">
-                {t(`media.kinds.${item.type as "movie"}`)}
-                {item.year ? <span className="ml-2">{item.year}</span> : null}
+                {item.type ? t(`media.kinds.${item.type}`) : null}
+                {item.year ? (
+                  <span className={item.type ? "ml-2" : undefined}>
+                    {item.year}
+                  </span>
+                ) : null}
               </p>
             </div>
             <div className="flex shrink-0 gap-2">

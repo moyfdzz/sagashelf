@@ -23,6 +23,11 @@ export const maxListsFormBytes = 4 * 1024;
 
 const characters = (text: string) => [...text].length;
 
+// A browser counts a new line in a textarea as one character for `maxlength` but sends it as `\r\n`,
+// which is two; the database counts what is saved. Saving `\n` makes the two counts agree, so a text
+// the page let the person write is never refused as too long. Used by every textarea of the lists.
+const newLines = (text: string) => text.replace(/\r\n?/g, "\n");
+
 const title = z
   .string()
   .trim()
@@ -32,6 +37,7 @@ const title = z
 const description = z
   .string()
   .trim()
+  .transform(newLines)
   .refine((text) => characters(text) <= maxListDescription)
   .transform((text) => (text === "" ? null : text));
 
@@ -61,6 +67,7 @@ const mediaId = z.uuid();
 const itemNote = z
   .string()
   .trim()
+  .transform(newLines)
   .refine((text) => characters(text) <= maxItemNote)
   .transform((text) => (text === "" ? null : text));
 
@@ -111,6 +118,17 @@ export const asListNotice = (value: string | null): ListNotice | null =>
 /** Why a form did not do what it asked. The first two are the person's to fix. */
 export type ListError = "invalid_request" | "duplicate" | "limit" | "not_found";
 
-/** Why a form of the titles inside a list did not do what it asked. */
-export type ListItemError =
-  "invalid_request" | "invalid_note" | "item_not_found";
+/**
+ * Why a form of the titles inside a list did not do what it asked. These belong above the titles, and
+ * none of them is a `ListError`: the page tells the two apart with `isListItemError`, so a refusal of
+ * a title is never written above the form that edits the list.
+ */
+export const listItemErrors = [
+  "invalid_item_request",
+  "invalid_note",
+  "item_not_found",
+] as const;
+export type ListItemError = (typeof listItemErrors)[number];
+
+export const isListItemError = (value: unknown): value is ListItemError =>
+  listItemErrors.some((error) => error === value);
