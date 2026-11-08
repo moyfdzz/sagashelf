@@ -17,6 +17,7 @@ export default [
   route("credits", "routes/credits.tsx"),
   route("u/:username", "routes/u.$username.tsx"),
   route("u/:username/report", "routes/u.$username.report.tsx"),
+  route("u/:username/lists/:id", "routes/u.$username.lists.$id.tsx"),
   route("u/:username/:kind", "routes/u.$username.$kind.tsx"),
   route(
     "u/:username/library/:status",

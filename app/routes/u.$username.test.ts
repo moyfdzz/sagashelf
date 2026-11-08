@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   isMuted: vi.fn(),
   findMyReports: vi.fn(),
   getProfileSections: vi.fn(),
+  listViewableLists: vi.fn(),
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
   muteUser: vi.fn(),
@@ -59,6 +60,15 @@ vi.mock("~server/db/reports", () => ({
 vi.mock("~server/db/profile-library", () => ({
   profileStatuses: ["in_progress", "planned", "completed"],
   getProfileSections: mocks.getProfileSections,
+}));
+vi.mock("~server/db/profile-lists", async () => ({
+  // The rule of the levels is pure, so the real one is used and only the database is replaced.
+  visibleListLevels: (
+    await vi.importActual<typeof import("~server/db/profile-lists")>(
+      "~server/db/profile-lists",
+    )
+  ).visibleListLevels,
+  listViewableLists: mocks.listViewableLists,
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({
@@ -109,6 +119,7 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ user: null, picture: null });
   mocks.getProfileSections.mockReset().mockResolvedValue(emptySections());
+  mocks.listViewableLists.mockReset().mockResolvedValue([]);
   mocks.followUser.mockReset().mockResolvedValue("followed");
   mocks.unfollowUser.mockReset().mockResolvedValue(undefined);
   mocks.muteUser.mockReset().mockResolvedValue(undefined);
@@ -221,6 +232,7 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
 
       expect(mocks.getSocialCounts).not.toHaveBeenCalled();
       expect(mocks.getProfileSections).not.toHaveBeenCalled();
+      expect(mocks.listViewableLists).not.toHaveBeenCalled();
       expect(JSON.stringify(result)).not.toContain("bio");
       expect(JSON.stringify(result)).not.toContain("followers");
     });
@@ -322,6 +334,52 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
       expect(JSON.stringify(result)).not.toContain("notes");
       expect(JSON.stringify(result)).not.toContain("visibility");
     });
+
+    it("gives the lists the viewer may see, with no visibility and no more than the card needs (SAG-113)", async () => {
+      mocks.listViewableLists.mockResolvedValue([
+        {
+          id: "list-1",
+          title: "Best sci-fi",
+          description: "Space",
+          visibility: "public",
+          items: 4,
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const result = await load();
+
+      if (result.view !== "full") throw new Error("expected the full profile");
+      expect(result.lists).toEqual([
+        { id: "list-1", title: "Best sci-fi", description: "Space", items: 4 },
+      ]);
+      expect(JSON.stringify(result)).not.toContain("updatedAt");
+    });
+
+    it.each([
+      ["stranger", "public", ["public"]],
+      ["friend", "public", ["public", "friends"]],
+      ["friend", "friends", ["public", "friends"]],
+      ["owner", "friends", ["public", "friends", "private"]],
+      ["follower", "public", ["public"]],
+    ])(
+      "asks for the lists of a %s of a %s profile with the levels %j only",
+      async (relationship, privacy, expected) => {
+        mocks.findProfile.mockResolvedValue({
+          owner: head({ privacy }),
+          relationship,
+          view: "full",
+        });
+
+        await load();
+
+        expect(mocks.listViewableLists).toHaveBeenCalledWith(
+          db,
+          "owner-id",
+          expected,
+        );
+      },
+    );
 
     it("asks for the library with the level of the profile, the relationship and the language of the page", async () => {
       mocks.locale = "en";

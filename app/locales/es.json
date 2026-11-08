@@ -1548,6 +1548,15 @@
       "previous": "Anterior",
       "next": "Siguiente",
       "page": "Página {{page}}"
+    },
+    "lists": {
+      "title": "Listas",
+      "label": "Listas de {{name}}",
+      "pageTitle": "{{list}} de @{{username}}",
+      "by": "Una lista de",
+      "back": "Volver al perfil",
+      "edit": "Editar esta lista",
+      "noTitles": "Esta lista aún no tiene títulos."
     }
   },
   "social": {

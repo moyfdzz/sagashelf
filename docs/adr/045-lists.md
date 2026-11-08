@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-08
-- **Implementation:** Partial (SAG-113: pages of the lists in the first PRs and the titles in a list in the second; the profile section and the page of a list for others are planned in the last PR of the same ticket)
+- **Implementation:** Complete (SAG-113: pages of the lists and the titles in a list in the first PRs; the profile section and the page of a list for others in the last one)
 - **Tickets:** SAG-113
 - **Related:** [ADR-031](031-social-graph.md), [ADR-033](033-design-rules.md), [ADR-043](043-report-again-after-an-answer.md)
 
@@ -18,9 +18,9 @@ The tables `lists` and `list_items` have existed since SAG-9, with a visibility 
 
 **The limit of titles is soft too.** The count, the ownership, the existence of the title and the insert are one statement (`addListItem`): at 200 it inserts nothing and the answer is "limit", and a title already in the list is "already" (`ON CONFLICT DO NOTHING` with no target, ADR-043). Two forms at the very same moment can pass 200 by one or two, for the same reasons as the lists.
 
-**A list that is not the person's is a list that is not there.** Every statement in `server/db/lists.ts` has the id of the person of the session in its `WHERE`, and the page answers 404 for a list of someone else, for one that does not exist and for an id that is not an id, the same way. Until the profile section exists (the last PR of SAG-113) nobody but the owner can open a list. The same holds for its titles: every statement of `server/db/list-items.ts` joins the list to the id of the person of the session, so the id of a title of a list of someone else is not enough to read, move, note or remove it.
+**A list that is not the person's is a list that is not there.** Every statement in `server/db/lists.ts` has the id of the person of the session in its `WHERE`, and the page answers 404 for a list of someone else, for one that does not exist and for an id that is not an id, the same way. `/lists/:id` stays the page of the owner only. Others read a list on `/u/:username/lists/:id` (see "Lists for others"). The same holds for its titles: every statement of `server/db/list-items.ts` joins the list to the id of the person of the session, so the id of a title of a list of someone else is not enough to read, move, note or remove it.
 
-**Private by default.** The form starts on Private, as the table does. The three levels say in the form who sees the list, and the profile can only narrow it: a list is seen by whoever `canView` allows for the **strictest** of the level of the list and the level of the profile (`strictest`, ADR-031). This is written here before the code that applies it (the profile PR). Until then the levels are only stored.
+**Private by default.** The form starts on Private, as the table does. The three levels say in the form who sees the list, and the profile can only narrow it: a list is seen by whoever `canView` allows for the **strictest** of the level of the list and the level of the profile (`strictest`, ADR-031). The code that applies it is in "Lists for others".
 
 **Limits.** At most **50 lists** per person, **200 titles** per list (the second is built with the titles), a title of 1 to 100 characters and a description of up to 500, counted in characters as the table does (an emoji is one). A title is unique per person (the unique constraint of the table).
 
@@ -30,6 +30,8 @@ The tables `lists` and `list_items` have existed since SAG-9, with a visibility 
 
 **What is written is given back.** A form that is refused (a title already used, the limit, a name too long) answers with its status and the text that was typed, since the forms post a whole page and 500 characters of description must not be lost for a mistake in the name.
 
+**Lists for others.** The profile shows a section "Listas" with the lists the viewer may see, and each one opens on `/u/:username/lists/:id`. It is a page of its own, not `/lists/:id`, because `/lists/:id` is a page of the session with Clerk and forms (ADR-018), and the pages under `/u/...` are not: they read the viewer with `getOptionalUser`, so a visitor can read a public list, and a read-only page has no reason to carry the session. The levels the viewer may see are worked out once by `visibleListLevels` (`canView` for each level with the level of the profile), and every statement of `server/db/profile-lists.ts` has them in its `WHERE`: a list above them is the same as a list that is not there, and its titles are read only through the same filter. The page answers one 404 for a profile that may not be seen, a bad username or id, a list of someone else, a list above the levels and a block, so it cannot be used to find out who exists or who has what. The note of a title is not read at all. The owner who opens it on this address sees the same read-only page with a link to edit it.
+
 ## Alternatives considered
 
 - **A hard limit with a lock** (`SELECT ... FOR UPDATE` on the user row, or a counter column). It is exact, but it adds a statement or a column and a migration to protect against an extra list that costs nothing.
@@ -37,12 +39,13 @@ The tables `lists` and `list_items` have existed since SAG-9, with a visibility 
 - **A link to share with a secret address.** A public list is shared by its normal address. A secret link would be a second way to read a list that bypasses `canView`, and the ticket asks for the policy of the profile.
 - **Reordering by dragging.** It needs JavaScript and works badly on a phone. Buttons to move a title up and down work without it, and they are what was built.
 - **A modal to choose the list.** More code and more to get right for a screen reader than a `<select>`, for a choice among at most 50 names.
+- **A second use of `/lists/:id` for others, with the session optional.** It would mix a page of the session with a public one, and the edit page would depend on a branch that is easy to get wrong.
 - **A link in the top bar.** It needs the measure of the header redone, for a page that few people open often.
 
 ## Consequences
 
 - A person can have lists, name them, describe them and delete them, and nothing is visible to others yet.
-- A person can now fill a list: add, remove, reorder and note titles. Still nobody else can see it. The section on the profile and the page of a list for others are planned in one more PR. Until it the ticket stays In Progress.
+- A person can fill a list: add, remove, reorder and note titles. Others see it on the profile and on its own page by the strictest level of the list and the profile; the notes stay private.
 - A list that someone deletes goes with its titles (`ON DELETE CASCADE`); nothing else refers to a list yet. `activity` has a kind `list_created` that nothing writes, which belongs to SAG-44.
 
 ## Open questions
