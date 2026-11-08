@@ -1,9 +1,10 @@
 import { rootAuthLoader } from "@clerk/react-router/server";
 import { useTranslation } from "react-i18next";
-import { data, Form, Link, redirect } from "react-router";
+import { data, Form, redirect } from "react-router";
 import { z } from "zod";
 
 import type { Route } from "./+types/admin.sagas.$id";
+import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import {
   inputClass,
@@ -170,9 +171,9 @@ export default function AdminSaga({ loaderData }: Route.ComponentProps) {
     >
       <main className="container mx-auto max-w-3xl px-4 py-10">
         <p>
-          <Link to="/admin/sagas" className={linkClass}>
+          <BackLink to="/admin/sagas" router>
             {t("admin.sagas.edit.back")}
-          </Link>
+          </BackLink>
         </p>
         <h1 className="mt-4 text-3xl font-bold">
           {saga.titles[lang] || saga.title}

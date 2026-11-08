@@ -155,7 +155,7 @@ describe("the link back to the search on a title page", () => {
         html,
       )?.[0];
     expect(link).toBeTruthy();
-    expect(html).toContain("← Volver a los resultados");
+    expect(html).toContain("Volver a los resultados");
     // Before the title, so it is the first thing a person or a screen reader meets.
     expect(html.indexOf("Volver a los resultados")).toBeLessThan(
       html.indexOf("The Pitt"),
@@ -168,7 +168,7 @@ describe("the link back to the search on a title page", () => {
       <MediaDetail {...props("/search?q=the+pitt")} />,
     );
 
-    expect(html).toContain("← Back to the results");
+    expect(html).toContain("Back to the results");
     expect(html).not.toContain("Volver a los resultados");
   });
 
@@ -186,7 +186,7 @@ describe("the link back to the entry on a title page", () => {
   it("is the first thing on the page, as a plain link because the entry has its own policy", async () => {
     const html = await render("es", <MediaDetail {...props(null, entry)} />);
 
-    expect(html).toContain("← Volver a mi entrada");
+    expect(html).toContain("Volver a mi entrada");
     expect(html).toContain(`href="${entry}"`);
     expect(html.indexOf("Volver a mi entrada")).toBeLessThan(
       html.indexOf("The Pitt"),
@@ -200,7 +200,7 @@ describe("the link back to the entry on a title page", () => {
   it("is in English when the site is in English", async () => {
     const html = await render("en", <MediaDetail {...props(null, entry)} />);
 
-    expect(html).toContain("← Back to my entry");
+    expect(html).toContain("Back to my entry");
   });
 
   it("is the only link when the person came from an entry, and not there otherwise", async () => {
@@ -264,7 +264,7 @@ describe("the look of the links on a title page", () => {
 
     const link = /<a [^>]*href="\/search\?q=dune"[^>]*>/.exec(html)?.[0] ?? "";
     expect(link).toContain("hover:text-link-hover");
-    expect(html).toContain("← Volver a los resultados");
+    expect(html).toContain("Volver a los resultados");
   });
 });
 

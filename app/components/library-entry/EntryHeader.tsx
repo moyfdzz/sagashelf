@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 
+import { BackLink } from "~/components/BackLink";
 import type { LibraryEntryData } from "~/routes/library.$mediaId";
-import { forwardLinkClass, linkClass } from "~/lib/ui";
+import { forwardLinkClass } from "~/lib/ui";
 
 type Props = {
   media: LibraryEntryData["media"];
@@ -16,9 +16,9 @@ export function EntryHeader({ media, libraryPathBack }: Props) {
   return (
     <>
       <p>
-        <Link to={libraryPathBack} className={linkClass}>
+        <BackLink to={libraryPathBack} router>
           {t("library.editor.back")}
-        </Link>
+        </BackLink>
       </p>
 
       <div className="mt-4 flex gap-4">

@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { data, Form, redirect } from "react-router";
 
 import type { Route } from "./+types/lists.new";
+import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ListFields, type ListValues } from "~/components/lists/ListFields";
-import { linkClass, primaryButtonClass } from "~/lib/ui";
+import { primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { countOwnLists } from "~server/db/lists";
@@ -107,10 +108,8 @@ export default function NewList({
     >
       <main className="container mx-auto max-w-3xl px-4 py-10">
         <p>
-          {/* A page of the session: a plain anchor (ADR-018). Tall enough to tap on a phone. */}
-          <a href="/lists" className={`${linkClass} inline-block py-2.5`}>
-            {t("lists.new.back")}
-          </a>
+          {/* A page of the session: a plain anchor (ADR-018). */}
+          <BackLink to="/lists">{t("lists.new.back")}</BackLink>
         </p>
         <h1 className="mt-4 text-3xl font-bold">{t("lists.new.title")}</h1>
         <p className="text-fg-muted mt-2">{t("lists.new.intro")}</p>

@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { data, Link } from "react-router";
+import { data } from "react-router";
 
 import type { Route } from "./+types/u.$username.$kind";
+import { BackLink } from "~/components/BackLink";
 import { PersonRow } from "~/components/PersonRow";
 import { ProfilePagination } from "~/components/ProfilePagination";
-import { secondaryLinkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
 import {
@@ -91,9 +91,9 @@ export default function People({ loaderData }: Route.ComponentProps) {
         {t("profile.handle", { username })}
       </p>
       <p className="mt-4">
-        <Link to={base} className={secondaryLinkClass}>
+        <BackLink to={base} router>
           {t("profile.people.back")}
-        </Link>
+        </BackLink>
       </p>
 
       {people.length === 0 ? (

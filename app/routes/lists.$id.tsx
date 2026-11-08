@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import { data, Form, Link, redirect } from "react-router";
 
 import type { Route } from "./+types/lists.$id";
+import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListFields, type ListValues } from "~/components/lists/ListFields";
-import { dangerButtonClass, linkClass, primaryButtonClass } from "~/lib/ui";
+import { dangerButtonClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { getOwnList } from "~server/db/lists";
@@ -126,10 +127,8 @@ export default function List({ loaderData, actionData }: Route.ComponentProps) {
     >
       <main className="container mx-auto max-w-3xl px-4 py-10">
         <p>
-          {/* A back link has no forward arrow, and the padding makes it easy to tap on a phone. */}
-          <a href="/lists" className={`${linkClass} inline-block py-2.5`}>
-            {t("lists.detail.back")}
-          </a>
+          {/* A page of the session: a plain anchor (ADR-018). */}
+          <BackLink to="/lists">{t("lists.detail.back")}</BackLink>
         </p>
         <h1 className="mt-4 text-3xl font-bold break-words">{list.title}</h1>
         <p className="text-fg-muted mt-2">

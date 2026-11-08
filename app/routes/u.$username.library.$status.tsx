@@ -2,9 +2,10 @@ import { useTranslation } from "react-i18next";
 import { data, Link } from "react-router";
 
 import type { Route } from "./+types/u.$username.library.$status";
+import { BackLink } from "~/components/BackLink";
 import { PosterGrid } from "~/components/PosterGrid";
 import { ProfilePagination } from "~/components/ProfilePagination";
-import { secondaryLinkClass, tabClass } from "~/lib/ui";
+import { tabClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { usernameShape } from "~server/account/profile-schema";
 import { getOptionalUser } from "~server/auth/require";
@@ -122,9 +123,9 @@ export default function ProfileSectionPage({
         {t("profile.handle", { username })}
       </p>
       <p className="mt-4">
-        <Link to={profilePath} className={secondaryLinkClass}>
+        <BackLink to={profilePath} router>
           {t("profile.people.back")}
-        </Link>
+        </BackLink>
       </p>
 
       <nav aria-label={t("library.tabs.label")} className="mt-6">

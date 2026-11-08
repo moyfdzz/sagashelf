@@ -282,8 +282,11 @@ describe("the page that makes a list (SAG-113)", () => {
     expect(radio(html, "private")).toContain("checked");
     expect(radio(html, "public")).not.toContain("checked");
     expect(radio(html, "friends")).not.toContain("checked");
-    const back = html.match(/<a [^>]*href="\/lists"[^>]*>Mis listas<\/a>/);
-    expect(back?.[0]).toContain("py-2.5");
+    const back = html.match(
+      /<a [^>]*href="\/lists"[^>]*>(?:<svg[\s\S]*?<\/svg>)Mis listas<\/a>/,
+    );
+    expect(back?.[0]).toContain("min-h-10");
+    expect(back?.[0]).toContain("lucide-arrow-left");
     expect(back?.[0]).not.toContain("data-discover");
   });
 
@@ -329,7 +332,9 @@ describe("the page that makes a list (SAG-113)", () => {
     expect(html).toContain("Give it a name and choose who can see it.");
     expect(html).toContain("Create list");
     expect(html).toContain("Who can see it");
-    expect(html).toMatch(/<a [^>]*href="\/lists"[^>]*>My lists<\/a>/);
+    expect(html).toMatch(
+      /<a [^>]*href="\/lists"[^>]*>(?:<svg[\s\S]*?<\/svg>)My lists<\/a>/,
+    );
   });
 });
 
@@ -346,9 +351,12 @@ describe("the page of one list (SAG-113)", () => {
     expect(radio(html, "friends")).toContain("checked");
     expect(radio(html, "public")).not.toContain("checked");
     expect(html).toContain("Esta lista aún no tiene títulos.");
-    // The way back has no forward arrow, and is tall enough to tap.
-    const back = html.match(/<a [^>]*href="\/lists"[^>]*>Mis listas<\/a>/);
-    expect(back?.[0]).toContain("py-2.5");
+    // The way back has a back arrow and no forward one, and is tall enough to tap.
+    const back = html.match(
+      /<a [^>]*href="\/lists"[^>]*>(?:<svg[\s\S]*?<\/svg>)Mis listas<\/a>/,
+    );
+    expect(back?.[0]).toContain("min-h-10");
+    expect(back?.[0]).toContain("lucide-arrow-left");
     expect(back?.[0]).not.toContain("after:content");
   });
 

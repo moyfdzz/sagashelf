@@ -100,8 +100,8 @@
       "statusLabel": "Cambiar el estado",
       "failed": "No se pudo guardar el cambio. Inténtalo de nuevo."
     },
-    "backToSearch": "← Volver a los resultados",
-    "backToEntry": "← Volver a mi entrada",
+    "backToSearch": "Volver a los resultados",
+    "backToEntry": "Volver a mi entrada",
     "genres": "Géneros",
     "otherFormats": "Otros formatos de esta historia",
     "formats": {
@@ -1386,7 +1386,7 @@
         "wikidata": "Sugerida por Wikidata"
       },
       "edit": {
-        "back": "← Todas las sagas",
+        "back": "Todas las sagas",
         "state": "Estado",
         "draftNote": "Es un borrador: los visitantes no la ven.",
         "publishedNote": "Está publicada: cualquiera puede verla.",

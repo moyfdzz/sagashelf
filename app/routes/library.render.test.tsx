@@ -182,7 +182,10 @@ describe("the entry page", () => {
   it("gives the links of the entry the shared look, with an arrow on the one that goes to the title", async () => {
     const html = await render("es", <LibraryEntry {...entryProps()} />);
 
-    const back = /<a [^>]*>Volver a mi biblioteca<\/a>/.exec(html)?.[0] ?? "";
+    const back =
+      /<a [^>]*>(?:<svg[\s\S]*?<\/svg>)?Volver a mi biblioteca<\/a>/.exec(
+        html,
+      )?.[0] ?? "";
     const title =
       /<a [^>]*>Ver la página del título<\/a>/.exec(html)?.[0] ?? "";
     expect(back).toContain("hover:text-link-hover");
@@ -193,7 +196,9 @@ describe("the entry page", () => {
 
   describe("the link back to the library", () => {
     const backLink = (html: string) =>
-      /<a [^>]*href="([^"]*)"[^>]*>Volver a mi biblioteca<\/a>/.exec(html)?.[1];
+      /<a [^>]*href="([^"]*)"[^>]*>(?:<svg[\s\S]*?<\/svg>)?Volver a mi biblioteca<\/a>/.exec(
+        html,
+      )?.[1];
 
     it("goes back to the library as the person left it", async () => {
       const html = await render(
