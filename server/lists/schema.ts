@@ -57,10 +57,14 @@ export const deleteListSchema = z.strictObject({
 
 const mediaId = z.uuid();
 
-// An empty note is no note: the column holds null, not an empty text.
+// A browser counts a new line in a textarea as one character for `maxlength` but sends it as `\r\n`,
+// which is two; the database counts what is saved. Saving `\n` makes the two counts agree, so a note
+// the page let the person write is never refused as too long. An empty note is no note: the column
+// holds null, not an empty text.
 const itemNote = z
   .string()
   .trim()
+  .transform((text) => text.replace(/\r\n/g, "\n"))
   .refine((text) => characters(text) <= maxItemNote)
   .transform((text) => (text === "" ? null : text));
 

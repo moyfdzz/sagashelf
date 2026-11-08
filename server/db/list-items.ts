@@ -121,11 +121,17 @@ export async function addListItem(
     SELECT (SELECT count(*) FROM mine)::int AS mine,
            (SELECT count(*) FROM found)::int AS found,
            (SELECT count(*) FROM inserted)::int AS inserted,
-           (SELECT n FROM held) AS held
+           (SELECT n FROM held) AS held,
+           EXISTS (
+             SELECT 1 FROM list_items
+             WHERE list_id = ${listId}::uuid AND media_id = ${mediaId}::uuid
+           ) AS present
   `);
   const row = rows[0];
   if (Number(row?.mine) !== 1 || Number(row?.found) !== 1) return "not_found";
   if (Number(row?.inserted) === 1) return "added";
+  // A title already in a full list is "already": the limit is not what stopped it.
+  if (row?.present === true) return "already";
   return Number(row?.held) >= maxListItems ? "limit" : "already";
 }
 

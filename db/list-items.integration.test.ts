@@ -150,6 +150,18 @@ describe("addListItem", () => {
     expect(await db.select().from(listItems)).toHaveLength(maxListItems);
   });
 
+  it("says already, not limit, for a title that is in a full list", async () => {
+    const ana = await newUser();
+    const list = await insertList(ana.id);
+    const ids = await fill(list.id, maxListItems);
+
+    expect(await addListItem(db, ana.id, list.id, pick(ids[0]))).toBe(
+      "already",
+    );
+
+    expect(await db.select().from(listItems)).toHaveLength(maxListItems);
+  });
+
   it("moves the list up the page of the lists, since it changed", async () => {
     const ana = await newUser();
     const list = await insertList(ana.id);

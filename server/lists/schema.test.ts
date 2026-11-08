@@ -116,6 +116,20 @@ describe("the forms of the titles of a list (SAG-113)", () => {
     ).toBe(false);
   });
 
+  it("saves a new line as one character, so a note the browser allowed is not refused", () => {
+    const parse = (note: string) =>
+      noteItemSchema.safeParse({ intent: "note_item", mediaId: media, note });
+
+    // A textarea of 500 characters with new lines is sent with `\r\n`: 2 each.
+    const typed = `${"a".repeat(maxItemNote - 4)}\r\nb\r\nc`;
+    expect(typed.length).toBeGreaterThan(maxItemNote);
+    const parsed = parse(typed);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.note).toBe(`${"a".repeat(maxItemNote - 4)}\nb\nc`);
+    // The limit still holds once the lines are counted as one.
+    expect(parse(`${"a".repeat(maxItemNote)}\r\nb`).success).toBe(false);
+  });
+
   it("takes a move only up or down, and only with the fields of the form", () => {
     const move = (extra: Record<string, unknown>) =>
       moveItemSchema.safeParse({
