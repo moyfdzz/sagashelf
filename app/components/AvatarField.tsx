@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useFetcher, useNavigate, useSearchParams } from "react-router";
 
 import { ConfirmDialog } from "~/components/ConfirmDialog";
+import { StatusRegion } from "~/components/StatusRegion";
 import { shrinkPicture, type ShrunkPicture } from "~/lib/picture";
 import {
   dangerButtonClass,
@@ -184,11 +185,10 @@ export function AvatarField({
           )}
         </p>
       ) : null}
-      {savedAt && !chosen ? (
-        <p role="status" className="text-sm font-semibold">
-          {t("settings.avatar.saved")}
-        </p>
-      ) : null}
+      <StatusRegion
+        message={savedAt && !chosen ? t("settings.avatar.saved") : null}
+        messageKey={savedAt}
+      />
       {confirming ? (
         <ConfirmDialog
           title={t("settings.avatar.removeTitle")}

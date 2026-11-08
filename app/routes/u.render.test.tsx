@@ -480,6 +480,28 @@ describe("the profile page: the buttons", () => {
     expect(html).toContain(text);
   });
 
+  it.each(["followed", "unfollowed", "muted", "report_reported"])(
+    "shows %s as a toast that closes by itself (SAG-159)",
+    async (notice) => {
+      const html = await render(profile(fullData({ notice })));
+
+      expect(html).toContain("bg-success-bg");
+    },
+  );
+
+  it.each([
+    "too_many",
+    "unavailable",
+    "invalid_request",
+    "report_duplicate",
+    "report_limit",
+  ])("keeps %s as plain text, not a green toast (SAG-159)", async (notice) => {
+    const html = await render(profile(fullData({ notice })));
+
+    expect(html).not.toContain("bg-success-bg");
+    expect(html).toMatch(/role="status"[^>]*>\s*<p class="font-semibold">/);
+  });
+
   it("keeps the live region in the page when there is nothing to say", async () => {
     const html = await render(profile(fullData()));
 

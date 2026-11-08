@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Route } from "./+types/settings.people";
 import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatusRegion } from "~/components/StatusRegion";
 import { secondaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -188,19 +189,16 @@ export default function People({
           </BackLink>
         </p>
 
-        {/* Always in the page, so a screen reader announces each message that appears in it. */}
-        <div role="status" className="mt-6 space-y-1">
-          {outcome?.intent === "unblock" ? (
-            <p className="font-semibold">
-              {t("settings.people.result.unblocked")}
-            </p>
-          ) : null}
-          {outcome?.intent === "unmute" ? (
-            <p className="font-semibold">
-              {t("settings.people.result.unmuted")}
-            </p>
-          ) : null}
-        </div>
+        <StatusRegion
+          message={
+            outcome?.intent === "unblock"
+              ? t("settings.people.result.unblocked")
+              : outcome?.intent === "unmute"
+                ? t("settings.people.result.unmuted")
+                : null
+          }
+          messageKey={outcome}
+        />
         {error ? (
           <p role="alert" className="text-danger-text mt-3 font-semibold">
             {t(`settings.people.errors.${error}`)}

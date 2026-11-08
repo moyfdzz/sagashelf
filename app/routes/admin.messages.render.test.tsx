@@ -190,7 +190,10 @@ describe("the page of messages (SAG-110)", () => {
       ["deleted", "Mensaje borrado"],
     ]) {
       const html = await render(<AdminMessages {...props({ notice })} />);
-      expect(html).toMatch(new RegExp(`role="status"[^>]*>[^<]*${text}`));
+      // A toast (SAG-159): the text is in the bold line inside the live region.
+      expect(html).toMatch(
+        new RegExp(`role="status"[^>]*>[\\s\\S]*?font-semibold">[^<]*${text}`),
+      );
     }
     for (const [error, text] of [
       ["invalid_request", "No se pudo leer la acción"],

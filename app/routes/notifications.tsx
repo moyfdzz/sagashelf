@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { Route } from "./+types/notifications";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatusRegion } from "~/components/StatusRegion";
 import { useFormatters } from "~/lib/format";
 import {
   linkClass,
@@ -268,26 +269,29 @@ export default function Notifications({
         <h1 className="text-3xl font-bold">{t("notifications.title")}</h1>
         <p className="text-fg-muted mt-2">{t("notifications.description")}</p>
 
-        {/* Always in the page, so a screen reader announces the count and each result. */}
-        <div role="status" className="mt-6 space-y-1">
+        {/* Always in the page, so a screen reader announces the count when it changes. */}
+        <div role="status" className="mt-6">
           <p className="font-semibold">
             {unread > 0
               ? t("notifications.unread", { count: unread })
               : t("notifications.none")}
           </p>
-          {outcome?.intent === "read" ? (
-            <p>{t("notifications.result.read")}</p>
-          ) : null}
-          {outcome?.intent === "all" ? (
-            <p>{t("notifications.result.allRead")}</p>
-          ) : null}
-          {outcome?.intent === "accept" || outcome?.intent === "accept_back" ? (
-            <p>{t(`notifications.requests.result.${outcome.intent}`)}</p>
-          ) : null}
-          {outcome?.intent === "decline" ? (
-            <p>{t("notifications.requests.result.decline")}</p>
-          ) : null}
         </div>
+        <StatusRegion
+          message={
+            outcome?.intent === "read"
+              ? t("notifications.result.read")
+              : outcome?.intent === "all"
+                ? t("notifications.result.allRead")
+                : outcome?.intent === "accept" ||
+                    outcome?.intent === "accept_back"
+                  ? t(`notifications.requests.result.${outcome.intent}`)
+                  : outcome?.intent === "decline"
+                    ? t("notifications.requests.result.decline")
+                    : null
+          }
+          messageKey={outcome}
+        />
         {error ? (
           <p role="alert" className="text-danger-fg mt-3 font-semibold">
             {t(`notifications.errors.${error}`)}

@@ -6,6 +6,7 @@ import type { Route } from "./+types/lists";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListCard } from "~/components/lists/ListCard";
+import { StatusRegion } from "~/components/StatusRegion";
 import { dangerButtonClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -84,14 +85,11 @@ export default function Lists({ loaderData }: Route.ComponentProps) {
           </p>
         )}
 
-        {loaderData.notice ? (
-          <p
-            role="status"
-            className="border-input-edge bg-surface mt-4 rounded-md border px-4 py-3 font-semibold"
-          >
-            {t(`lists.notices.${loaderData.notice}`)}
-          </p>
-        ) : null}
+        <StatusRegion
+          message={
+            loaderData.notice ? t(`lists.notices.${loaderData.notice}`) : null
+          }
+        />
 
         {lists.length === 0 ? (
           <p className="text-fg-muted mt-6">{t("lists.empty")}</p>

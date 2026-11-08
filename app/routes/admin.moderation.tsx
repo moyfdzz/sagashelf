@@ -6,6 +6,7 @@ import { data, redirect } from "react-router";
 import type { Route } from "./+types/admin.moderation";
 import { AdminNav } from "~/components/AdminNav";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatusRegion } from "~/components/StatusRegion";
 import {
   ReportCard,
   type PanelReport,
@@ -216,7 +217,16 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
           {t("admin.moderation.description")}
         </p>
 
-        {loaderData.notice ? (
+        {/* The ones that say Clerk did nothing carry a warning the admin must read: they stay as
+            text, and the rest are a toast. */}
+        <StatusRegion
+          message={
+            loaderData.notice && !loaderData.notice.endsWith("_no_clerk")
+              ? t(`admin.moderation.notices.${loaderData.notice}`)
+              : null
+          }
+        />
+        {loaderData.notice?.endsWith("_no_clerk") ? (
           <p
             role="status"
             className="border-input-edge bg-surface mt-4 rounded-md border px-4 py-3 font-semibold"
