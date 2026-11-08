@@ -267,8 +267,16 @@ header[data-chrome] {
 }
 
 /* A modal dialog blocks the clicks and the focus behind it, but not the scroll of the page: while
-   one is open, the page stays where it is, and it scrolls again when the dialog closes. */
+   one is open, the page stays where it is, and it scrolls again when the dialog closes. Hiding the
+   scroll also hides the scrollbar, which widens the window and moved everything centered by half of
+   it (7 px, measured on 2026-11-08 with a 15 px scrollbar). `scrollbar-gutter: stable` keeps the
+   room of the scrollbar all the time, so nothing moves. A page too short to scroll keeps an empty
+   strip where the scrollbar would be; a phone has overlay scrollbars and loses nothing. */
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+
   html:has(dialog[open]:modal) {
     overflow: hidden;
   }
