@@ -21,6 +21,7 @@ import { asListId, runListAction } from "~server/lists/actions";
 import { isItemIntent, runItemAction } from "~server/lists/item-actions";
 import {
   asListNotice,
+  isListItemError,
   listVisibilities,
   maxItemNote,
   maxListDescription,
@@ -28,7 +29,7 @@ import {
   maxListsFormBytes,
   maxListTitle,
 } from "~server/lists/schema";
-import { mediaPath } from "~server/media/slug";
+import { listTitleView } from "~server/lists/title-view";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 
@@ -42,10 +43,15 @@ export async function loader(args: Route.LoaderArgs) {
   // A list that is not the person's, or is not there, or has no valid id, is the same answer.
   const id = asListId(args.params.id);
   if (!id) throw notFound();
-  const list = await getOwnList(await getDb(), user.id, id);
-  if (!list) throw notFound();
+  const db = await getDb();
   const locale = getLocale(args.context) === "en" ? "en" : "es";
-  const items = await listItemsOf(await getDb(), user.id, id, locale);
+  // Both statements name the person of the session, so the titles of a list that is not theirs come
+  // back empty and are dropped by the 404 below. Asking together saves a round trip to the database.
+  const [list, items] = await Promise.all([
+    getOwnList(db, user.id, id),
+    listItemsOf(db, user.id, id, locale),
+  ]);
+  if (!list) throw notFound();
 
   const { t } = getInstance(args.context);
   const params = new URL(args.request.url).searchParams;
@@ -62,16 +68,8 @@ export async function loader(args: Route.LoaderArgs) {
       items: list.items,
     },
     titles: items.map((item) => ({
-      mediaId: item.mediaId,
-      title: item.title,
-      type: item.type,
-      year: item.year,
+      ...listTitleView(item),
       note: item.note,
-      href: mediaPath(
-        item.type as Parameters<typeof mediaPath>[0],
-        item.title,
-        item.mediaId,
-      ),
     })),
     maxTitle: maxListTitle,
     maxDescription: maxListDescription,
@@ -148,10 +146,8 @@ export default function List({ loaderData, actionData }: Route.ComponentProps) {
   const page = `/lists/${list.id}`;
   const failure = actionData && "error" in actionData ? actionData.error : null;
   // The refusals of the titles are shown above them, the ones of the list above its form.
-  const itemError =
-    failure === "invalid_note" || failure === "item_not_found" ? failure : null;
-  const error =
-    failure === "invalid_note" || failure === "item_not_found" ? null : failure;
+  const itemError = isListItemError(failure) ? failure : null;
+  const error = isListItemError(failure) ? null : failure;
   // A refused form comes back with what was written, and otherwise the form has the saved list.
   const values: ListValues =
     actionData && "values" in actionData ? actionData.values : list;

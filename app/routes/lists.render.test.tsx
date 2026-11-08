@@ -416,6 +416,78 @@ describe("the page of one list (SAG-113)", () => {
     expect(html).toMatch(/<h1[^>]*>Best sci-fi</);
   });
 
+  it.each([
+    ["invalid_item_request", "No pudimos leer el formulario del título"],
+    ["invalid_note", "La nota es demasiado larga. Puede tener hasta 500"],
+    ["item_not_found", "Ese título ya no está en la lista"],
+  ])(
+    "shows the refusal %s of a title above the titles, not above the form of the list",
+    async (error, text) => {
+      const html = await render(
+        <List {...listProps({}, { error, status: 400 })} />,
+      );
+
+      const [beforeTitles = "", fromTitles = ""] =
+        html.split('<h2 id="titles"');
+      expect(fromTitles).toContain(text);
+      expect(beforeTitles).not.toContain('role="alert"');
+      // The form of the list keeps the saved values and shows no refusal of its own.
+      expect(beforeTitles).toContain('value="Best sci-fi"');
+    },
+  );
+
+  it("shows a refusal of the list above its form and nothing above the titles", async () => {
+    const html = await render(
+      <List
+        {...listProps(
+          {},
+          {
+            error: "invalid_request",
+            values: { title: "", description: "", visibility: "private" },
+          },
+        )}
+      />,
+    );
+
+    const [beforeTitles = "", fromTitles = ""] = html.split('<h2 id="titles"');
+    expect(beforeTitles).toContain('role="alert"');
+    expect(fromTitles).not.toContain('role="alert"');
+  });
+
+  it("draws a title with no page of its own as plain text, with no kind and no link", async () => {
+    const html = await render(
+      <List
+        {...listProps({
+          titles: [
+            {
+              mediaId: "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa",
+              title: "My notes",
+              type: null,
+              year: 2020,
+              href: null,
+              note: null,
+            },
+            {
+              mediaId: "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaab",
+              title: "Dune",
+              type: "movie",
+              year: 2021,
+              href: "/media/movie/dune-0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaab",
+              note: null,
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain("My notes");
+    expect(html).not.toMatch(/<a [^>]*>My notes</);
+    expect(html).toMatch(
+      /<a [^>]*href="\/media\/movie\/dune-[^"]*"[^>]*>Dune</,
+    );
+    expect(html).not.toContain("media.kinds");
+  });
+
   it("is written in English too", async () => {
     const html = await render(
       <List {...listProps({ confirming: true })} />,

@@ -115,6 +115,17 @@ export const asListNotice = (value: string | null): ListNotice | null =>
 /** Why a form did not do what it asked. The first two are the person's to fix. */
 export type ListError = "invalid_request" | "duplicate" | "limit" | "not_found";
 
-/** Why a form of the titles inside a list did not do what it asked. */
-export type ListItemError =
-  "invalid_request" | "invalid_note" | "item_not_found";
+/**
+ * Why a form of the titles inside a list did not do what it asked. These belong above the titles, and
+ * none of them is a `ListError`: the page tells the two apart with `isListItemError`, so a refusal of
+ * a title is never written above the form that edits the list.
+ */
+export const listItemErrors = [
+  "invalid_item_request",
+  "invalid_note",
+  "item_not_found",
+] as const;
+export type ListItemError = (typeof listItemErrors)[number];
+
+export const isListItemError = (value: unknown): value is ListItemError =>
+  listItemErrors.some((error) => error === value);

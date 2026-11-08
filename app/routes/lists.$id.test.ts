@@ -320,11 +320,56 @@ describe("the page of one list (SAG-113)", () => {
       ]);
     });
 
-    it("reads no titles of a list that is not the person's", async () => {
+    it("answers 404 for a list that is not the person's, whatever the titles say", async () => {
       mocks.getOwnList.mockResolvedValue(null);
 
       await expect(load()).rejects.toMatchObject({ init: { status: 404 } });
-      expect(mocks.listItemsOf).not.toHaveBeenCalled();
+    });
+
+    it("asks for the list and its titles together, not one after the other", async () => {
+      let release: (list: unknown) => void = () => {};
+      mocks.getOwnList.mockReturnValue(
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+      );
+
+      const pending = load();
+      // The list has not answered yet, and the titles were already asked for.
+      await vi.waitFor(() => expect(mocks.listItemsOf).toHaveBeenCalled());
+      release({
+        id,
+        title: "Best sci-fi",
+        description: null,
+        visibility: "friends",
+        items: 3,
+      });
+
+      expect((await pending).list.id).toBe(id);
+    });
+
+    it("shows a title with no page of its own as plain text, keeping its note", async () => {
+      mocks.listItemsOf.mockResolvedValue([
+        {
+          mediaId: media,
+          type: "custom",
+          title: "My notes",
+          year: null,
+          imageUrl: null,
+          note: "Mine",
+        },
+      ]);
+
+      expect((await load()).titles).toEqual([
+        {
+          mediaId: media,
+          title: "My notes",
+          type: null,
+          year: null,
+          href: null,
+          note: "Mine",
+        },
+      ]);
     });
 
     it("removes a title for the person of the session, from the list of the address", async () => {
@@ -418,6 +463,7 @@ describe("the page of one list (SAG-113)", () => {
       const result = answer(await submit({ intent: "move_item", ...fields }));
 
       expect(result.init?.status).toBe(400);
+      expect(result.data.error).toBe("invalid_item_request");
       expect(mocks.moveListItem).not.toHaveBeenCalled();
     });
 

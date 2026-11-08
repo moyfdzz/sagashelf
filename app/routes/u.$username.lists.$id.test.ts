@@ -168,6 +168,32 @@ describe("the page of a list of somebody else (SAG-113, ADR-045)", () => {
     },
   );
 
+  it("asks for the list and its titles together, not one after the other", async () => {
+    let release: (list: unknown) => void = () => {};
+    mocks.getViewableList.mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const pending = load();
+    // The list has not answered yet, and the titles were already asked for.
+    await vi.waitFor(() => expect(mocks.listViewableItems).toHaveBeenCalled());
+    release({ id: listId, title: "Best sci-fi", description: null, items: 1 });
+
+    expect((await pending).titles).toHaveLength(1);
+  });
+
+  it("shows a title with no page of its own as plain text, with no kind and no link", async () => {
+    mocks.listViewableItems.mockResolvedValue([
+      { mediaId, type: "custom", title: "My notes", year: null },
+    ]);
+
+    expect((await load()).titles).toEqual([
+      { mediaId, title: "My notes", type: null, year: null, href: null },
+    ]);
+  });
+
   it("shows the owner the link to edit", async () => {
     mocks.findViewableProfile.mockResolvedValue({
       owner: head(),
@@ -202,8 +228,12 @@ describe("the page of a list of somebody else (SAG-113, ADR-045)", () => {
     it("a list the levels do not allow, or that is not there, or is of somebody else", async () => {
       mocks.getViewableList.mockResolvedValue(null);
 
+      // The titles are read with the same levels, so for such a list they are none; the answer is
+      // the 404 whatever they are.
+      mocks.listViewableItems.mockResolvedValue([
+        { mediaId, type: "movie", title: "Arrival", year: 2016 },
+      ]);
       expect(await status(load())).toBe(404);
-      expect(mocks.listViewableItems).not.toHaveBeenCalled();
     });
 
     it("a username that is not a username, and an id that is not an id, before the database", async () => {

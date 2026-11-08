@@ -93,7 +93,7 @@ export function AddToList({
               {t("lists.add.inLists")}{" "}
               {holding.map((list, index) => (
                 <span key={list.id}>
-                  {index > 0 ? ", " : null}
+                  {index > 0 ? t("lists.add.separator") : null}
                   {/* A page of the session: a plain anchor (ADR-018). */}
                   <a href={`/lists/${list.id}`} className={linkClass}>
                     {list.title}

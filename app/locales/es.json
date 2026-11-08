@@ -1214,6 +1214,7 @@
       "duplicate": "Ya tienes una lista con ese nombre.",
       "limit": "Llegaste al límite de {{max}} listas. Borra una para crear otra.",
       "not_found": "Esa lista ya no existe.",
+      "invalid_item_request": "No pudimos leer el formulario del título. Recarga la página e inténtalo de nuevo.",
       "invalid_note": "La nota es demasiado larga. Puede tener hasta {{max}} caracteres.",
       "item_not_found": "Ese título ya no está en la lista."
     },
@@ -1247,6 +1248,7 @@
       "firstList": "Crea tu primera lista",
       "inAll": "Este título ya está en todas tus listas.",
       "inLists": "Está en:",
+      "separator": ", ",
       "added": "Título agregado a la lista.",
       "already": "Ese título ya estaba en la lista.",
       "errors": {
