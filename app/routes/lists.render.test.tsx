@@ -63,6 +63,7 @@ const listsProps = (
       title: "Mis listas",
       publishableKey: "pk_test_x",
       notice: null,
+      confirming: null,
       lists: [summary()],
       atLimit: false,
       maxLists: 50,
@@ -140,6 +141,68 @@ describe("the page of the lists of a person (SAG-113)", () => {
     expect(html).toContain("1 título");
     expect(html).toContain("2 títulos");
     expect(html).toContain("Slow ones");
+  });
+
+  it("has a button that goes to the form of a new list, under the introduction", async () => {
+    const html = await render(<Lists {...listsProps()} />);
+
+    expect(html).toMatch(/<a [^>]*href="#new-list"[^>]*>Crear lista<\/a>/);
+    expect(html).toContain('id="new-list"');
+    expect(html.indexOf('href="#new-list"')).toBeGreaterThan(
+      html.indexOf("Agrupa títulos"),
+    );
+    expect(html.indexOf('href="#new-list"')).toBeLessThan(
+      html.indexOf(`href="/lists/${id}"`),
+    );
+  });
+
+  it("gives each list two buttons that are only an icon, named after the list", async () => {
+    const html = await render(
+      <Lists
+        {...listsProps({
+          lists: [summary(), summary({ id: otherId, title: "Anime" })],
+        })}
+      />,
+    );
+
+    const edit = html.match(
+      new RegExp(
+        `<a [^>]*aria-label="Editar la lista «Anime»"[^>]*href="/lists/${otherId}"|<a [^>]*href="/lists/${otherId}"[^>]*aria-label="Editar la lista «Anime»"`,
+      ),
+    );
+    const remove = html.match(
+      new RegExp(
+        `<a [^>]*href="/lists\\?confirm=${otherId}"[^>]*aria-label="Borrar la lista «Anime»"|<a [^>]*aria-label="Borrar la lista «Anime»"[^>]*href="/lists\\?confirm=${otherId}"`,
+      ),
+    );
+    expect(edit).not.toBeNull();
+    expect(remove?.[0]).toContain("bg-danger-bg");
+    // The icons are drawn, hidden from a screen reader, and nothing else is written in the buttons.
+    expect(html.match(/<svg [^>]*aria-hidden="true"/g)?.length).toBe(4);
+    expect(html).toContain("lucide-pencil");
+    expect(html).toContain("lucide-trash-2");
+    expect(html).not.toContain("<dialog");
+  });
+
+  it("asks before deleting a list, in a modal that names it and posts to the page of that list", async () => {
+    const html = await render(
+      <Lists
+        {...listsProps({
+          lists: [summary(), summary({ id: otherId, title: "Anime" })],
+          confirming: { id: otherId, title: "Anime" },
+        })}
+      />,
+    );
+
+    expect(html.match(/<dialog /g)).toHaveLength(1);
+    expect(html).toContain("¿Borrar «Anime»?");
+    expect(html).toMatch(
+      new RegExp(
+        `<form [^>]*action="/lists/${otherId}"[^>]*>\\s*<input type="hidden" name="intent" value="delete"`,
+      ),
+    );
+    expect(html).toContain("Sí, borrar");
+    expect(html).toMatch(/<a [^>]*href="\/lists"[^>]*>Cancelar<\/a>/);
   });
 
   it("draws the text of a person as text, never as markup", async () => {
@@ -251,7 +314,7 @@ describe("the page of one list (SAG-113)", () => {
     const html = await render(<List {...listProps({ confirming: true })} />);
 
     expect(html.match(/<dialog /g)).toHaveLength(1);
-    expect(html).toContain("¿Borrar esta lista?");
+    expect(html).toContain("¿Borrar «Best sci-fi»?");
     expect(html).toMatch(
       /<dialog[^>]*>[\s\S]*name="intent" value="delete"[\s\S]*Sí, borrar/,
     );
@@ -294,7 +357,7 @@ describe("the page of one list (SAG-113)", () => {
 
     expect(html).toContain("Save changes");
     expect(html).toContain("Delete list");
-    expect(html).toContain("Delete this list?");
+    expect(html).toContain("Delete “Best sci-fi”?");
     expect(html).toContain("Yes, delete");
     expect(html).toContain("3 titles");
   });

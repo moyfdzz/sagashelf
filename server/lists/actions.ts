@@ -38,7 +38,7 @@ const refused = (
 ): ListActionOutcome => ({ ok: false, status, error, values: valuesOf(form) });
 
 /** A list id taken from the address. Anything that is not an id is a list that is not there. */
-export const asListId = (value: string | undefined): string | null => {
+export const asListId = (value: string | null | undefined): string | null => {
   const parsed = z.uuid().safeParse(value);
   return parsed.success ? parsed.data : null;
 };

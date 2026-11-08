@@ -122,6 +122,22 @@ describe("the page of the lists of a person (SAG-113)", () => {
       expect((await load()).atLimit).toBe(true);
     });
 
+    it("asks to confirm the delete of a list of the person that the address names", async () => {
+      expect((await load()).confirming).toBeNull();
+      expect((await load(`?confirm=${listId}`)).confirming).toEqual({
+        id: listId,
+        title: "Best sci-fi",
+      });
+    });
+
+    it("does not open the confirmation for a list that is not in the person's lists, or for what is not an id", async () => {
+      const someoneElses = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e70";
+
+      expect((await load(`?confirm=${someoneElses}`)).confirming).toBeNull();
+      expect((await load("?confirm=not-an-id")).confirming).toBeNull();
+      expect((await load("?confirm=")).confirming).toBeNull();
+    });
+
     it("shows a notice only for a word it knows", async () => {
       expect((await load("?notice=deleted")).notice).toBe("deleted");
       expect((await load("?notice=<b>x</b>")).notice).toBeNull();

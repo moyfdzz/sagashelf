@@ -4,16 +4,17 @@ import { data, Form, redirect } from "react-router";
 
 import type { Route } from "./+types/lists";
 import { ClerkSession } from "~/components/ClerkSession";
+import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListCard } from "~/components/lists/ListCard";
 import { ListFields, type ListValues } from "~/components/lists/ListFields";
-import { primaryButtonClass } from "~/lib/ui";
+import { dangerButtonClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { listOwnLists } from "~server/db/lists";
 import { readForm } from "~server/http/body";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
-import { runCreateList } from "~server/lists/actions";
+import { asListId, runCreateList } from "~server/lists/actions";
 import {
   asListNotice,
   listVisibilities,
@@ -36,10 +37,14 @@ export async function loader(args: Route.LoaderArgs) {
   const lists = await listOwnLists(await getDb(), user.id);
   const { t } = getInstance(args.context);
   const params = new URL(args.request.url).searchParams;
+  // The list whose deleting is being confirmed, if the address names one of the person's own.
+  const asked = asListId(params.get("confirm"));
+  const confirming = lists.find((list) => list.id === asked) ?? null;
   return rootAuthLoader(args, () => ({
     title: t("app.pageTitle", { title: t("lists.title") }),
     publishableKey: keys.publishableKey,
     notice: asListNotice(params.get("notice")),
+    confirming: confirming && { id: confirming.id, title: confirming.title },
     lists: lists.map(({ id, title, description, visibility, items }) => ({
       id,
       title,
@@ -121,6 +126,12 @@ export default function Lists({
       <main className="container mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-bold">{t("lists.title")}</h1>
         <p className="text-fg-muted mt-2">{t("lists.intro")}</p>
+        {/* Goes to the heading of the form below, with no script: the next Tab is its first field. */}
+        <p className="mt-4">
+          <a href="#new-list" className={`${primaryButtonClass} inline-block`}>
+            {t("lists.new.link")}
+          </a>
+        </p>
 
         {loaderData.notice ? (
           <p
@@ -142,7 +153,7 @@ export default function Lists({
         )}
 
         <section aria-labelledby="new-list" className="mt-10">
-          <h2 id="new-list" className="text-xl font-semibold">
+          <h2 id="new-list" className="scroll-mt-6 text-xl font-semibold">
             {t("lists.new.title")}
           </h2>
           {atLimit ? (
@@ -174,6 +185,29 @@ export default function Lists({
             </Form>
           )}
         </section>
+
+        {loaderData.confirming ? (
+          <ConfirmDialog
+            title={t("lists.confirm.title", {
+              name: loaderData.confirming.title,
+            })}
+            message={t("lists.confirm.body")}
+            cancelHref="/lists"
+            cancelLabel={t("lists.confirm.no")}
+          >
+            {/* The delete is the one of the page of the list: it asks the owner, and comes back here. */}
+            <Form
+              method="post"
+              action={`/lists/${loaderData.confirming.id}`}
+              reloadDocument
+            >
+              <input type="hidden" name="intent" value="delete" />
+              <button type="submit" className={dangerButtonClass}>
+                {t("lists.confirm.yes")}
+              </button>
+            </Form>
+          </ConfirmDialog>
+        ) : null}
       </main>
     </ClerkSession>
   );

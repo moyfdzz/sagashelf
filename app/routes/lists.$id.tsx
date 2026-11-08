@@ -188,7 +188,7 @@ export default function List({ loaderData, actionData }: Route.ComponentProps) {
 
         {loaderData.confirming ? (
           <ConfirmDialog
-            title={t("lists.confirm.title")}
+            title={t("lists.confirm.title", { name: list.title })}
             message={t("lists.confirm.body")}
             cancelHref={page}
             cancelLabel={t("lists.confirm.no")}
