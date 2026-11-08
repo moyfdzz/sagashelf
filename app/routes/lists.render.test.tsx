@@ -255,7 +255,11 @@ describe("the page of the lists of a person (SAG-113)", () => {
       ["deleted", "Lista borrada."],
     ]) {
       const html = await render(<Lists {...listsProps({ notice })} />);
-      expect(html).toMatch(new RegExp(`role="status"[^>]*>${text}`));
+      // A toast that closes by itself (SAG-159), with its close button.
+      expect(html).toMatch(
+        new RegExp(`role="status"[^>]*>[\\s\\S]*?font-semibold">${text}`),
+      );
+      expect(html).toContain("bg-success-bg");
     }
   });
 

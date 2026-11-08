@@ -7,6 +7,7 @@ import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListFields, type ListValues } from "~/components/lists/ListFields";
+import { StatusRegion } from "~/components/StatusRegion";
 import { dangerButtonClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
@@ -135,14 +136,11 @@ export default function List({ loaderData, actionData }: Route.ComponentProps) {
           {t("lists.card.items", { count: list.items })}
         </p>
 
-        {loaderData.notice ? (
-          <p
-            role="status"
-            className="border-input-edge bg-surface mt-4 rounded-md border px-4 py-3 font-semibold"
-          >
-            {t(`lists.notices.${loaderData.notice}`)}
-          </p>
-        ) : null}
+        <StatusRegion
+          message={
+            loaderData.notice ? t(`lists.notices.${loaderData.notice}`) : null
+          }
+        />
 
         <Form method="post" reloadDocument className="mt-6 space-y-6">
           <input type="hidden" name="intent" value="save" />

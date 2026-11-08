@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Route } from "./+types/settings.notifications";
 import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatusRegion } from "~/components/StatusRegion";
 import { useFormatters } from "~/lib/format";
 import {
   dangerButtonClass,
@@ -256,6 +257,34 @@ export default function NotificationSettings({
 
   const error = actionData?.ok === false ? actionData.error : null;
   const outcome = actionData?.ok === true ? actionData : null;
+  // A test message that did not arrive is not a green "it worked": it stays as text below.
+  const failedTest =
+    outcome?.intent === "test" && !outcome.delivered
+      ? t("settings.notifications.result.testFailed", {
+          reason: t(
+            `settings.notifications.reason.${reasonOf(outcome.reason).kind}`,
+            { status: reasonOf(outcome.reason).status },
+          ),
+        }) +
+        (outcome.endpointOn
+          ? ""
+          : ` ${t("settings.notifications.result.testOff")}`)
+      : null;
+  const doneText =
+    outcome?.intent === "add"
+      ? t("settings.notifications.result.added")
+      : outcome?.intent === "remove"
+        ? t("settings.notifications.result.removed")
+        : outcome?.intent === "enable"
+          ? t("settings.notifications.result.enabled")
+          : outcome?.intent === "alerts"
+            ? t("settings.notifications.result.alertsSaved")
+            : outcome?.intent === "test" && outcome.delivered
+              ? t("settings.notifications.result.testOk") +
+                (outcome.endpointOn
+                  ? ""
+                  : ` ${t("settings.notifications.result.testOff")}`)
+              : null;
   const maskedOf = new Map(
     endpoints.map((endpoint) => [endpoint.id, endpoint.maskedUrl]),
   );
@@ -279,44 +308,12 @@ export default function NotificationSettings({
           </BackLink>
         </p>
 
-        {/* Always in the page, so a screen reader announces each message that appears in it. */}
-        <div role="status" className="mt-6 space-y-3">
-          {outcome?.intent === "add" ? (
-            <p className="font-semibold">
-              {t("settings.notifications.result.added")}
-            </p>
-          ) : null}
-          {outcome?.intent === "remove" ? (
-            <p className="font-semibold">
-              {t("settings.notifications.result.removed")}
-            </p>
-          ) : null}
-          {outcome?.intent === "enable" ? (
-            <p className="font-semibold">
-              {t("settings.notifications.result.enabled")}
-            </p>
-          ) : null}
-          {outcome?.intent === "alerts" ? (
-            <p className="font-semibold">
-              {t("settings.notifications.result.alertsSaved")}
-            </p>
-          ) : null}
-          {outcome?.intent === "test" ? (
-            <p className="font-semibold">
-              {outcome.delivered
-                ? t("settings.notifications.result.testOk")
-                : t("settings.notifications.result.testFailed", {
-                    reason: t(
-                      `settings.notifications.reason.${reasonOf(outcome.reason).kind}`,
-                      { status: reasonOf(outcome.reason).status },
-                    ),
-                  })}
-              {!outcome.endpointOn
-                ? ` ${t("settings.notifications.result.testOff")}`
-                : ""}
-            </p>
-          ) : null}
-        </div>
+        <StatusRegion message={doneText} messageKey={outcome} />
+        {failedTest ? (
+          <p role="status" className="mt-6 font-semibold">
+            {failedTest}
+          </p>
+        ) : null}
         {error ? (
           <p
             role="alert"

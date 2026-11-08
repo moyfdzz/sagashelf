@@ -10,7 +10,7 @@ import type { action as usernameAction } from "./settings.username";
 import { AvatarField } from "~/components/AvatarField";
 import { ClerkSession } from "~/components/ClerkSession";
 import { SettingsNav } from "~/components/SettingsNav";
-import { StatusToast } from "~/components/StatusToast";
+import { StatusRegion } from "~/components/StatusRegion";
 import { formatDate } from "~/lib/format";
 import { localeNames, supportedLanguages } from "~/locales";
 import {
@@ -206,17 +206,10 @@ export default function ProfileSettings({
         </p>
         <SettingsNav />
 
-        {/* Always in the page, so a screen reader announces each message that appears in it. */}
-        <div
-          role="status"
-          className="pointer-events-none fixed inset-x-4 top-20 z-50 sm:right-6 sm:left-auto sm:w-96"
-        >
-          {actionData?.ok === true ? (
-            <StatusToast key={actionData.savedAt}>
-              {t("settings.profile.saved")}
-            </StatusToast>
-          ) : null}
-        </div>
+        <StatusRegion
+          message={actionData?.ok === true ? t("settings.profile.saved") : null}
+          messageKey={actionData?.ok === true ? actionData.savedAt : undefined}
+        />
         {hasErrors ? (
           <p
             role="alert"
@@ -287,11 +280,14 @@ export default function ProfileSettings({
               {t(`settings.username.errors.${renameError}`)}
             </p>
           ) : null}
-          {renamed ? (
-            <p role="status" className="text-sm font-semibold">
-              {t("settings.username.saved")}
-            </p>
-          ) : null}
+          <StatusRegion
+            message={renamed ? t("settings.username.saved") : null}
+            messageKey={
+              renamer.data && "username" in renamer.data
+                ? renamer.data.username
+                : undefined
+            }
+          />
         </renamer.Form>
 
         {/* A key from the saved values makes the fields show what was stored after a save. The

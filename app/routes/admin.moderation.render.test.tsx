@@ -651,7 +651,10 @@ describe("the rest of the page", () => {
     ];
     for (const [notice, text] of notices) {
       const html = await render(<AdminModeration {...props({ notice })} />);
-      expect(html).toMatch(new RegExp(`role="status"[^>]*>[^<]*${text}`));
+      // A toast, or plain text for the ones that carry a warning about Clerk (SAG-159).
+      expect(html).toMatch(
+        new RegExp(`role="status"[^>]*>[\\s\\S]*?font-semibold">[^<]*${text}`),
+      );
     }
     const errors: [string, string][] = [
       ["failed", "Clerk no hizo el cambio"],

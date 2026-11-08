@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Route } from "./+types/u.$username";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { PosterGrid } from "~/components/PosterGrid";
+import { StatusRegion } from "~/components/StatusRegion";
 import {
   dangerButtonClass,
   linkClass,
@@ -74,6 +75,17 @@ const notices = [
   "report_cancelled",
 ] as const;
 type Notice = (typeof notices)[number];
+
+// The ones that say "no" or "nothing happened" (SAG-159): the others are the result of a button and
+// show as a toast.
+const refusals: readonly Notice[] = [
+  "too_many",
+  "unavailable",
+  "invalid_request",
+  "report_duplicate",
+  "report_limit",
+];
+const isRefusal = (notice: Notice) => refusals.includes(notice);
 
 const asNotice = (value: string | null): Notice | null =>
   (notices as readonly string[]).includes(value ?? "")
@@ -447,9 +459,14 @@ export default function Profile({ loaderData }: Route.ComponentProps) {
         />
       </div>
 
-      {/* Always in the page, so a screen reader announces the result of a button. */}
+      <StatusRegion
+        message={
+          notice && !isRefusal(notice) ? t(`profile.notice.${notice}`) : null
+        }
+      />
+      {/* A refusal is not a green "it worked": it stays as text, announced like the others. */}
       <div role="status" className="mt-4">
-        {notice ? (
+        {notice && isRefusal(notice) ? (
           <p className="font-semibold">{t(`profile.notice.${notice}`)}</p>
         ) : null}
       </div>

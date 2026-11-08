@@ -5,6 +5,7 @@ import { data, redirect } from "react-router";
 import type { Route } from "./+types/admin.messages";
 import { AdminNav } from "~/components/AdminNav";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatusRegion } from "~/components/StatusRegion";
 import { MessageCard } from "~/components/contact/MessageCard";
 import { getInstance } from "~/middleware/i18next";
 import { isContactKind } from "~server/account/contact-schema";
@@ -99,14 +100,13 @@ export default function AdminMessages({ loaderData }: Route.ComponentProps) {
         <h1 className="text-3xl font-bold">{t("admin.messages.title")}</h1>
         <p className="text-fg-muted mt-2">{t("admin.messages.description")}</p>
 
-        {loaderData.notice ? (
-          <p
-            role="status"
-            className="border-input-edge bg-surface mt-4 rounded-md border px-4 py-3 font-semibold"
-          >
-            {t(`admin.messages.notices.${loaderData.notice}`)}
-          </p>
-        ) : null}
+        <StatusRegion
+          message={
+            loaderData.notice
+              ? t(`admin.messages.notices.${loaderData.notice}`)
+              : null
+          }
+        />
         {loaderData.error ? (
           <p
             role="alert"

@@ -16,7 +16,7 @@ import {
   type FieldErrors,
 } from "~/components/library-entry/shared";
 import { ViewingsSection } from "~/components/library-entry/ViewingsSection";
-import { StatusToast } from "~/components/StatusToast";
+import { StatusRegion } from "~/components/StatusRegion";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import {
@@ -371,14 +371,11 @@ export default function LibraryEntry({
       <main className="container mx-auto max-w-2xl px-4 py-10">
         <EntryHeader media={media} libraryPathBack={libraryPathBack} />
 
-        {/* Always in the page, so a screen reader announces each message that appears in it. */}
-        <div
-          role="status"
-          className="pointer-events-none fixed inset-x-4 top-20 z-50 sm:right-6 sm:left-auto sm:w-96"
-        >
-          {actionData?.ok === true ? (
-            <StatusToast key={actionData.savedAt}>
-              {actionData.saved === "rewatch"
+        <StatusRegion
+          message={
+            actionData?.ok !== true
+              ? null
+              : actionData.saved === "rewatch"
                 ? t("library.editor.rewatched", { context })
                 : actionData.saved === "notify"
                   ? t("library.editor.alerts.saved")
@@ -386,10 +383,10 @@ export default function LibraryEntry({
                       actionData.saved === "viewing_save" ||
                       actionData.saved === "viewing_remove"
                     ? t(`library.editor.viewings.toast.${actionData.saved}`)
-                    : t("library.editor.saved")}
-            </StatusToast>
-          ) : null}
-        </div>
+                    : t("library.editor.saved")
+          }
+          messageKey={actionData?.ok === true ? actionData.savedAt : undefined}
+        />
         {hasErrors ? (
           <p
             role="alert"
