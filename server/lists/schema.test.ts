@@ -3,9 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   asListNotice,
   createListSchema,
+  addToListSchema,
   deleteListSchema,
+  maxItemNote,
   maxListDescription,
+  maxListItems,
   maxListTitle,
+  moveItemSchema,
+  noteItemSchema,
+  removeItemSchema,
   saveListSchema,
 } from "./schema";
 
@@ -83,5 +89,79 @@ describe("the form of a list (SAG-113)", () => {
     expect(asListNotice("deleted")).toBe("deleted");
     expect(asListNotice("<script>")).toBeNull();
     expect(asListNotice(null)).toBeNull();
+  });
+});
+
+describe("the forms of the titles of a list (SAG-113)", () => {
+  const media = "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaa1";
+
+  it("allows 200 titles in a list and a note of 500 characters, as the table does", () => {
+    expect(maxListItems).toBe(200);
+    expect(maxItemNote).toBe(500);
+  });
+
+  it("trims a note, counts an emoji as one character, and makes an empty note none", () => {
+    const parse = (note: string) =>
+      noteItemSchema.parse({ intent: "note_item", mediaId: media, note });
+
+    expect(parse("  Gift  ").note).toBe("Gift");
+    expect(parse("   ").note).toBeNull();
+    expect(parse("😀".repeat(maxItemNote)).note).toHaveLength(maxItemNote * 2);
+    expect(
+      noteItemSchema.safeParse({
+        intent: "note_item",
+        mediaId: media,
+        note: "a".repeat(maxItemNote + 1),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("takes a move only up or down, and only with the fields of the form", () => {
+    const move = (extra: Record<string, unknown>) =>
+      moveItemSchema.safeParse({
+        intent: "move_item",
+        mediaId: media,
+        ...extra,
+      });
+
+    expect(move({ direction: "up" }).success).toBe(true);
+    expect(move({ direction: "down" }).success).toBe(true);
+    expect(move({ direction: "sideways" }).success).toBe(false);
+    expect(move({ direction: "up", ownerId: "x" }).success).toBe(false);
+  });
+
+  it("takes a title that is an id, and nothing else, to remove it", () => {
+    expect(
+      removeItemSchema.safeParse({ intent: "remove_item", mediaId: media })
+        .success,
+    ).toBe(true);
+    expect(
+      removeItemSchema.safeParse({ intent: "remove_item", mediaId: "x" })
+        .success,
+    ).toBe(false);
+    expect(
+      removeItemSchema.safeParse({
+        intent: "remove_item",
+        mediaId: media,
+        x: 1,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("takes a list and a title, both ids, for the button to add", () => {
+    expect(
+      addToListSchema.safeParse({ listId: media, mediaId: media }).success,
+    ).toBe(true);
+    expect(
+      addToListSchema.safeParse({ listId: "x", mediaId: media }).success,
+    ).toBe(false);
+    expect(addToListSchema.safeParse({ listId: media }).success).toBe(false);
+  });
+
+  it("knows the notices of the titles and ignores any other word", () => {
+    expect(asListNotice("removed")).toBe("removed");
+    expect(asListNotice("moved")).toBe("moved");
+    expect(asListNotice("note_saved")).toBe("note_saved");
+    expect(asListNotice("something")).toBeNull();
   });
 });

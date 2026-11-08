@@ -1204,27 +1204,55 @@
     "notices": {
       "created": "List created.",
       "saved": "Changes saved.",
-      "deleted": "List deleted."
+      "deleted": "List deleted.",
+      "removed": "Title removed from the list.",
+      "moved": "Order changed.",
+      "note_saved": "Note saved."
     },
     "errors": {
       "invalid_request": "Check the name and the description: the name cannot be empty or over the limit.",
       "duplicate": "You already have a list with that name.",
       "limit": "You reached the limit of {{max}} lists. Delete one to make another.",
-      "not_found": "That list no longer exists."
+      "not_found": "That list no longer exists.",
+      "invalid_note": "The note is too long. It can have up to {{max}} characters.",
+      "item_not_found": "That title is no longer in the list."
     },
     "detail": {
       "back": "My lists",
       "save": "Save changes",
       "titles": "Titles",
-      "noTitles": "This list has no titles yet.",
+      "noTitles": "This list has no titles yet. Add them from the page of a title or from your library.",
       "dangerTitle": "Delete the list",
-      "delete": "Delete list"
+      "delete": "Delete list",
+      "titlesCount_one": "{{count}} title of {{max}} allowed.",
+      "titlesCount_other": "{{count}} titles of {{max}} allowed."
     },
     "confirm": {
       "title": "Delete “{{name}}”?",
       "body": "The list is deleted with everything in it. This cannot be undone.",
       "yes": "Yes, delete",
       "no": "Cancel"
+    },
+    "titles": {
+      "up": "Move “{{name}}” up",
+      "down": "Move “{{name}}” down",
+      "remove": "Remove “{{name}}” from the list",
+      "note": "Note about “{{name}}” (only you see it)",
+      "saveNote": "Save note"
+    },
+    "add": {
+      "title": "Add to a list",
+      "choose": "List",
+      "submit": "Add",
+      "firstList": "Create your first list",
+      "inAll": "This title is already in all your lists.",
+      "inLists": "It is in:",
+      "added": "Title added to the list.",
+      "already": "That title was already in the list.",
+      "errors": {
+        "limit": "That list already has the most titles it can hold.",
+        "failed": "Could not add it. Try again."
+      }
     }
   },
   "admin": {

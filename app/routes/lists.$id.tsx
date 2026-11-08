@@ -7,22 +7,28 @@ import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListFields, type ListValues } from "~/components/lists/ListFields";
+import { ListTitles } from "~/components/lists/ListTitles";
 import { StatusRegion } from "~/components/StatusRegion";
 import { dangerButtonClass, primaryButtonClass } from "~/lib/ui";
-import { getInstance } from "~/middleware/i18next";
+import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
+import { listItemsOf } from "~server/db/list-items";
 import { getOwnList } from "~server/db/lists";
 import { readForm } from "~server/http/body";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
 import { asListId, runListAction } from "~server/lists/actions";
+import { isItemIntent, runItemAction } from "~server/lists/item-actions";
 import {
   asListNotice,
   listVisibilities,
+  maxItemNote,
   maxListDescription,
+  maxListItems,
   maxListsFormBytes,
   maxListTitle,
 } from "~server/lists/schema";
+import { mediaPath } from "~server/media/slug";
 import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 
@@ -38,6 +44,8 @@ export async function loader(args: Route.LoaderArgs) {
   if (!id) throw notFound();
   const list = await getOwnList(await getDb(), user.id, id);
   if (!list) throw notFound();
+  const locale = getLocale(args.context) === "en" ? "en" : "es";
+  const items = await listItemsOf(await getDb(), user.id, id, locale);
 
   const { t } = getInstance(args.context);
   const params = new URL(args.request.url).searchParams;
@@ -53,8 +61,22 @@ export async function loader(args: Route.LoaderArgs) {
       visibility: list.visibility,
       items: list.items,
     },
+    titles: items.map((item) => ({
+      mediaId: item.mediaId,
+      title: item.title,
+      type: item.type,
+      year: item.year,
+      note: item.note,
+      href: mediaPath(
+        item.type as Parameters<typeof mediaPath>[0],
+        item.title,
+        item.mediaId,
+      ),
+    })),
     maxTitle: maxListTitle,
     maxDescription: maxListDescription,
+    maxItems: maxListItems,
+    maxNote: maxItemNote,
     levels: listVisibilities,
   }));
 }
@@ -89,12 +111,20 @@ export async function action(args: Route.ActionArgs) {
   const id = asListId(params.id);
   if (!id) return fail(404);
 
-  const result = await runListAction(
-    await getDb(),
-    user.id,
-    id,
-    await readForm(request, maxListsFormBytes),
-  );
+  const form = await readForm(request, maxListsFormBytes);
+  const db = await getDb();
+
+  // The forms of the titles of the list carry no text of the list, so a refusal gives no values.
+  if (isItemIntent(form.intent)) {
+    const done = await runItemAction(db, user.id, id, form);
+    if (done.ok) return redirect(done.to, { status: 303 });
+    return data(
+      { error: done.error },
+      { status: done.status, headers: privateHeaders },
+    );
+  }
+
+  const result = await runListAction(db, user.id, id, form);
   if (result.ok) return redirect(result.to, { status: 303 });
   return data(
     { error: result.error, values: result.values },
@@ -116,7 +146,12 @@ export default function List({ loaderData, actionData }: Route.ComponentProps) {
   const { t } = useTranslation();
   const { list } = loaderData;
   const page = `/lists/${list.id}`;
-  const error = actionData && "error" in actionData ? actionData.error : null;
+  const failure = actionData && "error" in actionData ? actionData.error : null;
+  // The refusals of the titles are shown above them, the ones of the list above its form.
+  const itemError =
+    failure === "invalid_note" || failure === "item_not_found" ? failure : null;
+  const error =
+    failure === "invalid_note" || failure === "item_not_found" ? null : failure;
   // A refused form comes back with what was written, and otherwise the form has the saved list.
   const values: ListValues =
     actionData && "values" in actionData ? actionData.values : list;
@@ -166,7 +201,28 @@ export default function List({ loaderData, actionData }: Route.ComponentProps) {
           <h2 id="titles" className="text-xl font-semibold">
             {t("lists.detail.titles")}
           </h2>
-          <p className="text-fg-muted mt-2">{t("lists.detail.noTitles")}</p>
+          <p className="text-fg-muted mt-2">
+            {t("lists.detail.titlesCount", {
+              count: list.items,
+              max: loaderData.maxItems,
+            })}
+          </p>
+          {itemError ? (
+            <p
+              role="alert"
+              className="text-danger-text mt-2 text-sm font-semibold"
+            >
+              {t(`lists.errors.${itemError}`, { max: loaderData.maxNote })}
+            </p>
+          ) : null}
+          {loaderData.titles.length === 0 ? (
+            <p className="text-fg-muted mt-2">{t("lists.detail.noTitles")}</p>
+          ) : (
+            <ListTitles
+              titles={loaderData.titles}
+              maxNote={loaderData.maxNote}
+            />
+          )}
         </section>
 
         <section aria-labelledby="danger" className="mt-10">

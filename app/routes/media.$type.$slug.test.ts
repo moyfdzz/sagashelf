@@ -7,6 +7,7 @@ import type { MediaDetail } from "~server/db/media-detail";
 const mocks = vi.hoisted(() => ({
   getOptionalUser: vi.fn(),
   getEntry: vi.fn(),
+  listsForTitle: vi.fn(),
   getMediaDetail: vi.fn(),
   getRelatedFormats: vi.fn(),
   getSagasOfMedia: vi.fn(),
@@ -20,6 +21,9 @@ vi.mock("~server/auth/require", () => ({
   getOptionalUser: mocks.getOptionalUser,
 }));
 vi.mock("~server/db/library", () => ({ getEntry: mocks.getEntry }));
+vi.mock("~server/db/list-items", () => ({
+  listsForTitle: mocks.listsForTitle,
+}));
 vi.mock("~server/db/media-detail", () => ({
   getMediaDetail: mocks.getMediaDetail,
 }));
@@ -76,6 +80,7 @@ beforeEach(() => {
   mocks.locale = "es";
   mocks.getOptionalUser.mockReset().mockResolvedValue(null);
   mocks.getEntry.mockReset().mockResolvedValue(null);
+  mocks.listsForTitle.mockReset().mockResolvedValue([]);
   mocks.getMediaDetail.mockReset().mockResolvedValue(detail());
   mocks.getRelatedFormats.mockReset().mockResolvedValue([]);
   mocks.getSagasOfMedia.mockReset().mockResolvedValue([]);
@@ -349,6 +354,32 @@ describe("the detail page loader", () => {
       id,
       "es",
     );
+  });
+
+  it("gives a signed-in person their lists, with whether each has the title, and a visitor none", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    mocks.listsForTitle.mockResolvedValue([
+      { id: "list-1", title: "Weekend", has: true },
+    ]);
+
+    const signedIn = await load("movie", `matrix-${id}`);
+
+    expect(mocks.listsForTitle).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      id,
+    );
+    expect(signedIn).toMatchObject({
+      lists: [{ id: "list-1", title: "Weekend", has: true }],
+    });
+
+    mocks.listsForTitle.mockClear();
+    mocks.getOptionalUser.mockResolvedValue(null);
+
+    const visitor = await load("movie", `matrix-${id}`);
+
+    expect(visitor).toMatchObject({ lists: [] });
+    expect(mocks.listsForTitle).not.toHaveBeenCalled();
   });
 
   it("shows a signed-in person the status they gave the title", async () => {

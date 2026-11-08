@@ -77,6 +77,7 @@ const entryProps = (
         detailPath: `/media/anime/ataque-a-los-titanes-${mediaId}`,
       },
       viewings: [],
+      lists: [],
       timesWatched: 0,
       totalEpisodes: 4,
       progressUnits: [],
@@ -394,6 +395,7 @@ const detailProps = (library: Record<string, unknown>) =>
     loaderData: {
       id: mediaId,
       library,
+      lists: [],
       type: "anime",
       title: "Ataque a los Titanes",
       pageTitle: "Ataque a los Titanes | SagaShelf",

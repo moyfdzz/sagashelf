@@ -6,6 +6,7 @@ import type { ZodError } from "zod";
 
 import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
+import { AddToList } from "~/components/lists/AddToList";
 import { AlertsSection } from "~/components/library-entry/AlertsSection";
 import { EntryForm } from "~/components/library-entry/EntryForm";
 import { EntryHeader } from "~/components/library-entry/EntryHeader";
@@ -28,6 +29,7 @@ import {
   setEntryNotifyNewEpisodes,
   totalEpisodes,
 } from "~server/db/library";
+import { listsForTitle } from "~server/db/list-items";
 import {
   addViewing,
   listViewings,
@@ -115,6 +117,7 @@ export async function loader(args: Route.LoaderArgs) {
   if (!entry) throw data(null, { status: 404 });
   const seasons = await getSeasonCounts(db, mediaId.data);
   const viewings = await listViewings(db, user.id, mediaId.data);
+  const lists = await listsForTitle(db, user.id, mediaId.data);
 
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
@@ -156,6 +159,7 @@ export async function loader(args: Route.LoaderArgs) {
       ),
     },
     viewings,
+    lists,
     timesWatched: timesWatched(viewings.length, entry.status),
     totalEpisodes: totalEpisodes(seasons),
     // The units this kind of title can count; empty for those whose total is in the catalog.
@@ -415,6 +419,8 @@ export default function LibraryEntry({
           errors={errors}
           limits={limits}
         />
+
+        <AddToList mediaId={entry.mediaId} lists={loaderData.lists} />
 
         {/* Only a series or an anime has episodes to be told about (SAG-101). */}
         {media.type === "series" || media.type === "anime" ? (

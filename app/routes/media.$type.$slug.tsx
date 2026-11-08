@@ -5,6 +5,7 @@ import { data, Link, redirect } from "react-router";
 import { externalLinkClass, linkClass, textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
 import { BackLink } from "~/components/BackLink";
+import { AddToList } from "~/components/lists/AddToList";
 import { TitleLibrary } from "~/components/TitleLibrary";
 import { TvmazeLink } from "~/components/TvmazeLink";
 import { WikidataLink } from "~/components/WikidataLink";
@@ -12,6 +13,7 @@ import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
+import { listsForTitle } from "~server/db/list-items";
 import { getEntry } from "~server/db/library";
 import { getMediaDetail } from "~server/db/media-detail";
 import { getNextEpisode } from "~server/db/next-episodes";
@@ -132,6 +134,8 @@ export async function loader(args: Route.LoaderArgs) {
   // otherwise, so only this block changes.
   const user = await getOptionalUser(args);
   const entry = user ? await getEntry(db, user.id, detail.id, locale) : null;
+  // The lists of the person, for the button "Add to a list"; a visitor has none.
+  const lists = user ? await listsForTitle(db, user.id, detail.id) : [];
   const library = user
     ? {
         signedIn: true as const,
@@ -211,6 +215,7 @@ export async function loader(args: Route.LoaderArgs) {
     // The entry the person came from (its "View the title page" link), when they came from one.
     backToEntry: entryBackPath(request.headers.get("Referer"), url.origin),
     library,
+    lists,
     type: detail.type,
     title,
     pageTitle: t("app.pageTitle", { title }),
@@ -458,11 +463,14 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
 
           <div className="mt-6">
             {item.library.signedIn ? (
-              <TitleLibrary
-                id={item.id}
-                title={item.title}
-                entry={item.library}
-              />
+              <>
+                <TitleLibrary
+                  id={item.id}
+                  title={item.title}
+                  entry={item.library}
+                />
+                <AddToList mediaId={item.id} lists={item.lists} />
+              </>
             ) : (
               <a href={item.library.signInPath} className={linkClass}>
                 {t("media.library.signIn")}

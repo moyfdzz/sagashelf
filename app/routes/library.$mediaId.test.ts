@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   rewatchEntry: vi.fn(),
   setEntryNotifyNewEpisodes: vi.fn(),
   listViewings: vi.fn(),
+  listsForTitle: vi.fn(),
   addViewing: vi.fn(),
   saveViewing: vi.fn(),
   removeViewing: vi.fn(),
@@ -31,6 +32,9 @@ vi.mock("~server/db/library", () => ({
   setEntryNotifyNewEpisodes: mocks.setEntryNotifyNewEpisodes,
   totalEpisodes: (seasons: { episodes: number }[]) =>
     seasons.reduce((sum, season) => sum + season.episodes, 0),
+}));
+vi.mock("~server/db/list-items", () => ({
+  listsForTitle: mocks.listsForTitle,
 }));
 vi.mock("~server/db/viewings", () => ({
   listViewings: mocks.listViewings,
@@ -86,6 +90,7 @@ beforeEach(() => {
   mocks.rewatchEntry.mockReset().mockResolvedValue(true);
   mocks.setEntryNotifyNewEpisodes.mockReset().mockResolvedValue(true);
   mocks.listViewings.mockReset().mockResolvedValue([]);
+  mocks.listsForTitle.mockReset().mockResolvedValue([]);
   mocks.addViewing.mockReset().mockResolvedValue("ok");
   mocks.saveViewing.mockReset().mockResolvedValue(true);
   mocks.removeViewing.mockReset().mockResolvedValue(true);
@@ -142,6 +147,23 @@ async function statusOf(promise: Promise<unknown>) {
 }
 
 describe("the entry page loader", () => {
+  it("gives the lists of the person with whether each has the title, for the button to add it", async () => {
+    mocks.listsForTitle.mockResolvedValue([
+      { id: "list-1", title: "Weekend", has: false },
+    ]);
+
+    const result = (await load()) as unknown as Record<string, unknown>;
+
+    expect(mocks.listsForTitle).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+    );
+    expect(result.lists).toEqual([
+      { id: "list-1", title: "Weekend", has: false },
+    ]);
+  });
+
   it("shows the entry of the person with where the progress leaves them", async () => {
     const result = (await load()) as unknown as Record<string, unknown>;
 

@@ -119,6 +119,13 @@ const rows: Row[] = [
     limitKey: "lists:user-1",
   },
   {
+    file: "lists.add.ts",
+    path: "/lists/add",
+    params: {},
+    who: "optional",
+    limitKey: "lists:user-1",
+  },
+  {
     file: "lists.$id.tsx",
     path: `/lists/${uuid}`,
     params: { id: uuid },
