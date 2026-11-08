@@ -143,7 +143,17 @@ describe("the page of messages (SAG-110)", () => {
     expect(html).toContain(`name="id" value="${id}"`);
   });
 
-  it("asks before deleting, on the card that was asked for and no other", async () => {
+  it("draws the delete button in red, as a link that opens the modal", async () => {
+    const html = await render(<AdminMessages {...props()} />);
+
+    const link = html.match(
+      new RegExp(`<a [^>]*href="/admin/messages\\?confirm=${id}"[^>]*>Borrar<`),
+    );
+    expect(link?.[0]).toContain("bg-danger-bg");
+    expect(html).not.toContain("<dialog");
+  });
+
+  it("asks before deleting in a modal, on the card that was asked for and no other", async () => {
     const html = await render(
       <AdminMessages
         {...props({
@@ -156,10 +166,14 @@ describe("the page of messages (SAG-110)", () => {
     expect(html).toContain("¿Borrar este mensaje?");
     expect(html).toContain("Sí, borrar");
     expect(html).toMatch(/<a [^>]*href="\/admin\/messages"[^>]*>Cancelar</);
-    // The first card asks, and has no other button; the second keeps its own.
-    expect(intents(html)).toEqual(["delete", "handled"]);
-    expect(html).not.toContain(`href="/admin/messages?confirm=${id}"`);
-    expect(html).toContain(`href="/admin/messages?confirm=${otherId}"`);
+    // Only the first card has a dialog, and its confirm button deletes that message.
+    expect(html.match(/<dialog /g)).toHaveLength(1);
+    expect(intents(html)).toEqual(["handled", "delete", "handled"]);
+    expect(html).toMatch(
+      new RegExp(
+        `<dialog[^>]*>[\\s\\S]*name="intent" value="delete"[^>]*>\\s*<input type="hidden" name="id" value="${id}"`,
+      ),
+    );
   });
 
   it("says there are none when there are none", async () => {
