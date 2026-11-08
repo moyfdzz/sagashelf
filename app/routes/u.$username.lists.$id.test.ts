@@ -19,13 +19,7 @@ vi.mock("~server/runtime-env", () => ({ getDb: mocks.getDb }));
 vi.mock("~server/db/profile-lookup", () => ({
   findViewableProfile: mocks.findViewableProfile,
 }));
-vi.mock("~server/db/profile-lists", async () => ({
-  // The rule of the levels is pure, so the real one is used and only the database is replaced.
-  visibleListLevels: (
-    await vi.importActual<typeof import("~server/db/profile-lists")>(
-      "~server/db/profile-lists",
-    )
-  ).visibleListLevels,
+vi.mock("~server/db/profile-lists", () => ({
   getViewableList: mocks.getViewableList,
   listViewableItems: mocks.listViewableItems,
 }));
@@ -60,9 +54,7 @@ beforeEach(() => {
     id: listId,
     title: "Best sci-fi",
     description: "Space",
-    visibility: "public",
     items: 1,
-    updatedAt: new Date(),
   });
   mocks.listViewableItems
     .mockReset()
@@ -132,23 +124,26 @@ describe("the page of a list of somebody else (SAG-113, ADR-045)", () => {
       null,
       "ana_reads",
     );
-    expect(mocks.getViewableList).toHaveBeenCalledWith(db, "owner-id", listId, [
-      "public",
-    ]);
+    expect(mocks.getViewableList).toHaveBeenCalledWith(db, "owner-id", listId, {
+      relationship: "signed_out",
+      profileLevel: "public",
+    });
   });
 
+  // Which levels that allows is worked out inside the data functions and tested there, against the
+  // database (`db/profile-lists.integration.test.ts`): the route only says who is looking.
   it.each([
-    ["stranger", "public", ["public"]],
-    ["friend", "public", ["public", "friends"]],
-    ["friend", "friends", ["public", "friends"]],
-    ["owner", "friends", ["public", "friends", "private"]],
+    ["stranger", "public"],
+    ["friend", "friends"],
+    ["owner", "private"],
   ])(
-    "asks for the list of a %s of a %s profile with the levels %j only, for the list and its titles",
-    async (relationship, privacy, expected) => {
+    "says who is looking, a %s of a %s profile, to the list and to its titles, and passes no levels",
+    async (relationship, privacy) => {
       mocks.findViewableProfile.mockResolvedValue({
         owner: head({ privacy }),
         relationship,
       });
+      const viewing = { relationship, profileLevel: privacy };
 
       await load();
 
@@ -156,13 +151,13 @@ describe("the page of a list of somebody else (SAG-113, ADR-045)", () => {
         db,
         "owner-id",
         listId,
-        expected,
+        viewing,
       );
       expect(mocks.listViewableItems).toHaveBeenCalledWith(
         db,
         "owner-id",
         listId,
-        expected,
+        viewing,
         "es",
       );
     },
@@ -212,7 +207,7 @@ describe("the page of a list of somebody else (SAG-113, ADR-045)", () => {
       db,
       "owner-id",
       listId,
-      ["public"],
+      { relationship: "stranger", profileLevel: "public" },
       "en",
     );
   });

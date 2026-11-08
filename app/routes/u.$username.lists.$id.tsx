@@ -8,11 +8,7 @@ import { getInstance, getLocale } from "~/middleware/i18next";
 import { usernameShape } from "~server/account/profile-schema";
 import { getOptionalUser } from "~server/auth/require";
 import { findViewableProfile } from "~server/db/profile-lookup";
-import {
-  getViewableList,
-  listViewableItems,
-  visibleListLevels,
-} from "~server/db/profile-lists";
+import { getViewableList, listViewableItems } from "~server/db/profile-lists";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
 import { asListId } from "~server/lists/actions";
 import { listTitleView } from "~server/lists/title-view";
@@ -37,15 +33,15 @@ export async function loader(args: Route.LoaderArgs) {
   if (!found) throw notFound();
   const { owner, relationship } = found;
 
-  // The levels of list this viewer may see are decided once, by the strictest of the list and the
-  // profile, and every statement below has them in its `WHERE`.
-  const allowed = visibleListLevels(relationship, owner.privacy);
+  // The data functions work out which levels of list this viewer may see from who they are and the
+  // level of the profile (the strictest of the list and the profile, ADR-045).
+  const viewing = { relationship, profileLevel: owner.privacy };
   const locale = getLocale(context) === "en" ? "en" : "es";
-  // Both statements have the levels in their `WHERE`, so a list the viewer may not see gives no
-  // titles either, and the 404 below drops them. Asking together saves a round trip.
+  // Both statements filter by those levels, so a list the viewer may not see gives no titles
+  // either, and the 404 below drops them. Asking together saves a round trip.
   const [list, items] = await Promise.all([
-    getViewableList(db, owner.id, listId, allowed),
-    listViewableItems(db, owner.id, listId, allowed, locale),
+    getViewableList(db, owner.id, listId, viewing),
+    listViewableItems(db, owner.id, listId, viewing, locale),
   ]);
   if (!list) throw notFound();
 

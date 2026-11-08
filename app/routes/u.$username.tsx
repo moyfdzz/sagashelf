@@ -35,7 +35,7 @@ import {
 import { followUser, unfollowUser } from "~server/db/follows";
 import { getSocialCounts } from "~server/db/people-lists";
 import { findProfile } from "~server/db/profile-lookup";
-import { listViewableLists, visibleListLevels } from "~server/db/profile-lists";
+import { listViewableLists } from "~server/db/profile-lists";
 import { findMyReports } from "~server/db/reports";
 import { readForm } from "~server/http/body";
 import { posterCard } from "~server/media/poster-card";
@@ -176,11 +176,10 @@ export async function loader(args: Route.LoaderArgs) {
     getSocialCounts(db, owner.id),
     getProfileSections(db, owner.id, owner.privacy, relationship, locale),
     // Only the lists this viewer may see: the strictest of the list and the profile (ADR-045).
-    listViewableLists(
-      db,
-      owner.id,
-      visibleListLevels(relationship, owner.privacy),
-    ),
+    listViewableLists(db, owner.id, {
+      relationship,
+      profileLevel: owner.privacy,
+    }),
   ]);
   return {
     ...base,
