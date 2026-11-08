@@ -54,6 +54,7 @@ const props = (
         status: null,
         signInPath: "/sign-in?redirectTo=%2F",
       },
+      lists: [],
       type: "series",
       title: "The Pitt",
       pageTitle: "The Pitt | SagaShelf",

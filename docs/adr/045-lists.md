@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-08
-- **Implementation:** Partial (SAG-113: pages of the lists in the first PR; titles in a list and the profile section are planned in the next two PRs of the same ticket)
+- **Implementation:** Partial (SAG-113: pages of the lists in the first PRs and the titles in a list in the second; the profile section and the page of a list for others are planned in the last PR of the same ticket)
 - **Tickets:** SAG-113
 - **Related:** [ADR-031](031-social-graph.md), [ADR-033](033-design-rules.md), [ADR-043](043-report-again-after-an-answer.md)
 
@@ -14,7 +14,11 @@ The tables `lists` and `list_items` have existed since SAG-9, with a visibility 
 
 **Pages.** `/lists` only shows the lists of the person, with a button "Crear lista" and, on each list, two icon buttons: change it and delete it. `/lists/new` is the form to make one, on a page of its own so that reading and making are not on the same page (changed on 2026-11-08, after the owner tried the first version). `/lists/:id` shows one list in a form to change its name, description and visibility, and a red button to delete it. Every delete asks first in a modal (`ConfirmDialog`, SAG-125) that names the list; the one of `/lists` posts to the delete of `/lists/:id`, so the server has one delete. All three are pages of the session, never cached and not indexed. The account menu links to `/lists`, and so does the library, next to its title. The top bar does not get a link: its width is measured to the pixel (`Navbar`) and a new link would need that measured again. The two icon buttons are 32 px, smaller than the 40 px of the buttons with text, by the choice of the owner; WCAG 2.2 asks for 24 px (success criterion 2.5.8).
 
-**A list that is not the person's is a list that is not there.** Every statement in `server/db/lists.ts` has the id of the person of the session in its `WHERE`, and the page answers 404 for a list of someone else, for one that does not exist and for an id that is not an id, the same way. Until the profile section exists (a later PR of SAG-113) nobody but the owner can open a list.
+**Titles in a list.** The page of a list shows its titles in the order the person chose (`position`, then `created_at`, then the id, so the titles of a list that share a position have a clear order). Each has a link to its page, three forms (move up or down, remove, save a note) and the buttons are 40 px, since they are pressed in a column on a phone. The up button of the first title and the down button of the last are off. Every form is a plain form that posts to the page of the list and ends in a redirect with `?notice=` (`removed`, `moved`, `note_saved`) and `#titles`. A move swaps a title with its neighbour in **one statement** that numbers the whole list again from 0, so it needs no lock, is the same for the old rows that all have position 0 and writes nothing at an end. A note is private to the owner and is never shown to others, as the notes of the library. The button "Add to a list" is on the page of a title and on the entry of the library: a `<select>` of the lists that do not have the title and a button, posting to `/lists/add` (a resource route). With JavaScript it is a fetcher and the result shows in the toast; without it the person goes back to the page they came from, with no message. The lists that already have the title are named under the button. Any title of the catalog can be added; a title a person made for themselves (`custom`) only to their own lists, and a custom title of someone else is answered as one that does not exist.
+
+**The limit of titles is soft too.** The count, the ownership, the existence of the title and the insert are one statement (`addListItem`): at 200 it inserts nothing and the answer is "limit", and a title already in the list is "already" (`ON CONFLICT DO NOTHING` with no target, ADR-043). Two forms at the very same moment can pass 200 by one or two, for the same reasons as the lists.
+
+**A list that is not the person's is a list that is not there.** Every statement in `server/db/lists.ts` has the id of the person of the session in its `WHERE`, and the page answers 404 for a list of someone else, for one that does not exist and for an id that is not an id, the same way. Until the profile section exists (the last PR of SAG-113) nobody but the owner can open a list. The same holds for its titles: every statement of `server/db/list-items.ts` joins the list to the id of the person of the session, so the id of a title of a list of someone else is not enough to read, move, note or remove it.
 
 **Private by default.** The form starts on Private, as the table does. The three levels say in the form who sees the list, and the profile can only narrow it: a list is seen by whoever `canView` allows for the **strictest** of the level of the list and the level of the profile (`strictest`, ADR-031). This is written here before the code that applies it (the profile PR). Until then the levels are only stored.
 
@@ -31,13 +35,14 @@ The tables `lists` and `list_items` have existed since SAG-9, with a visibility 
 - **A hard limit with a lock** (`SELECT ... FOR UPDATE` on the user row, or a counter column). It is exact, but it adds a statement or a column and a migration to protect against an extra list that costs nothing.
 - **No limit.** The table has none, but a person (or a script, past the rate limit) could fill the database with lists; 50 is far above what anybody needs.
 - **A link to share with a secret address.** A public list is shared by its normal address. A secret link would be a second way to read a list that bypasses `canView`, and the ticket asks for the policy of the profile.
-- **Reordering by dragging.** It needs JavaScript and works badly on a phone. Buttons to move a title up and down, which work without it, come with the titles.
+- **Reordering by dragging.** It needs JavaScript and works badly on a phone. Buttons to move a title up and down work without it, and they are what was built.
+- **A modal to choose the list.** More code and more to get right for a screen reader than a `<select>`, for a choice among at most 50 names.
 - **A link in the top bar.** It needs the measure of the header redone, for a page that few people open often.
 
 ## Consequences
 
 - A person can have lists, name them, describe them and delete them, and nothing is visible to others yet.
-- The rest of the ticket (titles, reorder, the buttons on the title page and on the library entry, the section on the profile and on the page of a list for others) is planned in two more PRs. Until the last one the ticket stays In Progress.
+- A person can now fill a list: add, remove, reorder and note titles. Still nobody else can see it. The section on the profile and the page of a list for others are planned in one more PR. Until it the ticket stays In Progress.
 - A list that someone deletes goes with its titles (`ON DELETE CASCADE`); nothing else refers to a list yet. `activity` has a kind `list_created` that nothing writes, which belongs to SAG-44.
 
 ## Open questions

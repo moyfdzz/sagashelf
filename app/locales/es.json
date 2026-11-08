@@ -1204,27 +1204,55 @@
     "notices": {
       "created": "Lista creada.",
       "saved": "Cambios guardados.",
-      "deleted": "Lista borrada."
+      "deleted": "Lista borrada.",
+      "removed": "Título quitado de la lista.",
+      "moved": "Orden cambiado.",
+      "note_saved": "Nota guardada."
     },
     "errors": {
       "invalid_request": "Revisa el nombre y la descripción: el nombre no puede quedar vacío ni pasar del límite.",
       "duplicate": "Ya tienes una lista con ese nombre.",
       "limit": "Llegaste al límite de {{max}} listas. Borra una para crear otra.",
-      "not_found": "Esa lista ya no existe."
+      "not_found": "Esa lista ya no existe.",
+      "invalid_note": "La nota es demasiado larga. Puede tener hasta {{max}} caracteres.",
+      "item_not_found": "Ese título ya no está en la lista."
     },
     "detail": {
       "back": "Mis listas",
       "save": "Guardar cambios",
       "titles": "Títulos",
-      "noTitles": "Esta lista aún no tiene títulos.",
+      "noTitles": "Esta lista aún no tiene títulos. Agrégalos desde la página de un título o desde tu biblioteca.",
       "dangerTitle": "Borrar la lista",
-      "delete": "Borrar lista"
+      "delete": "Borrar lista",
+      "titlesCount_one": "{{count}} título de {{max}} posibles.",
+      "titlesCount_other": "{{count}} títulos de {{max}} posibles."
     },
     "confirm": {
       "title": "¿Borrar «{{name}}»?",
       "body": "Se borra la lista con todo lo que tiene. No se puede deshacer.",
       "yes": "Sí, borrar",
       "no": "Cancelar"
+    },
+    "titles": {
+      "up": "Subir «{{name}}»",
+      "down": "Bajar «{{name}}»",
+      "remove": "Quitar «{{name}}» de la lista",
+      "note": "Nota sobre «{{name}}» (solo tú la ves)",
+      "saveNote": "Guardar nota"
+    },
+    "add": {
+      "title": "Agregar a una lista",
+      "choose": "Lista",
+      "submit": "Agregar",
+      "firstList": "Crea tu primera lista",
+      "inAll": "Este título ya está en todas tus listas.",
+      "inLists": "Está en:",
+      "added": "Título agregado a la lista.",
+      "already": "Ese título ya estaba en la lista.",
+      "errors": {
+        "limit": "Esa lista ya tiene el máximo de títulos.",
+        "failed": "No se pudo agregar. Intenta de nuevo."
+      }
     }
   },
   "admin": {

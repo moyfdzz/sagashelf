@@ -122,6 +122,7 @@ const rows: Row[] = [
   row("api.locale.ts", "post-only", "/api/locale"),
   row("library.add.ts", "post-only", "/library/add"),
   row("library.add-external.ts", "post-only", "/library/add-external"),
+  row("lists.add.ts", "post-only", "/lists/add"),
   row("library.$mediaId.status.ts", "post-only", `/library/${uuid}/status`, {
     mediaId: uuid,
   }),

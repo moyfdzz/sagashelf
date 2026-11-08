@@ -17,6 +17,12 @@ const focus =
 export const iconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-8 items-center justify-center rounded-md border hover:brightness-95`;
 export const dangerIconButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} inline-flex size-8 items-center justify-center rounded-md border hover:brightness-95`;
 
+/**
+ * The same, 40 px, for the buttons that are pressed in a column on a phone (the move and remove
+ * buttons of the titles of a list). It can be turned off.
+ */
+export const largeIconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-10 items-center justify-center rounded-md border hover:brightness-95 disabled:opacity-50`;
+
 export const primaryButtonClass = `bg-accent text-accent-fg ${focus} rounded-md px-4 py-2 font-semibold transition hover:brightness-95 disabled:opacity-60`;
 
 /**

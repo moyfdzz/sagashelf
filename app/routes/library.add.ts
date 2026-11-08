@@ -9,32 +9,11 @@ import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { readForm } from "~server/http/body";
 import { privateHeaders } from "~server/http/cache";
+import { asksForData, cameFrom } from "~server/http/came-from";
 import { checkWrite } from "~server/http/write-guard";
 
 // The form has one id. Anything bigger is not from the title page.
 const maxFormBytes = 1024;
-
-/**
- * A form that the title page sends with JavaScript is a `fetch`, and its answer is data: the
- * page changes in place. The same form without JavaScript is a document, and the person goes to
- * their entry. `Sec-Fetch-Dest` says which, and only the first is `empty`.
- */
-const asksForData = (request: Request) =>
-  request.headers.get("Sec-Fetch-Dest") === "empty";
-
-/** The page the form was sent from, when it is on this site, to bring the person back to it. */
-function cameFrom(request: Request): string {
-  const referer = request.headers.get("Referer");
-  if (!referer) return request.url;
-  try {
-    const from = new URL(referer);
-    return from.origin === new URL(request.url).origin
-      ? from.href
-      : request.url;
-  } catch {
-    return request.url;
-  }
-}
 
 // Only the button of a title page adds a title, with a POST.
 export function loader() {

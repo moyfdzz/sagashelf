@@ -11,6 +11,10 @@ const mocks = vi.hoisted(() => ({
   getOwnList: vi.fn(),
   updateList: vi.fn(),
   deleteList: vi.fn(),
+  listItemsOf: vi.fn(),
+  removeListItem: vi.fn(),
+  moveListItem: vi.fn(),
+  saveListItemNote: vi.fn(),
 }));
 
 vi.mock("~server/auth/require", () => ({ requireUser: mocks.requireUser }));
@@ -30,8 +34,15 @@ vi.mock("~server/db/lists", () => ({
   updateList: mocks.updateList,
   deleteList: mocks.deleteList,
 }));
+vi.mock("~server/db/list-items", () => ({
+  listItemsOf: mocks.listItemsOf,
+  removeListItem: mocks.removeListItem,
+  moveListItem: mocks.moveListItem,
+  saveListItemNote: mocks.saveListItemNote,
+}));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
+  getLocale: () => "en",
 }));
 
 const db = { fake: "database" };
@@ -55,6 +66,10 @@ beforeEach(() => {
   });
   mocks.updateList.mockReset().mockResolvedValue("saved");
   mocks.deleteList.mockReset().mockResolvedValue(true);
+  mocks.listItemsOf.mockReset().mockResolvedValue([]);
+  mocks.removeListItem.mockReset().mockResolvedValue(true);
+  mocks.moveListItem.mockReset().mockResolvedValue(true);
+  mocks.saveListItemNote.mockReset().mockResolvedValue(true);
 });
 
 const load = (listId = id, query = "") =>
@@ -267,6 +282,174 @@ describe("the page of one list (SAG-113)", () => {
 
       expect(result.init?.status).toBe(404);
       expect(result.data.error).toBe("not_found");
+    });
+  });
+
+  describe("the titles of the list", () => {
+    const media = "0199a3c2-7d4e-7b1a-8c3f-aaaaaaaaaaaa";
+
+    it("reads them for the person of the session, in the language of the page", async () => {
+      mocks.listItemsOf.mockResolvedValue([
+        {
+          mediaId: media,
+          type: "movie",
+          title: "Dune",
+          year: 2021,
+          imageUrl: null,
+          note: "Watch with Ana",
+        },
+      ]);
+
+      const result = await load();
+
+      expect(mocks.listItemsOf).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        id,
+        "en",
+      );
+      expect(result.titles).toEqual([
+        {
+          mediaId: media,
+          title: "Dune",
+          type: "movie",
+          year: 2021,
+          note: "Watch with Ana",
+          href: `/media/movie/dune-${media}`,
+        },
+      ]);
+    });
+
+    it("reads no titles of a list that is not the person's", async () => {
+      mocks.getOwnList.mockResolvedValue(null);
+
+      await expect(load()).rejects.toMatchObject({ init: { status: 404 } });
+      expect(mocks.listItemsOf).not.toHaveBeenCalled();
+    });
+
+    it("removes a title for the person of the session, from the list of the address", async () => {
+      const result = (await submit({
+        intent: "remove_item",
+        mediaId: media,
+      })) as Response;
+
+      expect(mocks.removeListItem).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        id,
+        media,
+      );
+      expect(result.status).toBe(303);
+      expect(result.headers.get("Location")).toBe(
+        `/lists/${id}?notice=removed#titles`,
+      );
+    });
+
+    it.each([
+      ["up", "up"],
+      ["down", "down"],
+    ])("moves a title %s", async (direction, expected) => {
+      const result = (await submit({
+        intent: "move_item",
+        mediaId: media,
+        direction,
+      })) as Response;
+
+      expect(mocks.moveListItem).toHaveBeenCalledWith(
+        db,
+        "user-from-session",
+        id,
+        media,
+        expected,
+      );
+      expect(result.headers.get("Location")).toBe(
+        `/lists/${id}?notice=moved#titles`,
+      );
+    });
+
+    it("saves a note, and an empty note clears it", async () => {
+      await submit({ intent: "note_item", mediaId: media, note: " Gift " });
+      await submit({ intent: "note_item", mediaId: media, note: "  " });
+
+      expect(mocks.saveListItemNote).toHaveBeenNthCalledWith(
+        1,
+        db,
+        "user-from-session",
+        id,
+        media,
+        "Gift",
+      );
+      expect(mocks.saveListItemNote).toHaveBeenNthCalledWith(
+        2,
+        db,
+        "user-from-session",
+        id,
+        media,
+        null,
+      );
+    });
+
+    it("refuses a note over 500 characters with its own error, and saves nothing", async () => {
+      const result = answer(
+        await submit({
+          intent: "note_item",
+          mediaId: media,
+          note: "a".repeat(501),
+        }),
+      );
+
+      expect(result.init?.status).toBe(400);
+      expect(result.data.error).toBe("invalid_note");
+      expect(result.data.values).toBeUndefined();
+      expect(mocks.saveListItemNote).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["a media id that is not an id", { mediaId: "x", direction: "up" }],
+      [
+        "a direction that does not exist",
+        { mediaId: media, direction: "left" },
+      ],
+      [
+        "a field the form does not have",
+        { mediaId: media, direction: "up", listId: "x" },
+      ],
+    ])("refuses a move with %s", async (_name, fields) => {
+      const result = answer(await submit({ intent: "move_item", ...fields }));
+
+      expect(result.init?.status).toBe(400);
+      expect(mocks.moveListItem).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["remove_item", "removeListItem", {}],
+      ["move_item", "moveListItem", { direction: "up" }],
+      ["note_item", "saveListItemNote", { note: "x" }],
+    ] as const)(
+      "answers 404 with its own error when %s finds nothing",
+      async (intent, fn, extra) => {
+        mocks[fn].mockResolvedValue(false);
+
+        const result = answer(
+          await submit({ intent, mediaId: media, ...extra }),
+        );
+
+        expect(result.init?.status).toBe(404);
+        expect(result.data.error).toBe("item_not_found");
+        expect(result.data.values).toBeUndefined();
+      },
+    );
+
+    it("is limited per person like the rest of the forms of the page", async () => {
+      mocks.limit.mockResolvedValue({ success: false });
+
+      const result = (await submit({
+        intent: "remove_item",
+        mediaId: media,
+      })) as Response;
+
+      expect(result.status).toBe(429);
+      expect(mocks.removeListItem).not.toHaveBeenCalled();
     });
   });
 });
