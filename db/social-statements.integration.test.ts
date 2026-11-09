@@ -92,7 +92,7 @@ describe("the statements of the social graph (SAG-118)", () => {
     const ben = await person("ben_owner");
 
     const counts = counting();
-    await getSocialCounts(counts.executor, ben.id);
+    await getSocialCounts(counts.executor, ana.id, ben.id);
     expect(counts.statements).toBe(1);
 
     const list = counting();

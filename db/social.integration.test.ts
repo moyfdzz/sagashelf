@@ -3,6 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   blockUser,
+  listBlocked,
+  listMuted,
   muteUser,
   unblockUser,
   unmuteUser,
@@ -20,7 +22,13 @@ import {
   findViewableProfile,
   getRelationship,
 } from "../server/db/profile-lookup";
-import { blocks, follows, mutes, users } from "../server/db/schema";
+import {
+  blocks,
+  followRequests,
+  follows,
+  mutes,
+  users,
+} from "../server/db/schema";
 import {
   levels,
   relationships,
@@ -212,14 +220,79 @@ describe("blockUser", () => {
     ]);
   });
 
-  it("blocks a person whatever their privacy level, and twice is the same as once", async () => {
+  it("blocks a person with a public or a friends-only profile, and twice is the same as once", async () => {
     const ana = await person("ana_viewer");
-    await person("ben_private", "private");
+    await person("ben_friends", "friends");
 
-    await blockUser(db, ana.id, "ben_private");
-    await blockUser(db, ana.id, "ben_private");
+    await blockUser(db, ana.id, "ben_friends");
+    await blockUser(db, ana.id, "ben_friends");
 
     expect(await db.select().from(blocks)).toHaveLength(1);
+  });
+
+  it("stores nothing, and removes nothing, for Total privacy with no tie, or for someone who blocked the person (SAG-164)", async () => {
+    const ana = await person("ana_viewer");
+    await person("ben_private", "private");
+    const blocker = await person("cat_public");
+    await block(blocker.id, ana.id);
+    await follow(ana.id, blocker.id);
+
+    await blockUser(db, ana.id, "ben_private");
+    await blockUser(db, ana.id, "cat_public");
+
+    // Only the block that cat made is there, and the follow of cat was not touched.
+    expect(await db.select().from(blocks)).toMatchObject([
+      { blockerId: blocker.id, blockedId: ana.id },
+    ]);
+    expect(await allFollows()).toHaveLength(1);
+  });
+
+  it("still blocks a person with Total privacy when there is already a follow or a request between them", async () => {
+    const ana = await person("ana_viewer");
+    const friend = await person("ben_private", "private");
+    const asked = await person("cat_private", "private");
+    const asker = await person("dan_private", "private");
+    await follow(ana.id, friend.id);
+    await follow(friend.id, ana.id);
+    await db
+      .insert(followRequests)
+      .values({ requesterId: ana.id, targetId: asked.id });
+    await db
+      .insert(followRequests)
+      .values({ requesterId: asker.id, targetId: ana.id });
+
+    await blockUser(db, ana.id, "ben_private");
+    await blockUser(db, ana.id, "cat_private");
+    await blockUser(db, ana.id, "dan_private");
+
+    expect(
+      (await db.select().from(blocks)).map((row) => row.blockedId).sort(),
+    ).toEqual([friend.id, asked.id, asker.id].sort());
+    expect(await allFollows()).toHaveLength(0);
+  });
+
+  it("drops the mute the person had of the one they block, and no other mute", async () => {
+    const ana = await person("ana_viewer");
+    const ben = await person("ben_public");
+    const cat = await person("cat_public");
+    await db.insert(mutes).values([
+      { muterId: ana.id, mutedId: ben.id },
+      { muterId: ana.id, mutedId: cat.id },
+      { muterId: ben.id, mutedId: ana.id },
+    ]);
+
+    await blockUser(db, ana.id, "ben_public");
+    await unblockUser(db, ana.id, "ben_public");
+
+    // Ana's mute of cat and ben's own mute of ana stay; the mute of ben does not come back.
+    expect(
+      (await db.select().from(mutes)).map((m) => [m.muterId, m.mutedId]).sort(),
+    ).toEqual(
+      [
+        [ana.id, cat.id],
+        [ben.id, ana.id],
+      ].sort(),
+    );
   });
 
   it("does nothing for oneself, for a missing person or for an erased one", async () => {
@@ -319,6 +392,33 @@ describe("muteUser and unmuteUser", () => {
     expect(await db.select().from(mutes)).toHaveLength(0);
   });
 
+  it("stores nothing for Total privacy with no tie, for someone who blocked the person, or for someone the person blocked (SAG-164)", async () => {
+    const ana = await person("ana_viewer");
+    await person("ben_private", "private");
+    const blocker = await person("cat_public");
+    const blocked = await person("dan_public");
+    await block(blocker.id, ana.id);
+    await block(ana.id, blocked.id);
+
+    await muteUser(db, ana.id, "ben_private");
+    await muteUser(db, ana.id, "cat_public");
+    await muteUser(db, ana.id, "dan_public");
+
+    expect(await db.select().from(mutes)).toHaveLength(0);
+  });
+
+  it("mutes a person with Total privacy when there is a follow between them", async () => {
+    const ana = await person("ana_viewer");
+    const ben = await person("ben_private", "private");
+    await follow(ben.id, ana.id);
+
+    await muteUser(db, ana.id, "ben_private");
+
+    expect(await db.select().from(mutes)).toMatchObject([
+      { muterId: ana.id, mutedId: ben.id },
+    ]);
+  });
+
   it("cannot remove a mute somebody else made", async () => {
     const ana = await person("ana_viewer");
     const ben = await person("ben_public");
@@ -327,6 +427,70 @@ describe("muteUser and unmuteUser", () => {
     await unmuteUser(db, ana.id, "ben_public");
 
     expect(await db.select().from(mutes)).toHaveLength(1);
+  });
+});
+
+describe("the lists of blocked and muted people (SAG-164)", () => {
+  const names = (people: { username: string }[]) =>
+    people.map((p) => p.username).sort();
+
+  it("lists only the own rows of the viewer, and never those of the other person", async () => {
+    const ana = await person("ana_viewer");
+    const ben = await person("ben_public");
+    const cat = await person("cat_public");
+    const dan = await person("dan_public");
+    await blockUser(db, ana.id, "ben_public");
+    await muteUser(db, ana.id, "cat_public");
+    await blockUser(db, dan.id, "ana_viewer");
+
+    expect(names(await listBlocked(db, ana.id))).toEqual(["ben_public"]);
+    expect(names(await listMuted(db, ana.id))).toEqual(["cat_public"]);
+    expect(names(await listBlocked(db, ben.id))).toEqual([]);
+    expect(names(await listBlocked(db, dan.id))).toEqual(["ana_viewer"]);
+    expect(names(await listMuted(db, cat.id))).toEqual([]);
+  });
+
+  it("keeps a person the viewer blocked on the list after they turn to Total privacy, so the block can be undone", async () => {
+    const ana = await person("ana_viewer");
+    const ben = await person("ben_public");
+    await blockUser(db, ana.id, "ben_public");
+    await db
+      .update(users)
+      .set({ privacy: "private" })
+      .where(eq(users.id, ben.id));
+
+    expect(names(await listBlocked(db, ana.id))).toEqual(["ben_public"]);
+    await unblockUser(db, ana.id, "ben_public");
+    expect(names(await listBlocked(db, ana.id))).toEqual([]);
+  });
+
+  it("leaves out of the muted list a person who turned to Total privacy with no tie, one who blocked the viewer, and an erased one", async () => {
+    const ana = await person("ana_viewer");
+    const hidden = await person("ben_public");
+    const blocker = await person("cat_public");
+    const gone = await person("dan_public");
+    const tied = await person("eve_public");
+    const open = await person("fay_public");
+    await follow(tied.id, ana.id);
+    for (const other of [hidden, blocker, gone, tied, open]) {
+      await db.insert(mutes).values({ muterId: ana.id, mutedId: other.id });
+    }
+    for (const other of [hidden, tied]) {
+      await db
+        .update(users)
+        .set({ privacy: "private" })
+        .where(eq(users.id, other.id));
+    }
+    await block(blocker.id, ana.id);
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(eq(users.id, gone.id));
+
+    expect(names(await listMuted(db, ana.id))).toEqual([
+      "eve_public",
+      "fay_public",
+    ]);
   });
 });
 
@@ -672,7 +836,7 @@ describe("getSocialCounts", () => {
       .set({ deletedAt: new Date() })
       .where(eq(users.id, gone.id));
 
-    expect(await getSocialCounts(db, owner.id)).toEqual({
+    expect(await getSocialCounts(db, null, owner.id)).toEqual({
       followers: 2,
       following: 1,
       friends: 1,
@@ -682,10 +846,54 @@ describe("getSocialCounts", () => {
   it("is zero for a person with no follows", async () => {
     const owner = await person("owner_one");
 
-    expect(await getSocialCounts(db, owner.id)).toEqual({
+    expect(await getSocialCounts(db, null, owner.id)).toEqual({
       followers: 0,
       following: 0,
       friends: 0,
+    });
+  });
+
+  it("counts only the people the viewer may see, the same as the pages list them (SAG-164)", async () => {
+    const owner = await person("owner_one");
+    const viewer = await person("viewer_one");
+    const pub = await person("both_public");
+    const hidden = await person("both_private", "private");
+    const friendsOnly = await person("both_friends", "friends");
+    const blocker = await person("both_blocker");
+    const blocked = await person("both_blocked");
+    // Each of them follows the owner and is followed back: a follower, a followed and a friend.
+    for (const other of [pub, hidden, friendsOnly, blocker, blocked]) {
+      await follow(other.id, owner.id);
+      await follow(owner.id, other.id);
+    }
+    await block(blocker.id, viewer.id);
+    await block(viewer.id, blocked.id);
+
+    const counts = await getSocialCounts(db, viewer.id, owner.id);
+
+    // The viewer sees only the public one: the private and friends-only people are hidden from
+    // them, and the two blocks hide the rest.
+    expect(counts).toEqual({ followers: 1, following: 1, friends: 1 });
+    for (const [kind, list] of [
+      ["followers", listFollowers],
+      ["following", listFollowing],
+      ["friends", listFriends],
+    ] as const) {
+      const page = await list(db, viewer.id, "owner_one");
+      expect(page?.people.map((p) => p.username)).toEqual(["both_public"]);
+      expect(counts[kind]).toBe(page?.people.length);
+    }
+    // A visitor has no blocks, so they see the public one and the two who are blocked with the
+    // viewer; the owner sees all five of each list.
+    expect(await getSocialCounts(db, null, owner.id)).toEqual({
+      followers: 3,
+      following: 3,
+      friends: 3,
+    });
+    expect(await getSocialCounts(db, owner.id, owner.id)).toEqual({
+      followers: 5,
+      following: 5,
+      friends: 5,
     });
   });
 });

@@ -173,7 +173,7 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   const [counts, sections, lists] = await Promise.all([
-    getSocialCounts(db, owner.id),
+    getSocialCounts(db, viewer?.id ?? null, owner.id),
     getProfileSections(db, owner.id, owner.privacy, relationship, locale),
     // Only the lists this viewer may see: the strictest of the list and the profile (ADR-045).
     listViewableLists(db, owner.id, {

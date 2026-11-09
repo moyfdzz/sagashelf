@@ -1,7 +1,8 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { toPerson, type Person } from "./person";
+import { listedToViewer } from "./person-visibility";
 import { findViewableProfile } from "./profile-lookup";
 
 /**
@@ -19,6 +20,35 @@ export const maxPage = 100;
 export type PeoplePage = { people: Person[]; hasMore: boolean };
 
 type Kind = "followers" | "following" | "friends";
+
+/**
+ * `FROM ... WHERE ...` of the people on one list of an owner, as the viewer may see them. The pages
+ * and the totals both build on it, so the head of a profile can never say more than the page lists.
+ * `listed.id` is the person who is on the list; `edge` is the follow that puts them there.
+ */
+function listedPeople(
+  kind: Kind,
+  viewerId: string | null,
+  ownerId: string,
+): SQL {
+  const edge =
+    kind === "followers"
+      ? sql`SELECT f.follower_id AS id, f.created_at FROM follows f WHERE f.followee_id = ${ownerId}::uuid`
+      : kind === "following"
+        ? sql`SELECT f.followee_id AS id, f.created_at FROM follows f WHERE f.follower_id = ${ownerId}::uuid`
+        : sql`
+            SELECT f.followee_id AS id, f.created_at
+            FROM follows f
+            WHERE f.follower_id = ${ownerId}::uuid
+              AND EXISTS (
+                SELECT 1 FROM follows back
+                WHERE back.follower_id = f.followee_id AND back.followee_id = ${ownerId}::uuid
+              )`;
+  return sql`
+    FROM (${edge}) listed
+    JOIN users u ON u.id = listed.id
+    WHERE ${listedToViewer(viewerId, ownerId)}`;
+}
 
 /**
  * One page of the people around a profile. It is `null` unless the viewer may see the profile
@@ -41,41 +71,9 @@ async function listPeople(
   const offset = (safePage - 1) * pageSize;
   const ownerId = found.owner.id;
 
-  // `listed.id` is the person who is on the list; `edge` is the follow that puts them there.
-  const edge =
-    kind === "followers"
-      ? sql`SELECT f.follower_id AS id, f.created_at FROM follows f WHERE f.followee_id = ${ownerId}::uuid`
-      : kind === "following"
-        ? sql`SELECT f.followee_id AS id, f.created_at FROM follows f WHERE f.follower_id = ${ownerId}::uuid`
-        : sql`
-            SELECT f.followee_id AS id, f.created_at
-            FROM follows f
-            WHERE f.follower_id = ${ownerId}::uuid
-              AND EXISTS (
-                SELECT 1 FROM follows back
-                WHERE back.follower_id = f.followee_id AND back.followee_id = ${ownerId}::uuid
-              )`;
-
   const { rows } = await db.execute(sql`
     SELECT u.username, u.display_name, u.avatar_url
-    FROM (${edge}) listed
-    JOIN users u ON u.id = listed.id
-    WHERE u.deleted_at IS NULL
-      AND (
-        u.privacy = 'public'
-        OR u.id = ${viewerId}::uuid
-        OR ${ownerId}::uuid = ${viewerId}::uuid
-        OR (
-          u.privacy = 'friends'
-          AND EXISTS (SELECT 1 FROM follows a WHERE a.follower_id = ${viewerId}::uuid AND a.followee_id = u.id)
-          AND EXISTS (SELECT 1 FROM follows b WHERE b.follower_id = u.id AND b.followee_id = ${viewerId}::uuid)
-        )
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM blocks k
-        WHERE (k.blocker_id = ${viewerId}::uuid AND k.blocked_id = u.id)
-           OR (k.blocker_id = u.id AND k.blocked_id = ${viewerId}::uuid)
-      )
+    ${listedPeople(kind, viewerId, ownerId)}
     ORDER BY listed.created_at DESC, u.id
     LIMIT ${pageSize + 1}::int OFFSET ${offset}::int
   `);
@@ -113,25 +111,21 @@ export type SocialCounts = {
 };
 
 /**
- * The totals around a person, for the head of a profile. Erased accounts are not counted. They are
- * only numbers: ask for them after `findViewableProfile`, like everything else about a profile.
+ * The totals around a person, for the head of a profile, counted with the same filter as the pages
+ * (`listedPeople`): they equal the length of the full list the viewer can open, so the head never
+ * says more than the page lists. They are only numbers: ask for them after `findViewableProfile`,
+ * like everything else about a profile.
  */
 export async function getSocialCounts(
   db: SqlExecutor,
+  viewerId: string | null,
   ownerId: string,
 ): Promise<SocialCounts> {
   const { rows } = await db.execute(sql`
     SELECT
-      (SELECT count(*) FROM follows f JOIN users u ON u.id = f.follower_id
-        WHERE f.followee_id = ${ownerId}::uuid AND u.deleted_at IS NULL)::int AS followers,
-      (SELECT count(*) FROM follows f JOIN users u ON u.id = f.followee_id
-        WHERE f.follower_id = ${ownerId}::uuid AND u.deleted_at IS NULL)::int AS following,
-      (SELECT count(*) FROM follows f JOIN users u ON u.id = f.followee_id
-        WHERE f.follower_id = ${ownerId}::uuid AND u.deleted_at IS NULL
-          AND EXISTS (
-            SELECT 1 FROM follows back
-            WHERE back.follower_id = f.followee_id AND back.followee_id = ${ownerId}::uuid
-          ))::int AS friends
+      (SELECT count(*) ${listedPeople("followers", viewerId, ownerId)})::int AS followers,
+      (SELECT count(*) ${listedPeople("following", viewerId, ownerId)})::int AS following,
+      (SELECT count(*) ${listedPeople("friends", viewerId, ownerId)})::int AS friends
   `);
   const row = rows[0];
   return {

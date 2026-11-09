@@ -49,6 +49,7 @@
     "server/db/blocks-mutes.ts",
     "server/db/profile-lookup.ts",
     "server/db/people-lists.ts",
+    "server/db/person-visibility.ts",
     "server/db/follow-requests.ts",
     "server/db/profile-library.ts",
     "server/social/**/*",
