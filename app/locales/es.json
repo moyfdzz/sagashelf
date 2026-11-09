@@ -1516,6 +1516,7 @@
       "muted": "Silenciaste a esta persona.",
       "unmuted": "Dejaste de silenciar a esta persona.",
       "too_many": "Has seguido o pedido seguir a muchas personas en poco tiempo. Inténtalo de nuevo más tarde.",
+      "rate_limited": "Hiciste demasiadas acciones en poco tiempo. Espera un minuto e inténtalo de nuevo.",
       "unavailable": "No se pudo hacer eso con esta persona.",
       "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo.",
       "requested": "Enviaste tu solicitud para seguir a esta persona.",

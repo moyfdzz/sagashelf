@@ -148,6 +148,12 @@ function submit(
   } as unknown as Route.ActionArgs);
 }
 
+/** What `data(body, init)` gives back: returned by an action, thrown by a loader. */
+type DataAnswer = {
+  data?: unknown;
+  init?: { status?: number; headers?: Record<string, string> };
+};
+
 type Thrown = { init?: { status?: number; headers?: Record<string, string> } };
 
 describe("the profile page: what it asks and what it answers (SAG-107)", () => {
@@ -627,13 +633,15 @@ describe("the profile page: the buttons (POST)", () => {
       const result = (await submit(
         { intent: "block" },
         { Origin: "https://evil.example" },
-      )) as Response;
+      )) as DataAnswer;
 
-      expect(redirectOf(result)).toEqual({
-        status: 303,
-        to: "/u/ana_reads?notice=invalid_request",
+      // Not a person using this page, so it keeps its 403 and no message. The action does not
+      // throw it: it returns it, as `data()`, with the cache rule on it.
+      expect(result.init?.status).toBe(403);
+      expect(result.init?.headers).toEqual({
+        "Cache-Control": "private, no-store",
       });
-      expect(result.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(result.data).toEqual({ error: "invalid_request" });
       expect(mocks.blockUser).not.toHaveBeenCalled();
     });
 
@@ -652,7 +660,7 @@ describe("the profile page: the buttons (POST)", () => {
 
       expect(redirectOf(result)).toEqual({
         status: 303,
-        to: "/u/ana_reads?notice=too_many",
+        to: "/u/ana_reads?notice=rate_limited",
       });
       expect(result.headers.get("Cache-Control")).toBe("private, no-store");
       expect(mocks.limit).toHaveBeenCalledWith({

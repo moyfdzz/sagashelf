@@ -72,6 +72,7 @@ const notices = [
   "muted",
   "unmuted",
   "too_many",
+  "rate_limited",
   "unavailable",
   "invalid_request",
   "report_reported",
@@ -85,6 +86,7 @@ type Notice = (typeof notices)[number];
 // show as a toast.
 const refusals: readonly Notice[] = [
   "too_many",
+  "rate_limited",
   "unavailable",
   "invalid_request",
   "report_duplicate",
@@ -236,17 +238,25 @@ export async function action(args: Route.ActionArgs) {
   const { request, params } = args;
   const back = `/u/${encodeURIComponent(params.username)}`;
 
-  // A page on another site must not be able to follow or block for someone.
-  // The buttons are plain forms that reload the page, so a refusal is a redirect to the page with a
-  // message, never a bare body the person would see on a blank screen (SAG-165).
-  const refuse = (notice: "invalid_request" | "too_many") =>
+  // The buttons are plain forms that reload the page, so a refusal a person can cause is a redirect
+  // to the page with a message, never a bare body on a blank screen (SAG-165).
+  const refuse = (notice: "invalid_request" | "rate_limited") =>
     redirect(`${back}?notice=${notice}`, {
       status: 303,
       headers: privateHeaders,
     });
 
-  // A page on another site must not be able to follow or block for someone.
-  if (checkWrite(request, maxFormBytes)) return refuse("invalid_request");
+  // A page on another site must not be able to follow or block for someone. That one is not a
+  // person using this page, so it keeps its 403 (the form of this page never sends a foreign
+  // `Origin`); a body that is too big is a redirect with a message.
+  const unsafe = checkWrite(request, maxFormBytes);
+  if (unsafe === "foreign_origin") {
+    return data(
+      { error: "invalid_request" as const },
+      { status: 403, headers: privateHeaders },
+    );
+  }
+  if (unsafe) return refuse("invalid_request");
   if (!usernameShape.test(params.username)) throw notFound();
 
   const user = await requireUser(args);
@@ -256,7 +266,7 @@ export async function action(args: Route.ActionArgs) {
     request,
     `social:${user.id}`,
   );
-  if (limited) return refuse("too_many");
+  if (limited) return refuse("rate_limited");
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) return refuse("invalid_request");

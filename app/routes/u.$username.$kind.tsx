@@ -7,12 +7,7 @@ import { PersonRow } from "~/components/PersonRow";
 import { ProfilePagination } from "~/components/ProfilePagination";
 import { getInstance } from "~/middleware/i18next";
 import { getOptionalUser } from "~server/auth/require";
-import {
-  listFollowers,
-  listFollowing,
-  listFriends,
-  maxPage,
-} from "~server/db/people-lists";
+import { listPeopleOf, maxPage } from "~server/db/people-lists";
 import { personCard } from "~server/db/person";
 import { findViewableProfile } from "~server/db/profile-lookup";
 import { getDb } from "~server/runtime-env";
@@ -27,12 +22,6 @@ const isKind = (value: string): value is Kind =>
 
 const notFound = () => data(null, { status: 404, headers: privateHeaders });
 
-const lists = {
-  followers: listFollowers,
-  following: listFollowing,
-  friends: listFriends,
-} as const;
-
 export async function loader(args: Route.LoaderArgs) {
   const { params, request, context } = args;
   if (!usernameShape.test(params.username) || !isKind(params.kind)) {
@@ -46,10 +35,8 @@ export async function loader(args: Route.LoaderArgs) {
   // The same rule as the profile: a person who may not see the profile gets nothing from its lists,
   // and the answer is the same 404 as for a profile that does not exist (ADR-031).
   const found = await findViewableProfile(db, viewerId, params.username);
-  const list = found
-    ? await lists[params.kind](db, viewerId, params.username, page, found)
-    : null;
-  if (!found || !list) throw notFound();
+  if (!found) throw notFound();
+  const list = await listPeopleOf(db, viewerId, found, params.kind, page);
 
   const { t } = getInstance(context);
   return {

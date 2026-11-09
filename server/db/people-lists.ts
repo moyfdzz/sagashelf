@@ -19,10 +19,11 @@ export const maxPage = 100;
 
 export type PeoplePage = { people: Person[]; hasMore: boolean };
 
-type Kind = "followers" | "following" | "friends";
+export type PeopleKind = "followers" | "following" | "friends";
+type Kind = PeopleKind;
 
 /** What `findViewableProfile` returned for this viewer and owner: a profile the viewer may see. */
-type ViewableProfile = NonNullable<
+export type ViewableProfile = NonNullable<
   Awaited<ReturnType<typeof findViewableProfile>>
 >;
 
@@ -62,20 +63,31 @@ function listedPeople(
  * themselves; one with a private profile only to themselves. The owner of the list sees all of it
  * (they know who follows them and whom they follow). Erased accounts, and anybody blocked either
  * way with the viewer, are left out. The newest first; the page is capped by `maxPage`.
- *
- * A route that already ran `findViewableProfile` for this viewer and username passes the result as
- * `viewable`, so the profile is not read twice (SAG-165). Without it the function looks it up.
  */
 async function listPeople(
   db: SqlExecutor,
   viewerId: string | null,
   username: string,
-  kind: Kind,
+  kind: PeopleKind,
   page: number,
-  viewable?: ViewableProfile,
 ): Promise<PeoplePage | null> {
-  const found = viewable ?? (await findViewableProfile(db, viewerId, username));
-  if (!found) return null;
+  const found = await findViewableProfile(db, viewerId, username);
+  return found ? listPeopleOf(db, viewerId, found, kind, page) : null;
+}
+
+/**
+ * The same page for a route that already ran `findViewableProfile` for this viewer, so the profile
+ * is read once (SAG-165). It takes the profile and no username: there is nothing to compare, and
+ * the profile must be the result of `findViewableProfile` for the same `viewerId`, since that call
+ * is what decided the viewer may see it. Never build it by hand and never keep it across requests.
+ */
+export async function listPeopleOf(
+  db: SqlExecutor,
+  viewerId: string | null,
+  found: ViewableProfile,
+  kind: PeopleKind,
+  page: number,
+): Promise<PeoplePage> {
   const safePage = Math.min(Math.max(1, Math.floor(page) || 1), maxPage);
   const offset = (safePage - 1) * pageSize;
   const ownerId = found.owner.id;
@@ -97,24 +109,21 @@ export const listFollowers = (
   viewerId: string | null,
   username: string,
   page = 1,
-  viewable?: ViewableProfile,
-) => listPeople(db, viewerId, username, "followers", page, viewable);
+) => listPeople(db, viewerId, username, "followers", page);
 
 export const listFollowing = (
   db: SqlExecutor,
   viewerId: string | null,
   username: string,
   page = 1,
-  viewable?: ViewableProfile,
-) => listPeople(db, viewerId, username, "following", page, viewable);
+) => listPeople(db, viewerId, username, "following", page);
 
 export const listFriends = (
   db: SqlExecutor,
   viewerId: string | null,
   username: string,
   page = 1,
-  viewable?: ViewableProfile,
-) => listPeople(db, viewerId, username, "friends", page, viewable);
+) => listPeople(db, viewerId, username, "friends", page);
 
 export type SocialCounts = {
   followers: number;

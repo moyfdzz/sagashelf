@@ -19,9 +19,7 @@ vi.mock("~server/db/follows", () => ({}));
 vi.mock("~server/db/blocks-mutes", () => ({}));
 vi.mock("~server/db/people-lists", () => ({
   maxPage: 100,
-  listFollowers: vi.fn(),
-  listFollowing: vi.fn(),
-  listFriends: vi.fn(),
+  listPeopleOf: vi.fn(),
 }));
 vi.mock("~server/db/profile-library", () => ({}));
 vi.mock("~server/db/profile-lists", () => ({}));
@@ -493,6 +491,7 @@ describe("the profile page: the buttons", () => {
       "too_many",
       "Has seguido o pedido seguir a muchas personas en poco tiempo.",
     ],
+    ["rate_limited", "Hiciste demasiadas acciones en poco tiempo."],
     ["unavailable", "No se pudo hacer eso con esta persona."],
   ])("says what happened after %s, in a live region", async (notice, text) => {
     const html = await render(profile(fullData({ notice })));
@@ -512,6 +511,7 @@ describe("the profile page: the buttons", () => {
 
   it.each([
     "too_many",
+    "rate_limited",
     "unavailable",
     "invalid_request",
     "report_duplicate",
