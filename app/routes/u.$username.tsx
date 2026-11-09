@@ -251,7 +251,10 @@ export async function action(args: Route.ActionArgs) {
   // `Origin`); a body that is too big is a redirect with a message.
   const unsafe = checkWrite(request, maxFormBytes);
   if (unsafe === "foreign_origin") {
-    return data({ error: "invalid_request" }, { status: 403 });
+    return data(
+      { error: "invalid_request" as const },
+      { status: 403, headers: privateHeaders },
+    );
   }
   if (unsafe) return refuse("invalid_request");
   if (!usernameShape.test(params.username)) throw notFound();

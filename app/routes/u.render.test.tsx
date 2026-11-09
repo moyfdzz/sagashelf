@@ -19,9 +19,7 @@ vi.mock("~server/db/follows", () => ({}));
 vi.mock("~server/db/blocks-mutes", () => ({}));
 vi.mock("~server/db/people-lists", () => ({
   maxPage: 100,
-  listFollowers: vi.fn(),
-  listFollowing: vi.fn(),
-  listFriends: vi.fn(),
+  listPeopleOf: vi.fn(),
 }));
 vi.mock("~server/db/profile-library", () => ({}));
 vi.mock("~server/db/profile-lists", () => ({}));

@@ -15,6 +15,7 @@ import {
   listFollowers,
   listFollowing,
   listFriends,
+  listPeopleOf,
   maxPage,
   pageSize,
 } from "../server/db/people-lists";
@@ -722,24 +723,31 @@ describe("the lists of followers, following and friends", () => {
     ]);
   });
 
-  it("does not trust a profile handed in for another username (SAG-165)", async () => {
-    const open = await person("owner_open", "public");
-    const hidden = await person("owner_hidden", "private");
+  it("lists the same from the profile already found as from the username (SAG-165)", async () => {
+    const owner = await person("owner_open", "public");
+    const fan = await person("fan_listed", "public");
+    const shy = await person("fan_private", "private");
     const viewer = await person("viewer_two");
-    const handed = await findViewableProfile(db, viewer.id, "owner_open");
-    expect(handed?.owner.id).toBe(open.id);
+    await follow(fan.id, owner.id);
+    await follow(shy.id, owner.id);
+    await follow(owner.id, fan.id);
 
-    // The profile of a visible person must not open the list of a private one.
-    expect(
-      await listFollowers(
-        db,
-        viewer.id,
-        "owner_hidden",
-        1,
-        handed ?? undefined,
-      ),
-    ).toBeNull();
-    expect(hidden.id).not.toBe(open.id);
+    // Found once, with the username in another case: the lookup does not care about it.
+    const found = await findViewableProfile(db, viewer.id, "Owner_Open");
+    if (!found) throw new Error("the profile should be visible");
+    expect(found.owner.id).toBe(owner.id);
+
+    for (const [kind, byName] of [
+      ["followers", listFollowers],
+      ["following", listFollowing],
+      ["friends", listFriends],
+    ] as const) {
+      const fromProfile = await listPeopleOf(db, viewer.id, found, kind, 1);
+      expect(fromProfile).toEqual(await byName(db, viewer.id, "owner_open", 1));
+    }
+    // And it holds what the viewer may see: the person with a Private profile is not listed.
+    const followers = await listPeopleOf(db, viewer.id, found, "followers", 1);
+    expect(followers.people.map((p) => p.username)).toEqual(["fan_listed"]);
   });
 
   it("is null, like a missing profile, when the viewer may not see the profile", async () => {

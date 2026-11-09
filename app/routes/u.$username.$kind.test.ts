@@ -7,9 +7,7 @@ const mocks = vi.hoisted(() => ({
   getOptionalUser: vi.fn(),
   getDb: vi.fn(),
   findViewableProfile: vi.fn(),
-  listFollowers: vi.fn(),
-  listFollowing: vi.fn(),
-  listFriends: vi.fn(),
+  listPeopleOf: vi.fn(),
 }));
 
 vi.mock("~server/auth/require", () => ({
@@ -21,9 +19,7 @@ vi.mock("~server/db/profile-lookup", () => ({
 }));
 vi.mock("~server/db/people-lists", () => ({
   maxPage: 100,
-  listFollowers: mocks.listFollowers,
-  listFollowing: mocks.listFollowing,
-  listFriends: mocks.listFriends,
+  listPeopleOf: mocks.listPeopleOf,
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({
@@ -54,9 +50,18 @@ beforeEach(() => {
   mocks.getOptionalUser.mockReset().mockResolvedValue(session);
   mocks.getDb.mockReset().mockResolvedValue(db);
   mocks.findViewableProfile.mockReset().mockResolvedValue(viewable);
-  mocks.listFollowers.mockReset().mockResolvedValue(page(["ben_one"]));
-  mocks.listFollowing.mockReset().mockResolvedValue(page(["cat_one"]));
-  mocks.listFriends.mockReset().mockResolvedValue(page(["dan_one"]));
+  // One answer per kind, so a test can tell which list the loader asked for.
+  const byKind: Record<string, string> = {
+    followers: "ben_one",
+    following: "cat_one",
+    friends: "dan_one",
+  };
+  mocks.listPeopleOf
+    .mockReset()
+    .mockImplementation(
+      async (_db: unknown, _viewer: unknown, _found: unknown, kind: string) =>
+        page([byKind[kind] ?? "nobody"]),
+    );
 });
 
 const load = (kind: string, search = "", username = "ana_reads") =>
@@ -70,23 +75,24 @@ type Thrown = { init?: { status?: number; headers?: Record<string, string> } };
 
 describe("the lists of people of a profile (SAG-107)", () => {
   it.each([
-    ["followers", () => mocks.listFollowers],
-    ["following", () => mocks.listFollowing],
-    ["friends", () => mocks.listFriends],
+    ["followers", "ben_one"],
+    ["following", "cat_one"],
+    ["friends", "dan_one"],
   ])(
     "lists the %s as the person of the session, page 1 by default",
-    async (kind, which) => {
+    async (kind, first) => {
       const result = await load(kind);
 
-      expect(which()).toHaveBeenCalledWith(
+      // The profile the loader found is handed over as it is: the list does not read it again.
+      expect(mocks.listPeopleOf).toHaveBeenCalledWith(
         db,
         "user-from-session",
-        "ana_reads",
-        1,
         viewable,
+        kind,
+        1,
       );
       expect(result.kind).toBe(kind);
-      expect(result.people).toHaveLength(1);
+      expect(result.people.map((p) => p.username)).toEqual([first]);
       expect(result.page).toBe(1);
     },
   );
@@ -101,12 +107,12 @@ describe("the lists of people of a profile (SAG-107)", () => {
       null,
       "ana_reads",
     );
-    expect(mocks.listFollowers).toHaveBeenCalledWith(
+    expect(mocks.listPeopleOf).toHaveBeenCalledWith(
       db,
       null,
-      "ana_reads",
-      1,
       viewable,
+      "followers",
+      1,
     );
   });
 
@@ -117,15 +123,7 @@ describe("the lists of people of a profile (SAG-107)", () => {
 
     expect(thrown.init?.status).toBe(404);
     expect(thrown.init?.headers?.["Cache-Control"]).toBe("private, no-store");
-    expect(mocks.listFollowers).not.toHaveBeenCalled();
-  });
-
-  it("answers the same 404 when the list itself says it is hidden", async () => {
-    mocks.listFollowers.mockResolvedValue(null);
-
-    await expect(load("followers")).rejects.toMatchObject({
-      init: { status: 404 },
-    });
+    expect(mocks.listPeopleOf).not.toHaveBeenCalled();
   });
 
   it.each(["other", "FOLLOWERS", "followers/x", "", "friend"])(
@@ -160,24 +158,24 @@ describe("the lists of people of a profile (SAG-107)", () => {
       const result = await load("followers", search);
 
       expect(result.page).toBe(want);
-      expect(mocks.listFollowers).toHaveBeenCalledWith(
+      expect(mocks.listPeopleOf).toHaveBeenCalledWith(
         db,
         "user-from-session",
-        "ana_reads",
-        want,
         viewable,
+        "followers",
+        want,
       );
     });
 
     it("says whether there is a next page", async () => {
-      mocks.listFollowers.mockResolvedValue(page(["ben_one"], true));
+      mocks.listPeopleOf.mockResolvedValue(page(["ben_one"], true));
 
       expect((await load("followers")).hasMore).toBe(true);
     });
   });
 
   it("gives the page only the username, the name and a picture that is an HTTPS address", async () => {
-    mocks.listFollowers.mockResolvedValue({
+    mocks.listPeopleOf.mockResolvedValue({
       people: [
         { username: "ben_one", displayName: "Ben", avatarUrl: "javascript:x" },
         { username: "cat_one", displayName: null, avatarUrl: null },
