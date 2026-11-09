@@ -21,6 +21,11 @@ export type PeoplePage = { people: Person[]; hasMore: boolean };
 
 type Kind = "followers" | "following" | "friends";
 
+/** What `findViewableProfile` returned for this viewer and owner: a profile the viewer may see. */
+type ViewableProfile = NonNullable<
+  Awaited<ReturnType<typeof findViewableProfile>>
+>;
+
 /**
  * `FROM ... WHERE ...` of the people on one list of an owner, as the viewer may see them. The pages
  * and the totals both build on it, so the head of a profile can never say more than the page lists.
@@ -57,6 +62,9 @@ function listedPeople(
  * themselves; one with a private profile only to themselves. The owner of the list sees all of it
  * (they know who follows them and whom they follow). Erased accounts, and anybody blocked either
  * way with the viewer, are left out. The newest first; the page is capped by `maxPage`.
+ *
+ * A route that already ran `findViewableProfile` for this viewer and username passes the result as
+ * `viewable`, so the profile is not read twice (SAG-165). Without it the function looks it up.
  */
 async function listPeople(
   db: SqlExecutor,
@@ -64,8 +72,9 @@ async function listPeople(
   username: string,
   kind: Kind,
   page: number,
+  viewable?: ViewableProfile,
 ): Promise<PeoplePage | null> {
-  const found = await findViewableProfile(db, viewerId, username);
+  const found = viewable ?? (await findViewableProfile(db, viewerId, username));
   if (!found) return null;
   const safePage = Math.min(Math.max(1, Math.floor(page) || 1), maxPage);
   const offset = (safePage - 1) * pageSize;
@@ -88,21 +97,24 @@ export const listFollowers = (
   viewerId: string | null,
   username: string,
   page = 1,
-) => listPeople(db, viewerId, username, "followers", page);
+  viewable?: ViewableProfile,
+) => listPeople(db, viewerId, username, "followers", page, viewable);
 
 export const listFollowing = (
   db: SqlExecutor,
   viewerId: string | null,
   username: string,
   page = 1,
-) => listPeople(db, viewerId, username, "following", page);
+  viewable?: ViewableProfile,
+) => listPeople(db, viewerId, username, "following", page, viewable);
 
 export const listFriends = (
   db: SqlExecutor,
   viewerId: string | null,
   username: string,
   page = 1,
-) => listPeople(db, viewerId, username, "friends", page);
+  viewable?: ViewableProfile,
+) => listPeople(db, viewerId, username, "friends", page, viewable);
 
 export type SocialCounts = {
   followers: number;

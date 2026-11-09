@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { localizedTitleSql, titleShownSql } from "./titles";
@@ -23,6 +24,9 @@ export const profileStatuses = ["in_progress", "planned", "completed"] as const;
 
 export type ProfileStatus = (typeof profileStatuses)[number];
 
+const isProfileStatus = (value: string): value is ProfileStatus =>
+  (profileStatuses as readonly string[]).includes(value);
+
 /** How many entries of each section the profile shows. */
 export const entriesPerSection = 12;
 
@@ -45,6 +49,8 @@ const empty = (): ProfileSections => ({
   completed: { total: 0, entries: [] },
 });
 
+// `type` stays a string on purpose: a title a person made for themselves has the type `custom`,
+// which is not a `LibraryType`, and it must still be listed (under "all").
 const toEntry = (row: Record<string, unknown>): ProfileEntry => ({
   mediaId: String(row.media_id),
   title: String(row.title),
@@ -53,6 +59,10 @@ const toEntry = (row: Record<string, unknown>): ProfileEntry => ({
   imageUrl: row.image_url === null ? null : String(row.image_url),
   score: row.score === null ? null : Number(row.score),
 });
+
+// The two JSON values of the page query, checked where they come out of the database.
+const countsByType = z.record(z.string(), z.coerce.number());
+const entryRows = z.array(z.record(z.string(), z.unknown()));
 
 /**
  * The sections "watching or reading now", "want to watch or read" and "completed" of a profile, as
@@ -94,7 +104,8 @@ export async function getProfileSections(
   `);
 
   for (const row of rows) {
-    const status = String(row.status) as ProfileStatus;
+    const status = String(row.status);
+    if (!isProfileStatus(status)) continue;
     const section = sections[status];
     section.total = Number(row.total);
     section.entries.push(toEntry(row));
@@ -186,12 +197,12 @@ export async function getProfileSectionPage(
        ) FROM shown) AS entries
   `);
 
-  const found = (rows[0]?.counts ?? {}) as Record<string, number>;
+  const found = countsByType.parse(rows[0]?.counts ?? {});
   const counts = noCounts();
-  counts.all = Object.values(found).reduce((sum, n) => sum + Number(n), 0);
-  for (const type of libraryTypes) counts[type] = Number(found[type] ?? 0);
+  counts.all = Object.values(found).reduce((sum, n) => sum + n, 0);
+  for (const type of libraryTypes) counts[type] = found[type] ?? 0;
 
-  const entries = (rows[0]?.entries ?? []) as Record<string, unknown>[];
+  const entries = entryRows.parse(rows[0]?.entries ?? []);
   return {
     entries: entries.slice(0, entriesPerPage).map(toEntry),
     hasMore: entries.length > entriesPerPage,

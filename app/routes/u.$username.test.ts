@@ -612,9 +612,13 @@ describe("the profile page: the buttons (POST)", () => {
       const result = (await submit(
         { intent: "block" },
         { "Content-Length": String(5 * 1024) },
-      )) as Thrown;
+      )) as Response;
 
-      expect(result.init?.status).toBe(413);
+      expect(redirectOf(result)).toEqual({
+        status: 303,
+        to: "/u/ana_reads?notice=invalid_request",
+      });
+      expect(result.headers.get("Cache-Control")).toBe("private, no-store");
       expect(mocks.requireUser).not.toHaveBeenCalled();
       expect(mocks.blockUser).not.toHaveBeenCalled();
     });
@@ -623,9 +627,13 @@ describe("the profile page: the buttons (POST)", () => {
       const result = (await submit(
         { intent: "block" },
         { Origin: "https://evil.example" },
-      )) as Thrown;
+      )) as Response;
 
-      expect(result.init?.status).toBe(403);
+      expect(redirectOf(result)).toEqual({
+        status: 303,
+        to: "/u/ana_reads?notice=invalid_request",
+      });
+      expect(result.headers.get("Cache-Control")).toBe("private, no-store");
       expect(mocks.blockUser).not.toHaveBeenCalled();
     });
 
@@ -642,7 +650,11 @@ describe("the profile page: the buttons (POST)", () => {
 
       const result = (await submit({ intent: "follow" })) as Response;
 
-      expect(result.status).toBe(429);
+      expect(redirectOf(result)).toEqual({
+        status: 303,
+        to: "/u/ana_reads?notice=too_many",
+      });
+      expect(result.headers.get("Cache-Control")).toBe("private, no-store");
       expect(mocks.limit).toHaveBeenCalledWith({
         key: expect.stringContaining("social:user-from-session"),
       });
