@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import type { Locale, MediaKind, ProviderId } from "../providers/types";
 import type { LocalizedText } from "./schema/shared";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, sharedTitleSql } from "./titles";
 
 /** A title from our own database, with how well it matched. */
 export type LocalHit = {
@@ -73,7 +73,7 @@ export async function searchLocal(
       SELECT provider, external_id FROM media_external_ids
       WHERE media_id = m.id ORDER BY created_at LIMIT 1
     ) e ON true
-    WHERE m.type <> 'custom'
+    WHERE ${sharedTitleSql("m")}
       AND (${type ?? null}::media_type IS NULL OR m.type = ${type ?? null}::media_type)
       AND (
         m.search_vector @@ to_tsquery('simple', ${tsQuery})

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import type { LocalizedText } from "./schema/shared";
 import {
   isWikidataFormat,
@@ -40,7 +41,7 @@ export async function findTitlesToLookUp(
       WHERE media_id = m.id ORDER BY created_at LIMIT 1
     ) e ON true
     LEFT JOIN media_wikidata w ON w.media_id = m.id
-    WHERE m.type <> 'custom'
+    WHERE ${sharedTitleSql("m")}
       AND e.provider IN ('tmdb', 'open_library', 'mangadex')
       AND (e.provider <> 'mangadex' OR m.cross_ids IS NOT NULL)
       AND (w.media_id IS NULL
@@ -250,7 +251,7 @@ export async function getRelatedFormats(
     LEFT JOIN LATERAL (
       SELECT m.id, m.type::text AS type, m.title, m.titles
       FROM media_items m
-      WHERE m.type <> 'custom' AND ${mediaMatchesItem}
+      WHERE ${sharedTitleSql("m")} AND ${mediaMatchesItem}
       ORDER BY m.id
       LIMIT 1
     ) matched ON true

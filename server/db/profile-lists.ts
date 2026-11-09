@@ -8,7 +8,7 @@ import {
   type Relationship,
 } from "../social/can-view";
 import type { SqlExecutor } from "./clerk-sync";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, titleShownSql } from "./titles";
 
 /**
  * The lists of a person as somebody else may see them (SAG-113, ADR-045). The rule is the one of
@@ -62,9 +62,15 @@ const toList = (row: Record<string, unknown>): ViewableList => ({
  * The lists of the owner at the allowed levels, as a statement ready to take more conditions. Both
  * ways to read a list build on it, so the filter by level is written once.
  */
-const viewableLists = (ownerId: string, allowed: readonly Level[]) => sql`
+const viewableLists = (
+  ownerId: string,
+  allowed: readonly Level[],
+  relationship: Relationship,
+) => sql`
   SELECT l.id, l.title, l.description,
-         (SELECT count(*)::int FROM list_items i WHERE i.list_id = l.id) AS items
+         (SELECT count(*)::int FROM list_items i
+          JOIN media_items m ON m.id = i.media_id
+          WHERE i.list_id = l.id AND ${titleShownSql("m", relationship)}) AS items
   FROM lists l
   WHERE l.owner_id = ${ownerId}::uuid
     AND l.visibility::text IN (${inLevels(allowed)})
@@ -79,7 +85,7 @@ export async function listViewableLists(
   const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return [];
   const { rows } = await db.execute(sql`
-    ${viewableLists(ownerId, allowed)}
+    ${viewableLists(ownerId, allowed, viewing.relationship)}
     ORDER BY l.updated_at DESC, l.id DESC
   `);
   return rows.map(toList);
@@ -95,7 +101,7 @@ export async function getViewableList(
   const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return null;
   const { rows } = await db.execute(sql`
-    ${viewableLists(ownerId, allowed)}
+    ${viewableLists(ownerId, allowed, viewing.relationship)}
       AND l.id = ${id}::uuid
   `);
   const row = rows[0];
@@ -127,6 +133,7 @@ export async function listViewableItems(
     WHERE i.list_id = ${listId}::uuid
       AND l.owner_id = ${ownerId}::uuid
       AND l.visibility::text IN (${inLevels(allowed)})
+      AND ${titleShownSql("m", viewing.relationship)}
     ORDER BY i.position, i.created_at, i.media_id
   `);
   return rows.map((row) => ({

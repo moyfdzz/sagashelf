@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import type {
   Locale,
   NormalizedMedia,
@@ -182,7 +183,7 @@ export async function findStaleMedia(
     SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
     FROM media_items m
     JOIN media_external_ids e ON e.media_id = m.id
-    WHERE m.type <> 'custom'
+    WHERE ${sharedTitleSql("m")}
       AND m.fetched_at < now() - make_interval(days => ${maxAgeDays})
     ORDER BY m.fetched_at
     LIMIT ${limit}
@@ -214,7 +215,7 @@ export async function findMediaToRefresh(
     SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
     FROM media_items m
     JOIN media_external_ids e ON e.media_id = m.id
-    WHERE m.type <> 'custom'
+    WHERE ${sharedTitleSql("m")}
       AND e.updated_at < now() - make_interval(hours => ${retryAfterHours})
       AND (
         m.fetched_at < now() - make_interval(days => ${maxAgeDays})

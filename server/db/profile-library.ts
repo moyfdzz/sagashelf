@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, titleShownSql } from "./titles";
 import { libraryTypes, type LibraryType } from "../library/schema";
 import type { Locale } from "../providers/types";
 import {
@@ -88,6 +88,7 @@ export async function getProfileSections(
       FROM library_entries le
       JOIN media_items m ON m.id = le.media_id
       WHERE le.user_id = ${ownerId}::uuid
+        AND ${titleShownSql("m", relationship)}
         AND le.status::text IN (${sql.join(
           profileStatuses.map((status) => sql`${status}`),
           sql`, `,
@@ -170,6 +171,7 @@ export async function getProfileSectionPage(
       FROM library_entries le
       JOIN media_items m ON m.id = le.media_id
       WHERE le.user_id = ${ownerId}::uuid
+        AND ${titleShownSql("m", relationship)}
         AND le.status::text = ${query.status}
         AND le.visibility::text IN (${sql.join(
           allowed.map((level) => sql`${level}`),

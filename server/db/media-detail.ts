@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import { type Genre, isGenre } from "../providers/genres";
 import type { MediaKind, MediaStatus, ProviderId } from "../providers/types";
 import type { LocalizedText } from "./schema/shared";
@@ -73,7 +74,7 @@ export async function getMediaDetail(
       SELECT provider, external_id FROM media_external_ids
       WHERE media_id = m.id ORDER BY created_at LIMIT 1
     ) e ON true
-    WHERE m.id = ${id}::uuid AND m.type <> 'custom'
+    WHERE m.id = ${id}::uuid AND ${sharedTitleSql("m")}
   `);
   const row = rows[0];
   if (!row) return null;
@@ -128,7 +129,7 @@ export async function findMediaByExternalId(
     SELECT m.id, m.type::text AS type, m.title
     FROM media_external_ids e JOIN media_items m ON m.id = e.media_id
     WHERE e.provider = ${provider}::external_provider AND e.external_id = ${externalId}
-      AND m.type <> 'custom'
+      AND ${sharedTitleSql("m")}
   `);
   const row = rows[0];
   return row
