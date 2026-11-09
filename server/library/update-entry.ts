@@ -31,6 +31,40 @@ export type UpdateResult =
   | { outcome: "conflict" };
 
 /**
+ * How a quick button (the step, a status) answers when `updateEntry` did not save, written once
+ * for both routes. `404`: no such entry. `409`: it kept changing. `400`: the rules refuse the
+ * change. `tooHigh` is for the button that can say "already at the end" instead of a general
+ * failure.
+ */
+type Failure<Error extends string> = {
+  status: 404 | 409 | 400;
+  error: "invalid_request" | "failed" | Error;
+};
+type NotSaved = Exclude<UpdateResult, { outcome: "saved" }>;
+
+export function failureOf(result: NotSaved): Failure<never>;
+export function failureOf(
+  result: NotSaved,
+  options: { tooHigh: true },
+): Failure<"too_high">;
+export function failureOf(
+  result: NotSaved,
+  { tooHigh = false }: { tooHigh?: boolean } = {},
+): Failure<"too_high"> {
+  if (result.outcome === "missing") {
+    return { status: 404, error: "invalid_request" } as const;
+  }
+  if (result.outcome === "conflict") {
+    return { status: 409, error: "failed" } as const;
+  }
+  return {
+    status: 400,
+    error:
+      tooHigh && result.error === "progress_too_high" ? "too_high" : "failed",
+  } as const;
+}
+
+/**
  * Reads the entry, works out the next state with `rule` (the rules of `rules.ts`) and writes it
  * only if the entry did not change in between. When it did, the entry is read again and the rule
  * is applied to what is there now, so two quick "+1" give two steps and a change made in another

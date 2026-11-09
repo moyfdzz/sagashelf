@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   addEntry,
   getEntry,
+  removeEntry,
   rewatchEntry,
   saveEntry,
 } from "../server/db/library";
@@ -257,6 +258,16 @@ describe("rewatchEntry with the version it read", () => {
       sql`SELECT count(*)::int AS viewings FROM library_viewings`,
     );
     expect(rows[0]).toMatchObject({ viewings: 0 });
+  });
+
+  it("says missing, not conflict, for an entry that was deleted after the read", async () => {
+    const { userId, mediaId } = await entryOf(finished);
+    const stale = await versionOf(userId, mediaId);
+    await removeEntry(db, userId, mediaId);
+
+    expect(await rewatchEntry(db, userId, mediaId, restarted, stale)).toBe(
+      "missing",
+    );
   });
 
   it("restarts on the current version, and refuses (not a conflict) an entry that is not completed", async () => {

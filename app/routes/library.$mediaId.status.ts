@@ -6,7 +6,11 @@ import { requireUser } from "~server/auth/require";
 import { returnPath } from "~server/library/back";
 import { applyStatus } from "~server/library/rules";
 import { libraryStatuses } from "~server/library/schema";
-import { lazyTotalEpisodes, updateEntry } from "~server/library/update-entry";
+import {
+  failureOf,
+  lazyTotalEpisodes,
+  updateEntry,
+} from "~server/library/update-entry";
 import { readForm } from "~server/http/body";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
@@ -81,14 +85,14 @@ export async function action(args: Route.ActionArgs) {
       today,
     }),
   );
-  // Somebody else's entry and no entry at all look the same.
-  if (result.outcome === "missing") return fail("invalid_request", 404);
   if (result.outcome !== "saved") {
+    // Somebody else's entry and no entry at all look the same (404).
+    const failure = failureOf(result);
     // A form without JavaScript goes back to the entry, where the person sees how it is now.
-    if (asksForDocument(request)) {
+    if (failure.status !== 404 && asksForDocument(request)) {
       return redirect(`/library/${mediaId.data}`, { status: 303 });
     }
-    return fail("failed", result.outcome === "conflict" ? 409 : 400);
+    return fail(failure.error, failure.status);
   }
 
   return asksForDocument(request)

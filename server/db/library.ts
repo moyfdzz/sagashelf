@@ -235,8 +235,8 @@ export async function setEntryNotifyNewEpisodes(
  * Starts a completed title again: saves the run that ends in the history of viewings, with its
  * dates, and writes the entry as the rules decided. One statement, so the run is saved if and only
  * if the entry restarts, and only if the entry still has the `version` it had when it was read
- * (`conflict` otherwise, nothing written). `refused`: the person has no completed entry for the
- * title, or it already holds the most viewings it can.
+ * (`conflict` otherwise, nothing written). `missing`: the person has no entry for the title.
+ * `refused`: the entry is not completed, or it already holds the most viewings it can.
  */
 export async function rewatchEntry(
   db: ProfileDb,
@@ -244,13 +244,13 @@ export async function rewatchEntry(
   mediaId: string,
   next: EntryState,
   version: string,
-): Promise<"saved" | "refused" | "conflict"> {
+): Promise<"saved" | "refused" | "conflict" | "missing"> {
   const { rows } = (await db.execute(sql`
     WITH archived AS (
       INSERT INTO library_viewings (entry_id, started_on, finished_on)
       SELECT id, started_at, finished_at FROM library_entries
       WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid AND status = 'completed'
-        AND (updated_at AT TIME ZONE 'UTC')::text = ${version}
+        AND ${versionSql} = ${version}
         AND (SELECT count(*) FROM library_viewings WHERE entry_id = library_entries.id) < ${maxViewings}
       RETURNING entry_id
     )
@@ -264,18 +264,20 @@ export async function rewatchEntry(
   if (rows.length > 0) return "saved";
   // Nothing restarted: the entry changed since it was read, or the rules refuse it. Only the
   // answer depends on this second read, never the write.
-  const [same] = await db
-    .select({ id: libraryEntries.id })
+  // The entry is looked up by person and title only, so one that was deleted is `missing` and
+  // not a conflict that no retry could ever solve.
+  const [now] = await db
+    .select({ version: versionSql })
     .from(libraryEntries)
     .where(
       and(
         eq(libraryEntries.userId, userId),
         eq(libraryEntries.mediaId, mediaId),
-        sql`${versionSql} = ${version}`,
       ),
     )
     .limit(1);
-  return same ? "refused" : "conflict";
+  if (!now) return "missing";
+  return now.version === version ? "refused" : "conflict";
 }
 
 /** Removes the entry of this person for this title. False when they had none. */

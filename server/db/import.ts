@@ -119,7 +119,7 @@ export async function writeEntries(
     ? sql`DO UPDATE SET status = EXCLUDED.status, progress = EXCLUDED.progress,
           progress_unit = EXCLUDED.progress_unit, progress_total = EXCLUDED.progress_total,
           score = EXCLUDED.score, started_at = EXCLUDED.started_at,
-          finished_at = EXCLUDED.finished_at, notes = EXCLUDED.notes, updated_at = now()`
+          finished_at = EXCLUDED.finished_at, notes = EXCLUDED.notes, updated_at = clock_timestamp()`
     : sql`DO NOTHING`;
   const { rows } = (await db.execute(sql`
     WITH input AS (

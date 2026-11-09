@@ -5,7 +5,11 @@ import type { Route } from "./+types/library.$mediaId.step";
 import { requireUser } from "~server/auth/require";
 import { returnPath } from "~server/library/back";
 import { applyStep } from "~server/library/rules";
-import { lazyTotalEpisodes, updateEntry } from "~server/library/update-entry";
+import {
+  failureOf,
+  lazyTotalEpisodes,
+  updateEntry,
+} from "~server/library/update-entry";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { privateHeaders } from "~server/http/cache";
@@ -79,18 +83,14 @@ export async function action(args: Route.ActionArgs) {
       today,
     }),
   );
-  // Somebody else's entry and no entry at all look the same.
-  if (result.outcome === "missing") return fail("invalid_request", 404);
   if (result.outcome !== "saved") {
+    // Somebody else's entry and no entry at all look the same (404).
+    const failure = failureOf(result, { tooHigh: true });
     // A form without JavaScript goes back to the entry, where the person sees how it is now.
-    if (asksForDocument(request)) {
+    if (failure.status !== 404 && asksForDocument(request)) {
       return redirect(`/library/${mediaId.data}`, { status: 303 });
     }
-    if (result.outcome === "conflict") return fail("failed", 409);
-    return fail(
-      result.error === "progress_too_high" ? "too_high" : "failed",
-      400,
-    );
+    return fail(failure.error, failure.status);
   }
 
   // Without JavaScript the person goes back to the library or the title page they were on.
