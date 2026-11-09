@@ -225,7 +225,7 @@ describe("listViewableItems", () => {
 /**
  * What a route can read through these functions, for every way of looking at every profile (ADR-045):
  * the strictest of the level of the list and the level of the profile decides. The table is written
- * by hand (the same cases as `visibleListLevels`), not asked of the function under test, and it is
+ * by hand (the same cases as `visibleLevels`), not asked of the function under test, and it is
  * checked through the three functions a route calls, so none of them can show a list above its level.
  */
 describe("what a route can read, by who is looking (SAG-163)", () => {

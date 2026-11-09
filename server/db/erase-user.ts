@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { reportCreatedType } from "./reports";
 
 /**
  * Every table with a column that points at `users.id` and holds what the person made or
@@ -38,6 +39,10 @@ export const erasedColumns: readonly (readonly [string, string])[] = [
  * account back, and the id keeps the rows that point at it (a report, the audit log) valid.
  * None of that says who the person was.
  *
+ * The alerts that administrators got about this person (SAG-177) go too, because they hold the
+ * username. A row written before the id was stored is found by the username, which the statement
+ * still reads as it was (every CTE sees the same snapshot).
+ *
  * It is one statement, and a statement is atomic: the account is erased whole or not at all.
  */
 export function erasureCtes(clerkUpdatedAt: SQL): SQL {
@@ -49,6 +54,19 @@ export function erasureCtes(clerkUpdatedAt: SQL): SQL {
       )`,
   );
   return sql`
+    erase_report_alerts AS (
+      DELETE FROM notifications
+      WHERE type = ${reportCreatedType}
+        AND (
+          payload->>'targetId' IN (SELECT id::text FROM target)
+          OR (
+            payload->>'targetId' IS NULL
+            AND payload->>'username' IN (
+              SELECT username::text FROM users WHERE id IN (SELECT id FROM target)
+            )
+          )
+        )
+    ),
     erase_custom_titles AS (
       DELETE FROM media_items
       WHERE id IN (

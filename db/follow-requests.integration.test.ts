@@ -214,6 +214,17 @@ describe("requestFollow (SAG-108)", () => {
     expect(await pairs()).not.toContain("ana_viewer>next_private");
   });
 
+  it("answers requested for a request already out, even at the hourly cap (SAG-165)", async () => {
+    const ana = await person("ana_viewer");
+    for (let index = 0; index < followsPerHour; index += 1) {
+      const closed = await person(`closed_${index}`, "friends");
+      await ask(ana.id, closed.id);
+    }
+
+    expect(await requestFollow(db, ana.id, "closed_0")).toBe("requested");
+    expect(await allRequests()).toHaveLength(followsPerHour);
+  });
+
   it("does not count what is older than an hour, but stops at the number of requests sent", async () => {
     const ana = await person("ana_viewer");
     for (let index = 0; index < sentRequestsMax; index += 1) {

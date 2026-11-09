@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
-import { unreadCap } from "./notifications";
+import { readableByOwner, unreadCap } from "./notifications";
 import { blockedBetween, requesterCardShown } from "./person-visibility";
 
 /**
@@ -35,7 +35,7 @@ export async function findHeaderFacts(
            (
              SELECT count(*)::int FROM (
                SELECT 1 FROM notifications n
-               WHERE n.user_id = u.id AND n.read_at IS NULL
+               WHERE n.user_id = u.id AND n.read_at IS NULL AND ${readableByOwner(sql`n`)}
                LIMIT ${unreadCap + 1}::int
              ) capped
            ) + (

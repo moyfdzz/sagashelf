@@ -162,6 +162,27 @@ function minutesAgoOf(date: Date) {
   return Math.round((Date.now() - date.getTime()) / 60000);
 }
 
+describe("the alerts of reports are for administrators only (SAG-177)", () => {
+  it("lists and counts a report alert for an administrator, and for nobody who lost the role", async () => {
+    const admin = await newUser({ role: "admin" });
+    await notify(admin.id, {
+      type: "report.created",
+      payload: { kind: "user", reason: "spam", username: "somebody" },
+      dedupeKey: "report:1",
+    });
+    await notify(admin.id);
+
+    expect(await listNotifications(db, admin.id)).toHaveLength(2);
+    expect(await countUnread(db, admin.id)).toBe(2);
+
+    await db.update(users).set({ role: "user" }).where(eq(users.id, admin.id));
+
+    const left = await listNotifications(db, admin.id);
+    expect(left.map((row) => row.type)).toEqual(["episode.aired"]);
+    expect(await countUnread(db, admin.id)).toBe(1);
+  });
+});
+
 describe("counting what is unread", () => {
   it("counts only the unread ones of that person", async () => {
     const ana = await newUser();

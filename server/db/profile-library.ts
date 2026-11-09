@@ -5,8 +5,7 @@ import { localizedTitleSql, titleShownSql } from "./titles";
 import { libraryTypes, type LibraryType } from "../library/schema";
 import type { Locale } from "../providers/types";
 import {
-  canView,
-  levels,
+  visibleLevels,
   type Level,
   type Relationship,
 } from "../social/can-view";
@@ -45,14 +44,6 @@ const empty = (): ProfileSections => ({
   planned: { total: 0, entries: [] },
   completed: { total: 0, entries: [] },
 });
-
-/** The levels of entry that the viewer may see on this profile: the ones `canView` allows. */
-export function visibleLevels(
-  relationship: Relationship,
-  profileLevel: Level,
-): Level[] {
-  return levels.filter((level) => canView(relationship, level, profileLevel));
-}
 
 const toEntry = (row: Record<string, unknown>): ProfileEntry => ({
   mediaId: String(row.media_id),

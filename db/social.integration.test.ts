@@ -157,6 +157,22 @@ describe("followUser (SAG-21)", () => {
     expect(await followUser(db, ana.id, "one_more")).toBe("followed");
   });
 
+  it("answers followed for a person already followed, even at the hourly cap (SAG-165)", async () => {
+    const ana = await person("ana_viewer");
+    const others = await Promise.all(
+      Array.from({ length: followsPerHour }, (_, i) => person(`other_${i}`)),
+    );
+    await db.insert(follows).values(
+      others.map((other) => ({
+        followerId: ana.id,
+        followeeId: other.id,
+      })),
+    );
+
+    expect(await followUser(db, ana.id, "other_0")).toBe("followed");
+    expect(await allFollows()).toHaveLength(followsPerHour);
+  });
+
   it("counts the cap per person, so one person over it does not stop another", async () => {
     const ana = await person("ana_viewer");
     const bob = await person("bob_viewer");
