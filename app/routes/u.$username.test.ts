@@ -170,6 +170,23 @@ describe("the profile page: what it asks and what it answers (SAG-107)", () => {
       expect(mocks.findProfile).toHaveBeenCalledWith(db, null, "ana_reads");
     });
 
+    it("counts the people around the profile as the viewer may see them (SAG-164)", async () => {
+      await load();
+      expect(mocks.getSocialCounts).toHaveBeenLastCalledWith(
+        db,
+        "user-from-session",
+        "owner-id",
+      );
+
+      mocks.getOptionalUser.mockResolvedValue(null);
+      await load();
+      expect(mocks.getSocialCounts).toHaveBeenLastCalledWith(
+        db,
+        null,
+        "owner-id",
+      );
+    });
+
     it.each(["ab", "a".repeat(31), "has space", "a/b/c", "x?y=z", "100%25"])(
       "answers 404 for %j without opening the database",
       async (username) => {

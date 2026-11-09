@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { toPerson, type Person } from "./person";
+import { reachableByViewer } from "./person-visibility";
 
 /**
  * Blocking and muting a person (SAG-21, ADR-031): the controls a person has over who reaches them.
@@ -13,7 +14,9 @@ import { toPerson, type Person } from "./person";
 
 /**
  * Blocks a person: records the block and removes every follow and every pending follow request
- * between the two, in both directions, in the same statement. Blocking someone who does not exist, or oneself, does nothing.
+ * between the two, in both directions, in the same statement. Blocking oneself, someone who does not
+ * exist or someone the viewer may not reach (`reachableByViewer`: Total privacy with no tie between
+ * them, or a block either way) stores nothing, and the answer is the same in every case.
  */
 export async function blockUser(
   db: SqlExecutor,
@@ -22,8 +25,8 @@ export async function blockUser(
 ): Promise<void> {
   await db.execute(sql`
     WITH target AS (
-      SELECT id FROM users
-      WHERE username = ${username} AND deleted_at IS NULL AND id <> ${viewerId}::uuid
+      SELECT u.id FROM users u
+      WHERE u.username = ${username} AND ${reachableByViewer(viewerId)}
     ),
     blocked AS (
       INSERT INTO blocks (blocker_id, blocked_id)
@@ -60,7 +63,10 @@ export async function unblockUser(
   `);
 }
 
-/** Mutes a person. It is only stored: the other person is not told and nothing is hidden yet. */
+/**
+ * Mutes a person. It is only stored: the other person is not told and nothing is hidden yet. Like a
+ * block, it stores nothing for somebody the viewer may not reach.
+ */
 export async function muteUser(
   db: SqlExecutor,
   viewerId: string,
@@ -68,8 +74,8 @@ export async function muteUser(
 ): Promise<void> {
   await db.execute(sql`
     INSERT INTO mutes (muter_id, muted_id)
-    SELECT ${viewerId}::uuid, id FROM users
-    WHERE username = ${username} AND deleted_at IS NULL AND id <> ${viewerId}::uuid
+    SELECT ${viewerId}::uuid, u.id FROM users u
+    WHERE u.username = ${username} AND ${reachableByViewer(viewerId)}
     ON CONFLICT DO NOTHING
   `);
 }
@@ -100,7 +106,11 @@ export async function isMuted(
   return rows[0]?.muted === true;
 }
 
-/** The people the viewer has blocked, newest first, for the page where a block can be undone. */
+/**
+ * The people the viewer has blocked, newest first, for the page where a block can be undone. These
+ * are the viewer's own rows, so a person who later became hidden is still listed: otherwise the
+ * block could never be undone.
+ */
 export async function listBlocked(
   db: SqlExecutor,
   viewerId: string,
@@ -115,7 +125,10 @@ export async function listBlocked(
   return rows.map(toPerson);
 }
 
-/** The people the viewer has muted, newest first. */
+/**
+ * The people the viewer has muted, newest first. Somebody the viewer may no longer reach (they
+ * chose Total privacy with no tie left, or blocked the viewer) is not shown.
+ */
 export async function listMuted(
   db: SqlExecutor,
   viewerId: string,
@@ -123,7 +136,7 @@ export async function listMuted(
   const { rows } = await db.execute(sql`
     SELECT u.username, u.display_name, u.avatar_url
     FROM mutes m JOIN users u ON u.id = m.muted_id
-    WHERE m.muter_id = ${viewerId}::uuid AND u.deleted_at IS NULL
+    WHERE m.muter_id = ${viewerId}::uuid AND ${reachableByViewer(viewerId)}
     ORDER BY m.created_at DESC, u.id
     LIMIT 200
   `);
