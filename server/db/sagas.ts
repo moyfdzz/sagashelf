@@ -9,6 +9,7 @@ import {
 } from "../providers/wikidata/map";
 import type { MediaKind } from "../providers/types";
 
+import { sharedTitleSql } from "./titles";
 /** What the sync has to do for the curated sagas: the ones to save and the items to describe. */
 export type SagaSyncWork = { changedSlugs: string[]; missingQids: string[] };
 
@@ -147,7 +148,7 @@ export async function getSagaBySlug(
     LEFT JOIN LATERAL (
       SELECT m.id, m.type::text AS type, m.title, m.titles
       FROM media_items m
-      WHERE m.type <> 'custom' AND ${mediaMatchesItem}
+      WHERE ${sharedTitleSql("m")} AND ${mediaMatchesItem}
       ORDER BY m.id
       LIMIT 1
     ) matched ON true
@@ -189,7 +190,7 @@ export async function getSagasOfMedia(
     FROM saga_wikidata_members sm
     JOIN wikidata_items i ON i.qid = sm.qid
     JOIN sagas s ON s.id = sm.saga_id
-    JOIN media_items m ON m.id = ${mediaId}::uuid AND m.type <> 'custom'
+    JOIN media_items m ON m.id = ${mediaId}::uuid AND ${sharedTitleSql("m")}
     WHERE s.status = 'published' AND ${mediaMatchesItem}
     ORDER BY s.slug
   `);

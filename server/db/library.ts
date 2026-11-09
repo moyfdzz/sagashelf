@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 import type { ProfileDb } from "./profile";
 import { libraryEntries, mediaItems } from "./schema";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, sharedTitleSql } from "./titles";
 import type { Locale } from "../providers/types";
 import type { EntryState, SeasonCount } from "../library/rules";
 import {
@@ -130,7 +130,7 @@ export async function addEntry(
 ): Promise<boolean> {
   const { rows } = (await db.execute(sql`
     WITH target AS (
-      SELECT id FROM media_items WHERE id = ${mediaId}::uuid AND type <> 'custom'
+      SELECT id FROM media_items WHERE id = ${mediaId}::uuid AND ${sharedTitleSql("media_items")}
     ),
     added AS (
       INSERT INTO library_entries (user_id, media_id)

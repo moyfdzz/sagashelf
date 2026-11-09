@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import type { Locale } from "../providers/types";
 import { maxListItems } from "../lists/schema";
 import type { SqlExecutor } from "./clerk-sync";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, sharedTitleSql } from "./titles";
 
 /**
  * The titles inside a list of the person (SAG-113, ADR-045). Like `lists.ts`, every function is one
@@ -97,7 +97,7 @@ export async function addListItem(
     found AS (
       SELECT m.id FROM media_items m
       WHERE m.id = ${mediaId}::uuid
-        AND (m.type <> 'custom' OR EXISTS (
+        AND (${sharedTitleSql("m")} OR EXISTS (
           SELECT 1 FROM custom_entries c WHERE c.media_id = m.id AND c.owner_id = ${ownerId}::uuid
         ))
     ),

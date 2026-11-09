@@ -183,7 +183,8 @@ describe("getProfileSectionPage (SAG-127): pages, order and tabs", () => {
     await entry(owner.id, { title: "Another book", type: "book" });
     await entry(owner.id, { title: "My own", type: "custom" });
 
-    const page = await ask(owner.id, { type: "book" });
+    // The owner looks: a custom title is shown to nobody else (SAG-196).
+    const page = await ask(owner.id, { type: "book", relationship: "owner" });
 
     expect(page.entries.map((e) => e.title).sort()).toEqual([
       "A book",
@@ -203,7 +204,7 @@ describe("getProfileSectionPage (SAG-127): pages, order and tabs", () => {
     const owner = await newUser();
     await entry(owner.id, { title: "My own", type: "custom" });
 
-    const page = await ask(owner.id);
+    const page = await ask(owner.id, { relationship: "owner" });
 
     expect(page.entries.map((e) => e.title)).toEqual(["My own"]);
   });

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { ProfileDb } from "./profile";
 
+import { sharedTitleSql } from "./titles";
 // Neon (HTTP) and `pg` both answer a raw statement with `{ rows }`; the type of the shared
 // database does not say so.
 type RawRows = { rows: Record<string, unknown>[] };
@@ -41,7 +42,7 @@ export async function lookupTitles(
            ) AS episodes
     FROM jsonb_to_recordset(${JSON.stringify(sources)}::jsonb) AS x(provider text, id text)
     JOIN media_external_ids e ON e.provider::text = x.provider AND e.external_id = x.id
-    JOIN media_items m ON m.id = e.media_id AND m.type <> 'custom'
+    JOIN media_items m ON m.id = e.media_id AND ${sharedTitleSql("m")}
   `)) as RawRows;
   return new Map(
     rows.map((row) => [

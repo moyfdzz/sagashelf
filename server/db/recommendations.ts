@@ -8,7 +8,7 @@ import { mediaMatchesItem } from "./wikidata-store";
 import { type Genre, isGenre } from "../providers/genres";
 import { isWikidataFormat } from "../providers/wikidata/map";
 import type { Locale, MediaKind } from "../providers/types";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, sharedTitleSql } from "./titles";
 
 /**
  * What the recommendations page reads (SAG-87, ADR-028). Both queries read the library of the person
@@ -76,7 +76,7 @@ export async function getGenreRecommendations(
              jsonb_agg(l.genre ORDER BY l.w DESC, l.genre) AS because
       FROM media_items m
       JOIN liked l ON jsonb_exists(m.genres, l.genre)
-      WHERE m.type <> 'custom'
+      WHERE ${sharedTitleSql("m")}
         ${type ? sql`AND m.type = ${type}::media_type` : sql``}
         AND NOT EXISTS (
           SELECT 1 FROM library_entries own
@@ -143,7 +143,7 @@ export async function getSagaSuggestions(
       LEFT JOIN LATERAL (
         SELECT m.id, m.type::text AS type, m.title, m.titles
         FROM media_items m
-        WHERE m.type <> 'custom' AND ${mediaMatchesItem}
+        WHERE ${sharedTitleSql("m")} AND ${mediaMatchesItem}
         ORDER BY m.id
         LIMIT 1
       ) matched ON true

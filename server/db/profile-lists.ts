@@ -8,7 +8,7 @@ import {
   type Relationship,
 } from "../social/can-view";
 import type { SqlExecutor } from "./clerk-sync";
-import { localizedTitleSql } from "./titles";
+import { localizedTitleSql, titleShownSql } from "./titles";
 
 /**
  * The lists of a person as somebody else may see them (SAG-113, ADR-045). The rule is the one of
@@ -127,6 +127,7 @@ export async function listViewableItems(
     WHERE i.list_id = ${listId}::uuid
       AND l.owner_id = ${ownerId}::uuid
       AND l.visibility::text IN (${inLevels(allowed)})
+      AND ${titleShownSql("m", viewing.relationship)}
     ORDER BY i.position, i.created_at, i.media_id
   `);
   return rows.map((row) => ({
