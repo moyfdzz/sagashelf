@@ -76,7 +76,7 @@ The check `npm audit (production)` (`.github/workflows/dependency-audit.yml`) fa
 
 1. Read the advisory in the job summary: which package, and whether the Worker reaches the vulnerable code.
 2. Update the package in its own ticket. If only a package inside another one is affected and its parent has no fix yet, use `overrides` in `package.json`, and run the tests.
-3. If it cannot be fixed yet, or it does not apply, **accept it on purpose**: write the advisory, the reason and a date to look again in a Linear ticket. `npm audit` has no ignore list, so the check stays red and the daily email keeps coming until the package changes.
+3. If it cannot be fixed yet, or it does not apply, **accept it on purpose**: write the advisory, the reason and a date to look again in a ticket (an issue of the private repository `moyfdzz/sagashelf-tickets`). `npm audit` has no ignore list, so the check stays red and the daily email keeps coming until the package changes.
 
 ### G. A profile picture breaks the rules, or may be illegal
 
