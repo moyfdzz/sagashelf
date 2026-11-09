@@ -345,6 +345,43 @@ describe("the alerts of reports and an erasure (SAG-177)", () => {
     expect(cat.id).not.toBe(bob.id);
   });
 
+  it("does not delete an alert that has the id of somebody else, whatever its username says", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ username: "bob_reported" });
+    const cat = await newUser({ username: "cat_reported" });
+    await db.insert(notifications).values({
+      userId: admin.id,
+      type: "report.created",
+      payload: {
+        kind: "user",
+        reason: "spam",
+        username: "bob_reported",
+        targetId: cat.id,
+      },
+      dedupeKey: "report:other-target",
+    });
+
+    await eraseAccount(db, bob.clerkId);
+
+    expect(await db.select().from(notifications)).toHaveLength(1);
+  });
+
+  it("does not put the alerts in the data export of somebody who lost the role", async () => {
+    const admin = await newUser({ role: "admin" });
+    const ana = await newUser();
+    const bob = await newUser({ username: "bob_reported" });
+    await createReport(db, userReport(ana.id, bob.id));
+    expect(
+      JSON.stringify((await exportAccount(db, admin.id))?.notifications),
+    ).toContain("bob_reported");
+
+    await db.update(users).set({ role: "user" }).where(eq(users.id, admin.id));
+
+    expect(
+      JSON.stringify((await exportAccount(db, admin.id))?.notifications),
+    ).not.toContain("bob_reported");
+  });
+
   it("keeps the alert of an erased person's own other notifications untouched", async () => {
     const admin = await newUser({ role: "admin" });
     const bob = await newUser({ username: "bob_reported" });

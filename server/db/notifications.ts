@@ -2,6 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { asDate } from "./dates";
+import { contactCreatedType } from "../account/contact-schema";
 import { reportCreatedType } from "./reports";
 
 /**
@@ -30,11 +31,12 @@ export type NotificationView = {
 
 /**
  * The notifications row `n` may be shown to its owner (SAG-177). The alert of a report holds the
- * username of the person reported and is for administrators: somebody who lost the role is not
- * shown the old ones. THE one place of this rule; the page, the count and the header read it.
+ * username of the person reported, and a contact message alert points to the administration: both
+ * are for administrators, and somebody who lost the role is not shown the old ones. THE one place
+ * of this rule; the page, the count, the header and the data export read it.
  */
 export const readableByOwner = (n: SQL): SQL => sql`(
-  ${n}.type <> ${reportCreatedType}
+  ${n}.type NOT IN (${reportCreatedType}, ${contactCreatedType})
   OR EXISTS (SELECT 1 FROM users o WHERE o.id = ${n}.user_id AND o.role = 'admin')
 )`;
 

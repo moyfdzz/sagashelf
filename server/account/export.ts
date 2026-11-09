@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
+import { readableByOwner } from "../db/notifications";
 import { requesterCardShown } from "../db/person-visibility";
 import type { ProfileDb } from "../db/profile";
 import {
@@ -252,7 +253,14 @@ export async function exportAccount(
       readAt: notifications.readAt,
     })
     .from(notifications)
-    .where(eq(notifications.userId, userId))
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        // What the inbox would not show (an alert of a report after the role was lost) is not
+        // exported either (SAG-177).
+        readableByOwner(sql`notifications`),
+      ),
+    )
     .orderBy(notifications.createdAt, notifications.id);
 
   const asNames = (

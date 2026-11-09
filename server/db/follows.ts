@@ -21,7 +21,8 @@ export type FollowResult = "followed" | "unavailable" | "too_many";
  * Follows a person by username. Allowed only when the person exists, is not erased, is not the
  * viewer, has a **public** profile (a Private one can only be followed through a request, see
  * `follow-requests.ts`), and neither has blocked the other. Following someone already followed is
- * `followed` too, and that is answered before the hourly cap applies (SAG-165): repeating a follow is not a new one. The hourly cap, shared with the requests sent, is read in the same statement.
+ * `followed` too, and that is answered before the hourly cap applies (SAG-165): repeating a follow
+ * is not a new one. The hourly cap, shared with the requests sent, is read in the same statement.
  */
 export async function followUser(
   db: SqlExecutor,

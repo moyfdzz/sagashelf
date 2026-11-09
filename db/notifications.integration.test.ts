@@ -170,10 +170,15 @@ describe("the alerts of reports are for administrators only (SAG-177)", () => {
       payload: { kind: "user", reason: "spam", username: "somebody" },
       dedupeKey: "report:1",
     });
+    await notify(admin.id, {
+      type: "contact.created",
+      payload: { kind: "question" },
+      dedupeKey: "contact:1",
+    });
     await notify(admin.id);
 
-    expect(await listNotifications(db, admin.id)).toHaveLength(2);
-    expect(await countUnread(db, admin.id)).toBe(2);
+    expect(await listNotifications(db, admin.id)).toHaveLength(3);
+    expect(await countUnread(db, admin.id)).toBe(3);
 
     await db.update(users).set({ role: "user" }).where(eq(users.id, admin.id));
 

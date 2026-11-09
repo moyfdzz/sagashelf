@@ -41,7 +41,9 @@ export const erasedColumns: readonly (readonly [string, string])[] = [
  *
  * The alerts that administrators got about this person (SAG-177) go too, because they hold the
  * username. A row written before the id was stored is found by the username, which the statement
- * still reads as it was (every CTE sees the same snapshot).
+ * still reads as it was (every CTE sees the same snapshot). That fallback can take an alert about
+ * somebody else who once had the same username (a rename); it only touches rows older than this
+ * change, which the 30 day cleanup removes, and it deletes an alert, it never shows one (SAG-177).
  *
  * It is one statement, and a statement is atomic: the account is erased whole or not at all.
  */
