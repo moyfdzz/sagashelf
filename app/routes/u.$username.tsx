@@ -18,6 +18,10 @@ import { getInstance, getLocale } from "~/middleware/i18next";
 import { getOptionalUser, requireUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import {
+  canFollow as canFollowLevel,
+  canRequest as canRequestLevel,
+} from "~server/social/can-view";
+import {
   cancelRequest,
   hasRequested,
   requestFollow,
@@ -115,12 +119,12 @@ export async function loader(args: Route.LoaderArgs) {
   // What the viewer can do with this person, never more than the buttons the page draws. A Private
   // profile (level `friends`) cannot be followed, only asked for (SAG-108).
   const following = relationship === "friend" || relationship === "follower";
-  const canRequest = owner.privacy === "friends" && !following;
+  const canRequest = canRequestLevel(owner.privacy) && !following;
   // Following a Private profile again needs a new request that has to be accepted, so unfollowing
   // it asks first (SAG-124). The confirmation is a state of the page (`?confirm=unfollow`), so it
   // works without a script; the server does not need it, and unfollowing a Public profile does not
   // ask, since following it again is immediate.
-  const unfollowAsks = following && owner.privacy === "friends";
+  const unfollowAsks = following && canRequestLevel(owner.privacy);
   const confirmUnfollow =
     unfollowAsks &&
     new URL(request.url).searchParams.get("confirm") === "unfollow";
@@ -133,7 +137,7 @@ export async function loader(args: Route.LoaderArgs) {
             following,
             unfollowAsks,
             confirmUnfollow,
-            canFollow: owner.privacy === "public",
+            canFollow: canFollowLevel(owner.privacy),
             canRequest,
             requested: canRequest
               ? await hasRequested(db, viewer.id, owner.id)

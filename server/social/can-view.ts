@@ -110,3 +110,21 @@ export function canSeeCard(relationship: Relationship, level: Level): boolean {
   if (relationship === "owner") return true;
   return level !== "private";
 }
+
+/**
+ * Whether a profile of this level may be followed straight away: one that a stranger sees in full
+ * (today, a public one). A `friends` profile is asked for (`canRequest`) and a `private` one cannot
+ * be followed at all (SAG-178). Derived from `canView`, so a new level cannot change one rule and
+ * leave the others. A block, the viewer themself and erased accounts are the statement's business.
+ */
+export function canFollow(level: Level): boolean {
+  return canView("stranger", level);
+}
+
+/**
+ * Whether a profile of this level may be asked for a follow: a locked one, whose card a stranger
+ * sees but not the rest (today, a `friends` one) (SAG-178).
+ */
+export function canRequest(level: Level): boolean {
+  return canSeeCard("stranger", level) && !canView("stranger", level);
+}

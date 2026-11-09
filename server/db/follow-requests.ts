@@ -2,7 +2,12 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { followsPerHour } from "./follows";
-import { requesterCardShown } from "./person-visibility";
+import {
+  blockedBetween,
+  levelAllowed,
+  requesterCardShown,
+} from "./person-visibility";
+import { canFollow, canRequest } from "../social/can-view";
 import { type Person } from "./person";
 import { asDate } from "./dates";
 
@@ -55,17 +60,13 @@ export async function requestFollow(
       FROM users u
       WHERE u.username = ${username}
         AND u.deleted_at IS NULL
-        AND u.privacy = 'friends'
+        AND ${levelAllowed(sql`u.privacy`, canRequest)}
         AND u.id <> ${viewerId}::uuid
         AND NOT EXISTS (
           SELECT 1 FROM follows f
           WHERE f.follower_id = ${viewerId}::uuid AND f.followee_id = u.id
         )
-        AND NOT EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE (b.blocker_id = ${viewerId}::uuid AND b.blocked_id = u.id)
-             OR (b.blocker_id = u.id AND b.blocked_id = ${viewerId}::uuid)
-        )
+        AND NOT ${blockedBetween(sql`${viewerId}::uuid`, sql`u.id`)}
         AND (SELECT n FROM recent) < ${followsPerHour}::int
         AND (
           (SELECT n FROM sent) < ${sentRequestsMax}::int
@@ -156,11 +157,7 @@ export async function listPendingRequests(
       AND r.declined_at IS NULL
       AND u.deleted_at IS NULL
       AND ${requesterCardShown(sql`u.privacy`)}
-      AND NOT EXISTS (
-        SELECT 1 FROM blocks k
-        WHERE (k.blocker_id = ${ownerId}::uuid AND k.blocked_id = u.id)
-           OR (k.blocker_id = u.id AND k.blocked_id = ${ownerId}::uuid)
-      )
+      AND NOT ${blockedBetween(sql`${ownerId}::uuid`, sql`u.id`)}
     ORDER BY r.created_at DESC, u.id
     LIMIT ${pendingListMax}::int
   `);
@@ -198,11 +195,7 @@ export async function acceptRequest(
         AND u.username = ${username}
         AND u.deleted_at IS NULL
         AND ${requesterCardShown(sql`u.privacy`)}
-        AND NOT EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE (b.blocker_id = ${ownerId}::uuid AND b.blocked_id = u.id)
-             OR (b.blocker_id = u.id AND b.blocked_id = ${ownerId}::uuid)
-        )
+        AND NOT ${blockedBetween(sql`${ownerId}::uuid`, sql`u.id`)}
     ),
     accepted AS (
       INSERT INTO follows (follower_id, followee_id)
@@ -218,7 +211,7 @@ export async function acceptRequest(
     followed_back AS (
       INSERT INTO follows (follower_id, followee_id)
       SELECT ${ownerId}::uuid, id FROM req
-      WHERE ${back} AND privacy = 'public'
+      WHERE ${back} AND ${levelAllowed(sql`privacy`, canFollow)}
       ON CONFLICT DO NOTHING
       RETURNING 1
     ),
@@ -226,7 +219,7 @@ export async function acceptRequest(
       INSERT INTO follow_requests (requester_id, target_id)
       SELECT ${ownerId}::uuid, id FROM req
       WHERE ${back}
-        AND privacy = 'friends'
+        AND ${levelAllowed(sql`privacy`, canRequest)}
         AND NOT EXISTS (
           SELECT 1 FROM follows f
           WHERE f.follower_id = ${ownerId}::uuid AND f.followee_id = req.id

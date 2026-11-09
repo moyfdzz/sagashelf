@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { unreadCap } from "./notifications";
-import { requesterCardShown } from "./person-visibility";
+import { blockedBetween, requesterCardShown } from "./person-visibility";
 
 /**
  * What the header of every page needs to know about the person of the session, read in ONE
@@ -45,11 +45,7 @@ export async function findHeaderFacts(
                WHERE r.target_id = u.id AND r.declined_at IS NULL
                  AND q.deleted_at IS NULL
                  AND ${requesterCardShown(sql`q.privacy`)}
-                 AND NOT EXISTS (
-                   SELECT 1 FROM blocks k
-                   WHERE (k.blocker_id = u.id AND k.blocked_id = q.id)
-                      OR (k.blocker_id = q.id AND k.blocked_id = u.id)
-                 )
+                 AND NOT ${blockedBetween(sql`u.id`, sql`q.id`)}
                LIMIT ${unreadCap + 1}::int
              ) capped
            ) AS unread
