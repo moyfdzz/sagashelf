@@ -271,6 +271,30 @@ describe("blockUser", () => {
     expect(await allFollows()).toHaveLength(0);
   });
 
+  it("drops the mute the person had of the one they block, and no other mute", async () => {
+    const ana = await person("ana_viewer");
+    const ben = await person("ben_public");
+    const cat = await person("cat_public");
+    await db.insert(mutes).values([
+      { muterId: ana.id, mutedId: ben.id },
+      { muterId: ana.id, mutedId: cat.id },
+      { muterId: ben.id, mutedId: ana.id },
+    ]);
+
+    await blockUser(db, ana.id, "ben_public");
+    await unblockUser(db, ana.id, "ben_public");
+
+    // Ana's mute of cat and ben's own mute of ana stay; the mute of ben does not come back.
+    expect(
+      (await db.select().from(mutes)).map((m) => [m.muterId, m.mutedId]).sort(),
+    ).toEqual(
+      [
+        [ana.id, cat.id],
+        [ben.id, ana.id],
+      ].sort(),
+    );
+  });
+
   it("does nothing for oneself, for a missing person or for an erased one", async () => {
     const ana = await person("ana_viewer");
     const gone = await person("dan_erased");

@@ -14,7 +14,8 @@ import { reachableByViewer } from "./person-visibility";
 
 /**
  * Blocks a person: records the block and removes every follow and every pending follow request
- * between the two, in both directions, in the same statement. Blocking oneself, someone who does not
+ * between the two, in both directions, and the viewer's own mute of them, in the same statement
+ * (a block says more than a mute, and a mute left behind would come back after an unblock). Blocking oneself, someone who does not
  * exist or someone the viewer may not reach (`reachableByViewer`: Total privacy with no tie between
  * them, or a block either way) stores nothing, and the answer is the same in every case.
  */
@@ -44,6 +45,11 @@ export async function blockUser(
       DELETE FROM follow_requests
       WHERE (requester_id = ${viewerId}::uuid AND target_id IN (SELECT id FROM target))
          OR (target_id = ${viewerId}::uuid AND requester_id IN (SELECT id FROM target))
+      RETURNING 1
+    ),
+    unmuted AS (
+      DELETE FROM mutes
+      WHERE muter_id = ${viewerId}::uuid AND muted_id IN (SELECT id FROM target)
       RETURNING 1
     )
     SELECT 1
