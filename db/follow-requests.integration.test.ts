@@ -10,6 +10,7 @@ import {
   requestFollow,
   sentRequestsMax,
 } from "../server/db/follow-requests";
+import { exportAccount } from "../server/account/export";
 import { liftRestriction, restrictAccount } from "../server/db/account-actions";
 import { blockUser } from "../server/db/blocks-mutes";
 import { findHeaderFacts } from "../server/db/header-facts";
@@ -629,6 +630,46 @@ describe("requests from a hidden or banned person (SAG-167)", () => {
     expect(await pairs()).toEqual([
       "ana_public>owner_private",
       "cat_public>owner_private",
+    ]);
+  });
+
+  it("counts in the header only what the list shows: not an erased account nor a block either way", async () => {
+    const owner = await newUser({
+      clerkId: "user_owner",
+      username: "owner_private",
+      privacy: "friends",
+      emailCanonical: "owner_private@example.test",
+    });
+    const ana = await person("ana_public", "public");
+    const ben = await person("ben_erased", "public");
+    const cat = await person("cat_blocked", "public");
+    const dan = await person("dan_blocks", "public");
+    for (const who of [ana, ben, cat, dan]) await ask(who.id, owner.id);
+    await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(eq(users.id, ben.id));
+    // Rows written directly: blockUser would also remove the requests, and this is the second guard.
+    await block(owner.id, cat.id);
+    await block(dan.id, owner.id);
+
+    expect(
+      (await listPendingRequests(db, owner.id)).map((r) => r.username),
+    ).toEqual(["ana_public"]);
+    expect(await unread("user_owner")).toBe(1);
+  });
+
+  it("leaves a hidden or banned requester out of the export of the requests received", async () => {
+    const owner = await person("owner_private", "friends");
+    const ana = await person("ana_public", "public");
+    const cat = await person("cat_hidden", "private");
+    await ask(ana.id, owner.id);
+    await ask(cat.id, owner.id);
+
+    const data = await exportAccount(db, owner.id);
+
+    expect(data?.social.requestsReceived.map((r) => r.username)).toEqual([
+      "ana_public",
     ]);
   });
 
