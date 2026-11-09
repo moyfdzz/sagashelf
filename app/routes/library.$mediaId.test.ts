@@ -88,7 +88,7 @@ beforeEach(() => {
   mocks.getSeasonCounts.mockReset().mockResolvedValue(seasons);
   mocks.saveEntry.mockReset().mockResolvedValue("saved");
   mocks.removeEntry.mockReset().mockResolvedValue(true);
-  mocks.rewatchEntry.mockReset().mockResolvedValue(true);
+  mocks.rewatchEntry.mockReset().mockResolvedValue("saved");
   mocks.setEntryNotifyNewEpisodes.mockReset().mockResolvedValue(true);
   mocks.listViewings.mockReset().mockResolvedValue([]);
   mocks.listsForTitle.mockReset().mockResolvedValue([]);
@@ -429,19 +429,39 @@ describe("watching a title again", () => {
         progress: 0,
         finishedAt: null,
       }),
+      "2026-11-01 10:00:00.123456",
     );
     expect(result).toMatchObject({ data: { ok: true, saved: "rewatch" } });
   });
 
   it("says the history is full when the run cannot be saved", async () => {
     mocks.getEntry.mockResolvedValue({ ...stored, status: "completed" });
-    mocks.rewatchEntry.mockResolvedValue(false);
+    mocks.rewatchEntry.mockResolvedValue("refused");
 
     const result = await send({ intent: "rewatch" });
 
     expect(result).toMatchObject({
       init: { status: 400 },
       data: { ok: false, errors: { viewings: "viewings_limit" } },
+    });
+  });
+
+  it("starts nothing and says the entry changed when it changed before the rewatch was written", async () => {
+    mocks.getEntry.mockResolvedValue({ ...stored, status: "completed" });
+    mocks.rewatchEntry.mockResolvedValue("conflict");
+
+    const result = await send({ intent: "rewatch" });
+
+    expect(mocks.rewatchEntry).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      mediaId,
+      expect.anything(),
+      "2026-11-01 10:00:00.123456",
+    );
+    expect(result).toMatchObject({
+      init: { status: 409 },
+      data: { ok: false, errors: { form: "conflict" } },
     });
   });
 

@@ -8,7 +8,6 @@ import {
   getSeasonCounts,
   listLibrary,
   removeEntry,
-  saveEntry,
   setEntryNotifyNewEpisodes,
   totalEpisodes,
   type Library,
@@ -20,7 +19,7 @@ import type { EntryState } from "../server/library/rules";
 import { libraryQuerySchema, pageSize } from "../server/library/schema";
 import type { NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
-import { factories } from "./test-helpers";
+import { factories, setEntry } from "./test-helpers";
 
 const { db, pool } = createTestDb();
 const { newUser } = factories(db);
@@ -95,7 +94,7 @@ describe("addEntry", () => {
     const mediaId = await addMedia("Ataque a los Titanes");
 
     expect(await addEntry(db, ana.id, mediaId)).toBe(true);
-    await saveEntry(db, ana.id, mediaId, completed);
+    await setEntry(db, ana.id, mediaId, completed);
     expect(await addEntry(db, ana.id, mediaId)).toBe(true);
 
     const entry = await getEntry(db, ana.id, mediaId, "es");
@@ -151,7 +150,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     const mediaId = await addMedia("Ataque a los Titanes");
     await addEntry(db, ana.id, mediaId);
 
-    expect(await saveEntry(db, ana.id, mediaId, completed)).toBe("saved");
+    expect(await setEntry(db, ana.id, mediaId, completed)).toBe("saved");
 
     expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject(completed);
   });
@@ -161,12 +160,12 @@ describe("saveEntry, getEntry and removeEntry", () => {
     const beto = await newUser();
     const mediaId = await addMedia("Ataque a los Titanes");
     await addEntry(db, ana.id, mediaId);
-    await saveEntry(db, ana.id, mediaId, completed);
+    await setEntry(db, ana.id, mediaId, completed);
 
     // Beto knows the title id, and that is all he has.
     expect(await getEntry(db, beto.id, mediaId, "es")).toBeNull();
     expect(
-      await saveEntry(db, beto.id, mediaId, {
+      await setEntry(db, beto.id, mediaId, {
         ...completed,
         score: 1,
         notes: "x",
@@ -184,7 +183,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     await addEntry(db, ana.id, mediaId);
     await addEntry(db, beto.id, mediaId);
 
-    await saveEntry(db, ana.id, mediaId, completed);
+    await setEntry(db, ana.id, mediaId, completed);
 
     expect(await getEntry(db, beto.id, mediaId, "es")).toMatchObject({
       status: "planned",
@@ -208,7 +207,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     const ana = await newUser();
     const mediaId = await addMedia("Ataque a los Titanes");
 
-    expect(await saveEntry(db, ana.id, mediaId, completed)).toBe("missing");
+    expect(await setEntry(db, ana.id, mediaId, completed)).toBe("missing");
   });
 
   it("has the database refuse what the rules would have refused", async () => {
@@ -217,13 +216,13 @@ describe("saveEntry, getEntry and removeEntry", () => {
     await addEntry(db, ana.id, mediaId);
 
     await expect(
-      saveEntry(db, ana.id, mediaId, {
+      setEntry(db, ana.id, mediaId, {
         ...completed,
         finishedAt: "2025-01-01",
       }),
     ).rejects.toThrow();
     await expect(
-      saveEntry(db, ana.id, mediaId, { ...completed, score: 11 }),
+      setEntry(db, ana.id, mediaId, { ...completed, score: 11 }),
     ).rejects.toThrow();
   });
 });
@@ -243,7 +242,7 @@ describe("the progress of a book or a manga", () => {
     const mediaId = await addMedia("Dune", { type: "book" });
     await addEntry(db, ana.id, mediaId);
 
-    await saveEntry(db, ana.id, mediaId, reading);
+    await setEntry(db, ana.id, mediaId, reading);
 
     expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject({
       progress: 120,
@@ -258,10 +257,10 @@ describe("the progress of a book or a manga", () => {
     await addEntry(db, ana.id, mediaId);
 
     await expect(
-      saveEntry(db, ana.id, mediaId, { ...reading, progressTotal: 100 }),
+      setEntry(db, ana.id, mediaId, { ...reading, progressTotal: 100 }),
     ).rejects.toThrow();
     await expect(
-      saveEntry(db, ana.id, mediaId, { ...reading, progressUnit: null }),
+      setEntry(db, ana.id, mediaId, { ...reading, progressUnit: null }),
     ).rejects.toThrow();
   });
 
@@ -271,8 +270,8 @@ describe("the progress of a book or a manga", () => {
     const manga = await addMedia("Berserk", { type: "manga" });
     await addEntry(db, ana.id, book);
     await addEntry(db, ana.id, manga);
-    await saveEntry(db, ana.id, book, reading);
-    await saveEntry(db, ana.id, manga, {
+    await setEntry(db, ana.id, book, reading);
+    await setEntry(db, ana.id, manga, {
       ...reading,
       progress: 3,
       progressUnit: "volumes",
@@ -317,7 +316,7 @@ describe("the data export", () => {
     const beto = await newUser();
     const mediaId = await addMedia("Ataque a los Titanes");
     await addEntry(db, ana.id, mediaId);
-    await saveEntry(db, ana.id, mediaId, completed);
+    await setEntry(db, ana.id, mediaId, completed);
     await addEntry(db, beto.id, mediaId);
 
     const anaData = await exportAccount(db, ana.id);
@@ -349,7 +348,7 @@ describe("getEntryStatuses", () => {
     const bleach = await addMedia("Bleach");
     await addEntry(db, ana.id, titan);
     await addEntry(db, ana.id, matrix);
-    await saveEntry(db, ana.id, matrix, completed);
+    await setEntry(db, ana.id, matrix, completed);
 
     const statuses = await getEntryStatuses(db, ana.id, [
       titan,
@@ -370,7 +369,7 @@ describe("getEntryStatuses", () => {
     const beto = await newUser();
     const titan = await addMedia("Ataque a los Titanes");
     await addEntry(db, beto.id, titan);
-    await saveEntry(db, beto.id, titan, completed);
+    await setEntry(db, beto.id, titan, completed);
 
     expect(await getEntryStatuses(db, ana.id, [titan])).toEqual(new Map());
   });
@@ -416,7 +415,7 @@ describe("listLibrary", () => {
     const matrix = await addMedia("Matrix", { type: "movie", year: 1999 });
     const bleach = await addMedia("Bleach", { year: 2004 });
     for (const id of [titan, matrix, bleach]) await addEntry(db, ana.id, id);
-    await saveEntry(db, ana.id, titan, {
+    await setEntry(db, ana.id, titan, {
       ...completed,
       status: "in_progress",
       progress: 2,
@@ -424,7 +423,7 @@ describe("listLibrary", () => {
       progressTotal: null,
       score: 8,
     });
-    await saveEntry(db, ana.id, matrix, {
+    await setEntry(db, ana.id, matrix, {
       ...completed,
       status: "completed",
       score: 10,
@@ -612,7 +611,7 @@ describe("listLibrary", () => {
     const beto = await newUser();
     // Beto has scored his own copy of the same title: that is not Ana's.
     await addEntry(db, beto.id, matrix);
-    await saveEntry(db, beto.id, matrix, { ...completed, score: 9 });
+    await setEntry(db, beto.id, matrix, { ...completed, score: 9 });
 
     // Ana scored the series (8) and the movie (10); the third title has none.
     expect(await titles(ana.id, { score: "none" })).toEqual(["Bleach"]);
@@ -735,7 +734,7 @@ describe("listLibrary", () => {
         const id = await addMedia(title, { type });
         ids[title] = id;
         await addEntry(db, ana.id, id);
-        await saveEntry(db, ana.id, id, { ...completed, status, visibility });
+        await setEntry(db, ana.id, id, { ...completed, status, visibility });
       }
       return { ana, ids };
     }
@@ -810,7 +809,7 @@ describe("listLibrary", () => {
       const beto = await newUser();
       const shared = ids["Pública anime"] as string;
       await addEntry(db, beto.id, shared);
-      await saveEntry(db, beto.id, shared, {
+      await setEntry(db, beto.id, shared, {
         ...completed,
         visibility: "private",
       });
@@ -830,8 +829,8 @@ describe("listLibrary", () => {
       const longest = "ñ".repeat(2000);
       await addEntry(db, ana.id, withNote);
       await addEntry(db, ana.id, without);
-      await saveEntry(db, ana.id, withNote, { ...completed, notes: longest });
-      await saveEntry(db, ana.id, without, { ...completed, notes: null });
+      await setEntry(db, ana.id, withNote, { ...completed, notes: longest });
+      await setEntry(db, ana.id, without, { ...completed, notes: null });
 
       const rows = flat(await listLibrary(db, ana.id, query(), "es"));
 
@@ -845,8 +844,8 @@ describe("listLibrary", () => {
       const shared = await addMedia("Compartido");
       await addEntry(db, ana.id, shared);
       await addEntry(db, beto.id, shared);
-      await saveEntry(db, ana.id, shared, { ...completed, notes: "de Ana" });
-      await saveEntry(db, beto.id, shared, { ...completed, notes: "de Beto" });
+      await setEntry(db, ana.id, shared, { ...completed, notes: "de Ana" });
+      await setEntry(db, beto.id, shared, { ...completed, notes: "de Beto" });
 
       const rows = flat(await listLibrary(db, beto.id, query(), "es"));
 
@@ -864,7 +863,7 @@ describe("listLibrary", () => {
     for (const row of rows) {
       const id = await addMedia(row.title, { year: row.year });
       await addEntry(db, ana.id, id);
-      await saveEntry(db, ana.id, id, { ...completed, score: row.score });
+      await setEntry(db, ana.id, id, { ...completed, score: row.score });
     }
 
     expect(await titles(ana.id, { sort: "score" })).toEqual([
@@ -909,7 +908,7 @@ describe("listLibrary", () => {
     await db.execute(
       sql`UPDATE library_entries SET updated_at = now() - interval '1 day'`,
     );
-    await saveEntry(db, ana.id, second, { ...completed, status: "planned" });
+    await setEntry(db, ana.id, second, { ...completed, status: "planned" });
 
     const library = await listLibrary(db, ana.id, query(), "es");
 
@@ -925,7 +924,7 @@ describe("listLibrary", () => {
       for (let index = 1; index <= 30; index += 1) {
         const id = await addMedia(`Titulo ${String(index).padStart(2, "0")}`);
         await addEntry(db, ana.id, id);
-        await saveEntry(db, ana.id, id, { ...completed, status: "completed" });
+        await setEntry(db, ana.id, id, { ...completed, status: "completed" });
       }
       for (let index = 1; index <= 14; index += 1) {
         await addEntry(
@@ -1003,7 +1002,7 @@ describe("listLibrary", () => {
       for (let index = 1; index <= 30; index += 1) {
         const id = await addMedia(`Igual ${index}`, { year: 2000 });
         await addEntry(db, ana.id, id);
-        await saveEntry(db, ana.id, id, { ...completed, score: 7 });
+        await setEntry(db, ana.id, id, { ...completed, score: 7 });
       }
 
       const seen: string[] = [];

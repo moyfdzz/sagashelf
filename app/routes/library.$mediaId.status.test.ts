@@ -140,6 +140,18 @@ describe("changing the status of a library entry from the title page", () => {
     expect(await send()).toMatchObject({ init: { status: 404 } });
   });
 
+  it("sends a form without JavaScript back to the entry, not a bare 409, when the entry keeps changing", async () => {
+    mocks.saveEntry.mockResolvedValue("conflict");
+
+    const response = (await send(
+      { status: "completed" },
+      { "Sec-Fetch-Dest": "document" },
+    )) as Response;
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("Location")).toBe(`/library/${mediaId}`);
+  });
+
   it("gives up with 409 when the entry keeps changing", async () => {
     mocks.saveEntry.mockResolvedValue("conflict");
 
@@ -147,7 +159,7 @@ describe("changing the status of a library entry from the title page", () => {
       init: { status: 409 },
       data: { ok: false, error: "failed" },
     });
-    expect(mocks.saveEntry).toHaveBeenCalledTimes(3);
+    expect(mocks.saveEntry).toHaveBeenCalledTimes(5);
   });
 
   it("answers 404 for an id that is not an id, without asking the database", async () => {

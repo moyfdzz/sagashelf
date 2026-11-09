@@ -1,9 +1,28 @@
-import { getEntry, saveEntry, type StoredEntry } from "../db/library";
+import {
+  getEntry,
+  getSeasonCounts,
+  saveEntry,
+  totalEpisodes,
+  type StoredEntry,
+} from "../db/library";
 import type { ProfileDb } from "../db/profile";
 import type { EntryState, RuleError, RuleResult } from "./rules";
 
-// Losing the race is rare; a few tries are enough for quick presses on one button.
-const maxTries = 3;
+// Losing the race is rare. Each loser needs one more try than the one before it, so this lets
+// five presses sent together all land; more than that is not a person pressing a button.
+const maxTries = 5;
+
+/**
+ * The episodes of a title, asked for the first time the rule needs them (so an entry that does not
+ * exist costs no query) and never again, however many times the rule runs.
+ */
+export function lazyTotalEpisodes(db: ProfileDb, mediaId: string) {
+  let total: Promise<number> | undefined;
+  return () => {
+    total ??= getSeasonCounts(db, mediaId).then(totalEpisodes);
+    return total;
+  };
+}
 
 export type UpdateResult =
   | { outcome: "saved"; next: EntryState }

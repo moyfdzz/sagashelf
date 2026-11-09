@@ -181,7 +181,7 @@ describe("the quick step of a library entry", () => {
       init: { status: 409 },
       data: { ok: false, error: "failed" },
     });
-    expect(mocks.saveEntry).toHaveBeenCalledTimes(3);
+    expect(mocks.saveEntry).toHaveBeenCalledTimes(5);
   });
 
   it("answers 404 for an id that is not an id, without asking the database", async () => {
@@ -189,6 +189,30 @@ describe("the quick step of a library entry", () => {
       init: { status: 404 },
     });
     expect(mocks.getEntry).not.toHaveBeenCalled();
+  });
+
+  it("sends a form without JavaScript back to the entry, not a bare 409, when the entry keeps changing", async () => {
+    mocks.saveEntry.mockResolvedValue("conflict");
+
+    const response = (await send({
+      "Sec-Fetch-Dest": "document",
+    })) as Response;
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("Location")).toBe(`/library/${mediaId}`);
+  });
+
+  it("asks for the episodes of the title once, however many tries it takes, and not at all for no entry", async () => {
+    mocks.saveEntry
+      .mockResolvedValueOnce("conflict")
+      .mockResolvedValueOnce("saved");
+    await send();
+    expect(mocks.getSeasonCounts).toHaveBeenCalledTimes(1);
+
+    mocks.getSeasonCounts.mockClear();
+    mocks.getEntry.mockResolvedValue(null);
+    await send();
+    expect(mocks.getSeasonCounts).not.toHaveBeenCalled();
   });
 
   it("sends a form without JavaScript back to the library, and a failed one to the entry", async () => {

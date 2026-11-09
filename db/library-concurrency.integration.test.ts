@@ -1,7 +1,12 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { addEntry, getEntry, saveEntry } from "../server/db/library";
+import {
+  addEntry,
+  getEntry,
+  rewatchEntry,
+  saveEntry,
+} from "../server/db/library";
 import {
   applyStatus,
   applyStep,
@@ -9,7 +14,7 @@ import {
 } from "../server/library/rules";
 import { updateEntry } from "../server/library/update-entry";
 import { createTestDb } from "./test-database";
-import { factories } from "./test-helpers";
+import { factories, restartEntry, setEntry } from "./test-helpers";
 
 // SAG-174: a step, a status change and a save used to write the whole entry back from a read that
 // could be old. These tests run on the real Postgres, where two statements really do overlap.
@@ -51,8 +56,14 @@ async function entryOf(state: EntryState = watching) {
     title: "Ataque a los Titanes",
   });
   await addEntry(db, ana.id, media.id);
-  await saveEntry(db, ana.id, media.id, state);
+  await setEntry(db, ana.id, media.id, state);
   return { userId: ana.id, mediaId: media.id };
+}
+
+async function versionOf(userId: string, mediaId: string) {
+  const entry = await getEntry(db, userId, mediaId, "es");
+  if (!entry) throw new Error("The entry was not created");
+  return entry.version;
 }
 
 const step = (current: { type: string } & EntryState) =>
@@ -61,7 +72,7 @@ const step = (current: { type: string } & EntryState) =>
 describe("saveEntry with the version it read", () => {
   it("writes when nothing changed, and refuses when the entry changed after the read", async () => {
     const { userId, mediaId } = await entryOf();
-    const read = await getEntry(db, userId, mediaId, "es");
+    const version = await versionOf(userId, mediaId);
 
     expect(
       await saveEntry(
@@ -69,7 +80,7 @@ describe("saveEntry with the version it read", () => {
         userId,
         mediaId,
         { ...watching, progress: 6 },
-        read?.version,
+        version,
       ),
     ).toBe("saved");
     // The same old version a second time: the row has moved on.
@@ -79,7 +90,7 @@ describe("saveEntry with the version it read", () => {
         userId,
         mediaId,
         { ...watching, progress: 99, notes: "pisada" },
-        read?.version,
+        version,
       ),
     ).toBe("conflict");
 
@@ -94,10 +105,10 @@ describe("saveEntry with the version it read", () => {
     await db.execute(
       sql`UPDATE library_entries SET updated_at = '2026-11-01 10:00:00.123456+00'`,
     );
-    const read = await getEntry(db, userId, mediaId, "es");
+    const version = await versionOf(userId, mediaId);
 
-    expect(read?.version).toBe("2026-11-01 10:00:00.123456");
-    expect(await saveEntry(db, userId, mediaId, watching, read?.version)).toBe(
+    expect(version).toBe("2026-11-01 10:00:00.123456");
+    expect(await saveEntry(db, userId, mediaId, watching, version)).toBe(
       "saved",
     );
   });
@@ -121,7 +132,7 @@ describe("updateEntry", () => {
       if (!raced) {
         raced = true;
         // The person makes the entry private after the step read it as public.
-        await saveEntry(db, userId, mediaId, {
+        await setEntry(db, userId, mediaId, {
           ...watching,
           visibility: "private",
         });
@@ -157,7 +168,7 @@ describe("updateEntry", () => {
     await updateEntry(db, userId, mediaId, async (current) => {
       if (!raced) {
         raced = true;
-        await saveEntry(db, userId, mediaId, {
+        await setEntry(db, userId, mediaId, {
           ...watching,
           notes: "Nota nueva",
         });
@@ -176,7 +187,7 @@ describe("updateEntry", () => {
 
     // Something changes the entry every time the step is worked out.
     const always = await updateEntry(db, userId, mediaId, async (current) => {
-      await saveEntry(db, userId, mediaId, { ...watching, score: 1 });
+      await setEntry(db, userId, mediaId, { ...watching, score: 1 });
       return step(current);
     });
     const beto = await newUser();
@@ -187,5 +198,72 @@ describe("updateEntry", () => {
     expect(await getEntry(db, userId, mediaId, "es")).toMatchObject({
       progress: 5,
     });
+  });
+
+  it("lets five steps sent together all land", async () => {
+    const { userId, mediaId } = await entryOf();
+
+    await Promise.all(
+      [1, 2, 3, 4, 5].map(() => updateEntry(db, userId, mediaId, step)),
+    );
+
+    expect(await getEntry(db, userId, mediaId, "es")).toMatchObject({
+      progress: 10,
+    });
+  });
+});
+
+describe("the version of an entry", () => {
+  it("is different after every write, even two in a row", async () => {
+    const { userId, mediaId } = await entryOf();
+    const seen = new Set([await versionOf(userId, mediaId)]);
+
+    for (let progress = 6; progress < 16; progress += 1) {
+      await setEntry(db, userId, mediaId, { ...watching, progress });
+      seen.add(await versionOf(userId, mediaId));
+    }
+
+    expect(seen.size).toBe(11);
+  });
+});
+
+describe("rewatchEntry with the version it read", () => {
+  const finished: EntryState = {
+    ...watching,
+    status: "completed",
+    finishedAt: "2026-02-01",
+  };
+  const restarted: EntryState = {
+    ...finished,
+    status: "in_progress",
+    progress: 0,
+    finishedAt: null,
+  };
+
+  it("restarts nothing and saves no viewing when the entry changed after the read", async () => {
+    const { userId, mediaId } = await entryOf(finished);
+    const stale = await versionOf(userId, mediaId);
+    await setEntry(db, userId, mediaId, { ...finished, notes: "Nueva" });
+
+    expect(await rewatchEntry(db, userId, mediaId, restarted, stale)).toBe(
+      "conflict",
+    );
+
+    expect(await getEntry(db, userId, mediaId, "es")).toMatchObject({
+      status: "completed",
+      notes: "Nueva",
+    });
+    const { rows } = await db.execute(
+      sql`SELECT count(*)::int AS viewings FROM library_viewings`,
+    );
+    expect(rows[0]).toMatchObject({ viewings: 0 });
+  });
+
+  it("restarts on the current version, and refuses (not a conflict) an entry that is not completed", async () => {
+    const { userId, mediaId } = await entryOf(finished);
+
+    expect(await restartEntry(db, userId, mediaId, restarted)).toBe("saved");
+    // Now in progress: the version is the current one, so the refusal is the rules'.
+    expect(await restartEntry(db, userId, mediaId, restarted)).toBe("refused");
   });
 });

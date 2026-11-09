@@ -1,6 +1,9 @@
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
+import { getEntry, rewatchEntry, saveEntry } from "../server/db/library";
+import type { ProfileDb } from "../server/db/profile";
 import * as schema from "../server/db/schema";
+import type { EntryState } from "../server/library/rules";
 
 const { mediaItems, users } = schema;
 
@@ -19,6 +22,34 @@ export async function failsWith(statement: PromiseLike<unknown>) {
     throw error;
   }
   throw new Error("Expected the statement to fail, but it succeeded");
+}
+
+/**
+ * Sets up the entry of a test: writes it on the version it has now, so a test that only needs the
+ * state does not have to carry versions around. The tests that are about versions call `saveEntry`
+ * with the one they hold. "missing" when the person has no entry.
+ */
+export async function setEntry(
+  db: ProfileDb,
+  userId: string,
+  mediaId: string,
+  next: EntryState,
+) {
+  const current = await getEntry(db, userId, mediaId, "es");
+  if (!current) return "missing" as const;
+  return saveEntry(db, userId, mediaId, next, current.version);
+}
+
+/** The same for a rewatch: restarts the entry on the version it has now. */
+export async function restartEntry(
+  db: ProfileDb,
+  userId: string,
+  mediaId: string,
+  next: EntryState,
+) {
+  const current = await getEntry(db, userId, mediaId, "es");
+  if (!current) return "refused" as const;
+  return rewatchEntry(db, userId, mediaId, next, current.version);
 }
 
 let counter = 0;

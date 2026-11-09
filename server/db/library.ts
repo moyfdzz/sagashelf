@@ -158,17 +158,17 @@ export async function addEntry(
 export type SaveResult = "saved" | "missing" | "conflict";
 
 /**
- * Writes the entry of this person for this title. With the `version` the entry had when it was
- * read, the write happens only if nothing changed since, in the same statement: a "+1" that read
- * a public entry cannot bring it back after the person made it private, and two "+1" never both
- * write the same number. Without a `version` the write is unconditional.
+ * Writes the entry of this person for this title, only if it still has the `version` it had when
+ * it was read, in the same statement: a "+1" that read a public entry cannot bring it back after
+ * the person made it private, and two "+1" never both write the same number. The version is not
+ * optional on purpose: a caller that forgets it must not get an unconditional overwrite.
  */
 export async function saveEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-  version?: string,
+  version: string,
 ): Promise<SaveResult> {
   const isMine = and(
     eq(libraryEntries.userId, userId),
@@ -186,12 +186,13 @@ export async function saveEntry(
       finishedAt: next.finishedAt,
       notes: next.notes,
       visibility: next.visibility,
-      updatedAt: new Date(),
+      // The clock of the database, to the microsecond, and never the same twice in a row: a
+      // JavaScript date has milliseconds only, so two writes in one could carry the same version.
+      updatedAt: sql`clock_timestamp()`,
     })
-    .where(version ? and(isMine, sql`${versionSql} = ${version}`) : isMine)
+    .where(and(isMine, sql`${versionSql} = ${version}`))
     .returning({ id: libraryEntries.id });
   if (updated.length > 0) return "saved";
-  if (!version) return "missing";
   // Nothing matched: either the entry is gone or it changed. Only the answer depends on this
   // second read, never the write.
   const [still] = await db
@@ -233,31 +234,48 @@ export async function setEntryNotifyNewEpisodes(
 /**
  * Starts a completed title again: saves the run that ends in the history of viewings, with its
  * dates, and writes the entry as the rules decided. One statement, so the run is saved if and only
- * if the entry restarts. False when the person has no completed entry for the title, or it
- * already holds the most viewings it can.
+ * if the entry restarts, and only if the entry still has the `version` it had when it was read
+ * (`conflict` otherwise, nothing written). `refused`: the person has no completed entry for the
+ * title, or it already holds the most viewings it can.
  */
 export async function rewatchEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-): Promise<boolean> {
+  version: string,
+): Promise<"saved" | "refused" | "conflict"> {
   const { rows } = (await db.execute(sql`
     WITH archived AS (
       INSERT INTO library_viewings (entry_id, started_on, finished_on)
       SELECT id, started_at, finished_at FROM library_entries
       WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid AND status = 'completed'
+        AND (updated_at AT TIME ZONE 'UTC')::text = ${version}
         AND (SELECT count(*) FROM library_viewings WHERE entry_id = library_entries.id) < ${maxViewings}
       RETURNING entry_id
     )
     UPDATE library_entries
     SET status = ${next.status}::library_status, progress = ${next.progress},
         started_at = ${next.startedAt}::date, finished_at = ${next.finishedAt}::date,
-        updated_at = now()
+        updated_at = clock_timestamp()
     WHERE id IN (SELECT entry_id FROM archived)
     RETURNING id
   `)) as RawRows;
-  return rows.length > 0;
+  if (rows.length > 0) return "saved";
+  // Nothing restarted: the entry changed since it was read, or the rules refuse it. Only the
+  // answer depends on this second read, never the write.
+  const [same] = await db
+    .select({ id: libraryEntries.id })
+    .from(libraryEntries)
+    .where(
+      and(
+        eq(libraryEntries.userId, userId),
+        eq(libraryEntries.mediaId, mediaId),
+        sql`${versionSql} = ${version}`,
+      ),
+    )
+    .limit(1);
+  return same ? "refused" : "conflict";
 }
 
 /** Removes the entry of this person for this title. False when they had none. */
