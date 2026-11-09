@@ -10,7 +10,9 @@ import {
   requestFollow,
   sentRequestsMax,
 } from "../server/db/follow-requests";
+import { liftRestriction, restrictAccount } from "../server/db/account-actions";
 import { blockUser } from "../server/db/blocks-mutes";
+import { findHeaderFacts } from "../server/db/header-facts";
 import { followUser, followsPerHour } from "../server/db/follows";
 import { getRelationship } from "../server/db/profile-lookup";
 import { blocks, followRequests, follows, users } from "../server/db/schema";
@@ -302,22 +304,18 @@ describe("listPendingRequests (SAG-108)", () => {
     const owner = await person("owner_private", "friends");
     const ana = await person("ana_public", "public");
     const ben = await person("ben_private", "friends");
-    const cat = await person("cat_hidden", "private");
     await ask(ana.id, owner.id);
     await ask(ben.id, owner.id);
-    await ask(cat.id, owner.id);
     await db.execute(sql`
       UPDATE follow_requests SET created_at = CASE requester_id
         WHEN ${ana.id}::uuid THEN now() - interval '3 minutes'
-        WHEN ${ben.id}::uuid THEN now() - interval '1 minute'
-        ELSE now() - interval '2 minutes' END
+        ELSE now() - interval '1 minute' END
     `);
 
     const list = await listPendingRequests(db, owner.id);
 
     expect(list.map((r) => [r.username, r.canFollowBack])).toEqual([
       ["ben_private", true],
-      ["cat_hidden", false],
       ["ana_public", true],
     ]);
   });
@@ -437,15 +435,15 @@ describe("acceptRequest (SAG-108)", () => {
     expect(await getRelationship(db, ben.id, owner.id)).toBe("friend");
   });
 
-  it("only accepts a hidden requester: there is nothing to follow back", async () => {
+  it("does not accept a hidden requester (Total privacy), and leaves the request as it was (SAG-167)", async () => {
     const owner = await person("owner_private", "friends");
     const cat = await person("cat_hidden", "private");
     await ask(cat.id, owner.id);
 
-    expect(await acceptRequest(db, owner.id, "cat_hidden", true)).toBe(true);
+    expect(await acceptRequest(db, owner.id, "cat_hidden", true)).toBe(false);
 
-    expect(await followPairs()).toEqual(["cat_hidden>owner_private"]);
-    expect(await allRequests()).toHaveLength(0);
+    expect(await followPairs()).toEqual([]);
+    expect(await pairs()).toEqual(["cat_hidden>owner_private"]);
   });
 
   it("leaves a request the owner sent to the requester as it was, when both asked each other", async () => {
@@ -597,6 +595,82 @@ describe("blocks and follows meet the requests (SAG-108)", () => {
 
     expect(await allRequests()).toHaveLength(0);
     expect(await followPairs()).toEqual(["ana_viewer>ben_public"]);
+  });
+});
+
+describe("requests from a hidden or banned person (SAG-167)", () => {
+  const unread = async (clerkId: string) =>
+    (await findHeaderFacts(db, clerkId))?.unread;
+
+  it("does not list, count or accept a request from somebody who chose Total privacy after asking", async () => {
+    const owner = await newUser({
+      clerkId: "user_owner",
+      username: "owner_private",
+      privacy: "friends",
+      emailCanonical: "owner_private@example.test",
+    });
+    const ana = await person("ana_public", "public");
+    const cat = await person("cat_public", "public");
+    await ask(ana.id, owner.id);
+    await ask(cat.id, owner.id);
+    expect(await unread("user_owner")).toBe(2);
+
+    await db
+      .update(users)
+      .set({ privacy: "private" })
+      .where(eq(users.id, cat.id));
+
+    expect(
+      (await listPendingRequests(db, owner.id)).map((r) => r.username),
+    ).toEqual(["ana_public"]);
+    expect(await unread("user_owner")).toBe(1);
+    expect(await acceptRequest(db, owner.id, "cat_public", false)).toBe(false);
+    expect(await followPairs()).toEqual([]);
+    expect(await pairs()).toEqual([
+      "ana_public>owner_private",
+      "cat_public>owner_private",
+    ]);
+  });
+
+  it("hides a banned person's request, brings it back when the ban is lifted, and keeps a suspended one", async () => {
+    const admin = await newUser({
+      username: "admin_mod",
+      role: "admin",
+      emailCanonical: "admin_mod@example.test",
+    });
+    const owner = await newUser({
+      clerkId: "user_owner",
+      username: "owner_private",
+      privacy: "friends",
+      emailCanonical: "owner_private@example.test",
+    });
+    const ben = await person("ben_banned", "friends");
+    const dan = await person("dan_suspended", "public");
+    await ask(ben.id, owner.id);
+    await ask(dan.id, owner.id);
+
+    expect(
+      await restrictAccount(db, admin.id, { userId: ben.id }, "banned"),
+    ).toBe(true);
+    expect(
+      await restrictAccount(db, admin.id, { userId: dan.id }, "suspended"),
+    ).toBe(true);
+
+    expect(
+      (await listPendingRequests(db, owner.id)).map((r) => r.username),
+    ).toEqual(["dan_suspended"]);
+    expect(await unread("user_owner")).toBe(1);
+    expect(await acceptRequest(db, owner.id, "ben_banned", false)).toBe(false);
+    expect(await followPairs()).toEqual([]);
+
+    expect(await liftRestriction(db, admin.id, ben.id)).toBe(true);
+
+    expect(
+      (await listPendingRequests(db, owner.id)).map((r) => r.username).sort(),
+    ).toEqual(["ben_banned", "dan_suspended"]);
+    expect(await unread("user_owner")).toBe(2);
+    expect(await acceptRequest(db, owner.id, "ben_banned", false)).toBe(true);
+    expect(await followPairs()).toEqual(["ben_banned>owner_private"]);
   });
 });
 

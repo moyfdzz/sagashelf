@@ -2,13 +2,14 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { unreadCap } from "./notifications";
+import { requesterCardShown } from "./person-visibility";
 
 /**
  * What the header of every page needs to know about the person of the session, read in ONE
  * statement (SAG-114): whether they are an administrator (the link to the administration, SAG-95),
  * their username (the link "Perfil" of the account menu), their picture (SAG-109) and how many
  * things wait for them: the notifications they have not read (SAG-102) plus the follow requests
- * they have not answered (SAG-108). Each is counted up to `unreadCap` plus one, so the header can
+ * they have not answered (SAG-108), the same ones the list shows (SAG-167). Each is counted up to `unreadCap` plus one, so the header can
  * say "99+". Before this there were two reads on every page, one for the role and one for the count.
  */
 export type HeaderFacts = {
@@ -38,7 +39,9 @@ export async function findHeaderFacts(
            ) + (
              SELECT count(*)::int FROM (
                SELECT 1 FROM follow_requests r
+               JOIN users q ON q.id = r.requester_id
                WHERE r.target_id = u.id AND r.declined_at IS NULL
+                 AND ${requesterCardShown(sql`q.privacy`)}
                LIMIT ${unreadCap + 1}::int
              ) capped
            ) AS unread
