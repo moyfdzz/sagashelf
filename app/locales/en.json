@@ -1516,6 +1516,7 @@
       "muted": "You muted this person.",
       "unmuted": "You unmuted this person.",
       "too_many": "You have followed or asked to follow many people in a short time. Try again later.",
+      "rate_limited": "You did too many things in a short time. Wait a minute and try again.",
       "unavailable": "That could not be done with this person.",
       "invalid_request": "We could not read the form. Reload the page and try again.",
       "requested": "You sent your request to follow this person.",

@@ -722,6 +722,26 @@ describe("the lists of followers, following and friends", () => {
     ]);
   });
 
+  it("does not trust a profile handed in for another username (SAG-165)", async () => {
+    const open = await person("owner_open", "public");
+    const hidden = await person("owner_hidden", "private");
+    const viewer = await person("viewer_two");
+    const handed = await findViewableProfile(db, viewer.id, "owner_open");
+    expect(handed?.owner.id).toBe(open.id);
+
+    // The profile of a visible person must not open the list of a private one.
+    expect(
+      await listFollowers(
+        db,
+        viewer.id,
+        "owner_hidden",
+        1,
+        handed ?? undefined,
+      ),
+    ).toBeNull();
+    expect(hidden.id).not.toBe(open.id);
+  });
+
   it("is null, like a missing profile, when the viewer may not see the profile", async () => {
     const owner = await person("owner_private", "private");
     const fan = await person("fan_one");

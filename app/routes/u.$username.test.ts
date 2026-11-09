@@ -627,13 +627,10 @@ describe("the profile page: the buttons (POST)", () => {
       const result = (await submit(
         { intent: "block" },
         { Origin: "https://evil.example" },
-      )) as Response;
+      )) as Thrown;
 
-      expect(redirectOf(result)).toEqual({
-        status: 303,
-        to: "/u/ana_reads?notice=invalid_request",
-      });
-      expect(result.headers.get("Cache-Control")).toBe("private, no-store");
+      // Not a person using this page, so it keeps its 403 and no message.
+      expect(result.init?.status).toBe(403);
       expect(mocks.blockUser).not.toHaveBeenCalled();
     });
 
@@ -652,7 +649,7 @@ describe("the profile page: the buttons (POST)", () => {
 
       expect(redirectOf(result)).toEqual({
         status: 303,
-        to: "/u/ana_reads?notice=too_many",
+        to: "/u/ana_reads?notice=rate_limited",
       });
       expect(result.headers.get("Cache-Control")).toBe("private, no-store");
       expect(mocks.limit).toHaveBeenCalledWith({

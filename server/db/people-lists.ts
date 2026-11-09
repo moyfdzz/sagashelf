@@ -74,7 +74,11 @@ async function listPeople(
   page: number,
   viewable?: ViewableProfile,
 ): Promise<PeoplePage | null> {
-  const found = viewable ?? (await findViewableProfile(db, viewerId, username));
+  // The handed profile is trusted only when it is the one asked for; any other is looked up again.
+  const found =
+    viewable?.owner.username.toLowerCase() === username.toLowerCase()
+      ? viewable
+      : await findViewableProfile(db, viewerId, username);
   if (!found) return null;
   const safePage = Math.min(Math.max(1, Math.floor(page) || 1), maxPage);
   const offset = (safePage - 1) * pageSize;

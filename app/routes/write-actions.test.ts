@@ -65,8 +65,18 @@ type Row = {
 };
 
 /** What a refused request answers: the status of the refusal, or 303 for a route that redirects. */
-const refusal = (row: Row, status: 403 | 413 | 429) =>
+const refusal = (row: Row, status: 413 | 429) =>
   row.refusesBy === "redirect" ? 303 : status;
+
+/** A redirecting route must say why, with a notice the page turns into a message, uncached. */
+function expectNoticeIfRedirect(row: Row, value: unknown, notice: string) {
+  if (row.refusesBy !== "redirect") return;
+  const response = value as Response;
+  expect(response.headers.get("Location")).toMatch(
+    new RegExp(`\\?notice=${notice}$`),
+  );
+  expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+}
 
 const uuid = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 
@@ -350,7 +360,8 @@ describe.each(rows)("$file", (row) => {
         post(row, { Origin: "https://evil.example" }),
       );
 
-      expect(statusOf(result.value)).toBe(refusal(row, 403));
+      // A form from another site is not a person using the page: it is a 403 on every route.
+      expect(statusOf(result.value)).toBe(403);
       expectNothingElseRan();
     });
   }
@@ -368,6 +379,7 @@ describe.each(rows)("$file", (row) => {
     const result = await run(row, post(row, { "Content-Length": "99999999" }));
 
     expect(statusOf(result.value)).toBe(refusal(row, 413));
+    expectNoticeIfRedirect(row, result.value, "invalid_request");
     expectNothingElseRan();
   });
 
@@ -404,6 +416,7 @@ describe.each(rows)("$file", (row) => {
       const result = await run(row, post(row));
 
       expect(statusOf(result.value)).toBe(refusal(row, 429));
+      expectNoticeIfRedirect(row, result.value, "rate_limited");
       expect(mocks.limit).toHaveBeenCalledTimes(1);
       expect(mocks.limit.mock.calls[0]?.[0].key).toBe(
         `${row.limitKey}:unknown`,
