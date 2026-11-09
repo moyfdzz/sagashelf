@@ -33,6 +33,12 @@ vi.mock("~/middleware/i18next", () => ({
 }));
 
 const db = { fake: "database" };
+// What the loader reads once and hands to the list, so the list does not read the profile again.
+const viewable = {
+  owner: { id: "owner-id", username: "ana_reads", displayName: "Ana" },
+  relationship: "stranger",
+};
+
 const session = { id: "user-from-session", clerkId: "clerk_1", role: "user" };
 
 const page = (usernames: string[], hasMore = false) => ({
@@ -47,10 +53,7 @@ const page = (usernames: string[], hasMore = false) => ({
 beforeEach(() => {
   mocks.getOptionalUser.mockReset().mockResolvedValue(session);
   mocks.getDb.mockReset().mockResolvedValue(db);
-  mocks.findViewableProfile.mockReset().mockResolvedValue({
-    owner: { id: "owner-id", username: "ana_reads", displayName: "Ana" },
-    relationship: "stranger",
-  });
+  mocks.findViewableProfile.mockReset().mockResolvedValue(viewable);
   mocks.listFollowers.mockReset().mockResolvedValue(page(["ben_one"]));
   mocks.listFollowing.mockReset().mockResolvedValue(page(["cat_one"]));
   mocks.listFriends.mockReset().mockResolvedValue(page(["dan_one"]));
@@ -80,6 +83,7 @@ describe("the lists of people of a profile (SAG-107)", () => {
         "user-from-session",
         "ana_reads",
         1,
+        viewable,
       );
       expect(result.kind).toBe(kind);
       expect(result.people).toHaveLength(1);
@@ -97,7 +101,13 @@ describe("the lists of people of a profile (SAG-107)", () => {
       null,
       "ana_reads",
     );
-    expect(mocks.listFollowers).toHaveBeenCalledWith(db, null, "ana_reads", 1);
+    expect(mocks.listFollowers).toHaveBeenCalledWith(
+      db,
+      null,
+      "ana_reads",
+      1,
+      viewable,
+    );
   });
 
   it("answers 404, private and not cached, for a profile the person may not see, and reads no list", async () => {
@@ -155,6 +165,7 @@ describe("the lists of people of a profile (SAG-107)", () => {
         "user-from-session",
         "ana_reads",
         want,
+        viewable,
       );
     });
 

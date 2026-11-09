@@ -47,7 +47,7 @@ export async function loader(args: Route.LoaderArgs) {
   // and the answer is the same 404 as for a profile that does not exist (ADR-031).
   const found = await findViewableProfile(db, viewerId, params.username);
   const list = found
-    ? await lists[params.kind](db, viewerId, params.username, page)
+    ? await lists[params.kind](db, viewerId, params.username, page, found)
     : null;
   if (!found || !list) throw notFound();
 

@@ -57,7 +57,16 @@ type Row = {
   who: Who;
   /** What the rate limit key starts with (the limiter adds the caller), or null if it has none. */
   limitKey: string | null;
+  /**
+   * A route whose form is a plain page reload answers a refusal with a redirect to the page and a
+   * notice, not with the status code of the refusal (SAG-165).
+   */
+  refusesBy?: "redirect";
 };
+
+/** What a refused request answers: the status of the refusal, or 303 for a route that redirects. */
+const refusal = (row: Row, status: 403 | 413 | 429) =>
+  row.refusesBy === "redirect" ? 303 : status;
 
 const uuid = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 
@@ -208,6 +217,7 @@ const rows: Row[] = [
     params: { username: "ana" },
     who: "user",
     limitKey: "social:user-1",
+    refusesBy: "redirect",
   },
   {
     file: "webhooks.clerk.ts",
@@ -340,7 +350,7 @@ describe.each(rows)("$file", (row) => {
         post(row, { Origin: "https://evil.example" }),
       );
 
-      expect(statusOf(result.value)).toBe(403);
+      expect(statusOf(result.value)).toBe(refusal(row, 403));
       expectNothingElseRan();
     });
   }
@@ -357,7 +367,7 @@ describe.each(rows)("$file", (row) => {
   it("refuses a body over the limit before it asks about anything else", async () => {
     const result = await run(row, post(row, { "Content-Length": "99999999" }));
 
-    expect(statusOf(result.value)).toBe(413);
+    expect(statusOf(result.value)).toBe(refusal(row, 413));
     expectNothingElseRan();
   });
 
@@ -393,7 +403,7 @@ describe.each(rows)("$file", (row) => {
 
       const result = await run(row, post(row));
 
-      expect(statusOf(result.value)).toBe(429);
+      expect(statusOf(result.value)).toBe(refusal(row, 429));
       expect(mocks.limit).toHaveBeenCalledTimes(1);
       expect(mocks.limit.mock.calls[0]?.[0].key).toBe(
         `${row.limitKey}:unknown`,

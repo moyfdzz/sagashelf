@@ -101,6 +101,25 @@ const asNotice = (value: string | null): Notice | null =>
 // block all get this same answer (ADR-031), so it says nothing about who exists.
 const notFound = () => data(null, { status: 404, headers: privateHeaders });
 
+/**
+ * What a signed-in viewer already did about this person. The three reads do not depend on each
+ * other, so they go out together instead of one after another (SAG-165).
+ */
+async function readMemberState(
+  db: Awaited<ReturnType<typeof getDb>>,
+  viewerId: string,
+  owner: { id: string; avatarUrl: string | null },
+  canRequest: boolean,
+) {
+  const [requested, muted, reported] = await Promise.all([
+    canRequest ? hasRequested(db, viewerId, owner.id) : false,
+    isMuted(db, viewerId, owner.id),
+    // Only this person's own reports, so the page tells nobody else that there are any.
+    findMyReports(db, viewerId, owner.id, owner.avatarUrl),
+  ]);
+  return { requested, muted, reported };
+}
+
 export async function loader(args: Route.LoaderArgs) {
   const { params, request, context } = args;
   if (!usernameShape.test(params.username)) throw notFound();
@@ -139,17 +158,7 @@ export async function loader(args: Route.LoaderArgs) {
             confirmUnfollow,
             canFollow: canFollowLevel(owner.privacy),
             canRequest,
-            requested: canRequest
-              ? await hasRequested(db, viewer.id, owner.id)
-              : false,
-            muted: await isMuted(db, viewer.id, owner.id),
-            // Only this person's own reports, so the page tells nobody else that there are any.
-            reported: await findMyReports(
-              db,
-              viewer.id,
-              owner.id,
-              owner.avatarUrl,
-            ),
+            ...(await readMemberState(db, viewer.id, owner, canRequest)),
           } as const)
         : ({ kind: "visitor", signInPath: signInPath(request.url) } as const);
 
@@ -228,12 +237,16 @@ export async function action(args: Route.ActionArgs) {
   const back = `/u/${encodeURIComponent(params.username)}`;
 
   // A page on another site must not be able to follow or block for someone.
-  const unsafe = checkWrite(request, maxFormBytes);
-  if (unsafe) {
-    return unsafe === "too_large"
-      ? data({ error: "invalid_request" }, { status: 413 })
-      : data({ error: "invalid_request" }, { status: 403 });
-  }
+  // The buttons are plain forms that reload the page, so a refusal is a redirect to the page with a
+  // message, never a bare body the person would see on a blank screen (SAG-165).
+  const refuse = (notice: "invalid_request" | "too_many") =>
+    redirect(`${back}?notice=${notice}`, {
+      status: 303,
+      headers: privateHeaders,
+    });
+
+  // A page on another site must not be able to follow or block for someone.
+  if (checkWrite(request, maxFormBytes)) return refuse("invalid_request");
   if (!usernameShape.test(params.username)) throw notFound();
 
   const user = await requireUser(args);
@@ -243,12 +256,10 @@ export async function action(args: Route.ActionArgs) {
     request,
     `social:${user.id}`,
   );
-  if (limited) return limited;
+  if (limited) return refuse("too_many");
 
   const parsed = formSchema.safeParse(await readForm(request, maxFormBytes));
-  if (!parsed.success) {
-    return redirect(`${back}?notice=invalid_request`, 303);
-  }
+  if (!parsed.success) return refuse("invalid_request");
   const db = await getDb();
 
   switch (parsed.data.intent) {
