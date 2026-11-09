@@ -3,14 +3,10 @@ import { z } from "zod";
 
 import type { Route } from "./+types/library.$mediaId.step";
 import { requireUser } from "~server/auth/require";
-import {
-  getEntry,
-  getSeasonCounts,
-  saveEntry,
-  totalEpisodes,
-} from "~server/db/library";
+import { getSeasonCounts, totalEpisodes } from "~server/db/library";
 import { returnPath } from "~server/library/back";
 import { applyStep } from "~server/library/rules";
+import { updateEntry } from "~server/library/update-entry";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { privateHeaders } from "~server/http/cache";
@@ -74,23 +70,22 @@ export async function action(args: Route.ActionArgs) {
   await request.arrayBuffer().catch(() => undefined);
 
   const db = await getDb();
-  const current = await getEntry(db, user.id, mediaId.data, "es");
+  const total = totalEpisodes(await getSeasonCounts(db, mediaId.data));
+  // The step is worked out on what the entry is when it is written, not on an older read.
+  const result = await updateEntry(db, user.id, mediaId.data, (current) =>
+    applyStep(current, {
+      totalEpisodes: total,
+      type: current.type,
+      today: new Date().toISOString().slice(0, 10),
+    }),
+  );
   // Somebody else's entry and no entry at all look the same.
-  if (!current) return fail("invalid_request", 404);
-
-  const result = applyStep(current, {
-    totalEpisodes: totalEpisodes(await getSeasonCounts(db, mediaId.data)),
-    type: current.type,
-    today: new Date().toISOString().slice(0, 10),
-  });
-  if (!result.ok) {
+  if (result.outcome === "missing") return fail("invalid_request", 404);
+  if (result.outcome === "conflict") return fail("failed", 409);
+  if (result.outcome === "refused") {
     return asksForDocument(request)
       ? redirect(`/library/${mediaId.data}`, { status: 303 })
       : fail(result.error === "progress_too_high" ? "too_high" : "failed", 400);
-  }
-
-  if (!(await saveEntry(db, user.id, mediaId.data, result.next))) {
-    return fail("invalid_request", 404);
   }
 
   // Without JavaScript the person goes back to the library or the title page they were on.

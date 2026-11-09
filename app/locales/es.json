@@ -838,6 +838,7 @@
       "notes_too_long": "Las notas son demasiado largas.",
       "not_completed": "Solo puedes volver a ver un título completado.",
       "viewings_limit": "Llegaste al máximo de veces que se pueden guardar para este título.",
+      "conflict": "Esta entrada cambió mientras la editabas, y no guardamos nada para no pisar ese cambio. Revisa la página e inténtalo de nuevo.",
       "generic": "No pudimos guardar los cambios. Inténtalo de nuevo.",
       "not_completed_read": "Solo puedes volver a leer un título completado."
     }

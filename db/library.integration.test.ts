@@ -151,7 +151,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     const mediaId = await addMedia("Ataque a los Titanes");
     await addEntry(db, ana.id, mediaId);
 
-    expect(await saveEntry(db, ana.id, mediaId, completed)).toBe(true);
+    expect(await saveEntry(db, ana.id, mediaId, completed)).toBe("saved");
 
     expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject(completed);
   });
@@ -171,7 +171,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
         score: 1,
         notes: "x",
       }),
-    ).toBe(false);
+    ).toBe("missing");
     expect(await removeEntry(db, beto.id, mediaId)).toBe(false);
 
     expect(await getEntry(db, ana.id, mediaId, "es")).toMatchObject(completed);
@@ -208,7 +208,7 @@ describe("saveEntry, getEntry and removeEntry", () => {
     const ana = await newUser();
     const mediaId = await addMedia("Ataque a los Titanes");
 
-    expect(await saveEntry(db, ana.id, mediaId, completed)).toBe(false);
+    expect(await saveEntry(db, ana.id, mediaId, completed)).toBe("missing");
   });
 
   it("has the database refuse what the rules would have refused", async () => {

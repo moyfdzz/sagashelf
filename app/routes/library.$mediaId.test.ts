@@ -72,6 +72,7 @@ const stored = {
   finishedAt: null,
   notes: "nota",
   visibility: "private",
+  version: "2026-11-01 10:00:00.123456",
   notifyNewEpisodes: true,
   updatedAt: new Date(),
 };
@@ -85,7 +86,7 @@ beforeEach(() => {
   mocks.requireUser.mockReset().mockResolvedValue({ id: "user-1" });
   mocks.getEntry.mockReset().mockResolvedValue(stored);
   mocks.getSeasonCounts.mockReset().mockResolvedValue(seasons);
-  mocks.saveEntry.mockReset().mockResolvedValue(true);
+  mocks.saveEntry.mockReset().mockResolvedValue("saved");
   mocks.removeEntry.mockReset().mockResolvedValue(true);
   mocks.rewatchEntry.mockReset().mockResolvedValue(true);
   mocks.setEntryNotifyNewEpisodes.mockReset().mockResolvedValue(true);
@@ -257,6 +258,7 @@ describe("saving an entry", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ status: "completed", progress: 4 }),
+      "2026-11-01 10:00:00.123456",
     );
     expect(result).toMatchObject({
       init: { headers: { "Cache-Control": "private, no-store" } },
@@ -295,6 +297,7 @@ describe("saving an entry", () => {
         progressUnit: "pages",
         progressTotal: 320,
       }),
+      "2026-11-01 10:00:00.123456",
     );
   });
 
@@ -390,9 +393,18 @@ describe("saving an entry", () => {
   });
 
   it("answers 404 when the entry disappears between reading and writing", async () => {
-    mocks.saveEntry.mockResolvedValue(false);
+    mocks.saveEntry.mockResolvedValue("missing");
 
     expect(await statusOf(send(form))).toBe(404);
+  });
+
+  it("writes nothing and says so when the entry changed while the form was being saved", async () => {
+    mocks.saveEntry.mockResolvedValue("conflict");
+
+    expect(await send(form)).toMatchObject({
+      init: { status: 409 },
+      data: { ok: false, errors: { form: "conflict" } },
+    });
   });
 });
 

@@ -53,7 +53,15 @@ export type StoredEntry = EntryState & {
   /** Whether the person is told about the new episodes of this title (SAG-101). */
   notifyNewEpisodes: boolean;
   updatedAt: Date;
+  /**
+   * `updated_at` with its microseconds, as text. A JavaScript date keeps milliseconds only, so a
+   * row written by the database itself would never match a date read back. `saveEntry` compares it.
+   */
+  version: string;
 };
+
+// The same expression is read (`version`) and compared (`saveEntry`), so both stay in step.
+const versionSql = sql<string>`(${libraryEntries.updatedAt} AT TIME ZONE 'UTC')::text`;
 
 const entryColumns = (locale: Locale) => ({
   mediaId: libraryEntries.mediaId,
@@ -68,6 +76,7 @@ const entryColumns = (locale: Locale) => ({
   visibility: libraryEntries.visibility,
   notifyNewEpisodes: libraryEntries.notifyNewEpisodes,
   updatedAt: libraryEntries.updatedAt,
+  version: versionSql,
   title: localizedTitleSql("media_items", locale),
   type: mediaItems.type,
   year: mediaItems.year,
@@ -142,13 +151,29 @@ export async function addEntry(
   return Number(rows[0]?.found) > 0;
 }
 
-/** Writes the entry of this person for this title. False when they have no such entry. */
+/**
+ * `saved`: the entry was written. `missing`: this person has no such entry. `conflict`: the entry
+ * changed after it was read, so nothing was written and the caller must read it again.
+ */
+export type SaveResult = "saved" | "missing" | "conflict";
+
+/**
+ * Writes the entry of this person for this title. With the `version` the entry had when it was
+ * read, the write happens only if nothing changed since, in the same statement: a "+1" that read
+ * a public entry cannot bring it back after the person made it private, and two "+1" never both
+ * write the same number. Without a `version` the write is unconditional.
+ */
 export async function saveEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-): Promise<boolean> {
+  version?: string,
+): Promise<SaveResult> {
+  const isMine = and(
+    eq(libraryEntries.userId, userId),
+    eq(libraryEntries.mediaId, mediaId),
+  );
   const updated = await db
     .update(libraryEntries)
     .set({
@@ -163,14 +188,18 @@ export async function saveEntry(
       visibility: next.visibility,
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(libraryEntries.userId, userId),
-        eq(libraryEntries.mediaId, mediaId),
-      ),
-    )
+    .where(version ? and(isMine, sql`${versionSql} = ${version}`) : isMine)
     .returning({ id: libraryEntries.id });
-  return updated.length > 0;
+  if (updated.length > 0) return "saved";
+  if (!version) return "missing";
+  // Nothing matched: either the entry is gone or it changed. Only the answer depends on this
+  // second read, never the write.
+  const [still] = await db
+    .select({ id: libraryEntries.id })
+    .from(libraryEntries)
+    .where(isMine)
+    .limit(1);
+  return still ? "conflict" : "missing";
 }
 
 /**

@@ -39,6 +39,7 @@ const stored = {
   finishedAt: null,
   notes: "nota",
   visibility: "private",
+  version: "2026-11-01 10:00:00.123456",
 };
 
 beforeEach(() => {
@@ -48,7 +49,7 @@ beforeEach(() => {
     { number: 1, episodes: 2 },
     { number: 2, episodes: 2 },
   ]);
-  mocks.saveEntry.mockReset().mockResolvedValue(true);
+  mocks.saveEntry.mockReset().mockResolvedValue("saved");
   mocks.limit.mockReset().mockResolvedValue({ success: true });
 });
 
@@ -77,6 +78,7 @@ describe("changing the status of a library entry from the title page", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ status: "paused", progress: 2 }),
+      "2026-11-01 10:00:00.123456",
     );
     expect(result).toMatchObject({
       init: { headers: { "Cache-Control": "private, no-store" } },
@@ -92,6 +94,7 @@ describe("changing the status of a library entry from the title page", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ status: "completed", progress: 4 }),
+      "2026-11-01 10:00:00.123456",
     );
     expect(result).toMatchObject({
       data: { ok: true, status: "completed", progress: 4 },
@@ -132,9 +135,19 @@ describe("changing the status of a library entry from the title page", () => {
   });
 
   it("answers 404 as data when the entry disappears between reading and writing", async () => {
-    mocks.saveEntry.mockResolvedValue(false);
+    mocks.saveEntry.mockResolvedValue("missing");
 
     expect(await send()).toMatchObject({ init: { status: 404 } });
+  });
+
+  it("gives up with 409 when the entry keeps changing", async () => {
+    mocks.saveEntry.mockResolvedValue("conflict");
+
+    expect(await send({ status: "completed" })).toMatchObject({
+      init: { status: 409 },
+      data: { ok: false, error: "failed" },
+    });
+    expect(mocks.saveEntry).toHaveBeenCalledTimes(3);
   });
 
   it("answers 404 for an id that is not an id, without asking the database", async () => {

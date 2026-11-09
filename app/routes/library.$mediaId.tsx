@@ -320,8 +320,23 @@ export async function action(args: Route.ActionArgs) {
         { status: 400, headers: privateHeaders },
       );
     }
-  } else if (!(await saveEntry(db, user.id, mediaId.data, result.next))) {
-    throw data(null, { status: 404 });
+  } else {
+    // Written only if the entry is as it was read: a change made at the same time elsewhere
+    // (a "+1", the buttons of the title page, another tab) is not undone by this form.
+    const saved = await saveEntry(
+      db,
+      user.id,
+      mediaId.data,
+      result.next,
+      current.version,
+    );
+    if (saved === "missing") throw data(null, { status: 404 });
+    if (saved === "conflict") {
+      return data(
+        { ok: false as const, errors: { form: "conflict" } as FieldErrors },
+        { status: 409, headers: privateHeaders },
+      );
+    }
   }
   return data(
     {

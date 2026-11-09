@@ -838,6 +838,7 @@
       "notes_too_long": "The notes are too long.",
       "not_completed": "You can only watch a completed title again.",
       "viewings_limit": "You reached the most times that can be saved for this title.",
+      "conflict": "This entry changed while you were editing it, and we saved nothing so that change is not undone. Check the page and try again.",
       "generic": "We could not save the changes. Try again.",
       "not_completed_read": "You can only read a completed title again."
     }
