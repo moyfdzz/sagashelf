@@ -70,3 +70,19 @@ export const reachableByViewer = (viewerId: string): SQL => {
     )
   )`;
 };
+
+/**
+ * A follow request still counts (SAG-167). `privacyColumn` is the `privacy` of the person who asked.
+ * A request from somebody whose profile is now Total privacy, or who was banned (a ban moves the
+ * profile to Total privacy and remembers the old level), is not listed, not counted and cannot be
+ * accepted: the receiver must not learn that the person exists. Nothing is deleted, so when a ban is
+ * lifted the level comes back and so does the request. A suspended profile keeps its level and so
+ * its requests. The levels come from `canSeeCard`, as in `reachableByViewer`.
+ */
+export const requesterCardShown = (privacyColumn: SQL): SQL => {
+  const found = levels.filter((level) => canSeeCard("stranger", level));
+  return sql`${privacyColumn}::text IN (${sql.join(
+    found.map((level) => sql`${level}`),
+    sql`, `,
+  )})`;
+};

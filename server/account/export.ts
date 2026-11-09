@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
+import { requesterCardShown } from "../db/person-visibility";
 import type { ProfileDb } from "../db/profile";
 import {
   contactMessages,
@@ -315,6 +316,8 @@ export async function exportAccount(
       and(
         eq(followRequests.targetId, userId),
         isNull(followRequests.declinedAt),
+        // The same rule as the list of requests: not a hidden or banned person (SAG-167).
+        requesterCardShown(sql`${users.privacy}`),
       ),
     )
     .orderBy(followRequests.createdAt, users.username);

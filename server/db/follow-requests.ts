@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { followsPerHour } from "./follows";
+import { requesterCardShown } from "./person-visibility";
 import { type Person } from "./person";
 import { asDate } from "./dates";
 
@@ -125,8 +126,9 @@ export async function hasRequested(
 
 export type PendingRequest = Person & {
   /**
-   * Whether there is something to follow back: `private` profiles cannot be asked for, and a person
-   * the owner already follows needs nothing more (SAG-126).
+   * Whether there is something to follow back: a person the owner already follows needs nothing
+   * more (SAG-126). A requester with Total privacy is never listed (SAG-167), so no listed person
+   * is a profile that cannot be asked for.
    */
   canFollowBack: boolean;
   createdAt: Date;
@@ -135,7 +137,8 @@ export type PendingRequest = Person & {
 /**
  * The requests waiting for the owner, newest first. A request from an erased account, from somebody
  * the owner blocked and from somebody who blocked the owner is left out (and a block also removes
- * it, so this is a second guard). Declined ones are never listed.
+ * it, so this is a second guard). Declined ones are never listed, and neither are requests from a
+ * person who is now Total privacy or banned (SAG-167).
  */
 export async function listPendingRequests(
   db: SqlExecutor,
@@ -152,6 +155,7 @@ export async function listPendingRequests(
     WHERE r.target_id = ${ownerId}::uuid
       AND r.declined_at IS NULL
       AND u.deleted_at IS NULL
+      AND ${requesterCardShown(sql`u.privacy`)}
       AND NOT EXISTS (
         SELECT 1 FROM blocks k
         WHERE (k.blocker_id = ${ownerId}::uuid AND k.blocked_id = u.id)
@@ -164,9 +168,7 @@ export async function listPendingRequests(
     username: String(row.username),
     displayName: typeof row.display_name === "string" ? row.display_name : null,
     avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : null,
-    canFollowBack:
-      (row.privacy === "public" || row.privacy === "friends") &&
-      row.already_followed !== true,
+    canFollowBack: row.already_followed !== true,
     createdAt: asDate(row.created_at),
   }));
 }
@@ -195,6 +197,7 @@ export async function acceptRequest(
         AND r.declined_at IS NULL
         AND u.username = ${username}
         AND u.deleted_at IS NULL
+        AND ${requesterCardShown(sql`u.privacy`)}
         AND NOT EXISTS (
           SELECT 1 FROM blocks b
           WHERE (b.blocker_id = ${ownerId}::uuid AND b.blocked_id = u.id)

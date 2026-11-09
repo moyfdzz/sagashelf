@@ -2,14 +2,17 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { unreadCap } from "./notifications";
+import { requesterCardShown } from "./person-visibility";
 
 /**
  * What the header of every page needs to know about the person of the session, read in ONE
  * statement (SAG-114): whether they are an administrator (the link to the administration, SAG-95),
  * their username (the link "Perfil" of the account menu), their picture (SAG-109) and how many
  * things wait for them: the notifications they have not read (SAG-102) plus the follow requests
- * they have not answered (SAG-108). Each is counted up to `unreadCap` plus one, so the header can
- * say "99+". Before this there were two reads on every page, one for the role and one for the count.
+ * they have not answered (SAG-108). The requests are the ones the list of requests shows: not from
+ * an erased account, a hidden or banned person, or somebody blocked either way (SAG-167). Each is
+ * counted up to `unreadCap` plus one, so the header can say "99+". Before this there were two reads
+ * on every page, one for the role and one for the count.
  */
 export type HeaderFacts = {
   isAdmin: boolean;
@@ -38,7 +41,15 @@ export async function findHeaderFacts(
            ) + (
              SELECT count(*)::int FROM (
                SELECT 1 FROM follow_requests r
+               JOIN users q ON q.id = r.requester_id
                WHERE r.target_id = u.id AND r.declined_at IS NULL
+                 AND q.deleted_at IS NULL
+                 AND ${requesterCardShown(sql`q.privacy`)}
+                 AND NOT EXISTS (
+                   SELECT 1 FROM blocks k
+                   WHERE (k.blocker_id = u.id AND k.blocked_id = q.id)
+                      OR (k.blocker_id = q.id AND k.blocked_id = u.id)
+                 )
                LIMIT ${unreadCap + 1}::int
              ) capped
            ) AS unread
