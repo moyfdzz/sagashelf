@@ -4,8 +4,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   entriesPerSection,
   getProfileSections,
-  visibleLevels,
 } from "../server/db/profile-library";
+import { visibleLevels } from "../server/social/can-view";
 import {
   blockUser,
   isMuted,

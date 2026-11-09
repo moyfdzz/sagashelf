@@ -272,6 +272,8 @@ describe("the alert of a report", () => {
       kind: "picture",
       reason: "violent",
       username,
+      // The id of the person reported, so an erasure finds the alert even after a rename (SAG-177).
+      targetId: bob.id,
     });
     expect(JSON.stringify(rows[0]?.payload)).not.toContain(photo);
     expect(JSON.stringify(rows[0]?.payload)).not.toContain(ana.id);
@@ -293,6 +295,106 @@ describe("the alert of a report", () => {
     const bob = await withPicture();
 
     expect(await createReport(db, userReport(ana.id, bob.id))).toBe("reported");
+  });
+});
+
+describe("the alerts of reports and an erasure (SAG-177)", () => {
+  async function alerts() {
+    return (await db.select().from(notifications)).map((row) =>
+      JSON.stringify(row.payload),
+    );
+  }
+
+  it("leaves no alert of any administrator that names the erased person", async () => {
+    const admin = await newUser({ role: "admin" });
+    const ana = await newUser();
+    const bob = await newUser({ username: "bob_reported" });
+    const cat = await newUser({ username: "cat_reported" });
+    await createReport(db, userReport(ana.id, bob.id));
+    await createReport(db, userReport(ana.id, cat.id));
+
+    await eraseAccount(db, bob.clerkId);
+
+    const left = await alerts();
+    expect(left).toHaveLength(1);
+    expect(left[0]).toContain("cat_reported");
+    expect(left.join("")).not.toContain("bob_reported");
+    expect(await db.select().from(notifications)).toEqual([
+      expect.objectContaining({ userId: admin.id }),
+    ]);
+  });
+
+  it("also removes an alert written before the id was stored, found by the username", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ username: "bob_reported" });
+    const cat = await newUser({ username: "cat_reported" });
+    for (const username of ["bob_reported", "cat_reported"]) {
+      await db.insert(notifications).values({
+        userId: admin.id,
+        type: "report.created",
+        payload: { kind: "user", reason: "spam", username },
+        dedupeKey: `report:old:${username}`,
+      });
+    }
+
+    await eraseAccount(db, bob.clerkId);
+
+    const left = await alerts();
+    expect(left).toHaveLength(1);
+    expect(left[0]).toContain("cat_reported");
+    expect(cat.id).not.toBe(bob.id);
+  });
+
+  it("does not delete an alert that has the id of somebody else, whatever its username says", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ username: "bob_reported" });
+    const cat = await newUser({ username: "cat_reported" });
+    await db.insert(notifications).values({
+      userId: admin.id,
+      type: "report.created",
+      payload: {
+        kind: "user",
+        reason: "spam",
+        username: "bob_reported",
+        targetId: cat.id,
+      },
+      dedupeKey: "report:other-target",
+    });
+
+    await eraseAccount(db, bob.clerkId);
+
+    expect(await db.select().from(notifications)).toHaveLength(1);
+  });
+
+  it("does not put the alerts in the data export of somebody who lost the role", async () => {
+    const admin = await newUser({ role: "admin" });
+    const ana = await newUser();
+    const bob = await newUser({ username: "bob_reported" });
+    await createReport(db, userReport(ana.id, bob.id));
+    expect(
+      JSON.stringify((await exportAccount(db, admin.id))?.notifications),
+    ).toContain("bob_reported");
+
+    await db.update(users).set({ role: "user" }).where(eq(users.id, admin.id));
+
+    expect(
+      JSON.stringify((await exportAccount(db, admin.id))?.notifications),
+    ).not.toContain("bob_reported");
+  });
+
+  it("keeps the alert of an erased person's own other notifications untouched", async () => {
+    const admin = await newUser({ role: "admin" });
+    const bob = await newUser({ username: "bob_reported" });
+    await db.insert(notifications).values({
+      userId: admin.id,
+      type: "episode.aired",
+      payload: { title: "bob_reported is a title here" },
+      dedupeKey: "episode:keep",
+    });
+
+    await eraseAccount(db, bob.clerkId);
+
+    expect(await db.select().from(notifications)).toHaveLength(1);
   });
 });
 

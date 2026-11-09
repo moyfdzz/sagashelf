@@ -21,7 +21,8 @@ export type FollowResult = "followed" | "unavailable" | "too_many";
  * Follows a person by username. Allowed only when the person exists, is not erased, is not the
  * viewer, has a **public** profile (a Private one can only be followed through a request, see
  * `follow-requests.ts`), and neither has blocked the other. Following someone already followed is
- * `followed` too. The hourly cap, shared with the requests sent, is read in the same statement.
+ * `followed` too, and that is answered before the hourly cap applies (SAG-165): repeating a follow
+ * is not a new one. The hourly cap, shared with the requests sent, is read in the same statement.
  */
 export async function followUser(
   db: SqlExecutor,
@@ -45,7 +46,13 @@ export async function followUser(
         AND ${levelAllowed(sql`u.privacy`, canFollow)}
         AND u.id <> ${viewerId}::uuid
         AND NOT ${blockedBetween(sql`${viewerId}::uuid`, sql`u.id`)}
-        AND (SELECT n FROM recent) < ${followsPerHour}::int
+        AND (
+          (SELECT n FROM recent) < ${followsPerHour}::int
+          OR EXISTS (
+            SELECT 1 FROM follows f
+            WHERE f.follower_id = ${viewerId}::uuid AND f.followee_id = u.id
+          )
+        )
     ),
     added AS (
       INSERT INTO follows (follower_id, followee_id)

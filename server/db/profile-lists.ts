@@ -2,8 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { Locale } from "../providers/types";
 import {
-  canView,
-  levels,
+  visibleLevels,
   type Level,
   type Relationship,
 } from "../social/can-view";
@@ -28,14 +27,6 @@ export type ListViewing = {
   relationship: Relationship;
   profileLevel: Level;
 };
-
-/** The levels of list that the viewer may see on this profile: the ones `canView` allows. */
-export function visibleListLevels(
-  relationship: Relationship,
-  profileLevel: Level,
-): Level[] {
-  return levels.filter((level) => canView(relationship, level, profileLevel));
-}
 
 const inLevels = (allowed: readonly Level[]) =>
   sql.join(
@@ -82,7 +73,7 @@ export async function listViewableLists(
   ownerId: string,
   viewing: ListViewing,
 ): Promise<ViewableList[]> {
-  const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
+  const allowed = visibleLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return [];
   const { rows } = await db.execute(sql`
     ${viewableLists(ownerId, allowed, viewing.relationship)}
@@ -98,7 +89,7 @@ export async function getViewableList(
   id: string,
   viewing: ListViewing,
 ): Promise<ViewableList | null> {
-  const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
+  const allowed = visibleLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return null;
   const { rows } = await db.execute(sql`
     ${viewableLists(ownerId, allowed, viewing.relationship)}
@@ -123,7 +114,7 @@ export async function listViewableItems(
   viewing: ListViewing,
   locale: Locale,
 ): Promise<ViewableItem[]> {
-  const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
+  const allowed = visibleLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return [];
   const { rows } = await db.execute(sql`
     SELECT i.media_id, m.type, m.year, ${localizedTitleSql("m", locale)} AS title

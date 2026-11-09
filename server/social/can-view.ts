@@ -128,3 +128,15 @@ export function canFollow(level: Level): boolean {
 export function canRequest(level: Level): boolean {
   return canSeeCard("stranger", level) && !canView("stranger", level);
 }
+
+/**
+ * The levels of thing (a library entry, a list) that the viewer may see on a profile of the given
+ * level: the ones `canView` allows. THE one definition: the library and the lists of a profile both
+ * ask it (SAG-165), so they cannot drift apart.
+ */
+export function visibleLevels(
+  relationship: Relationship,
+  profileLevel: Level,
+): Level[] {
+  return levels.filter((level) => canView(relationship, level, profileLevel));
+}

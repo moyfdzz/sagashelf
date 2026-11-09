@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { visibleListLevels } from "./profile-lists";
+import { visibleLevels } from "../social/can-view";
 
 /**
  * The levels of list a viewer may see on a profile: the strictest of the list and the profile
  * decides (ADR-045). The expected rows are written by hand, not asked of `canView`.
  */
-describe("visibleListLevels", () => {
+describe("visibleLevels", () => {
   it.each([
     ["owner", "public", ["public", "friends", "private"]],
     ["owner", "friends", ["public", "friends", "private"]],
@@ -27,7 +27,7 @@ describe("visibleListLevels", () => {
   ] as const)(
     "gives a %s of a %s profile the levels %j",
     (relationship, profileLevel, expected) => {
-      expect(visibleListLevels(relationship, profileLevel)).toEqual(expected);
+      expect(visibleLevels(relationship, profileLevel)).toEqual(expected);
     },
   );
 });

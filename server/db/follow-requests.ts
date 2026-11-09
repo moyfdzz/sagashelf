@@ -67,9 +67,12 @@ export async function requestFollow(
           WHERE f.follower_id = ${viewerId}::uuid AND f.followee_id = u.id
         )
         AND NOT ${blockedBetween(sql`${viewerId}::uuid`, sql`u.id`)}
-        AND (SELECT n FROM recent) < ${followsPerHour}::int
         AND (
-          (SELECT n FROM sent) < ${sentRequestsMax}::int
+          (
+            (SELECT n FROM recent) < ${followsPerHour}::int
+            AND (SELECT n FROM sent) < ${sentRequestsMax}::int
+          )
+          -- A request already out is not a new one: neither cap applies to it (SAG-165).
           OR EXISTS (
             SELECT 1 FROM follow_requests r
             WHERE r.requester_id = ${viewerId}::uuid AND r.target_id = u.id

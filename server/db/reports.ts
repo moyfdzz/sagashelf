@@ -67,7 +67,9 @@ export async function createReport(
              jsonb_build_object(
                'kind', ${kind}::text,
                'reason', ${reason}::text,
-               'username', (SELECT username::text FROM users WHERE id = ${targetId}::uuid)
+               'username', (SELECT username::text FROM users WHERE id = ${targetId}::uuid),
+               -- The id lets the erasure of the reported person find this row (SAG-177).
+               'targetId', ${targetId}::text
              ),
              'report:' || inserted.id::text
       FROM inserted CROSS JOIN users admin

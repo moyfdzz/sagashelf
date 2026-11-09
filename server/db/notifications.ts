@@ -1,7 +1,9 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { asDate } from "./dates";
+import { contactCreatedType } from "../account/contact-schema";
+import { reportCreatedType } from "./reports";
 
 /**
  * What the inbox of notifications reads and writes (SAG-102, ADR-030). The rows are written by
@@ -27,16 +29,27 @@ export type NotificationView = {
   readAt: Date | null;
 };
 
+/**
+ * The notifications row `n` may be shown to its owner (SAG-177). The alert of a report holds the
+ * username of the person reported, and a contact message alert points to the administration: both
+ * are for administrators, and somebody who lost the role is not shown the old ones. THE one place
+ * of this rule; the page, the count, the header and the data export read it.
+ */
+export const readableByOwner = (n: SQL): SQL => sql`(
+  ${n}.type NOT IN (${reportCreatedType}, ${contactCreatedType})
+  OR EXISTS (SELECT 1 FROM users o WHERE o.id = ${n}.user_id AND o.role = 'admin')
+)`;
+
 /** The newest notifications of one person, unread or not. */
 export async function listNotifications(
   db: SqlExecutor,
   userId: string,
 ): Promise<NotificationView[]> {
   const { rows } = await db.execute(sql`
-    SELECT id, type, payload, created_at, read_at
-    FROM notifications
-    WHERE user_id = ${userId}::uuid
-    ORDER BY created_at DESC, id DESC
+    SELECT n.id, n.type, n.payload, n.created_at, n.read_at
+    FROM notifications n
+    WHERE n.user_id = ${userId}::uuid AND ${readableByOwner(sql`n`)}
+    ORDER BY n.created_at DESC, n.id DESC
     LIMIT ${pageSize}::int
   `);
   return rows.map((row) => ({
@@ -58,8 +71,8 @@ export async function countUnread(
 ): Promise<number> {
   const { rows } = await db.execute(sql`
     SELECT count(*)::int AS unread
-    FROM notifications
-    WHERE user_id = ${userId}::uuid AND read_at IS NULL
+    FROM notifications n
+    WHERE n.user_id = ${userId}::uuid AND n.read_at IS NULL AND ${readableByOwner(sql`n`)}
   `);
   return Number(rows[0]?.unread ?? 0);
 }
