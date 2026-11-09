@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { blockedBetween, levelAllowed } from "./person-visibility";
+import { canFollow } from "../social/can-view";
 
 /**
  * Following a person (SAG-21, ADR-031). Like the rest of the social graph, every function is ONE
@@ -40,13 +42,9 @@ export async function followUser(
       FROM users u
       WHERE u.username = ${username}
         AND u.deleted_at IS NULL
-        AND u.privacy = 'public'
+        AND ${levelAllowed(sql`u.privacy`, canFollow)}
         AND u.id <> ${viewerId}::uuid
-        AND NOT EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE (b.blocker_id = ${viewerId}::uuid AND b.blocked_id = u.id)
-             OR (b.blocker_id = u.id AND b.blocked_id = ${viewerId}::uuid)
-        )
+        AND NOT ${blockedBetween(sql`${viewerId}::uuid`, sql`u.id`)}
         AND (SELECT n FROM recent) < ${followsPerHour}::int
     ),
     added AS (

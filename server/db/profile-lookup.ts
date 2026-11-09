@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { text } from "./person";
+import { blockedBetween } from "./person-visibility";
 import {
   canSeeCard,
   canView,
@@ -30,11 +31,7 @@ export async function getRelationship(
   if (viewerId === ownerId) return "owner";
   const { rows } = await db.execute(sql`
     SELECT
-      EXISTS (
-        SELECT 1 FROM blocks b
-        WHERE (b.blocker_id = ${viewerId}::uuid AND b.blocked_id = ${ownerId}::uuid)
-           OR (b.blocker_id = ${ownerId}::uuid AND b.blocked_id = ${viewerId}::uuid)
-      ) AS blocked,
+      ${blockedBetween(sql`${viewerId}::uuid`, sql`${ownerId}::uuid`)} AS blocked,
       EXISTS (
         SELECT 1 FROM follows WHERE follower_id = ${viewerId}::uuid AND followee_id = ${ownerId}::uuid
       ) AS viewer_follows,

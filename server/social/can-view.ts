@@ -110,3 +110,17 @@ export function canSeeCard(relationship: Relationship, level: Level): boolean {
   if (relationship === "owner") return true;
   return level !== "private";
 }
+
+/**
+ * Whether a profile of this level may be followed straight away. Only a public one: a `friends`
+ * profile is asked for (`canRequest`) and a `private` one cannot be followed at all (SAG-178).
+ * A block, the viewer themself and erased accounts are the statement's business, not the level's.
+ */
+export function canFollow(level: Level): boolean {
+  return level === "public";
+}
+
+/** Whether a profile of this level may be asked for a follow: only a `friends` one (SAG-178). */
+export function canRequest(level: Level): boolean {
+  return level === "friends";
+}

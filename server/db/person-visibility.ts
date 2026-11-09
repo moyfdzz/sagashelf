@@ -1,6 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 
-import { canSeeCard, levels } from "../social/can-view";
+import { canSeeCard, levels, type Level } from "../social/can-view";
 
 /**
  * Which people a viewer may be shown (SAG-164, ADR-031). Two rules, each written once as a piece of
@@ -9,13 +9,34 @@ import { canSeeCard, levels } from "../social/can-view";
  * verified session (null for a visitor), never an id from a request.
  */
 
-/** The viewer and `u` have a block between them, in either direction. */
-const blockedEitherWay = (viewerId: string | null): SQL => sql`
+/**
+ * The two people have a block between them, in either direction (SAG-178). THE one definition of
+ * that check: every statement that reads `blocks` uses it (a test enforces it). `a` and `b` are SQL
+ * pieces that give a user id: a bound value with its cast, or a column like `u.id`.
+ */
+export const blockedBetween = (a: SQL, b: SQL): SQL => sql`
   EXISTS (
     SELECT 1 FROM blocks k
-    WHERE (k.blocker_id = ${viewerId}::uuid AND k.blocked_id = u.id)
-       OR (k.blocker_id = u.id AND k.blocked_id = ${viewerId}::uuid)
+    WHERE (k.blocker_id = ${a} AND k.blocked_id = ${b})
+       OR (k.blocker_id = ${b} AND k.blocked_id = ${a})
   )`;
+
+/** The viewer and `u` have a block between them, in either direction. */
+const blockedEitherWay = (viewerId: string | null): SQL =>
+  blockedBetween(sql`${viewerId}::uuid`, sql`u.id`);
+
+/**
+ * `column` holds one of the levels that `allows` accepts, as an `IN` list. The levels are the ones
+ * of `can-view.ts`, so a statement never writes `'public'` or `'friends'` for a rule (SAG-178).
+ */
+export const levelAllowed = (
+  column: SQL,
+  allows: (level: Level) => boolean,
+): SQL =>
+  sql`${column}::text IN (${sql.join(
+    levels.filter(allows).map((level) => sql`${level}`),
+    sql`, `,
+  )})`;
 
 /**
  * `u` may appear on the list of people of `ownerId`. A person with a public profile is listed to
@@ -48,16 +69,12 @@ export const listedToViewer = (
  * friend who later chose Total privacy can still be muted).
  */
 export const reachableByViewer = (viewerId: string): SQL => {
-  const found = levels.filter((level) => canSeeCard("stranger", level));
   return sql`
   u.deleted_at IS NULL
   AND u.id <> ${viewerId}::uuid
   AND NOT ${blockedEitherWay(viewerId)}
   AND (
-    u.privacy::text IN (${sql.join(
-      found.map((level) => sql`${level}`),
-      sql`, `,
-    )})
+    ${levelAllowed(sql`u.privacy`, (level) => canSeeCard("stranger", level))}
     OR EXISTS (
       SELECT 1 FROM follows f
       WHERE (f.follower_id = ${viewerId}::uuid AND f.followee_id = u.id)
@@ -79,10 +96,5 @@ export const reachableByViewer = (viewerId: string): SQL => {
  * lifted the level comes back and so does the request. A suspended profile keeps its level and so
  * its requests. The levels come from `canSeeCard`, as in `reachableByViewer`.
  */
-export const requesterCardShown = (privacyColumn: SQL): SQL => {
-  const found = levels.filter((level) => canSeeCard("stranger", level));
-  return sql`${privacyColumn}::text IN (${sql.join(
-    found.map((level) => sql`${level}`),
-    sql`, `,
-  )})`;
-};
+export const requesterCardShown = (privacyColumn: SQL): SQL =>
+  levelAllowed(privacyColumn, (level) => canSeeCard("stranger", level));

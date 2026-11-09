@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import { toPerson, type Person } from "./person";
 import { canSeeCard, levels } from "../social/can-view";
+import { blockedBetween } from "./person-visibility";
 
 /** The shortest start of a username that can be searched, so nobody can list every user. */
 export const peopleQueryMinLength = 2;
@@ -43,11 +44,7 @@ export async function searchPeople(
         listed.map((level) => sql`${level}`),
         sql`, `,
       )})
-      AND NOT EXISTS (
-        SELECT 1 FROM blocks k
-        WHERE (k.blocker_id = ${viewerId}::uuid AND k.blocked_id = u.id)
-           OR (k.blocker_id = u.id AND k.blocked_id = ${viewerId}::uuid)
-      )
+      AND NOT ${blockedBetween(sql`${viewerId}::uuid`, sql`u.id`)}
     ORDER BY lower(u.username::text)
     LIMIT ${peopleSearchLimit}::int
   `);

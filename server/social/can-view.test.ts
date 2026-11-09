@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canFollow,
+  canRequest,
   canSeeCard,
   canView,
   levels,
@@ -238,6 +240,31 @@ describe("canSeeCard (SAG-107): every privacy level × every relationship", () =
         if (canView(relationship, level)) {
           expect(canSeeCard(relationship, level)).toBe(true);
         }
+      }
+    }
+  });
+});
+
+describe("canFollow and canRequest (SAG-178)", () => {
+  // Written by hand: a public profile is followed, a Private one (`friends`) is asked for, and
+  // Total privacy (`private`) can be neither.
+  const table: Record<Level, { follow: boolean; request: boolean }> = {
+    public: { follow: true, request: false },
+    friends: { follow: false, request: true },
+    private: { follow: false, request: false },
+  };
+
+  for (const level of levels) {
+    it(`gives ${level} the answers of the table`, () => {
+      expect(canFollow(level)).toBe(table[level].follow);
+      expect(canRequest(level)).toBe(table[level].request);
+    });
+  }
+
+  it("never offers a follow or a request to a profile whose card is not shown", () => {
+    for (const level of levels) {
+      if (!canSeeCard("stranger", level)) {
+        expect(canFollow(level) || canRequest(level)).toBe(false);
       }
     }
   });
