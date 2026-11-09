@@ -97,6 +97,8 @@ export async function addListItem(
     found AS (
       SELECT m.id FROM media_items m
       WHERE m.id = ${mediaId}::uuid
+        -- A person may put their own custom title in their own list: the one place that goes
+        -- around the shared rule on purpose. When SAG-19 changes the rule, revisit this clause.
         AND (${sharedTitleSql("m")} OR EXISTS (
           SELECT 1 FROM custom_entries c WHERE c.media_id = m.id AND c.owner_id = ${ownerId}::uuid
         ))

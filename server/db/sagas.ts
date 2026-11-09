@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import type { LocalizedText } from "./schema/shared";
 import { mediaMatchesItem } from "./wikidata-store";
 import {
@@ -9,7 +10,6 @@ import {
 } from "../providers/wikidata/map";
 import type { MediaKind } from "../providers/types";
 
-import { sharedTitleSql } from "./titles";
 /** What the sync has to do for the curated sagas: the ones to save and the items to describe. */
 export type SagaSyncWork = { changedSlugs: string[]; missingQids: string[] };
 

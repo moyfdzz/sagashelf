@@ -62,9 +62,15 @@ const toList = (row: Record<string, unknown>): ViewableList => ({
  * The lists of the owner at the allowed levels, as a statement ready to take more conditions. Both
  * ways to read a list build on it, so the filter by level is written once.
  */
-const viewableLists = (ownerId: string, allowed: readonly Level[]) => sql`
+const viewableLists = (
+  ownerId: string,
+  allowed: readonly Level[],
+  relationship: Relationship,
+) => sql`
   SELECT l.id, l.title, l.description,
-         (SELECT count(*)::int FROM list_items i WHERE i.list_id = l.id) AS items
+         (SELECT count(*)::int FROM list_items i
+          JOIN media_items m ON m.id = i.media_id
+          WHERE i.list_id = l.id AND ${titleShownSql("m", relationship)}) AS items
   FROM lists l
   WHERE l.owner_id = ${ownerId}::uuid
     AND l.visibility::text IN (${inLevels(allowed)})
@@ -79,7 +85,7 @@ export async function listViewableLists(
   const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return [];
   const { rows } = await db.execute(sql`
-    ${viewableLists(ownerId, allowed)}
+    ${viewableLists(ownerId, allowed, viewing.relationship)}
     ORDER BY l.updated_at DESC, l.id DESC
   `);
   return rows.map(toList);
@@ -95,7 +101,7 @@ export async function getViewableList(
   const allowed = visibleListLevels(viewing.relationship, viewing.profileLevel);
   if (allowed.length === 0) return null;
   const { rows } = await db.execute(sql`
-    ${viewableLists(ownerId, allowed)}
+    ${viewableLists(ownerId, allowed, viewing.relationship)}
       AND l.id = ${id}::uuid
   `);
   const row = rows[0];

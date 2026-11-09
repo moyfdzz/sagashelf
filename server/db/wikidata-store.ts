@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import type { LocalizedText } from "./schema/shared";
 import {
   isWikidataFormat,
@@ -12,7 +13,6 @@ import {
 } from "../providers/wikidata/map";
 import type { MediaKind } from "../providers/types";
 
-import { sharedTitleSql } from "./titles";
 /** A title of the catalog that has not been looked up in Wikidata, with the ids to look it up by. */
 export type WikidataCandidate = {
   mediaId: string;

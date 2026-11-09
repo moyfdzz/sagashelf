@@ -7,6 +7,7 @@ import {
 } from "../server/db/profile-library";
 import {
   listViewableItems,
+  listViewableLists,
   type ListViewing,
 } from "../server/db/profile-lists";
 import {
@@ -77,6 +78,22 @@ describe("a custom title and the people who may see a shared list or entry", () 
     );
 
     expect(items.map((item) => item.title)).toEqual(["Catalog title"]);
+  });
+
+  it("is not counted in the number of titles of a list for another viewer", async () => {
+    const { owner } = await ownerWithOneCustomTitle();
+
+    const [row] = await listViewableLists(db, owner.id, stranger);
+
+    expect(row?.items).toBe(1);
+  });
+
+  it("is counted in the number of titles of a list for the owner", async () => {
+    const { owner } = await ownerWithOneCustomTitle();
+
+    const [row] = await listViewableLists(db, owner.id, mine);
+
+    expect(row?.items).toBe(2);
   });
 
   it("is in the titles of the list for the owner", async () => {

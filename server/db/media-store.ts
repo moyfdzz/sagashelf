@@ -1,13 +1,13 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import type {
   Locale,
   NormalizedMedia,
   NormalizedPart,
 } from "../providers/types";
 
-import { sharedTitleSql } from "./titles";
 /** How long TMDB lets us keep what it sent (ADR-016). Refresh a row well before this. */
 export const providerDataMaxAgeDays = 180;
 

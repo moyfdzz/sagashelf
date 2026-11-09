@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 
 import type { ProfileDb } from "./profile";
-
 import { sharedTitleSql } from "./titles";
+
 // Neon (HTTP) and `pg` both answer a raw statement with `{ rows }`; the type of the shared
 // database does not say so.
 type RawRows = { rows: Record<string, unknown>[] };

@@ -1,11 +1,11 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 import { type Genre, isGenre } from "../providers/genres";
 import type { MediaKind, MediaStatus, ProviderId } from "../providers/types";
 import type { LocalizedText } from "./schema/shared";
 
-import { sharedTitleSql } from "./titles";
 export type MediaEpisode = {
   number: number;
   title: string | null;
