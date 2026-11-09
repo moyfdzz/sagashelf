@@ -16,9 +16,9 @@ import { canSeeCard, levels, type Level } from "../social/can-view";
  */
 export const blockedBetween = (a: SQL, b: SQL): SQL => sql`
   EXISTS (
-    SELECT 1 FROM blocks k
-    WHERE (k.blocker_id = ${a} AND k.blocked_id = ${b})
-       OR (k.blocker_id = ${b} AND k.blocked_id = ${a})
+    SELECT 1 FROM blocks blk
+    WHERE (blk.blocker_id = ${a} AND blk.blocked_id = ${b})
+       OR (blk.blocker_id = ${b} AND blk.blocked_id = ${a})
   )`;
 
 /** The viewer and `u` have a block between them, in either direction. */
