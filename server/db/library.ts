@@ -53,7 +53,15 @@ export type StoredEntry = EntryState & {
   /** Whether the person is told about the new episodes of this title (SAG-101). */
   notifyNewEpisodes: boolean;
   updatedAt: Date;
+  /**
+   * `updated_at` with its microseconds, as text. A JavaScript date keeps milliseconds only, so a
+   * row written by the database itself would never match a date read back. `saveEntry` compares it.
+   */
+  version: string;
 };
+
+// The same expression is read (`version`) and compared (`saveEntry`), so both stay in step.
+const versionSql = sql<string>`(${libraryEntries.updatedAt} AT TIME ZONE 'UTC')::text`;
 
 const entryColumns = (locale: Locale) => ({
   mediaId: libraryEntries.mediaId,
@@ -68,6 +76,7 @@ const entryColumns = (locale: Locale) => ({
   visibility: libraryEntries.visibility,
   notifyNewEpisodes: libraryEntries.notifyNewEpisodes,
   updatedAt: libraryEntries.updatedAt,
+  version: versionSql,
   title: localizedTitleSql("media_items", locale),
   type: mediaItems.type,
   year: mediaItems.year,
@@ -142,13 +151,33 @@ export async function addEntry(
   return Number(rows[0]?.found) > 0;
 }
 
-/** Writes the entry of this person for this title. False when they have no such entry. */
+/**
+ * `saved`: the entry was written. `missing`: this person has no such entry. `conflict`: the entry
+ * changed after it was read, so nothing was written and the caller must read it again.
+ */
+export type SaveResult = "saved" | "missing" | "conflict";
+
+/** `rewatchEntry` adds `refused`: the entry is not completed, or its history is full. */
+export type RewatchResult = SaveResult | "refused";
+
+/** The entry of this person for this title. */
+const ownedBy = (userId: string, mediaId: string) =>
+  and(eq(libraryEntries.userId, userId), eq(libraryEntries.mediaId, mediaId));
+
+/**
+ * Writes the entry of this person for this title, only if it still has the `version` it had when
+ * it was read, in the same statement: a "+1" that read a public entry cannot bring it back after
+ * the person made it private, and two "+1" never both write the same number. The version is not
+ * optional on purpose: a caller that forgets it must not get an unconditional overwrite.
+ */
 export async function saveEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-): Promise<boolean> {
+  version: string,
+): Promise<SaveResult> {
+  const isMine = ownedBy(userId, mediaId);
   const updated = await db
     .update(libraryEntries)
     .set({
@@ -161,16 +190,21 @@ export async function saveEntry(
       finishedAt: next.finishedAt,
       notes: next.notes,
       visibility: next.visibility,
-      updatedAt: new Date(),
+      // The clock of the database, to the microsecond, and never the same twice in a row: a
+      // JavaScript date has milliseconds only, so two writes in one could carry the same version.
+      updatedAt: sql`clock_timestamp()`,
     })
-    .where(
-      and(
-        eq(libraryEntries.userId, userId),
-        eq(libraryEntries.mediaId, mediaId),
-      ),
-    )
+    .where(and(isMine, sql`${versionSql} = ${version}`))
     .returning({ id: libraryEntries.id });
-  return updated.length > 0;
+  if (updated.length > 0) return "saved";
+  // Nothing matched: either the entry is gone or it changed. Only the answer depends on this
+  // second read, never the write.
+  const [still] = await db
+    .select({ id: libraryEntries.id })
+    .from(libraryEntries)
+    .where(isMine)
+    .limit(1);
+  return still ? "conflict" : "missing";
 }
 
 /**
@@ -204,31 +238,45 @@ export async function setEntryNotifyNewEpisodes(
 /**
  * Starts a completed title again: saves the run that ends in the history of viewings, with its
  * dates, and writes the entry as the rules decided. One statement, so the run is saved if and only
- * if the entry restarts. False when the person has no completed entry for the title, or it
- * already holds the most viewings it can.
+ * if the entry restarts, and only if the entry still has the `version` it had when it was read
+ * (`conflict` otherwise, nothing written). `missing`: the person has no entry for the title.
+ * `refused`: the entry is not completed, or it already holds the most viewings it can.
  */
 export async function rewatchEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-): Promise<boolean> {
+  version: string,
+): Promise<RewatchResult> {
   const { rows } = (await db.execute(sql`
     WITH archived AS (
       INSERT INTO library_viewings (entry_id, started_on, finished_on)
       SELECT id, started_at, finished_at FROM library_entries
       WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid AND status = 'completed'
+        AND ${versionSql} = ${version}
         AND (SELECT count(*) FROM library_viewings WHERE entry_id = library_entries.id) < ${maxViewings}
       RETURNING entry_id
     )
     UPDATE library_entries
     SET status = ${next.status}::library_status, progress = ${next.progress},
         started_at = ${next.startedAt}::date, finished_at = ${next.finishedAt}::date,
-        updated_at = now()
+        updated_at = clock_timestamp()
     WHERE id IN (SELECT entry_id FROM archived)
     RETURNING id
   `)) as RawRows;
-  return rows.length > 0;
+  if (rows.length > 0) return "saved";
+  // Nothing restarted: the entry changed since it was read, or the rules refuse it. Only the
+  // answer depends on this second read, never the write.
+  // The entry is looked up by person and title only, so one that was deleted is `missing` and
+  // not a conflict that no retry could ever solve.
+  const [now] = await db
+    .select({ version: versionSql })
+    .from(libraryEntries)
+    .where(ownedBy(userId, mediaId))
+    .limit(1);
+  if (!now) return "missing";
+  return now.version === version ? "refused" : "conflict";
 }
 
 /** Removes the entry of this person for this title. False when they had none. */

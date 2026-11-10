@@ -18,6 +18,7 @@ export type ErrorCode =
   | "notes_too_long"
   | "not_completed"
   | "viewings_limit"
+  | "conflict"
   | "generic";
 
 export type Field =

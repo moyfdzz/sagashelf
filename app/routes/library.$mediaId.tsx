@@ -309,19 +309,38 @@ export async function action(args: Route.ActionArgs) {
     );
   }
 
-  if (parsed.data.intent === "rewatch") {
-    // The run that ends goes into the history in the same statement that restarts the entry.
-    if (!(await rewatchEntry(db, user.id, mediaId.data, result.next))) {
-      return data(
-        {
-          ok: false as const,
-          errors: { viewings: "viewings_limit" } as FieldErrors,
-        },
-        { status: 400, headers: privateHeaders },
-      );
-    }
-  } else if (!(await saveEntry(db, user.id, mediaId.data, result.next))) {
-    throw data(null, { status: 404 });
+  // Written only if the entry is as it was read: a change made at the same time elsewhere (a
+  // "+1", the buttons of the title page, another tab) is not undone by this form. A rewatch also
+  // puts the run that ends into the history in the same statement that restarts the entry.
+  const written =
+    parsed.data.intent === "rewatch"
+      ? await rewatchEntry(
+          db,
+          user.id,
+          mediaId.data,
+          result.next,
+          current.version,
+        )
+      : await saveEntry(
+          db,
+          user.id,
+          mediaId.data,
+          result.next,
+          current.version,
+        );
+  if (written === "missing") throw data(null, { status: 404 });
+  if (written !== "saved") {
+    const errors: FieldErrors =
+      written === "conflict"
+        ? { form: "conflict" }
+        : { viewings: "viewings_limit" };
+    return data(
+      { ok: false as const, errors },
+      {
+        status: written === "conflict" ? 409 : 400,
+        headers: privateHeaders,
+      },
+    );
   }
   return data(
     {

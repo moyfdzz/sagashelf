@@ -6,7 +6,6 @@ import { eraseAccount } from "../server/db/erase-user";
 import {
   addEntry,
   getEntry,
-  saveEntry,
   setEntryNotifyNewEpisodes,
 } from "../server/db/library";
 import { saveMedia, saveParts } from "../server/db/media-store";
@@ -21,7 +20,7 @@ import { maxNewTitles, parseImportFile } from "../server/library/import-file";
 import type { EntryState } from "../server/library/rules";
 import type { MediaProvider, NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
-import { factories } from "./test-helpers";
+import { factories, setEntry } from "./test-helpers";
 
 const { db, pool } = createTestDb();
 const { newUser } = factories(db);
@@ -246,7 +245,7 @@ describe("importing titles we already hold", () => {
     const ana = await newUser();
     const media = await saveMedia(db, movie(1));
     await addEntry(db, ana.id, media);
-    await saveEntry(db, ana.id, media, {
+    await setEntry(db, ana.id, media, {
       status: "in_progress",
       progress: 0,
       progressUnit: null,
@@ -275,7 +274,7 @@ describe("importing titles we already hold", () => {
     const ana = await newUser();
     const media = await saveMedia(db, movie(1));
     await addEntry(db, ana.id, media);
-    await saveEntry(db, ana.id, media, {
+    await setEntry(db, ana.id, media, {
       status: "in_progress",
       progress: 0,
       progressUnit: null,
@@ -328,7 +327,7 @@ describe("importing titles we already hold", () => {
     const beto = await newUser();
     const media = await saveMedia(db, movie(1));
     await addEntry(db, beto.id, media);
-    await saveEntry(db, beto.id, media, {
+    await setEntry(db, beto.id, media, {
       status: "dropped",
       progress: 0,
       progressUnit: null,
@@ -524,7 +523,7 @@ describe("export, delete the account, create another, import", () => {
     const first = await saveMedia(db, movie(1));
     const second = await saveMedia(db, series(2));
     for (const media of [first, second]) await addEntry(db, ana.id, media);
-    await saveEntry(db, ana.id, first, {
+    await setEntry(db, ana.id, first, {
       status: "completed",
       progress: 0,
       progressUnit: null,
@@ -540,7 +539,7 @@ describe("export, delete the account, create another, import", () => {
       finishedOn: "2024-05-03",
       notes: "En el cine",
     });
-    await saveEntry(db, ana.id, second, {
+    await setEntry(db, ana.id, second, {
       status: "paused",
       progress: 0,
       progressUnit: null,

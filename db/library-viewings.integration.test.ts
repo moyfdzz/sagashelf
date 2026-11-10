@@ -2,13 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { exportAccount } from "../server/account/export";
-import {
-  addEntry,
-  listLibrary,
-  removeEntry,
-  rewatchEntry,
-  saveEntry,
-} from "../server/db/library";
+import { addEntry, listLibrary, removeEntry } from "../server/db/library";
 import { saveMedia } from "../server/db/media-store";
 import { libraryEntries, libraryViewings, users } from "../server/db/schema";
 import {
@@ -21,7 +15,7 @@ import {
 import type { EntryState } from "../server/library/rules";
 import { libraryQuerySchema } from "../server/library/schema";
 import { createTestDb } from "./test-database";
-import { factories, failsWith } from "./test-helpers";
+import { factories, failsWith, restartEntry, setEntry } from "./test-helpers";
 
 const { db, pool } = createTestDb();
 const { newUser } = factories(db);
@@ -76,7 +70,7 @@ async function watched() {
   const ana = await newUser();
   const mediaId = await addMedia("Interestelar");
   await addEntry(db, ana.id, mediaId);
-  await saveEntry(db, ana.id, mediaId, completed);
+  await setEntry(db, ana.id, mediaId, completed);
   return { ana, mediaId };
 }
 
@@ -91,7 +85,7 @@ describe("rewatchEntry", () => {
   it("saves the run that ends with its dates and restarts the entry, in one step", async () => {
     const { ana, mediaId } = await watched();
 
-    expect(await rewatchEntry(db, ana.id, mediaId, restarted)).toBe(true);
+    expect(await restartEntry(db, ana.id, mediaId, restarted)).toBe("saved");
 
     expect(await listViewings(db, ana.id, mediaId)).toEqual([
       expect.objectContaining({
@@ -113,7 +107,7 @@ describe("rewatchEntry", () => {
     const mediaId = await addMedia("Interestelar");
     await addEntry(db, ana.id, mediaId);
 
-    expect(await rewatchEntry(db, ana.id, mediaId, restarted)).toBe(false);
+    expect(await restartEntry(db, ana.id, mediaId, restarted)).toBe("refused");
 
     expect(await db.select().from(libraryViewings)).toHaveLength(0);
   });
@@ -122,7 +116,7 @@ describe("rewatchEntry", () => {
     const { mediaId } = await watched();
     const beto = await newUser();
 
-    expect(await rewatchEntry(db, beto.id, mediaId, restarted)).toBe(false);
+    expect(await restartEntry(db, beto.id, mediaId, restarted)).toBe("refused");
 
     expect(await db.select().from(libraryViewings)).toHaveLength(0);
     const [entry] = await db.select().from(libraryEntries);
@@ -135,7 +129,7 @@ describe("rewatchEntry", () => {
       await addViewing(db, ana.id, mediaId, noViewing);
     }
 
-    expect(await rewatchEntry(db, ana.id, mediaId, restarted)).toBe(false);
+    expect(await restartEntry(db, ana.id, mediaId, restarted)).toBe("refused");
 
     const [entry] = await db.select().from(libraryEntries);
     expect(entry?.status).toBe("completed");
@@ -151,10 +145,10 @@ describe("times watched in the list", () => {
       )[0]?.timesWatched;
 
     expect(await times()).toBe(1);
-    await rewatchEntry(db, ana.id, mediaId, restarted);
+    await restartEntry(db, ana.id, mediaId, restarted);
     // One earlier viewing, and the current run is not finished.
     expect(await times()).toBe(1);
-    await saveEntry(db, ana.id, mediaId, {
+    await setEntry(db, ana.id, mediaId, {
       ...completed,
       startedAt: "2026-10-26",
       finishedAt: "2026-11-01",

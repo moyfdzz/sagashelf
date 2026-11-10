@@ -3,14 +3,13 @@ import { z } from "zod";
 
 import type { Route } from "./+types/library.$mediaId.step";
 import { requireUser } from "~server/auth/require";
-import {
-  getEntry,
-  getSeasonCounts,
-  saveEntry,
-  totalEpisodes,
-} from "~server/db/library";
 import { returnPath } from "~server/library/back";
 import { applyStep } from "~server/library/rules";
+import {
+  failureOf,
+  lazyTotalEpisodes,
+  updateEntry,
+} from "~server/library/update-entry";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";
 import { privateHeaders } from "~server/http/cache";
@@ -74,23 +73,24 @@ export async function action(args: Route.ActionArgs) {
   await request.arrayBuffer().catch(() => undefined);
 
   const db = await getDb();
-  const current = await getEntry(db, user.id, mediaId.data, "es");
-  // Somebody else's entry and no entry at all look the same.
-  if (!current) return fail("invalid_request", 404);
-
-  const result = applyStep(current, {
-    totalEpisodes: totalEpisodes(await getSeasonCounts(db, mediaId.data)),
-    type: current.type,
-    today: new Date().toISOString().slice(0, 10),
-  });
-  if (!result.ok) {
-    return asksForDocument(request)
-      ? redirect(`/library/${mediaId.data}`, { status: 303 })
-      : fail(result.error === "progress_too_high" ? "too_high" : "failed", 400);
-  }
-
-  if (!(await saveEntry(db, user.id, mediaId.data, result.next))) {
-    return fail("invalid_request", 404);
+  const episodes = lazyTotalEpisodes(db, mediaId.data);
+  const today = new Date().toISOString().slice(0, 10);
+  // The step is worked out on what the entry is when it is written, not on an older read.
+  const result = await updateEntry(db, user.id, mediaId.data, async (current) =>
+    applyStep(current, {
+      totalEpisodes: await episodes(),
+      type: current.type,
+      today,
+    }),
+  );
+  if (result.outcome !== "saved") {
+    // Somebody else's entry and no entry at all look the same (404).
+    const failure = failureOf(result, { tooHigh: true });
+    // A form without JavaScript goes back to the entry, where the person sees how it is now.
+    if (failure.status !== 404 && asksForDocument(request)) {
+      return redirect(`/library/${mediaId.data}`, { status: 303 });
+    }
+    return fail(failure.error, failure.status);
   }
 
   // Without JavaScript the person goes back to the library or the title page they were on.
