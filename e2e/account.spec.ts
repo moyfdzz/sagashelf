@@ -9,30 +9,43 @@ import { wrappingSecondaryLinkClass } from "../app/lib/ui";
 test.describe("a long link that acts as a button", () => {
   test.use({ locale: "es-MX" });
 
-  test("does not scroll sideways at 320 px", async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 640 });
-    await page.goto("/account-restricted");
-    await page.evaluate(
-      ({ className, label }) => {
-        const link = document.createElement("a");
-        link.href = "/settings/import";
-        link.className = className;
-        link.textContent = label;
-        document.querySelector("main")?.appendChild(link);
-      },
-      {
-        className: wrappingSecondaryLinkClass,
-        label: "Importar mi biblioteca desde un archivo",
-      },
-    );
+  const labels = {
+    "a long label": "Importar mi biblioteca desde un archivo",
+    "one long word": "Importarmibibliotecadesdeunarchivoenunsoloformato".repeat(
+      2,
+    ),
+  };
 
-    const overflow = await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(0);
-  });
+  for (const [name, label] of Object.entries(labels)) {
+    test(`does not scroll sideways at 320 px, with ${name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 320, height: 640 });
+      await page.goto("/account-restricted");
+      await page.evaluate(
+        ({ className, text }) => {
+          const link = document.createElement("a");
+          link.href = "/settings/import";
+          link.className = className;
+          link.textContent = text;
+          document.querySelector("main")?.appendChild(link);
+        },
+        { className: wrappingSecondaryLinkClass, text: label },
+      );
+
+      // Without the link there is nothing to measure, so a missing link must fail the test.
+      await expect(
+        page.locator('main a[href="/settings/import"]'),
+      ).toBeVisible();
+
+      const overflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  }
 });
 
 // The two routes that act on an account are not pages: they answer only to the form of the
