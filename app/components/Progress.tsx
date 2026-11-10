@@ -54,15 +54,15 @@ export function ProgressText({
 }
 
 // A native <progress>: a bar needs no inline style (the strict CSP forbids it) and no script. It is
-// decorative, because the text next to it already says "2 of 12 episodes".
+// decorative (`aria-hidden`), because the text next to it already says "2 of 12 episodes" or "75%".
 export function MeterBar({
   value,
   max,
-  className,
+  className = "",
 }: {
   value: number;
   max: number;
-  className: string;
+  className?: string;
 }) {
   return (
     <progress

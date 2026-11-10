@@ -208,14 +208,14 @@ export async function finishImportRows(
       WHERE id IN (
         SELECT value::uuid FROM jsonb_array_elements_text(${JSON.stringify(outcome.done)}::jsonb)
       )
-      RETURNING 1
+      RETURNING id
     ),
     left_out AS (
       UPDATE import_rows r
       SET state = 'skipped', reason = x.reason, entry = NULL
       FROM jsonb_to_recordset(${JSON.stringify(outcome.skipped)}::jsonb) AS x(id uuid, reason text)
       WHERE r.id = x.id
-      RETURNING 1
+      RETURNING r.id
     ),
     retried AS (
       UPDATE import_rows r
@@ -227,7 +227,7 @@ export async function finishImportRows(
       WHERE r.id IN (
         SELECT value::uuid FROM jsonb_array_elements_text(${JSON.stringify(outcome.retry)}::jsonb)
       )
-      RETURNING 1
+      RETURNING r.id, r.state
     ),
     counts AS (
       SELECT x."jobId" AS job_id, x.added, x.replaced, x.kept
@@ -235,19 +235,13 @@ export async function finishImportRows(
         AS x("jobId" uuid, added int, replaced int, kept int)
     ),
     -- Rows that left the queue as written, and rows left out in this statement (told apart because
-    -- the first are deleted and the second stay as problems).
-    written AS (
-      SELECT value::uuid AS id FROM jsonb_array_elements_text(${JSON.stringify(outcome.done)}::jsonb)
-    ),
+    -- the first are deleted and the second stay as problems). Both come from the statements above,
+    -- so the rule of the last try lives only in \`retried\`.
+    written AS (SELECT id FROM removed),
     newly_skipped AS (
-      SELECT x.id FROM jsonb_to_recordset(${JSON.stringify(outcome.skipped)}::jsonb)
-        AS x(id uuid, reason text)
+      SELECT id FROM left_out
       UNION
-      SELECT r.id FROM import_rows r
-      WHERE r.attempts + 1 >= ${maxAttempts}::int
-        AND r.id IN (
-          SELECT value::uuid FROM jsonb_array_elements_text(${JSON.stringify(outcome.retry)}::jsonb)
-        )
+      SELECT id FROM retried WHERE state = 'skipped'
     ),
     touched AS (
       SELECT DISTINCT r.job_id FROM import_rows r
@@ -257,7 +251,8 @@ export async function finishImportRows(
       SELECT j.id AS job_id,
              (SELECT count(*) FROM import_rows s WHERE s.job_id = j.id AND s.state = 'skipped')::int
              + (SELECT count(*) FROM import_rows n
-                WHERE n.job_id = j.id AND n.id IN (SELECT id FROM newly_skipped))::int AS problems
+                WHERE n.job_id = j.id AND n.state = 'pending'
+                  AND n.id IN (SELECT id FROM newly_skipped))::int AS problems
       FROM touched t JOIN import_jobs j ON j.id = t.job_id
       WHERE j.finished_at IS NULL
         AND NOT EXISTS (

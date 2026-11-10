@@ -642,6 +642,28 @@ describe("the notice when an import finishes (SAG-242)", () => {
     expect(await jobs()).toEqual([expect.objectContaining({ finished: true })]);
   });
 
+  it("counts a title once when the same result is written back after the job lost its mark and its notice", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1, 2]);
+    await run(provider([1]));
+    const [left] = (await db.execute(sql`SELECT id FROM import_rows`)).rows;
+    await db.execute(sql`UPDATE import_jobs SET finished_at = NULL`);
+    await db.execute(sql`DELETE FROM notifications`);
+
+    await finishImportRows(db, {
+      done: [],
+      skipped: [{ id: String(left?.id), reason: "not_found" }],
+      retry: [],
+      counts: [],
+    });
+
+    expect(await notices(ana.id)).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({ imported: 1, problems: 1 }),
+      }),
+    ]);
+  });
+
   it("tells only the owner of the job that ended", async () => {
     const ana = await newUser();
     const luis = await newUser();

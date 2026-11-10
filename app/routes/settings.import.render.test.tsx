@@ -273,6 +273,22 @@ describe("the import page", () => {
     expect(html).not.toContain("Y 70 más");
   });
 
+  it("still shows the way back from a page past the last one (SAG-242)", async () => {
+    const html = await render(
+      "es",
+      <SettingsImport
+        {...props(
+          undefined,
+          { total: 5, pending: 0, skippedCount: 2, skipped: [] },
+          7,
+        )}
+      />,
+    );
+
+    expect(html).toContain('href="/settings/import?page=6#import-progress"');
+    expect(html).not.toContain("?page=8");
+  });
+
   it("shows no link to another page when every failed title fits in one", async () => {
     const html = await render(
       "es",

@@ -170,7 +170,8 @@ function SkippedList({
   paging?: { page: number; pathTo: (page: number) => string };
 }) {
   const { t } = useTranslation();
-  if (skipped.length === 0) return null;
+  // A page past the last one (a stale link) has no titles but still shows the way back.
+  if (skipped.length === 0 && !(paging && paging.page > 1)) return null;
   return (
     <div className="mt-4">
       <h3 className="font-semibold">{t("settings.import.skipped")}</h3>
@@ -240,7 +241,7 @@ function ImportProgress({
       </p>
       {progress.pending > 0 ? (
         <div className="mt-2">
-          <MeterBar value={resolved} max={progress.total} className="" />
+          <MeterBar value={resolved} max={progress.total} />
           <p className="text-fg-muted mt-1 text-sm">
             {t("settings.import.progress.percent", { percent })}
           </p>
