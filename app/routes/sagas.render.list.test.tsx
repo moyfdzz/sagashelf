@@ -37,6 +37,7 @@ const props = (loaderData: Record<string, unknown> = {}) =>
   ({
     loaderData: {
       q: "",
+      searching: false,
       pageTitle: "Sagas | SagaShelf",
       description: "",
       canonicalUrl: "https://sagashelf.app/sagas",
@@ -83,6 +84,7 @@ describe("the list of sagas (SAG-245)", () => {
       <SagasPage
         {...props({
           q: "tita",
+          searching: true,
           sagas: [
             {
               slug: "attack-on-titan",
@@ -102,7 +104,7 @@ describe("the list of sagas (SAG-245)", () => {
   it("says nothing was found and offers the whole list, when a search has no result", async () => {
     const html = await render(
       "es",
-      <SagasPage {...props({ q: "zzz", sagas: [] })} />,
+      <SagasPage {...props({ q: "zzz", searching: true, sagas: [] })} />,
     );
 
     expect(html).toContain("No encontramos ninguna saga con ese nombre.");
@@ -116,6 +118,16 @@ describe("the list of sagas (SAG-245)", () => {
 
     expect(html).toContain("Todavía no hay sagas publicadas.");
     expect(html).not.toContain("Ver todas las sagas");
+  });
+
+  it("does not say it was a search when the text searched had nothing to compare", async () => {
+    const html = await render(
+      "es",
+      <SagasPage {...props({ q: "́", searching: false })} />,
+    );
+
+    expect(html).toContain("2 sagas");
+    expect(html).not.toContain("para «");
   });
 
   it("writes what was searched as text, never as markup", async () => {

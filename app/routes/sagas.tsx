@@ -7,6 +7,7 @@ import { getInstance, getLocale } from "~/middleware/i18next";
 import { listSagas } from "~server/db/sagas";
 import { getDb } from "~server/runtime-env";
 import { normalizeQuery, queryMaxLength } from "~server/search/normalize";
+import { privateRouteHeaders } from "~server/http/cache";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const locale = getLocale(context) === "en" ? "en" : "es";
@@ -16,14 +17,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     .slice(0, queryMaxLength)
     .join("");
 
-  const sagas = await listSagas(await getDb(), {
-    search: normalizeQuery(q),
-    locale,
-  });
+  // What the search compares: a text that is only an accent or a space is empty here, and finds
+  // every saga, so the page must not say it was a search.
+  const search = normalizeQuery(q);
+  const sagas = await listSagas(await getDb(), { search, locale });
 
   const title = t("sagas.title");
   return {
     q,
+    searching: search !== "",
     pageTitle: t("app.pageTitle", { title }),
     description: t("sagas.description"),
     canonicalUrl: `${new URL(request.url).origin}/sagas`,
@@ -37,6 +39,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   };
 }
 
+// The header of the page shows who is signed in, so no shared cache keeps it.
+export const headers = privateRouteHeaders;
+
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [];
   return [
@@ -49,7 +54,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export default function SagasPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation();
-  const { q, sagas } = loaderData;
+  const { q, searching, sagas } = loaderData;
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
@@ -87,15 +92,15 @@ export default function SagasPage({ loaderData }: Route.ComponentProps) {
         aria-live="polite"
         className="text-fg-muted mt-4 font-semibold break-words"
       >
-        {q
+        {searching
           ? t("sagas.resultsFor", { count: sagas.length, q })
           : t("sagas.count", { count: sagas.length })}
       </p>
 
       {sagas.length === 0 ? (
         <p className="mt-4">
-          {q ? t("sagas.noResults") : t("sagas.empty")}{" "}
-          {q ? (
+          {searching ? t("sagas.noResults") : t("sagas.empty")}{" "}
+          {searching ? (
             <Link to="/sagas" className={`${linkClass} inline-block py-2`}>
               {t("sagas.showAll")}
             </Link>

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/sagas";
 import { loader as sitemapLoader } from "./sitemap.xml";
-import { loader, meta } from "./sagas";
+import { headers, loader, meta } from "./sagas";
 import type { SagaListItem } from "~server/db/sagas";
 
 const mocks = vi.hoisted(() => ({ listSagas: vi.fn(), locale: "es" }));
@@ -104,6 +104,19 @@ describe("the loader of the list of sagas (SAG-245)", () => {
     const data = await call("/sagas");
 
     expect(data).not.toHaveProperty("signedIn");
+  });
+
+  it("says it is a search only when the text has something to compare", async () => {
+    expect((await call("/sagas")).searching).toBe(false);
+    expect((await call("/sagas?q=naruto")).searching).toBe(true);
+    // Only a combining accent and a space: it normalizes to nothing, so it finds every saga.
+    const blank = await call("/sagas?q=%CC%81%20");
+    expect(blank.searching).toBe(false);
+    expect(mocks.listSagas.mock.calls.at(-1)?.[1].search).toBe("");
+  });
+
+  it("is never kept by a shared cache, because the header shows who is signed in", () => {
+    expect(headers()).toEqual({ "Cache-Control": "private, no-store" });
   });
 
   it("points the canonical address at the list, whatever was searched", async () => {
