@@ -155,52 +155,254 @@ export async function exportAccount(
     .limit(1);
   if (!user || user.deletedAt) return null;
 
-  const entryRows = await db
-    .select({
-      entryId: libraryEntries.id,
-      // Where the title comes from. Public catalog ids, not personal data: they are what lets
-      // an import match the title exactly instead of by its name.
-      source: sql<{ provider: string; id: string } | null>`(
-        SELECT jsonb_build_object('provider', e.provider, 'id', e.external_id)
-        FROM media_external_ids e
-        WHERE e.media_id = ${libraryEntries.mediaId}
-        ORDER BY e.created_at, e.id LIMIT 1
-      )`,
-      title: mediaItems.title,
-      titles: mediaItems.titles,
-      status: libraryEntries.status,
-      progress: libraryEntries.progress,
-      progressUnit: libraryEntries.progressUnit,
-      progressTotal: libraryEntries.progressTotal,
-      score: libraryEntries.score,
-      startedAt: libraryEntries.startedAt,
-      finishedAt: libraryEntries.finishedAt,
-      notes: libraryEntries.notes,
-      visibility: libraryEntries.visibility,
-      // Whether the person is told about the new episodes of the title (SAG-101).
-      notifyNewEpisodes: libraryEntries.notifyNewEpisodes,
-      createdAt: libraryEntries.createdAt,
-    })
-    .from(libraryEntries)
-    .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
-    .where(eq(libraryEntries.userId, userId));
+  const asNames = (
+    rows: { username: string; deletedAt: Date | null; since: Date }[],
+  ) =>
+    rows
+      .filter((row) => row.deletedAt === null)
+      .map((row) => ({
+        username: row.username,
+        since: row.since.toISOString(),
+      }));
 
-  const earlier = entryRows.length
-    ? await db
-        .select({
-          entryId: libraryViewings.entryId,
-          startedOn: libraryViewings.startedOn,
-          finishedOn: libraryViewings.finishedOn,
-          notes: libraryViewings.notes,
-        })
-        .from(libraryViewings)
-        .where(
-          inArray(
-            libraryViewings.entryId,
-            entryRows.map((entry) => entry.entryId),
-          ),
-        )
-    : [];
+  // The queries do not depend on each other, so they run together. Every one has a fixed order, so
+  // two exports of the same data are equal (SAG-173). Only the viewings and the list items wait
+  // for the rows they belong to.
+  const [
+    entryRows,
+    custom,
+    ownLists,
+    endpoints,
+    inbox,
+    following,
+    blocked,
+    muted,
+    requestsSent,
+    requestsReceived,
+    madeReports,
+    uploads,
+    sentMessages,
+  ] = await Promise.all([
+    db
+      .select({
+        entryId: libraryEntries.id,
+        // Where the title comes from. Public catalog ids, not personal data: they are what lets
+        // an import match the title exactly instead of by its name.
+        source: sql<{ provider: string; id: string } | null>`(
+          SELECT jsonb_build_object('provider', e.provider, 'id', e.external_id)
+          FROM media_external_ids e
+          WHERE e.media_id = ${libraryEntries.mediaId}
+          ORDER BY e.created_at, e.id LIMIT 1
+        )`,
+        title: mediaItems.title,
+        titles: mediaItems.titles,
+        status: libraryEntries.status,
+        progress: libraryEntries.progress,
+        progressUnit: libraryEntries.progressUnit,
+        progressTotal: libraryEntries.progressTotal,
+        score: libraryEntries.score,
+        startedAt: libraryEntries.startedAt,
+        finishedAt: libraryEntries.finishedAt,
+        notes: libraryEntries.notes,
+        visibility: libraryEntries.visibility,
+        // Whether the person is told about the new episodes of the title (SAG-101).
+        notifyNewEpisodes: libraryEntries.notifyNewEpisodes,
+        createdAt: libraryEntries.createdAt,
+      })
+      .from(libraryEntries)
+      .innerJoin(mediaItems, eq(libraryEntries.mediaId, mediaItems.id))
+      .where(eq(libraryEntries.userId, userId))
+      .orderBy(libraryEntries.createdAt, libraryEntries.id),
+    db
+      .select({
+        type: mediaItems.type,
+        title: mediaItems.title,
+        originalTitle: mediaItems.originalTitle,
+        year: mediaItems.year,
+        synopsis: mediaItems.synopsis,
+        creators: mediaItems.creators,
+        runtimeMinutes: mediaItems.runtimeMinutes,
+        genres: mediaItems.genres,
+        imageUrl: mediaItems.imageUrl,
+        status: mediaItems.status,
+        visibility: customEntries.visibility,
+        createdAt: customEntries.createdAt,
+      })
+      .from(customEntries)
+      .innerJoin(mediaItems, eq(customEntries.mediaId, mediaItems.id))
+      .where(eq(customEntries.ownerId, userId))
+      .orderBy(customEntries.createdAt, customEntries.mediaId),
+    db
+      .select({
+        id: lists.id,
+        title: lists.title,
+        description: lists.description,
+        visibility: lists.visibility,
+        createdAt: lists.createdAt,
+      })
+      .from(lists)
+      .where(eq(lists.ownerId, userId))
+      .orderBy(lists.createdAt, lists.id),
+    db
+      .select({
+        kind: webhookEndpoints.kind,
+        url: webhookEndpoints.url,
+        eventTypes: webhookEndpoints.eventTypes,
+        enabled: webhookEndpoints.enabled,
+        createdAt: webhookEndpoints.createdAt,
+      })
+      .from(webhookEndpoints)
+      .where(eq(webhookEndpoints.userId, userId))
+      .orderBy(webhookEndpoints.createdAt, webhookEndpoints.id),
+    db
+      .select({
+        type: notifications.type,
+        payload: notifications.payload,
+        createdAt: notifications.createdAt,
+        readAt: notifications.readAt,
+      })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          // What the inbox would not show (an alert of a report after the role was lost) is not
+          // exported either (SAG-177).
+          readableByOwner(sql`notifications`),
+        ),
+      )
+      .orderBy(notifications.createdAt, notifications.id),
+    db
+      .select({
+        username: users.username,
+        deletedAt: users.deletedAt,
+        since: follows.createdAt,
+      })
+      .from(follows)
+      .innerJoin(users, eq(users.id, follows.followeeId))
+      .where(eq(follows.followerId, userId))
+      .orderBy(follows.createdAt, users.username),
+    db
+      .select({
+        username: users.username,
+        deletedAt: users.deletedAt,
+        since: blocks.createdAt,
+      })
+      .from(blocks)
+      .innerJoin(users, eq(users.id, blocks.blockedId))
+      .where(eq(blocks.blockerId, userId))
+      .orderBy(blocks.createdAt, users.username),
+    db
+      .select({
+        username: users.username,
+        deletedAt: users.deletedAt,
+        since: mutes.createdAt,
+      })
+      .from(mutes)
+      .innerJoin(users, eq(users.id, mutes.mutedId))
+      .where(eq(mutes.muterId, userId))
+      .orderBy(mutes.createdAt, users.username),
+    db
+      .select({
+        username: users.username,
+        deletedAt: users.deletedAt,
+        since: followRequests.createdAt,
+      })
+      .from(followRequests)
+      .innerJoin(users, eq(users.id, followRequests.targetId))
+      .where(eq(followRequests.requesterId, userId))
+      .orderBy(followRequests.createdAt, users.username),
+    db
+      .select({
+        username: users.username,
+        deletedAt: users.deletedAt,
+        since: followRequests.createdAt,
+      })
+      .from(followRequests)
+      .innerJoin(users, eq(users.id, followRequests.requesterId))
+      .where(
+        and(
+          eq(followRequests.targetId, userId),
+          isNull(followRequests.declinedAt),
+          // The same rule as the list of requests: not a hidden or banned person (SAG-167).
+          requesterCardShown(sql`${users.privacy}`),
+        ),
+      )
+      .orderBy(followRequests.createdAt, users.username),
+    db
+      .select({
+        kind: reports.targetType,
+        username: users.username,
+        deletedAt: users.deletedAt,
+        reason: reports.reason,
+        details: reports.details,
+        status: reports.status,
+        cancelledAt: reports.cancelledAt,
+        createdAt: reports.createdAt,
+      })
+      .from(reports)
+      .leftJoin(users, eq(users.id, reports.targetId))
+      .where(eq(reports.reporterId, userId))
+      .orderBy(reports.createdAt, reports.id),
+    db
+      .select({
+        sha256: pictureUploads.sha256,
+        result: pictureUploads.result,
+        ipAddress: pictureUploads.ipAddress,
+        createdAt: pictureUploads.createdAt,
+      })
+      .from(pictureUploads)
+      .where(eq(pictureUploads.userId, userId))
+      .orderBy(pictureUploads.createdAt, pictureUploads.id),
+    db
+      .select({
+        kind: contactMessages.kind,
+        body: contactMessages.body,
+        status: contactMessages.status,
+        createdAt: contactMessages.createdAt,
+      })
+      .from(contactMessages)
+      .where(eq(contactMessages.userId, userId))
+      .orderBy(contactMessages.createdAt, contactMessages.id),
+  ]);
+
+  const [earlier, items] = await Promise.all([
+    entryRows.length
+      ? db
+          .select({
+            entryId: libraryViewings.entryId,
+            startedOn: libraryViewings.startedOn,
+            finishedOn: libraryViewings.finishedOn,
+            notes: libraryViewings.notes,
+          })
+          .from(libraryViewings)
+          .where(
+            inArray(
+              libraryViewings.entryId,
+              entryRows.map((entry) => entry.entryId),
+            ),
+          )
+          .orderBy(libraryViewings.createdAt, libraryViewings.id)
+      : [],
+    ownLists.length
+      ? db
+          .select({
+            listId: listItems.listId,
+            title: mediaItems.title,
+            position: listItems.position,
+            note: listItems.note,
+          })
+          .from(listItems)
+          .innerJoin(mediaItems, eq(listItems.mediaId, mediaItems.id))
+          .where(
+            inArray(
+              listItems.listId,
+              ownLists.map((list) => list.id),
+            ),
+          )
+          .orderBy(listItems.position, listItems.createdAt, listItems.mediaId)
+      : [],
+  ]);
+
   // Never the id of the entry: each one carries its own viewings, the latest first.
   const entries = entryRows.map(({ entryId, ...entry }) => {
     const viewings = earlier
@@ -221,188 +423,6 @@ export async function exportAccount(
       viewings,
     };
   });
-
-  const custom = await db
-    .select({
-      type: mediaItems.type,
-      title: mediaItems.title,
-      originalTitle: mediaItems.originalTitle,
-      year: mediaItems.year,
-      synopsis: mediaItems.synopsis,
-      creators: mediaItems.creators,
-      runtimeMinutes: mediaItems.runtimeMinutes,
-      genres: mediaItems.genres,
-      imageUrl: mediaItems.imageUrl,
-      status: mediaItems.status,
-      visibility: customEntries.visibility,
-      createdAt: customEntries.createdAt,
-    })
-    .from(customEntries)
-    .innerJoin(mediaItems, eq(customEntries.mediaId, mediaItems.id))
-    .where(eq(customEntries.ownerId, userId));
-
-  const ownLists = await db
-    .select({
-      id: lists.id,
-      title: lists.title,
-      description: lists.description,
-      visibility: lists.visibility,
-      createdAt: lists.createdAt,
-    })
-    .from(lists)
-    .where(eq(lists.ownerId, userId));
-  const items = ownLists.length
-    ? await db
-        .select({
-          listId: listItems.listId,
-          title: mediaItems.title,
-          position: listItems.position,
-          note: listItems.note,
-        })
-        .from(listItems)
-        .innerJoin(mediaItems, eq(listItems.mediaId, mediaItems.id))
-        .where(
-          inArray(
-            listItems.listId,
-            ownLists.map((list) => list.id),
-          ),
-        )
-    : [];
-
-  const endpoints = await db
-    .select({
-      kind: webhookEndpoints.kind,
-      url: webhookEndpoints.url,
-      eventTypes: webhookEndpoints.eventTypes,
-      enabled: webhookEndpoints.enabled,
-      createdAt: webhookEndpoints.createdAt,
-    })
-    .from(webhookEndpoints)
-    .where(eq(webhookEndpoints.userId, userId))
-    .orderBy(webhookEndpoints.createdAt, webhookEndpoints.id);
-
-  const inbox = await db
-    .select({
-      type: notifications.type,
-      payload: notifications.payload,
-      createdAt: notifications.createdAt,
-      readAt: notifications.readAt,
-    })
-    .from(notifications)
-    .where(
-      and(
-        eq(notifications.userId, userId),
-        // What the inbox would not show (an alert of a report after the role was lost) is not
-        // exported either (SAG-177).
-        readableByOwner(sql`notifications`),
-      ),
-    )
-    .orderBy(notifications.createdAt, notifications.id);
-
-  const asNames = (
-    rows: { username: string; deletedAt: Date | null; since: Date }[],
-  ) =>
-    rows
-      .filter((row) => row.deletedAt === null)
-      .map((row) => ({
-        username: row.username,
-        since: row.since.toISOString(),
-      }));
-  const following = await db
-    .select({
-      username: users.username,
-      deletedAt: users.deletedAt,
-      since: follows.createdAt,
-    })
-    .from(follows)
-    .innerJoin(users, eq(users.id, follows.followeeId))
-    .where(eq(follows.followerId, userId))
-    .orderBy(follows.createdAt, users.username);
-  const blocked = await db
-    .select({
-      username: users.username,
-      deletedAt: users.deletedAt,
-      since: blocks.createdAt,
-    })
-    .from(blocks)
-    .innerJoin(users, eq(users.id, blocks.blockedId))
-    .where(eq(blocks.blockerId, userId))
-    .orderBy(blocks.createdAt, users.username);
-  const muted = await db
-    .select({
-      username: users.username,
-      deletedAt: users.deletedAt,
-      since: mutes.createdAt,
-    })
-    .from(mutes)
-    .innerJoin(users, eq(users.id, mutes.mutedId))
-    .where(eq(mutes.muterId, userId))
-    .orderBy(mutes.createdAt, users.username);
-  const requestsSent = await db
-    .select({
-      username: users.username,
-      deletedAt: users.deletedAt,
-      since: followRequests.createdAt,
-    })
-    .from(followRequests)
-    .innerJoin(users, eq(users.id, followRequests.targetId))
-    .where(eq(followRequests.requesterId, userId))
-    .orderBy(followRequests.createdAt, users.username);
-  const requestsReceived = await db
-    .select({
-      username: users.username,
-      deletedAt: users.deletedAt,
-      since: followRequests.createdAt,
-    })
-    .from(followRequests)
-    .innerJoin(users, eq(users.id, followRequests.requesterId))
-    .where(
-      and(
-        eq(followRequests.targetId, userId),
-        isNull(followRequests.declinedAt),
-        // The same rule as the list of requests: not a hidden or banned person (SAG-167).
-        requesterCardShown(sql`${users.privacy}`),
-      ),
-    )
-    .orderBy(followRequests.createdAt, users.username);
-
-  const madeReports = await db
-    .select({
-      kind: reports.targetType,
-      username: users.username,
-      deletedAt: users.deletedAt,
-      reason: reports.reason,
-      details: reports.details,
-      status: reports.status,
-      cancelledAt: reports.cancelledAt,
-      createdAt: reports.createdAt,
-    })
-    .from(reports)
-    .leftJoin(users, eq(users.id, reports.targetId))
-    .where(eq(reports.reporterId, userId))
-    .orderBy(reports.createdAt);
-
-  const uploads = await db
-    .select({
-      sha256: pictureUploads.sha256,
-      result: pictureUploads.result,
-      ipAddress: pictureUploads.ipAddress,
-      createdAt: pictureUploads.createdAt,
-    })
-    .from(pictureUploads)
-    .where(eq(pictureUploads.userId, userId))
-    .orderBy(pictureUploads.createdAt);
-
-  const sentMessages = await db
-    .select({
-      kind: contactMessages.kind,
-      body: contactMessages.body,
-      status: contactMessages.status,
-      createdAt: contactMessages.createdAt,
-    })
-    .from(contactMessages)
-    .where(eq(contactMessages.userId, userId))
-    .orderBy(contactMessages.createdAt);
 
   return {
     schemaVersion: 1,
