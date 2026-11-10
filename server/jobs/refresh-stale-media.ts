@@ -19,12 +19,14 @@ export const refreshBatchSize = 5;
  * The share of the 50 subrequests of the first Cron Trigger that this job may spend: the rest is for
  * the Wikidata job (4), the sagas sync (4) and the drafts (1) that run after it. A provider call
  * that is retried spends one more, so the count is read from the clients, not guessed (SAG-182).
- * Before each title the job asks whether one more title (`titleCost`) still fits; if not it stops
- * and the title waits for the next run. Priority of the first trigger: this refresh, then
+ * Before each title the job asks whether one more title (`titleCost`: about 7 with no retry, 12
+ * allowing for some) still fits; if not it stops and the title waits for the next run. The check
+ * is made before a title, not inside it, so a title whose calls are all retried can still pass the
+ * budget a little. Priority of the first trigger: this refresh, then
  * Wikidata, then the sagas sync, then the drafts.
  */
 export const refreshSubrequestBudget = 41;
-const titleCost = 8;
+const titleCost = 12;
 
 /** The two languages of the app. `en` goes first so the title column ends in Spanish, the default. */
 const locales: readonly Locale[] = ["en", "es"];

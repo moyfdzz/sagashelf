@@ -99,11 +99,11 @@ describe("refreshStaleMedia", () => {
       row("movie/605"),
     ]);
 
-    // One title spends 1 (the list) + 2 provider calls + 2 saves = 5, and the next one needs 8 free.
+    // One title spends 1 (the list) + 2 provider calls + 2 saves = 5, and the next one needs 12 free.
     const summary = await refreshStaleMedia(
       { db, providers: [provider()] },
       refreshBatchSize,
-      12,
+      16,
     );
 
     expect(summary).toEqual({ found: 3, refreshed: 1, failed: 0 });
@@ -132,7 +132,7 @@ describe("refreshStaleMedia", () => {
     const summary = await refreshStaleMedia(
       { db, providers: [retrying] },
       refreshBatchSize,
-      15,
+      19,
     );
 
     expect(summary).toEqual({ found: 2, refreshed: 0, failed: 1 });

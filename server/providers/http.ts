@@ -70,13 +70,6 @@ function isTransient(error: ProviderError): boolean {
   );
 }
 
-/**
- * A small HTTP client for one provider. It gives every call a timeout, retries a failed GET a
- * couple of times with a random pause, keeps to the provider's rate with a token bucket, and
- * stops calling a provider that keeps failing (a circuit breaker) so a slow provider does not
- * hold up the others. The state lives in this isolate: Workers do not share memory, so each
- * instance keeps its own count. That slows a provider down; it is not an exact quota.
- */
 let outgoingCalls = 0;
 
 /**
@@ -86,6 +79,13 @@ let outgoingCalls = 0;
  */
 export const countOutgoingCalls = (): number => outgoingCalls;
 
+/**
+ * A small HTTP client for one provider. It gives every call a timeout, retries a failed GET a
+ * couple of times with a random pause, keeps to the provider's rate with a token bucket, and
+ * stops calling a provider that keeps failing (a circuit breaker) so a slow provider does not
+ * hold up the others. The state lives in this isolate: Workers do not share memory, so each
+ * instance keeps its own count. That slows a provider down; it is not an exact quota.
+ */
 export function createHttpClient(options: HttpClientOptions): HttpClient {
   const {
     provider,
