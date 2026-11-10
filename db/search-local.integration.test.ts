@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { saveMedia } from "../server/db/media-store";
@@ -190,5 +190,31 @@ describe("searchLocal", () => {
     for (let i = 0; i < 5; i += 1) await add(`Dune ${i}`);
 
     expect(await find("dune", undefined, 3)).toHaveLength(3);
+  });
+
+  it("uses the three indexes instead of scanning the table (SAG-187)", async () => {
+    await db.execute(sql`
+      INSERT INTO media_items (type, title, original_title, year, popularity)
+      SELECT 'movie', 'Title ' || md5(g::text), 'Original ' || md5((g + 1)::text), 2000, 1
+      FROM generate_series(1, 20000) AS g
+    `);
+    await db.execute(sql`ANALYZE media_items`);
+
+    // Runs the real query of `searchLocal` under EXPLAIN and keeps the plan.
+    const plan: string[] = [];
+    const explainer = {
+      async execute(query: SQL) {
+        const { rows } = await db.execute(sql`EXPLAIN ${query}`);
+        plan.push(...rows.map((row) => String(row["QUERY PLAN"])));
+        return { rows: [] };
+      },
+    };
+    await searchLocal(explainer, normalizeQuery("pokemn"), undefined, "es");
+
+    const text = plan.join("\n");
+    expect(text).not.toContain("Seq Scan on media_items");
+    expect(text).toContain("BitmapOr");
+    expect(text).toContain("media_items_title_trgm_idx");
+    expect(text).toContain("media_items_original_title_trgm_idx");
   });
 });
