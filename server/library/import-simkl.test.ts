@@ -122,7 +122,6 @@ describe("a Simkl backup", () => {
           { ...anime({}, { tmdb: "10" }), anime_type: "movie" },
           { ...anime({}, { tmdb: "11" }), anime_type: "ova" },
           { ...anime({}, { tmdb: "12" }), anime_type: "ona" },
-          { ...anime({}, { tmdb: "13" }), anime_type: undefined },
         ],
       }),
     );
@@ -130,8 +129,24 @@ describe("a Simkl backup", () => {
       "tmdb:movie/10",
       "tmdb:tv/11",
       "tmdb:tv/12",
-      "tmdb:tv/13",
     ]);
+  });
+
+  it("does not guess the kind of an anime type it does not know, and lists it with its year", () => {
+    const { entries, skipped } = parsed(
+      backup({
+        anime: [
+          { ...anime({}, { tmdb: "14" }), anime_type: "special" },
+          { ...anime({}, { tmdb: "15" }), anime_type: "music video" },
+          { ...anime({}, { tmdb: "16" }), anime_type: undefined },
+          { ...anime({}, { tmdb: "17" }), anime_type: "constructor" },
+        ],
+      }),
+    );
+    expect(entries).toEqual([]);
+    expect(skipped).toEqual(
+      Array(4).fill({ title: "Serie de prueba (2019)", reason: "no_source" }),
+    );
   });
 
   it("skips, with its title and year, an anime that has no TMDB id", () => {

@@ -70,12 +70,22 @@ function tmdbIdOf(ids: unknown): string | null {
 
 /**
  * TMDB numbers movies and series apart, so the same number can be two titles. Simkl says which an
- * anime is: a `movie` is a movie, and a series, an OVA or an ONA is a series on TMDB.
+ * anime is: a `movie` is a movie, and a series, an OVA or an ONA is a series on TMDB. Any other
+ * type, or none, is not guessed (a special could be either): it has no kind, and the entry is
+ * listed as not imported instead of risking another title that shares the number.
  */
-function kindOf(section: Section, entry: Record<string, unknown>) {
+function kindOf(
+  section: Section,
+  entry: Record<string, unknown>,
+): "movie" | "tv" | null {
   if (section === "movies") return "movie";
-  if (section === "anime" && entry.anime_type === "movie") return "movie";
-  return "tv";
+  if (section === "shows") return "tv";
+  if (entry.anime_type === "movie") return "movie";
+  return entry.anime_type === "tv" ||
+    entry.anime_type === "ova" ||
+    entry.anime_type === "ona"
+    ? "tv"
+    : null;
 }
 
 function titleWithYear(title: string, year: unknown): string {
@@ -95,6 +105,9 @@ function convertEntry(
   const title =
     typeof item.title === "string" ? item.title.trim().slice(0, 300) : "";
   const tmdb = tmdbIdOf(item.ids);
+  const kind = kindOf(section, entry);
+  const source =
+    tmdb && kind ? { provider: "tmdb", id: `${kind}/${tmdb}` } : null;
   // Own keys only: a status like "constructor" must not read an inherited property.
   const status =
     typeof entry.status === "string" && Object.hasOwn(statusOf, entry.status)
@@ -105,12 +118,8 @@ function convertEntry(
 
   return {
     // The year only helps a person find a skipped title by hand: a title we can read keeps its own.
-    title: tmdb ? title : titleWithYear(title, item.year),
-    ...(tmdb
-      ? {
-          source: { provider: "tmdb", id: `${kindOf(section, entry)}/${tmdb}` },
-        }
-      : {}),
+    title: source ? title : titleWithYear(title, item.year),
+    ...(source ? { source } : {}),
     status,
     // Episodes watched. A movie has none; the importer caps it by the real total of the title.
     progress: section === "movies" ? 0 : count(entry.watched_episodes_count),
