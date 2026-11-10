@@ -201,8 +201,9 @@ export async function findStaleMedia(
  * TMDB that were saved before their length was kept and the ones saved before their genres were
  * kept (SAG-71) and the manga saved before their ids in other catalogs were kept (SAG-16). The stale ones go first, then the ones that are in somebody's library (so what a
  * person sees is filled first), each group oldest first. A title attempted in the last
- * `retryAfterHours` is left out, and so is a title of a provider not in `providerIds`, so one the provider
- * keeps failing on cannot take the whole batch every run. The last attempt is the `updated_at`
+ * `retryAfterHours` is left out, so one the provider keeps failing on cannot take the whole
+ * batch every run. A title of a provider not in `providerIds` (one that is switched off) is left
+ * out too, for the same reason (SAG-179). The last attempt is the `updated_at`
  * of its external id: `saveMedia` sets it on a success and `markRefreshAttempt` on a failure.
  */
 export async function findMediaToRefresh(
