@@ -49,7 +49,11 @@ describe("refreshStaleMedia", () => {
     const summary = await refreshStaleMedia({ db, providers: [provider()] });
 
     expect(summary).toEqual({ found: 2, refreshed: 2, failed: 0 });
-    expect(mocks.findMediaToRefresh).toHaveBeenCalledWith(db, refreshBatchSize);
+    expect(mocks.findMediaToRefresh).toHaveBeenCalledWith(
+      db,
+      refreshBatchSize,
+      ["tmdb"],
+    );
     // English first, so the title column ends in Spanish.
     expect(
       mocks.saveMedia.mock.calls.map(([, media, locale]) => [
@@ -73,6 +77,14 @@ describe("refreshStaleMedia", () => {
       ["saved-id", false],
       ["saved-id", true],
     ]);
+  });
+
+  it("asks the store only for the providers that are on (SAG-179)", async () => {
+    mocks.findMediaToRefresh.mockResolvedValue([]);
+
+    await refreshStaleMedia({ db, providers: [provider()] }, 3);
+
+    expect(mocks.findMediaToRefresh).toHaveBeenCalledWith(db, 3, ["tmdb"]);
   });
 
   it("does nothing, and asks for nothing, on an empty run", async () => {

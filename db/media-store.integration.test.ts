@@ -711,6 +711,7 @@ describe("findStaleMedia", () => {
 });
 
 describe("findMediaToRefresh and markRefreshAttempt", () => {
+  const allProviders = ["tmdb", "mangadex", "open_library"];
   const complete = {
     ...titan,
     synopsis: { es: "Sinopsis", en: "Synopsis" },
@@ -742,7 +743,9 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     for (const id of [old, asked]) await makeAttemptOld(id);
 
     expect(
-      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+      (await findMediaToRefresh(db, 10, allProviders)).map(
+        (row) => row.mediaId,
+      ),
     ).toEqual([old]);
 
     // Saving it again, even when TMDB sends no length, says it was asked.
@@ -752,7 +755,7 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
       "es",
     );
     await makeAttemptOld(old);
-    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 
   it("asks once for the titles saved before their genres were kept, whatever the source (SAG-71)", async () => {
@@ -773,7 +776,9 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     for (const id of [old, asked, oldBook]) await makeAttemptOld(id);
 
     expect(
-      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId).sort(),
+      (await findMediaToRefresh(db, 10, allProviders))
+        .map((row) => row.mediaId)
+        .sort(),
     ).toEqual([old, oldBook].sort());
 
     // Saving them again with an empty list says "asked, none of ours fits".
@@ -788,7 +793,7 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
       await saveMedia(db, media, "es");
     }
     for (const id of [old, oldBook]) await makeAttemptOld(id);
-    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 
   it("asks again for a title whose source sent no genres, until it says some or none (SAG-71)", async () => {
@@ -807,7 +812,9 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     await makeAttemptOld(id);
 
     expect(
-      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+      (await findMediaToRefresh(db, 10, allProviders)).map(
+        (row) => row.mediaId,
+      ),
     ).toEqual([id]);
   });
 
@@ -832,7 +839,9 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     await db.insert(libraryEntries).values({ userId: user.id, mediaId: kept });
 
     expect(
-      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+      (await findMediaToRefresh(db, 10, allProviders)).map(
+        (row) => row.mediaId,
+      ),
     ).toEqual([stale, kept, lonely]);
   });
 
@@ -853,12 +862,14 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
 
     // The title of TMDB never has these ids, so it is not asked for them.
     expect(
-      (await findMediaToRefresh(db, 10)).map((row) => row.mediaId),
+      (await findMediaToRefresh(db, 10, allProviders)).map(
+        (row) => row.mediaId,
+      ),
     ).toEqual([id]);
 
     await saveMedia(db, { ...manga, crossIds: {} }, "en");
     await makeAttemptOld(id);
-    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 
   it("never asks for the length of a title of another source (SAG-61)", async () => {
@@ -871,7 +882,7 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     const id = await saveMedia(db, book, "en");
     await makeAttemptOld(id);
 
-    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 
   it("lists what is stale first, oldest first, then what lacks a language", async () => {
@@ -892,7 +903,7 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
       sql`UPDATE media_items SET fetched_at = now() - interval '170 days' WHERE id = ${older}`,
     );
 
-    const found = await findMediaToRefresh(db, 10);
+    const found = await findMediaToRefresh(db, 10, allProviders);
 
     expect(found.map((item) => item.mediaId)).toEqual([
       older,
@@ -917,8 +928,8 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     }
     await db.insert(mediaItems).values({ type: "custom", title: "My own" });
 
-    expect(await findMediaToRefresh(db, 1)).toHaveLength(1);
-    expect(await findMediaToRefresh(db, 10)).toHaveLength(2);
+    expect(await findMediaToRefresh(db, 1, allProviders)).toHaveLength(1);
+    expect(await findMediaToRefresh(db, 10, allProviders)).toHaveLength(2);
   });
 
   it("leaves a title out for a day after an attempt, so a failing one does not block the rest", async () => {
@@ -933,18 +944,55 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     await db.execute(
       sql`UPDATE media_items SET fetched_at = now() - interval '175 days' WHERE id = ${failing}`,
     );
-    expect((await findMediaToRefresh(db, 1))[0]?.mediaId).toBe(failing);
+    expect((await findMediaToRefresh(db, 1, allProviders))[0]?.mediaId).toBe(
+      failing,
+    );
 
     await markRefreshAttempt(db, failing);
 
-    expect((await findMediaToRefresh(db, 1))[0]?.mediaId).toBe(other);
+    expect((await findMediaToRefresh(db, 1, allProviders))[0]?.mediaId).toBe(
+      other,
+    );
     await makeAttemptOld(failing);
-    expect((await findMediaToRefresh(db, 1))[0]?.mediaId).toBe(failing);
+    expect((await findMediaToRefresh(db, 1, allProviders))[0]?.mediaId).toBe(
+      failing,
+    );
+  });
+
+  it("leaves out the titles of a provider that is switched off, so they cannot fill the batch (SAG-179)", async () => {
+    const manga = {
+      ...complete,
+      type: "manga" as const,
+      crossIds: {},
+    };
+    const mangaIds: string[] = [];
+    for (let n = 1; n <= 5; n += 1) {
+      const media = {
+        ...manga,
+        externalId: { provider: "mangadex" as const, id: `md-${n}` },
+      };
+      await saveMedia(db, media, "es");
+      mangaIds.push(await saveMedia(db, media, "en"));
+    }
+    const movie = await saveComplete("movie/1");
+    for (const id of [...mangaIds, movie]) {
+      await makeAttemptOld(id);
+      await db.execute(
+        sql`UPDATE media_items SET fetched_at = now() - interval '${sql.raw(id === movie ? "170" : "175")} days' WHERE id = ${id}`,
+      );
+    }
+
+    // With MangaDex off, the only title that can be asked is the one of TMDB.
+    expect(
+      (await findMediaToRefresh(db, 5, ["tmdb"])).map((row) => row.mediaId),
+    ).toEqual([movie]);
+    expect(await findMediaToRefresh(db, 5, [])).toEqual([]);
+    expect(await findMediaToRefresh(db, 5, allProviders)).toHaveLength(5);
   });
 
   it("has nothing to do when every title is fresh and complete", async () => {
     await makeAttemptOld(await saveComplete("tv/1"));
 
-    expect(await findMediaToRefresh(db, 10)).toEqual([]);
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 });

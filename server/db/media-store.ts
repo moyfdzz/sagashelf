@@ -201,21 +201,31 @@ export async function findStaleMedia(
  * TMDB that were saved before their length was kept and the ones saved before their genres were
  * kept (SAG-71) and the manga saved before their ids in other catalogs were kept (SAG-16). The stale ones go first, then the ones that are in somebody's library (so what a
  * person sees is filled first), each group oldest first. A title attempted in the last
- * `retryAfterHours` is left out, so one the provider
- * keeps failing on cannot take the whole batch every run. The last attempt is the `updated_at`
+ * `retryAfterHours` is left out, so one the provider keeps failing on cannot take the whole
+ * batch every run. A title of a provider not in `providerIds` (one that is switched off) is left
+ * out too, for the same reason (SAG-179). The last attempt is the `updated_at`
  * of its external id: `saveMedia` sets it on a success and `markRefreshAttempt` on a failure.
  */
 export async function findMediaToRefresh(
   db: SqlExecutor,
   limit: number,
+  providerIds: readonly string[],
   maxAgeDays: number = providerDataMaxAgeDays - 30,
   retryAfterHours = 24,
 ): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
+  // No provider is on, so nothing can be asked.
+  if (providerIds.length === 0) return [];
   const { rows } = await db.execute(sql`
     SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
     FROM media_items m
     JOIN media_external_ids e ON e.media_id = m.id
     WHERE ${sharedTitleSql("m")}
+      -- A provider that is switched off cannot answer: its titles would fill the batch of every
+      -- run and keep the others from being refreshed (SAG-179).
+      AND e.provider::text IN (${sql.join(
+        providerIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})
       AND e.updated_at < now() - make_interval(hours => ${retryAfterHours})
       AND (
         m.fetched_at < now() - make_interval(days => ${maxAgeDays})
