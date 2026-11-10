@@ -168,6 +168,8 @@ test.describe("robots.txt", () => {
     for (const bot of ["GPTBot", "ClaudeBot", "CCBot", "Google-Extended"]) {
       expect(body, bot).toContain(`User-agent: ${bot}`);
     }
+    // The sitemap of the sagas is announced to every crawler (SAG-245).
+    expect(body).toContain("Sitemap: https://sagashelf.app/sitemap.xml");
     // Search engines are not blocked.
     expect(body).not.toMatch(/User-agent: Googlebot/);
   });

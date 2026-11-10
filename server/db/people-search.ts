@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { escapeLike } from "./escape-like";
 import { toPerson, type Person } from "./person";
 import { canSeeCard, levels } from "../social/can-view";
 import { blockedBetween } from "./person-visibility";
@@ -17,10 +18,6 @@ export const peopleSearchLimit = 20;
 /** What a person typed, as a username starts: `@` is how usernames are written on the site. */
 export const normalizePeopleQuery = (raw: string): string =>
   raw.trim().replace(/^@/, "").toLowerCase();
-
-/** `%`, `_` and the escape itself are plain text in a search, not patterns. */
-const escapeLike = (text: string): string =>
-  text.replace(/[\\%_]/g, (char) => `\\${char}`);
 
 /**
  * The people whose username starts with `query` (SAG-115): only the card, which is all that a

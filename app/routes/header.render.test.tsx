@@ -91,12 +91,13 @@ describe("the navigation of the header (SAG-96)", () => {
   const navHrefs = (html: string) =>
     hrefs(html.match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? "");
 
-  it("lists home, search, library, social, alerts, statistics and recommendations for a signed-in person", async () => {
+  it("lists home, search, sagas, library, social, alerts, statistics and recommendations for a signed-in person", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn />);
 
     expect(navHrefs(html)).toEqual([
       "/",
       "/search",
+      "/sagas",
       "/library",
       "/social",
       "/notifications",
@@ -105,10 +106,10 @@ describe("the navigation of the header (SAG-96)", () => {
     ]);
   });
 
-  it("lists only home and search for a visitor, who has no session links anywhere", async () => {
+  it("lists only home, search and sagas for a visitor, who has no session links anywhere", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn={false} />);
 
-    expect(navHrefs(html)).toEqual(["/", "/search"]);
+    expect(navHrefs(html)).toEqual(["/", "/search", "/sagas"]);
     for (const path of [
       "/library",
       "/notifications",

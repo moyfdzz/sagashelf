@@ -6,6 +6,8 @@ Disallow: /api/
 # Opening a title from a search result saves it; crawlers follow the canonical /media pages.
 Disallow: /media/open
 
+Sitemap: https://sagashelf.app/sitemap.xml
+
 # Crawlers that collect content to train AI models, and AI agents. This file is a request,
 # not a lock: Cloudflare's AI bot setting is what enforces it for verified bots.
 User-agent: GPTBot
