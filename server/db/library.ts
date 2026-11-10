@@ -157,6 +157,13 @@ export async function addEntry(
  */
 export type SaveResult = "saved" | "missing" | "conflict";
 
+/** `rewatchEntry` adds `refused`: the entry is not completed, or its history is full. */
+export type RewatchResult = SaveResult | "refused";
+
+/** The entry of this person for this title. */
+const ownedBy = (userId: string, mediaId: string) =>
+  and(eq(libraryEntries.userId, userId), eq(libraryEntries.mediaId, mediaId));
+
 /**
  * Writes the entry of this person for this title, only if it still has the `version` it had when
  * it was read, in the same statement: a "+1" that read a public entry cannot bring it back after
@@ -170,10 +177,7 @@ export async function saveEntry(
   next: EntryState,
   version: string,
 ): Promise<SaveResult> {
-  const isMine = and(
-    eq(libraryEntries.userId, userId),
-    eq(libraryEntries.mediaId, mediaId),
-  );
+  const isMine = ownedBy(userId, mediaId);
   const updated = await db
     .update(libraryEntries)
     .set({
@@ -244,7 +248,7 @@ export async function rewatchEntry(
   mediaId: string,
   next: EntryState,
   version: string,
-): Promise<"saved" | "refused" | "conflict" | "missing"> {
+): Promise<RewatchResult> {
   const { rows } = (await db.execute(sql`
     WITH archived AS (
       INSERT INTO library_viewings (entry_id, started_on, finished_on)
@@ -269,12 +273,7 @@ export async function rewatchEntry(
   const [now] = await db
     .select({ version: versionSql })
     .from(libraryEntries)
-    .where(
-      and(
-        eq(libraryEntries.userId, userId),
-        eq(libraryEntries.mediaId, mediaId),
-      ),
-    )
+    .where(ownedBy(userId, mediaId))
     .limit(1);
   if (!now) return "missing";
   return now.version === version ? "refused" : "conflict";

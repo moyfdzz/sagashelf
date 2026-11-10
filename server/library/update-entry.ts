@@ -20,6 +20,10 @@ export function lazyTotalEpisodes(db: ProfileDb, mediaId: string) {
   let total: Promise<number> | undefined;
   return () => {
     total ??= getSeasonCounts(db, mediaId).then(totalEpisodes);
+    // A failed read is not kept: the next try asks again instead of failing the same way.
+    total.catch(() => {
+      total = undefined;
+    });
     return total;
   };
 }
