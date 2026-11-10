@@ -330,6 +330,7 @@
         "count": "{{done}} of {{total}} titles are already in your library.",
         "waiting_one": "{{count}} title is still waiting to be looked up. Titles are looked up in the background, at most {{max}} new titles a day, and you do not need to keep this page open.",
         "waiting_other": "{{count}} titles are still waiting to be looked up. Titles are looked up in the background, at most {{max}} new titles a day, and you do not need to keep this page open.",
+        "percent": "{{percent}}% of the titles are done.",
         "finished": "The import is finished.",
         "problems_one": "{{count}} title could not be imported.",
         "problems_other": "{{count}} titles could not be imported."
@@ -904,7 +905,7 @@
   },
   "notifications": {
     "title": "Notifications",
-    "description": "The requests to follow you and the new episodes of what you have as \"In progress\". Of the episodes, the 50 newest of the last 30 days are shown.",
+    "description": "The requests to follow you, the new episodes of what you have as \"In progress\" and the notice when an import finishes. Of the episodes, the 50 newest of the last 30 days are shown.",
     "listLabel": "List of notifications",
     "empty": "No notifications yet. When a new episode of something you have as \"In progress\" comes out, it will show up here.",
     "none": "You have no unread notifications.",
@@ -913,6 +914,13 @@
     "new": "New",
     "markRead": "Mark as read",
     "markAll": "Mark all as read",
+    "import": {
+      "finished_one": "Your import is finished: {{count}} title is in your library.",
+      "finished_other": "Your import is finished: {{count}} titles are in your library.",
+      "clean": "Every title was imported.",
+      "problems_one": "{{count}} title could not be imported. Open the import page to see which.",
+      "problems_other": "{{count}} titles could not be imported. Open the import page to see which."
+    },
     "result": {
       "read": "Notification marked as read.",
       "allRead": "Notifications marked as read."

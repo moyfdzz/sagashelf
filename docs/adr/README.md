@@ -51,7 +51,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [045](045-lists.md)                              | Lists of titles, with a soft limit and the strictest level                                | Accepted | Complete (SAG-113)                    |
 | [046](046-tickets-on-github.md)                  | Tickets in a private GitHub repository, not in Linear                                     | Accepted | Done (SAG-216)                        |
 | [047](047-import-queue.md)                       | Big libraries are imported in the background, through a queue                             | Accepted | Done (SAG-241)                        |
-| [048](048-simkl-backup-import.md)                | A Simkl JSON backup is imported through its TMDB ids, not its API                         | Accepted | Partial (SAG-242)                     |
+| [048](048-simkl-backup-import.md)                | A Simkl JSON backup is imported through its TMDB ids, not its API                         | Accepted | Done (SAG-242)                        |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

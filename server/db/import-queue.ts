@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { importFinishedType } from "../library/import-notice";
 
 /**
  * The queue of the titles of an import that only a provider knows (SAG-241, ADR-047). Every function
@@ -74,9 +75,11 @@ export async function enqueueImport(
   const { rows: made } = (await db.execute(sql`
     WITH job AS (
       INSERT INTO import_jobs
-        (user_id, replace, keep_visibility, locale, total, added, replaced, kept)
+        (user_id, replace, keep_visibility, locale, total, added, replaced, kept, finished_at)
       VALUES (${userId}::uuid, ${job.replace}, ${job.keepVisibility}, ${job.locale}, ${job.total},
-              ${job.written.added}, ${job.written.replaced}, ${job.written.kept})
+              ${job.written.added}, ${job.written.replaced}, ${job.written.kept},
+              -- Nothing waits: the person sees the whole result at once, so no notice is sent.
+              CASE WHEN ${job.pending.length}::int = 0 THEN now() END)
       RETURNING id
     ),
     queued AS (
@@ -181,6 +184,12 @@ export type RunOutcome = {
   }[];
 };
 
+/**
+ * Writes back what a run did. When it resolves the last waiting title of a job, the same statement
+ * marks the job finished and tells its owner, once: `dedupe_key` is the job, so a run that repeats
+ * (a lease that ran out) adds nothing. The statement cannot see its own changes, so "nothing is
+ * left waiting" is the waiting rows minus the ones this statement resolves.
+ */
 export async function finishImportRows(
   db: SqlExecutor,
   outcome: RunOutcome,
@@ -199,14 +208,14 @@ export async function finishImportRows(
       WHERE id IN (
         SELECT value::uuid FROM jsonb_array_elements_text(${JSON.stringify(outcome.done)}::jsonb)
       )
-      RETURNING 1
+      RETURNING id
     ),
     left_out AS (
       UPDATE import_rows r
       SET state = 'skipped', reason = x.reason, entry = NULL
       FROM jsonb_to_recordset(${JSON.stringify(outcome.skipped)}::jsonb) AS x(id uuid, reason text)
       WHERE r.id = x.id
-      RETURNING 1
+      RETURNING r.id
     ),
     retried AS (
       UPDATE import_rows r
@@ -218,14 +227,59 @@ export async function finishImportRows(
       WHERE r.id IN (
         SELECT value::uuid FROM jsonb_array_elements_text(${JSON.stringify(outcome.retry)}::jsonb)
       )
-      RETURNING 1
+      RETURNING r.id, r.state
+    ),
+    counts AS (
+      SELECT x."jobId" AS job_id, x.added, x.replaced, x.kept
+      FROM jsonb_to_recordset(${JSON.stringify(outcome.counts)}::jsonb)
+        AS x("jobId" uuid, added int, replaced int, kept int)
+    ),
+    -- Rows that left the queue as written, and rows left out in this statement (told apart because
+    -- the first are deleted and the second stay as problems). Both come from the statements above,
+    -- so the rule of the last try lives only in \`retried\`.
+    written AS (SELECT id FROM removed),
+    newly_skipped AS (
+      SELECT id FROM left_out
+      UNION
+      SELECT id FROM retried WHERE state = 'skipped'
+    ),
+    touched AS (
+      SELECT DISTINCT r.job_id FROM import_rows r
+      WHERE r.id IN (SELECT id FROM written UNION SELECT id FROM newly_skipped)
+    ),
+    ended AS (
+      SELECT j.id AS job_id,
+             (SELECT count(*) FROM import_rows s WHERE s.job_id = j.id AND s.state = 'skipped')::int
+             + (SELECT count(*) FROM import_rows n
+                WHERE n.job_id = j.id AND n.state = 'pending'
+                  AND n.id IN (SELECT id FROM newly_skipped))::int AS problems
+      FROM touched t JOIN import_jobs j ON j.id = t.job_id
+      WHERE j.finished_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM import_rows p
+          WHERE p.job_id = j.id AND p.state = 'pending'
+            AND p.id NOT IN (SELECT id FROM written UNION SELECT id FROM newly_skipped)
+        )
     ),
     counted AS (
       UPDATE import_jobs j
-      SET added = j.added + x.added, replaced = j.replaced + x.replaced, kept = j.kept + x.kept
-      FROM jsonb_to_recordset(${JSON.stringify(outcome.counts)}::jsonb)
-        AS x("jobId" uuid, added int, replaced int, kept int)
-      WHERE j.id = x."jobId"
+      SET added = j.added + coalesce(c.added, 0),
+          replaced = j.replaced + coalesce(c.replaced, 0),
+          kept = j.kept + coalesce(c.kept, 0),
+          finished_at = CASE WHEN e.job_id IS NOT NULL THEN now() ELSE j.finished_at END
+      FROM (SELECT job_id FROM touched UNION SELECT job_id FROM counts) t
+        LEFT JOIN counts c ON c.job_id = t.job_id
+        LEFT JOIN ended e ON e.job_id = t.job_id
+      WHERE j.id = t.job_id
+      RETURNING j.id, j.user_id, j.total, e.problems AS problems, (e.job_id IS NOT NULL) AS finishing
+    ),
+    told AS (
+      INSERT INTO notifications (user_id, type, payload, dedupe_key)
+      SELECT user_id, ${importFinishedType}::text,
+             jsonb_build_object('jobId', id, 'imported', total - problems, 'problems', problems),
+             'import:' || id::text
+      FROM counted WHERE finishing
+      ON CONFLICT (user_id, dedupe_key) DO NOTHING
       RETURNING 1
     )
     SELECT 1
@@ -277,14 +331,19 @@ export type ImportProgress = {
   skipped: { title: string; reason: QueueSkipReason }[];
 };
 
-/** How many of the titles left out the page lists; the rest is a count. */
+/** How many of the titles left out the page lists at a time; the others are on the next pages. */
 export const skippedShown = 50;
 
-/** The latest import of a person: what was written, what waits and what went wrong. */
+/**
+ * The latest import of a person: what was written, what waits and what went wrong. The titles left
+ * out come a page at a time (`skippedShown` each), in the order of the file.
+ */
 export async function latestImportProgress(
   db: SqlExecutor,
   userId: string,
+  page = 1,
 ): Promise<ImportProgress | null> {
+  const offset = (Math.max(1, Math.floor(page) || 1) - 1) * skippedShown;
   const { rows } = (await db.execute(sql`
     SELECT j.created_at, j.total, j.added, j.replaced, j.kept,
            (SELECT count(*)::int FROM import_rows r
@@ -297,7 +356,7 @@ export async function latestImportProgress(
              FROM (
                SELECT title, reason, position FROM import_rows
                WHERE job_id = j.id AND state = 'skipped'
-               ORDER BY position LIMIT ${skippedShown}
+               ORDER BY position LIMIT ${skippedShown}::int OFFSET ${offset}::int
              ) s
            ), '[]'::jsonb) AS skipped
     FROM import_jobs j
