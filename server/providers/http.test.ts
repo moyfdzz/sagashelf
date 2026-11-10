@@ -226,6 +226,36 @@ describe("rate limit", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("gives its place back when a call is refused for waiting too long", async () => {
+    const fetchMock = vi.fn(async () => ok());
+    const waits: number[] = [];
+    const { client } = setup(fetchMock as unknown as typeof fetch, {
+      ratePerSecond: 1,
+      burst: 1,
+      maxWaitMs: 1500,
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+    });
+    await client.getJson("https://api.test/1");
+
+    const results = await Promise.allSettled(
+      [2, 3, 4].map((n) => client.getJson(`https://api.test/${n}`)),
+    );
+    // Calls 2 and 3 queue (1000 ms, 2000 ms is over the limit): refused calls
+    // must not push the line further, so the next one still waits 2000 ms.
+    expect(results.map((r) => r.status)).toEqual([
+      "fulfilled",
+      "rejected",
+      "rejected",
+    ]);
+    expect(waits).toEqual([1000]);
+    await expect(client.getJson("https://api.test/5")).rejects.toMatchObject({
+      kind: "rate_limited",
+    });
+    expect(waits).toEqual([1000]);
+  });
+
   it("does not count a call it never sent against the provider", async () => {
     const fetchMock = vi.fn(async () => ok());
     const { client, advance } = setup(fetchMock as unknown as typeof fetch, {
