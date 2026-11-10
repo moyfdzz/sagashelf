@@ -358,6 +358,15 @@ describe("exportAccount", () => {
         items: [{ title: "A shared movie", note: "ana's note" }],
       },
     ]);
+    // Never the id of a row, in a custom title or in a list (SAG-171).
+    for (const row of [
+      ...(data?.customEntries ?? []),
+      ...(data?.lists ?? []),
+    ]) {
+      expect(Object.keys(row)).not.toContain("id");
+      expect(Object.keys(row)).not.toContain("mediaId");
+      expect(Object.keys(row)).not.toContain("ownerId");
+    }
     // The notifications: both of hers, with what each said and when it was read, and not Bob's.
     expect(data?.notifications).toHaveLength(2);
     expect(data?.notifications).toContainEqual({
