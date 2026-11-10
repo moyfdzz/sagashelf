@@ -102,29 +102,32 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
   let openUntil = 0;
   let probing = false;
 
-  /** Takes a place in the bucket, or says how long to wait for one. */
-  function takeToken(): number {
+  /**
+   * Reserves the next place in the bucket and says how long to wait for it.
+   * The place is taken even when it is not free yet (the count goes below
+   * zero), so calls that arrive together queue one after another.
+   */
+  function reservePlace(): number {
     const current = now();
     tokens = Math.min(
       burst,
       tokens + ((current - refilledAt) / 1000) * ratePerSecond,
     );
     refilledAt = current;
-    if (tokens >= 1) {
-      tokens -= 1;
-      return 0;
-    }
-    return Math.ceil(((1 - tokens) / ratePerSecond) * 1000);
+    tokens -= 1;
+    if (tokens >= 0) return 0;
+    return Math.ceil((-tokens / ratePerSecond) * 1000);
   }
 
   async function acquire(): Promise<void> {
-    const wait = takeToken();
+    const wait = reservePlace();
     if (wait === 0) return;
-    if (wait > maxWaitMs) throw new ProviderError(provider, "rate_limited");
+    if (wait > maxWaitMs) {
+      // A call that never leaves gives its place back.
+      tokens += 1;
+      throw new ProviderError(provider, "rate_limited");
+    }
     await sleep(wait);
-    // The place was reserved by waiting for it.
-    tokens = Math.max(0, tokens - 1);
-    refilledAt = now();
   }
 
   function checkCircuit(): void {
