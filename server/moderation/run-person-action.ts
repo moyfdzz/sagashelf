@@ -7,6 +7,7 @@ import {
 import type { SqlExecutor } from "../db/clerk-sync";
 import {
   canRestrict,
+  doneAfterBan,
   done,
   error,
   failed,
@@ -61,9 +62,11 @@ export async function runPersonAction(
   if (step.refused !== null) return back(failed(step.refused));
   const state = bans ? "banned" : "suspended";
   return back(
-    done(
+    doneAfterBan(
       await restrictAccount(db, actorId, subject, state, form.note),
       step.skipped ? "banned_no_clerk" : state,
+      bans,
+      step,
     ),
   );
 }

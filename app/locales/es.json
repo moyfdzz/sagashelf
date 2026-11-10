@@ -1319,7 +1319,8 @@
         "not_allowed": "Esta cuenta es de administración o es la tuya: no se puede actuar sobre ella.",
         "picture_hidden": "La foto está oculta: primero restáurala o quítala, y después avisa.",
         "failed": "Clerk no hizo el cambio. No se cambió nada aquí; inténtalo de nuevo.",
-        "failedWith": "Clerk no hizo el cambio ({{detail}}). No se cambió nada aquí; inténtalo de nuevo."
+        "failedWith": "Clerk no hizo el cambio ({{detail}}). No se cambió nada aquí; inténtalo de nuevo.",
+        "clerk_changed": "Clerk ya baneó la cuenta, pero aquí no se guardó el cambio (otra administración actuó antes o la cuenta ya no existe). Revisa el estado de la cuenta."
       },
       "reports": {
         "title": "Reportes abiertos",

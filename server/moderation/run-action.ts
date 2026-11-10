@@ -18,6 +18,7 @@ import {
 import {
   canRestrict,
   done,
+  doneAfterBan,
   error,
   failed,
   liftAccount,
@@ -129,8 +130,10 @@ export async function runModerationAction(
   const step = await stopAccount(clerk, person, bans);
   if (step.refused !== null) return failed(step.refused);
   const state = bans ? "banned" : "suspended";
-  return done(
+  return doneAfterBan(
     await restrictAccount(db, actorId, { reportId: id }, state),
     step.skipped ? "banned_no_clerk" : state,
+    bans,
+    step,
   );
 }

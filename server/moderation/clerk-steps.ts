@@ -14,6 +14,22 @@ export const error = (word: string) => `error=${word}`;
 export const done = (ok: boolean, word: string) =>
   ok ? notice(word) : error("not_found");
 
+/**
+ * The answer after a ban whose Clerk step went well (SAG-169). If the write here then finds nothing
+ * to change (another administrator acted, or the account was erased in between), Clerk is banned
+ * and the app is not: `clerk_changed` says so, instead of the `not_found` that hides it. A
+ * suspension, or a ban the plan of Clerk did not apply (`skipped`), changed nothing in Clerk.
+ */
+export const doneAfterBan = (
+  ok: boolean,
+  word: string,
+  bans: boolean,
+  step: ClerkStep,
+) =>
+  ok
+    ? notice(word)
+    : error(bans && !step.skipped ? "clerk_changed" : "not_found");
+
 /** Clerk refused, and why: the detail travels in the address, so `refusalDetail` keeps it short. */
 export const failed = (detail: string) =>
   `error=failed&detail=${encodeURIComponent(detail)}`;

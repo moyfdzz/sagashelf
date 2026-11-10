@@ -25,7 +25,7 @@ The panel of ADR-039 could dismiss a report and act on a picture, but a report o
 
 **Lifting** unbans a banned account in Clerk, releases a lock of Clerk on a suspended one if it has one (it asks Clerk first, so it does not fail on an account that is not locked), and gives the account back, and the profile its level. A level the person changed after a suspension is not overwritten, since a suspension never touched it.
 
-**Order.** Clerk goes first, then one statement here that changes the account, resolves the reports and writes the audit row. If Clerk refuses, nothing changes here. If the write here fails after Clerk did, asking again repeats Clerk's call, which changes nothing, and writes.
+**Order.** Clerk goes first, then one statement here that changes the account, resolves the reports and writes the audit row. If Clerk refuses, nothing changes here. If the write here fails after Clerk did, asking again repeats Clerk's call, which changes nothing, and writes. If the write here finds nothing to change after Clerk banned the account (another administrator acted, or the account was erased in between), the panel says `clerk_changed` and not `not_found`, so the administrator knows Clerk and the app differ. The ban in Clerk is not undone: undoing it could leave Clerk unbanned while the app has the ban, and the call fails for an erased account (SAG-169).
 
 **Reports.** Suspending or banning resolves every open report about the person, except one about a picture that is hidden: it stays open to be restored or removed, or the picture would stay hidden after a lift.
 
