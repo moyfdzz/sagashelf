@@ -64,8 +64,19 @@ export const dangerButtonClass = `border-danger-edge bg-danger-bg text-danger-fg
 /** A small button inside a line or a card, like the "+1": the same edge as the others, less padding. */
 export const smallButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 disabled:opacity-60`;
 
+// What the two link-buttons share, so that they do not drift apart.
+const linkButton = `${secondaryButtonClass} inline-block`;
+
 /** A link to another page that acts as a button: the same look, as a box that sits in the line. */
-export const secondaryLinkClass = `${secondaryButtonClass} inline-block whitespace-nowrap`;
+export const secondaryLinkClass = `${linkButton} whitespace-nowrap`;
+
+/**
+ * The same link for a label that is long: its text may wrap, even inside a long word, and the box
+ * never grows past its container, so on a 320 px screen it does not push the page wider than the
+ * screen (SAG-228). A short label keeps `secondaryLinkClass`. The e2e tests import this file, so it
+ * must not import anything.
+ */
+export const wrappingSecondaryLinkClass = `${linkButton} max-w-full text-center break-words`;
 
 /** One of several tabs: the chosen one is filled, the others have a border. */
 export const tabClass = (selected: boolean) =>

@@ -13,6 +13,7 @@ import {
   segmentClass,
   tabClass,
   textLinkClass,
+  wrappingSecondaryLinkClass,
 } from "./ui";
 
 describe("the look of what is pressed", () => {
@@ -28,6 +29,12 @@ describe("the look of what is pressed", () => {
     expect(secondaryLinkClass).toContain("whitespace-nowrap");
     expect(secondaryLinkClass).toContain("inline-block");
     expect(secondaryLinkClass).toContain(secondaryButtonClass);
+  });
+
+  it("has a link-button for a long label that has the same look but is not kept on one line", () => {
+    // That it no longer scrolls the page sideways is tried in a browser (e2e/account.spec.ts).
+    expect(wrappingSecondaryLinkClass).toContain(secondaryButtonClass);
+    expect(wrappingSecondaryLinkClass).not.toContain("whitespace-nowrap");
   });
 
   it("makes a button and a link-button look the same, and never like a hyperlink", () => {

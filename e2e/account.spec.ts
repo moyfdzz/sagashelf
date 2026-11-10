@@ -1,5 +1,55 @@
 import { expect, test } from "@playwright/test";
 
+import { wrappingSecondaryLinkClass } from "../app/lib/ui";
+
+// A long link that acts as a button must not push a page past a 320 px screen (SAG-228). The
+// settings page that had the problem needs a session, which this run does not have, so the real
+// class of that link is put on a public page, inside the same `main` padding, with the same long
+// Spanish label (325 px on one line) and measured there.
+test.describe("a long link that acts as a button", () => {
+  test.use({ locale: "es-MX" });
+
+  const labels = {
+    "a long label": "Importar mi biblioteca desde un archivo",
+    "one long word": "Importarmibibliotecadesdeunarchivoenunsoloformato".repeat(
+      2,
+    ),
+  };
+
+  for (const [name, label] of Object.entries(labels)) {
+    test(`does not scroll sideways at 320 px, with ${name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 320, height: 640 });
+      await page.goto("/account-restricted");
+
+      // The link is added and measured in one step, with no wait in between: in the production
+      // build the page hydrates after it loads, and React removes a node it did not draw.
+      const result = await page.evaluate(
+        ({ className, text }) => {
+          const main = document.querySelector("main");
+          const link = document.createElement("a");
+          link.href = "/settings/import";
+          link.className = className;
+          link.textContent = text;
+          main?.appendChild(link);
+          return {
+            // Without the link there is nothing to measure, so a missing link must fail.
+            linkWidth: link.getBoundingClientRect().width,
+            overflow:
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth,
+          };
+        },
+        { className: wrappingSecondaryLinkClass, text: label },
+      );
+
+      expect(result.linkWidth).toBeGreaterThan(0);
+      expect(result.overflow).toBeLessThanOrEqual(0);
+    });
+  }
+});
+
 // The two routes that act on an account are not pages: they answer only to the form of the
 // settings page, with a POST and a session.
 for (const path of [
