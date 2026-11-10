@@ -509,6 +509,41 @@ describe("listRestrictedAccounts and the queue", () => {
     expect(list.some((a) => a.id === dana.id || a.id === admin.id)).toBe(false);
   });
 
+  it("reaches the 51st restricted account on the second page (SAG-170)", async () => {
+    // 51 restricted accounts, one a day: the one restricted on day 0 is the oldest, so the last.
+    const people = [];
+    for (let day = 0; day < 51; day++) {
+      const person = await newUser();
+      await db
+        .update(users)
+        .set({
+          moderationStatus: "banned",
+          moderationChangedAt: new Date(Date.UTC(2026, 0, 1 + day)),
+        })
+        .where(eq(users.id, person.id));
+      people.push(person);
+    }
+    const bystander = await newUser();
+
+    const first = await listRestrictedAccounts(db, 50, 0);
+    const second = await listRestrictedAccounts(db, 50, 50);
+
+    // The page is the 50 newest, the day 50 first; the one of day 0 is left for the next page.
+    expect(first.map((a) => a.id)).toEqual(
+      people
+        .slice(1)
+        .reverse()
+        .map((p) => p.id),
+    );
+    expect(second.map((a) => a.id)).toEqual([people[0].id]);
+    // The caller's "a row more than a page" is the 51st row of the first page.
+    expect(await listRestrictedAccounts(db, 51, 0)).toHaveLength(51);
+    expect(await listRestrictedAccounts(db, 50, 100)).toEqual([]);
+    expect([...first, ...second].some((a) => a.id === bystander.id)).toBe(
+      false,
+    );
+  });
+
   it("gives the internal note of the restriction that matches the state now (SAG-154)", async () => {
     const admin = await newUser({ role: "admin" });
     const ana = await newUser();

@@ -96,6 +96,8 @@ type Loaded = {
     warnSelected: string;
   }[];
   accounts: unknown[];
+  accountsPage: number;
+  accountsHasMore: boolean;
 };
 
 const submit = (form: Record<string, string>) => {
@@ -173,6 +175,56 @@ describe("the moderation panel (SAG-143)", () => {
     const result = await load();
 
     expect(JSON.stringify(result)).not.toContain("clerk_secretish");
+  });
+
+  it("pages the restricted accounts: a row more than a page says there is a next one (SAG-170)", async () => {
+    const account = (n: number) => ({
+      id: `u${n}`,
+      clerkId: `clerk_${n}`,
+      username: `user${n}`,
+      state: "banned",
+      changedAt: null,
+      note: null,
+    });
+    const rows = Array.from({ length: 51 }, (_, n) => account(n));
+    mocks.listRestrictedAccounts.mockResolvedValue(rows);
+
+    const first = (await load()) as unknown as Loaded;
+
+    expect(mocks.listRestrictedAccounts).toHaveBeenCalledWith(
+      { fake: "database" },
+      51,
+      0,
+    );
+    expect(first.accounts).toHaveLength(50);
+    expect(first).toMatchObject({ accountsPage: 1, accountsHasMore: true });
+
+    mocks.listRestrictedAccounts.mockResolvedValue([account(50)]);
+    const second = (await load("?page=2")) as unknown as Loaded;
+
+    expect(mocks.listRestrictedAccounts).toHaveBeenLastCalledWith(
+      { fake: "database" },
+      51,
+      50,
+    );
+    expect(second.accounts).toHaveLength(1);
+    expect(second).toMatchObject({ accountsPage: 2, accountsHasMore: false });
+  });
+
+  it("caps the page of the restricted accounts and ignores a page that is not a number", async () => {
+    await load("?page=100000");
+    expect(mocks.listRestrictedAccounts).toHaveBeenLastCalledWith(
+      { fake: "database" },
+      51,
+      99 * 50,
+    );
+
+    await load("?page=abc");
+    expect(mocks.listRestrictedAccounts).toHaveBeenLastCalledWith(
+      { fake: "database" },
+      51,
+      0,
+    );
   });
 
   it("reads nothing for somebody who is not an administrator, nor with no Clerk keys", async () => {
