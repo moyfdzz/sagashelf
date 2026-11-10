@@ -78,6 +78,10 @@ export async function processImportBatch(deps: {
     byPerson.set(row.userId, [...(byPerson.get(row.userId) ?? []), row]);
   }
 
+  // Units of the budget taken for titles whose provider call has not been made yet. If the run of a
+  // person fails before it, they go back: the call was never made, so it used no quota.
+  const unfetched = new Map<string, number>();
+
   const processPerson = async (userId: string, rows: ClaimedRow[]) => {
     // The rows of one person all come from one job, so they share its choices.
     const first = rows[0];
@@ -112,6 +116,7 @@ export async function processImportBatch(deps: {
       if (spent) continue;
       const claim = await claimTitleFetch(db, userId);
       if (claim === "ok") {
+        unfetched.set(userId, (unfetched.get(userId) ?? 0) + 1);
         toFetch.push(item);
       } else {
         // The day is over (or the account is gone): this title and the rest of the person's wait.
@@ -132,6 +137,8 @@ export async function processImportBatch(deps: {
           ),
         ),
       );
+      // Every call was made now, so every unit taken is spent, or refunded just below.
+      unfetched.delete(userId);
       const saved: typeof toFetch = [];
       toFetch.forEach((item, index) => {
         const outcome = outcomes[index];
@@ -199,6 +206,14 @@ export async function processImportBatch(deps: {
           error: error instanceof Error ? error.name : "unknown",
         }),
       );
+      const leaked = unfetched.get(userId) ?? 0;
+      if (leaked > 0) {
+        try {
+          await refundTitleFetches(db, userId, leaked);
+        } catch {
+          // The unit stays spent; the rows are tried again anyway.
+        }
+      }
       const settled = new Set([...done, ...skipped.map((item) => item.id)]);
       for (const row of rows) {
         if (!settled.has(row.id) && !retry.includes(row.id)) retry.push(row.id);
