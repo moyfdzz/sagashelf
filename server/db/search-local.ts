@@ -78,7 +78,7 @@ export async function searchLocal(
       AND (
         m.search_vector @@ to_tsquery('simple', ${tsQuery})
         OR immutable_unaccent(lower(m.title)) % ${normalizedQuery}
-        OR immutable_unaccent(lower(coalesce(m.original_title, ''))) % ${normalizedQuery}
+        OR immutable_unaccent(lower(m.original_title)) % ${normalizedQuery}
       )
     ORDER BY exact DESC, similarity DESC, m.popularity DESC
     LIMIT ${limit}
