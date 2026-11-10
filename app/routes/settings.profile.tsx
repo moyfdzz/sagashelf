@@ -17,7 +17,7 @@ import {
   dangerButtonClass,
   inputClass,
   secondaryButtonClass,
-  secondaryLinkClass,
+  wrappingSecondaryLinkClass,
   linkClass,
 } from "~/lib/ui";
 import { getInstance, localeCookie } from "~/middleware/i18next";
@@ -469,7 +469,7 @@ export default function ProfileSettings({
           {/* A plain link: the import page has its own security policy, which only a new
               document gets. */}
           <p className="mt-4">
-            <a href="/settings/import" className={secondaryLinkClass}>
+            <a href="/settings/import" className={wrappingSecondaryLinkClass}>
               {t("settings.data.import")}
             </a>
           </p>

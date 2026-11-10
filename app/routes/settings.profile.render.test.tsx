@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
 import ProfileSettings from "./settings.profile";
+import { wrappingSecondaryLinkClass } from "~/lib/ui";
 import { resources } from "~/locales";
 
 // The loader and the action are tested in their own file; here only the page is drawn.
@@ -60,18 +61,15 @@ describe("the import link of the profile settings (SAG-228)", () => {
     ["es", "Importar mi biblioteca desde un archivo"],
     ["en", "Import my library from a file"],
   ] as const)(
-    "lets the link wrap its text on a narrow screen, in %s",
+    "draws the link with the class that lets its text wrap, in %s",
     async (locale, label) => {
       const html = await render(locale);
-      const link =
-        new RegExp(`<a[^>]*href="/settings/import"[^>]*>${label}</a>`).exec(
-          html,
-        )?.[0] ?? "";
+      // Only the opening tag, found by its address: an icon or a span inside would not matter.
+      const tag = /<a\b[^>]*\bhref="\/settings\/import"[^>]*>/.exec(html)?.[0];
 
-      // A link that cannot wrap is 325 px wide in Spanish and makes the page scroll sideways at 320.
-      expect(link).not.toBe("");
-      expect(link).not.toContain("whitespace-nowrap");
-      expect(link).toContain("inline-block");
+      expect(tag).toBeDefined();
+      expect(tag).toContain(wrappingSecondaryLinkClass);
+      expect(html).toContain(label);
     },
   );
 });

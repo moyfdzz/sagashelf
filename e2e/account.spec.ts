@@ -1,25 +1,39 @@
 import { expect, test } from "@playwright/test";
 
-// A link that acts as a button must not push a page past a 320 px screen (SAG-228). The settings
-// page that had the problem needs a session, which this run does not have, so the same link class
-// is tried on the page of a restricted account, in both languages.
-for (const locale of ["es-MX", "en-US"]) {
-  test.describe(`a link that acts as a button, ${locale}`, () => {
-    test.use({ locale });
+import { wrappingSecondaryLinkClass } from "../app/lib/ui";
 
-    test("does not scroll sideways at 320 px", async ({ page }) => {
-      await page.setViewportSize({ width: 320, height: 640 });
-      await page.goto("/account-restricted");
+// A long link that acts as a button must not push a page past a 320 px screen (SAG-228). The
+// settings page that had the problem needs a session, which this run does not have, so the real
+// class of that link is put on a public page, inside the same `main` padding, with the same long
+// Spanish label (325 px on one line) and measured there.
+test.describe("a long link that acts as a button", () => {
+  test.use({ locale: "es-MX" });
 
-      const overflow = await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth -
-          document.documentElement.clientWidth,
-      );
-      expect(overflow).toBeLessThanOrEqual(0);
-    });
+  test("does not scroll sideways at 320 px", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto("/account-restricted");
+    await page.evaluate(
+      ({ className, label }) => {
+        const link = document.createElement("a");
+        link.href = "/settings/import";
+        link.className = className;
+        link.textContent = label;
+        document.querySelector("main")?.appendChild(link);
+      },
+      {
+        className: wrappingSecondaryLinkClass,
+        label: "Importar mi biblioteca desde un archivo",
+      },
+    );
+
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
   });
-}
+});
 
 // The two routes that act on an account are not pages: they answer only to the form of the
 // settings page, with a POST and a session.
