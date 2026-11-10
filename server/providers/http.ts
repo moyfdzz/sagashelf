@@ -77,6 +77,15 @@ function isTransient(error: ProviderError): boolean {
  * hold up the others. The state lives in this isolate: Workers do not share memory, so each
  * instance keeps its own count. That slows a provider down; it is not an exact quota.
  */
+let outgoingCalls = 0;
+
+/**
+ * How many requests every provider client of this isolate has sent, retries included. A scheduled
+ * run has 50 subrequests (ADR-001) and each retry spends one, so a job that must stay inside the
+ * budget reads this before and after its calls (SAG-182).
+ */
+export const countOutgoingCalls = (): number => outgoingCalls;
+
 export function createHttpClient(options: HttpClientOptions): HttpClient {
   const {
     provider,
@@ -154,6 +163,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     const signal = outer ? AbortSignal.any([outer, timeout]) : timeout;
     let response: Response;
     try {
+      outgoingCalls += 1;
       response = await fetchImpl(url, {
         method: "GET",
         headers: {

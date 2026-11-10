@@ -79,6 +79,65 @@ describe("refreshStaleMedia", () => {
     ]);
   });
 
+  it("marks a title fresh only with the last language it saves (SAG-182)", async () => {
+    mswServer.use(...tmdbHandlers());
+    mocks.findMediaToRefresh.mockResolvedValue([row("movie/603")]);
+
+    await refreshStaleMedia({ db, providers: [provider()] });
+
+    expect(mocks.saveMedia.mock.calls.map((call) => call[3])).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  it("stops before a title that no longer fits in the subrequest budget (SAG-182)", async () => {
+    mswServer.use(...tmdbHandlers());
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/603"),
+      row("movie/604"),
+      row("movie/605"),
+    ]);
+
+    // One title spends 1 (the list) + 2 provider calls + 2 saves = 5, and the next one needs 8 free.
+    const summary = await refreshStaleMedia(
+      { db, providers: [provider()] },
+      refreshBatchSize,
+      12,
+    );
+
+    expect(summary).toEqual({ found: 3, refreshed: 1, failed: 0 });
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"media.refresh_budget"'),
+    );
+  });
+
+  it("counts the retries of a failing provider against the budget (SAG-182)", async () => {
+    mswServer.use(
+      http.get(`${tmdbBase}/movie/500`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+      ...tmdbHandlers(),
+    );
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/500", "broken"),
+      row("movie/603"),
+    ]);
+    const retrying = createTmdbProviderWithToken("demo-token", {
+      sleep: async () => undefined,
+      retries: 2,
+    });
+
+    // Two languages x 3 tries = 6 calls + the list + the note = 8: the second title no longer fits.
+    const summary = await refreshStaleMedia(
+      { db, providers: [retrying] },
+      refreshBatchSize,
+      15,
+    );
+
+    expect(summary).toEqual({ found: 2, refreshed: 0, failed: 1 });
+  });
+
   it("asks the store only for the providers that are on (SAG-179)", async () => {
     mocks.findMediaToRefresh.mockResolvedValue([]);
 

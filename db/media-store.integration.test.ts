@@ -995,4 +995,29 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
 
     expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
+
+  it("keeps a title due when a refresh stopped before its last language (SAG-182)", async () => {
+    const id = await saveComplete("movie/9");
+    const media = {
+      ...complete,
+      externalId: { provider: "tmdb" as const, id: "movie/9" },
+    };
+    const oldFetch = () =>
+      db.execute(
+        sql`UPDATE media_items SET fetched_at = now() - interval '170 days' WHERE id = ${id}`,
+      );
+    await oldFetch();
+
+    // The first language is saved without marking the row fresh, and the run stops there.
+    await saveMedia(db, media, "en", false);
+    await makeAttemptOld(id);
+    expect(
+      (await findMediaToRefresh(db, 5, allProviders)).map((row) => row.mediaId),
+    ).toEqual([id]);
+
+    // The last language marks it fresh.
+    await saveMedia(db, media, "es", true);
+    await makeAttemptOld(id);
+    expect(await findMediaToRefresh(db, 5, allProviders)).toEqual([]);
+  });
 });
