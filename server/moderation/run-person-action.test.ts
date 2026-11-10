@@ -216,6 +216,20 @@ describe("suspending and banning a person with no report (SAG-146)", () => {
     expect(mocks.banUser).toHaveBeenCalledWith("clerk_9");
   });
 
+  it("says not found when the write finds nothing and the plan of Clerk applied no ban", async () => {
+    mocks.restrictAccount.mockResolvedValue(false);
+    mocks.banUser.mockRejectedValue(
+      Object.assign(new Error("plan"), {
+        status: 402,
+        errors: [{ code: "unsupported_subscription_plan_features" }],
+      }),
+    );
+
+    expect(await run({ intent: "ban_person", username })).toBe(
+      "person=bob_reads&error=not_found",
+    );
+  });
+
   it("says not found when the write finds nothing and Clerk changed nothing", async () => {
     mocks.restrictAccount.mockResolvedValue(false);
 

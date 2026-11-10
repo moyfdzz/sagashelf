@@ -660,6 +660,7 @@ describe("the rest of the page", () => {
       ["failed", "Clerk no hizo el cambio"],
       ["not_allowed", "no se puede actuar sobre ella"],
       ["picture_hidden", "primero restáurala o quítala"],
+      ["clerk_changed", "Clerk ya baneó la cuenta"],
     ];
     for (const [error, text] of errors) {
       const html = await render(<AdminModeration {...props({ error })} />);
