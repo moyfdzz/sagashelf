@@ -188,6 +188,29 @@ describe("rate limit", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("spaces calls made at the same time instead of sending them together", async () => {
+    const fetchMock = vi.fn(async () => ok());
+    const waits: number[] = [];
+    const { client } = setup(fetchMock as unknown as typeof fetch, {
+      ratePerSecond: 2,
+      burst: 2,
+      maxWaitMs: 10_000,
+      // The clock stands still, so every caller sees the same instant.
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+    });
+    await client.getJson("https://api.test/a");
+    await client.getJson("https://api.test/b");
+
+    await Promise.all(
+      [1, 2, 3, 4, 5, 6].map((n) => client.getJson(`https://api.test/${n}`)),
+    );
+
+    // At 2 a second each call leaves half a second after the one before.
+    expect(waits).toEqual([500, 1000, 1500, 2000, 2500, 3000]);
+  });
+
   it("refuses to wait longer than it is allowed to", async () => {
     const fetchMock = vi.fn(async () => ok());
     const { client } = setup(fetchMock as unknown as typeof fetch, {
