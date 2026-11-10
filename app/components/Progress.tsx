@@ -55,6 +55,25 @@ export function ProgressText({
 
 // A native <progress>: a bar needs no inline style (the strict CSP forbids it) and no script. It is
 // decorative, because the text next to it already says "2 of 12 episodes".
+export function MeterBar({
+  value,
+  max,
+  className,
+}: {
+  value: number;
+  max: number;
+  className: string;
+}) {
+  return (
+    <progress
+      aria-hidden="true"
+      value={value}
+      max={max}
+      className={`bg-border [&::-moz-progress-bar]:bg-accent [&::-webkit-progress-bar]:bg-border [&::-webkit-progress-value]:bg-accent h-1.5 w-full appearance-none overflow-hidden rounded-full ${className}`}
+    />
+  );
+}
+
 export function ProgressBar({
   row,
   className,
@@ -66,11 +85,10 @@ export function ProgressBar({
   // No bar until there is an end to measure against.
   if (!progress?.total) return null;
   return (
-    <progress
-      aria-hidden="true"
+    <MeterBar
       value={Math.min(progress.done, progress.total)}
       max={progress.total}
-      className={`bg-border [&::-moz-progress-bar]:bg-accent [&::-webkit-progress-bar]:bg-border [&::-webkit-progress-value]:bg-accent h-1.5 w-full appearance-none overflow-hidden rounded-full ${className}`}
+      className={className}
     />
   );
 }

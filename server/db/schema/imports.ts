@@ -42,6 +42,9 @@ export const importJobs = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Set once, by the statement that resolves the last waiting title (or at the upload, when
+    // nothing waits). The person is told when it is set by the queue (SAG-242).
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (t) => [
     check("import_jobs_locale_check", sql`${t.locale} in ('es', 'en')`),

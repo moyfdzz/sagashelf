@@ -39,6 +39,10 @@ import {
   contactCreatedType,
   contactNotice,
 } from "~server/account/contact-schema";
+import {
+  importFinishedNotice,
+  importFinishedType,
+} from "~server/library/import-notice";
 import { episodeAiredEvent } from "~server/webhooks/events";
 import { episodeNotice } from "~server/webhooks/message";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
@@ -140,6 +144,25 @@ export async function loader(args: Route.LoaderArgs) {
             title: t(`report.warning.${warning.kind}`),
             which: t(`report.reasons.${warning.reason}`),
             href: "/community",
+            createdAt: row.createdAt.toISOString(),
+            read: row.readAt !== null,
+          },
+        ];
+      }
+      // An import of this person that ended (SAG-242): the counts, with a link to the page where
+      // the titles that failed are listed with their reasons.
+      if (row.type === importFinishedType) {
+        const done = importFinishedNotice(row.payload);
+        if (!done) return [];
+        return [
+          {
+            id: row.id,
+            title: t("notifications.import.finished", { count: done.imported }),
+            which:
+              done.problems > 0
+                ? t("notifications.import.problems", { count: done.problems })
+                : t("notifications.import.clean"),
+            href: "/settings/import",
             createdAt: row.createdAt.toISOString(),
             read: row.readAt !== null,
           },

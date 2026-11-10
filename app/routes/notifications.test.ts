@@ -262,6 +262,47 @@ describe("the inbox of notifications (SAG-102)", () => {
       expect(JSON.stringify(result.items)).not.toContain("secretish");
     });
 
+    it("tells a person their import finished, with the counts and a link to the import page (SAG-242)", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({
+          type: "import.finished",
+          payload: { jobId: "x", imported: 120, problems: 0 },
+        }),
+        row({
+          id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e71",
+          type: "import.finished",
+          payload: { jobId: "y", imported: 5, problems: 2 },
+        }),
+      ]);
+
+      const result = await load();
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          title: "notifications.import.finished",
+          which: "notifications.import.clean",
+          href: "/settings/import",
+        }),
+        expect.objectContaining({
+          which: "notifications.import.problems",
+          href: "/settings/import",
+        }),
+      ]);
+    });
+
+    it("leaves out an import notice it cannot read", async () => {
+      mocks.listNotifications.mockResolvedValue([
+        row({ type: "import.finished", payload: { imported: "many" } }),
+        row({
+          type: "import.finished",
+          payload: { imported: 3, problems: -1 },
+        }),
+        row({ type: "import.finished", payload: {} }),
+      ]);
+
+      expect((await load()).items).toEqual([]);
+    });
+
     it("leaves out a warning it cannot read", async () => {
       mocks.listNotifications.mockResolvedValue([
         row({ type: "moderation.warning", payload: { kind: "list" } }),

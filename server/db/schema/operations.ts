@@ -184,7 +184,7 @@ export const notifications = pgTable(
     unique("notifications_user_dedupe_unique").on(t.userId, t.dedupeKey),
     check(
       "notifications_type_check",
-      sql`${t.type} in ('episode.aired', 'report.created', 'moderation.warning', 'contact.created')`,
+      sql`${t.type} in ('episode.aired', 'report.created', 'moderation.warning', 'contact.created', 'import.finished')`,
     ),
     // The page: newest first, for one person.
     index("notifications_user_created_idx").on(t.userId, t.createdAt.desc()),

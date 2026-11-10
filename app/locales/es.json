@@ -330,6 +330,7 @@
         "count": "{{done}} de {{total}} títulos ya están en tu biblioteca.",
         "waiting_one": "Falta {{count}} título por buscar. Se buscan en segundo plano, hasta {{max}} títulos nuevos al día, y no necesitas dejar esta página abierta.",
         "waiting_other": "Faltan {{count}} títulos por buscar. Se buscan en segundo plano, hasta {{max}} títulos nuevos al día, y no necesitas dejar esta página abierta.",
+        "percent": "{{percent}}% de los títulos ya está listo.",
         "finished": "La importación terminó.",
         "problems_one": "No se pudo importar {{count}} título.",
         "problems_other": "No se pudieron importar {{count}} títulos."
@@ -904,7 +905,7 @@
   },
   "notifications": {
     "title": "Notificaciones",
-    "description": "Las solicitudes para seguirte y los episodios nuevos de lo que tienes \"En curso\". De los episodios se muestran los 50 más nuevos de los últimos 30 días.",
+    "description": "Las solicitudes para seguirte, los episodios nuevos de lo que tienes \"En curso\" y el aviso cuando termina una importación. De los episodios se muestran los 50 más nuevos de los últimos 30 días.",
     "listLabel": "Lista de notificaciones",
     "empty": "Todavía no hay notificaciones. Cuando salga un episodio nuevo de algo que tienes \"En curso\", aparecerá aquí.",
     "none": "No tienes notificaciones sin leer.",
@@ -913,6 +914,13 @@
     "new": "Nueva",
     "markRead": "Marcar como leída",
     "markAll": "Marcar todas como leídas",
+    "import": {
+      "finished_one": "Tu importación terminó: {{count}} título está en tu biblioteca.",
+      "finished_other": "Tu importación terminó: {{count}} títulos están en tu biblioteca.",
+      "clean": "Se importaron todos los títulos.",
+      "problems_one": "No se pudo importar {{count}} título. Abre la página de la importación para ver cuál.",
+      "problems_other": "No se pudieron importar {{count}} títulos. Abre la página de la importación para ver cuáles."
+    },
     "result": {
       "read": "Notificación marcada como leída.",
       "allRead": "Notificaciones marcadas como leídas."

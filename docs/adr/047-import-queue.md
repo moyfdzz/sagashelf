@@ -37,9 +37,14 @@ A run uses at most 46 of the 50 subrequests of its invocation: the claim (1), th
 - The upload parses up to 5 MB and 5,000 entries in a request whose CPU limit is 10 ms on the Free plan (see the architecture notes). The parse of 500 entries fit; 5,000 was **not measured** on the real runtime. If it is too slow, the limit goes down.
 - Two runs that overlap (a run longer than 15 minutes) could take the same title twice; the lease makes it unlikely, and the worst case is one extra unit of the budget and a title saved twice, which is harmless.
 
+## Update (SAG-242)
+
+- **A notice when an import ends.** `import_jobs.finished_at` is set once: by the statement of the queue that resolves the last waiting title (`finishImportRows`), or at the upload when nothing waits. In the first case the same statement inserts one notification of type `import.finished` for the owner, with the number of titles in the library and the number of problems; its `dedupe_key` is `import:<job id>`, so a repeat adds nothing. A statement cannot see its own changes, so "nothing is left waiting" is the waiting rows minus the ones the statement resolves. Titles held until tomorrow or waiting for a retry count as waiting. The text is made when the page is read, in the language of the person, with a link to `/settings/import`. It uses no extra subrequest. Migration `0032` adds the column and the type to the check.
+- **The titles that failed are listed a page at a time** (`?page=`, 50 each, up to the 5,000 entries a file may hold), not only the first 50.
+- **A bar** on `/settings/import` shows the share of titles dealt with (in the library or listed as a problem) while some wait, so it reaches 100% when the import ends.
+
 ## Open questions
 
-- Whether a notification when the import ends is wanted.
 - The Neon hours with the new trigger, and the CPU of a big upload, after production use.
 
 ## References

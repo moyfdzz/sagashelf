@@ -6,11 +6,15 @@ import { z } from "zod";
 import type { Route } from "./+types/settings.import";
 import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
+import { MeterBar } from "~/components/Progress";
+import { ProfilePagination } from "~/components/ProfilePagination";
 import { primaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { readForm } from "~server/http/body";
-import { latestImportProgress } from "~server/db/import-queue";
+import { latestImportProgress, skippedShown } from "~server/db/import-queue";
+import { maxPage } from "~server/db/people-lists";
+import { pageParam } from "~server/http/page-param";
 import { previewImport, runImport } from "~server/library/import";
 import {
   maxImportBytes,
@@ -54,12 +58,19 @@ export async function loader(args: Route.LoaderArgs) {
 
   const { t } = getInstance(args.context);
   // What the latest import did and what still waits for the background queue (SAG-241).
-  const progress = await latestImportProgress(await getDb(), user.id);
+  // The titles that did not come in are listed a page at a time (`?page=`).
+  const skippedPage = pageParam(args.request, maxPage);
+  const progress = await latestImportProgress(
+    await getDb(),
+    user.id,
+    skippedPage,
+  );
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
   return rootAuthLoader(args, () => ({
     title: t("settings.import.title"),
     publishableKey: keys.publishableKey,
     perDay: titleFetchesPerDay,
+    skippedPage,
     progress: progress
       ? { ...progress, createdAt: progress.createdAt.toISOString() }
       : null,
@@ -150,10 +161,13 @@ const inputClass =
 function SkippedList({
   skipped,
   total = skipped.length,
+  paging,
 }: {
   skipped: Skipped[];
-  /** All the titles left out, when `skipped` holds only the first of them. */
+  /** All the titles left out, when `skipped` holds only some of them. */
   total?: number;
+  /** The latest import lists them all, a page at a time; a result before the queue lists 50. */
+  paging?: { page: number; pathTo: (page: number) => string };
 }) {
   const { t } = useTranslation();
   if (skipped.length === 0) return null;
@@ -161,7 +175,7 @@ function SkippedList({
     <div className="mt-4">
       <h3 className="font-semibold">{t("settings.import.skipped")}</h3>
       <ul className="mt-2 list-disc space-y-1 pl-6">
-        {skipped.slice(0, 50).map((item, index) => (
+        {skipped.slice(0, skippedShown).map((item, index) => (
           <li key={index} className="break-words">
             {t("settings.import.skippedLine", {
               title: item.title || t("settings.import.untitled"),
@@ -170,7 +184,15 @@ function SkippedList({
           </li>
         ))}
       </ul>
-      {total > 50 ? (
+      {paging ? (
+        <ProfilePagination
+          page={paging.page}
+          hasMore={paging.page * skippedShown < total}
+          pathTo={paging.pathTo}
+          label={t("settings.import.skipped")}
+          plain
+        />
+      ) : total > 50 ? (
         <p className="text-fg-muted mt-2 text-sm">
           {t("settings.import.skippedMore", { count: total - 50 })}
         </p>
@@ -193,12 +215,18 @@ type Progress = {
 function ImportProgress({
   progress,
   perDay,
+  skippedPage,
 }: {
   progress: Progress;
   perDay: number;
+  skippedPage: number;
 }) {
   const { t } = useTranslation();
   const inLibrary = progress.total - progress.pending - progress.skippedCount;
+  // Titles dealt with: in the library or listed as a problem. It reaches 100% when the import ends.
+  const resolved = progress.total - progress.pending;
+  const percent =
+    progress.total > 0 ? Math.floor((resolved / progress.total) * 100) : 100;
   return (
     <section className="mt-8" aria-labelledby="import-progress">
       <h2 id="import-progress" className="text-xl font-semibold">
@@ -210,6 +238,14 @@ function ImportProgress({
           total: progress.total,
         })}
       </p>
+      {progress.pending > 0 ? (
+        <div className="mt-2">
+          <MeterBar value={resolved} max={progress.total} className="" />
+          <p className="text-fg-muted mt-1 text-sm">
+            {t("settings.import.progress.percent", { percent })}
+          </p>
+        </div>
+      ) : null}
       <p className="text-fg-muted mt-1">
         {progress.pending > 0
           ? t("settings.import.progress.waiting", {
@@ -228,6 +264,10 @@ function ImportProgress({
           <SkippedList
             skipped={progress.skipped}
             total={progress.skippedCount}
+            paging={{
+              page: skippedPage,
+              pathTo: (page) => `/settings/import?page=${page}#import-progress`,
+            }}
           />
         </div>
       ) : null}
@@ -277,6 +317,7 @@ export default function SettingsImport({
           <ImportProgress
             progress={loaderData.progress}
             perDay={loaderData.perDay}
+            skippedPage={loaderData.skippedPage}
           />
         ) : null}
 

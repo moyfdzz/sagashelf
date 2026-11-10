@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-10
-- **Implementation:** Partial (SAG-242: the converter; the notice when an import finishes is the second PR)
+- **Implementation:** Done (SAG-242: the converter, and the notice when an import finishes, ADR-047)
 - **Tickets:** SAG-242
 - **Related:** [ADR-005](005-providers-and-licensing.md) (AniList and MyAnimeList rejected), [ADR-047](047-import-queue.md) (the queue)
 

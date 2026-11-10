@@ -37,12 +37,13 @@ async function render(
   );
 }
 
-const props = (actionData?: unknown, progress: unknown = null) =>
+const props = (actionData?: unknown, progress: unknown = null, page = 1) =>
   ({
     loaderData: {
       title: "Importar tu biblioteca",
       publishableKey: "publishable-key-for-tests",
       perDay: 300,
+      skippedPage: page,
       progress,
     },
     actionData,
@@ -215,6 +216,80 @@ describe("the import page", () => {
     expect(es).toContain("Titulo dos: la fuente no respondió");
     expect(en).toContain("5 of 10 titles are already in your library.");
     expect(en).toContain("2 titles could not be imported.");
+  });
+
+  it("shows a bar with the share of the titles that are dealt with while some wait, and none when it is over (SAG-242)", async () => {
+    const waiting = await render(
+      "es",
+      <SettingsImport
+        {...props(undefined, {
+          total: 200,
+          pending: 50,
+          // The 20 that failed are dealt with too, so they count toward the bar.
+          skippedCount: 20,
+          skipped: [],
+        })}
+      />,
+    );
+    const over = await render(
+      "es",
+      <SettingsImport
+        {...props(undefined, {
+          total: 200,
+          pending: 0,
+          skippedCount: 0,
+          skipped: [],
+        })}
+      />,
+    );
+
+    expect(waiting).toContain(
+      '<progress aria-hidden="true" value="150" max="200"',
+    );
+    expect(waiting).toContain("75% de los títulos ya está listo.");
+    expect(over).not.toContain("<progress");
+    expect(over).not.toContain("ya está listo.");
+  });
+
+  it("lists the titles that failed a page at a time, with links that keep the place (SAG-242)", async () => {
+    const skipped = Array.from({ length: 50 }, (_, i) => ({
+      title: `Titulo ${i + 51}`,
+      reason: "not_found",
+    }));
+    const html = await render(
+      "es",
+      <SettingsImport
+        {...props(
+          undefined,
+          { total: 120, pending: 0, skippedCount: 120, skipped },
+          2,
+        )}
+      />,
+    );
+
+    expect(html).toContain("Titulo 51: la fuente no lo encontró");
+    expect(html).toContain('href="/settings/import?page=1#import-progress"');
+    expect(html).toContain('href="/settings/import?page=3#import-progress"');
+    expect(html).not.toContain("Y 70 más");
+  });
+
+  it("shows no link to another page when every failed title fits in one", async () => {
+    const html = await render(
+      "es",
+      <SettingsImport
+        {...props(undefined, {
+          total: 5,
+          pending: 0,
+          skippedCount: 2,
+          skipped: [
+            { title: "Uno", reason: "not_found" },
+            { title: "Dos", reason: "failed" },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).not.toContain("?page=");
   });
 
   it("says the import is finished, with no warning, when nothing waits and nothing failed", async () => {

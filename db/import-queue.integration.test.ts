@@ -3,8 +3,10 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { eraseAccount } from "../server/db/erase-user";
 import {
+  finishImportRows,
   latestImportProgress,
   pruneImportJobs,
+  skippedShown,
 } from "../server/db/import-queue";
 import { importRows, libraryEntries, users } from "../server/db/schema";
 import { saveMedia } from "../server/db/media-store";
@@ -490,5 +492,223 @@ describe("the account and the cleanup (SAG-241)", () => {
       .where(eq(users.id, ana.id));
 
     expect((await run(provider([1]))).taken).toBe(0);
+  });
+});
+
+/** Written by hand: what the inbox holds and what the jobs say, not what the code under test returns. */
+const notices = async (userId?: string) =>
+  (
+    await db.execute(
+      sql`SELECT n.user_id, n.type, n.payload, n.dedupe_key
+          FROM notifications n
+          ${userId ? sql`WHERE n.user_id = ${userId}::uuid` : sql``}
+          ORDER BY n.created_at, n.id`,
+    )
+  ).rows;
+
+const jobs = async () =>
+  (
+    await db.execute(
+      sql`SELECT id, user_id, finished_at IS NOT NULL AS finished FROM import_jobs ORDER BY created_at, id`,
+    )
+  ).rows;
+
+/** Uploads a file that leaves nothing waiting: its only entry is from a source we do not ask. */
+async function uploadNothingWaiting(userId: string) {
+  const parsed = parseImportFile(
+    JSON.stringify({
+      schemaVersion: 1,
+      libraryEntries: [
+        { ...entry(2), source: { provider: "mangadex", id: "abc" } },
+      ],
+    }),
+  );
+  if (!parsed.ok) throw new Error(parsed.error);
+  return runImport({ db, providers: [provider([])] }, userId, parsed.value, {
+    replace: false,
+    locale: "es",
+  });
+}
+
+describe("the notice when an import finishes (SAG-242)", () => {
+  it("tells the owner once, when the last waiting title is resolved, with the titles that came in", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1, 2]);
+
+    await run(provider([1, 2]));
+
+    const [job] = await jobs();
+    expect(job).toMatchObject({ user_id: ana.id, finished: true });
+    expect(await notices()).toEqual([
+      {
+        user_id: ana.id,
+        type: "import.finished",
+        payload: { jobId: job?.id, imported: 2, problems: 0 },
+        dedupe_key: `import:${job?.id}`,
+      },
+    ]);
+  });
+
+  it("says how many could not be imported when the job ends with problems", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1, 2, 3]);
+
+    await run(provider([1, 2]));
+
+    expect(await notices(ana.id)).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({ imported: 2, problems: 1 }),
+      }),
+    ]);
+  });
+
+  it("counts a title that failed for good after its last try, and the ones left out at the upload", async () => {
+    const ana = await newUser();
+    const parsed = parseImportFile(
+      JSON.stringify({
+        schemaVersion: 1,
+        libraryEntries: [
+          entry(1),
+          entry(2),
+          { title: "No id", status: "completed" },
+        ],
+      }),
+    );
+    if (!parsed.ok) throw new Error(parsed.error);
+    await runImport({ db, providers: [provider([])] }, ana.id, parsed.value, {
+      replace: false,
+      locale: "es",
+    });
+    const tmdb = provider([1, 2], [2]);
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      expect(await notices()).toEqual([]);
+      await run(tmdb);
+      // Written by hand: the hour of waiting has passed.
+      await db.execute(sql`UPDATE import_rows SET retry_at = now()`);
+    }
+
+    expect(await notices(ana.id)).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({ imported: 1, problems: 2 }),
+      }),
+    ]);
+  });
+
+  it("says nothing while a title of the job still waits", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1, 2, 3, 4]);
+
+    await run(provider([1, 2, 3, 4]));
+    expect(await notices()).toEqual([]);
+    expect(await jobs()).toEqual([
+      expect.objectContaining({ finished: false }),
+    ]);
+
+    await run(provider([4]));
+    expect(await notices()).toHaveLength(1);
+  });
+
+  it("says nothing while the rest of the job is held until tomorrow", async () => {
+    const ana = await newUser();
+    await setBudgetUsed(ana.id, 299);
+    await upload(ana.id, [1, 2, 3]);
+
+    await run(provider([1, 2, 3]));
+
+    expect(await notices()).toEqual([]);
+    expect(await jobs()).toEqual([
+      expect.objectContaining({ finished: false }),
+    ]);
+  });
+
+  it("does not tell twice when the work of a run is repeated", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1]);
+    await run(provider([]));
+    expect(await notices()).toHaveLength(1);
+
+    // Written by hand: the job lost its mark and the same result is written back again.
+    await db.execute(sql`UPDATE import_jobs SET finished_at = NULL`);
+    const [left] = (await db.execute(sql`SELECT id FROM import_rows`)).rows;
+    await finishImportRows(db, {
+      done: [],
+      skipped: [{ id: String(left?.id), reason: "not_found" }],
+      retry: [],
+      counts: [],
+    });
+
+    expect(await notices()).toHaveLength(1);
+    expect(await jobs()).toEqual([expect.objectContaining({ finished: true })]);
+  });
+
+  it("tells only the owner of the job that ended", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await upload(ana.id, [1]);
+    await upload(luis.id, [11, 12, 13, 14]);
+
+    await run(provider([1, 11, 12, 13, 14]));
+
+    expect(await notices(ana.id)).toHaveLength(1);
+    expect(await notices(luis.id)).toEqual([]);
+  });
+
+  it("sends no notice for an upload that leaves nothing waiting, and marks the job finished", async () => {
+    const ana = await newUser();
+    await uploadNothingWaiting(ana.id);
+
+    expect(await jobs()).toEqual([expect.objectContaining({ finished: true })]);
+    await run(provider([]));
+    expect(await notices()).toEqual([]);
+  });
+
+  it("is erased with the account", async () => {
+    const ana = await newUser({ clerkId: "user_notice_erase" });
+    await upload(ana.id, [1]);
+    await run(provider([1]));
+    expect(await notices(ana.id)).toHaveLength(1);
+
+    await eraseAccount(db, "user_notice_erase");
+
+    expect(await notices(ana.id)).toEqual([]);
+  });
+});
+
+describe("the titles that did not come in, a page at a time (SAG-242)", () => {
+  it("lists every one of them, in the order of the file, and the page past the end is empty", async () => {
+    const ana = await newUser();
+    const total = skippedShown * 2 + 20;
+    const parsed = parseImportFile(
+      JSON.stringify({
+        schemaVersion: 1,
+        libraryEntries: Array.from({ length: total }, (_, i) => ({
+          ...entry(i + 1),
+          source: { provider: "mangadex", id: `id${i + 1}` },
+        })),
+      }),
+    );
+    if (!parsed.ok) throw new Error(parsed.error);
+    await runImport({ db, providers: [provider([])] }, ana.id, parsed.value, {
+      replace: false,
+      locale: "es",
+    });
+
+    const titles = async (page: number) =>
+      (await latestImportProgress(db, ana.id, page))?.skipped.map(
+        (item) => item.title,
+      );
+    const first = await titles(1);
+    const second = await titles(2);
+    const third = await titles(3);
+
+    expect(first).toHaveLength(50);
+    expect(second).toHaveLength(50);
+    expect(third).toHaveLength(20);
+    expect(first?.[0]).toBe("Movie 1");
+    expect(second?.[0]).toBe("Movie 51");
+    expect(third?.[19]).toBe("Movie 120");
+    expect(await titles(4)).toEqual([]);
+    expect((await latestImportProgress(db, ana.id, 1))?.skippedCount).toBe(120);
   });
 });

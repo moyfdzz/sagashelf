@@ -315,12 +315,31 @@ describe("the loader (SAG-241)", () => {
     expect(mocks.progress).toHaveBeenCalledWith(
       { fake: "database" },
       "user-from-session",
+      1,
     );
     expect(loaded.perDay).toBe(300);
     expect(loaded.progress).toMatchObject({
       createdAt: createdAt.toISOString(),
       pending: 5,
     });
+  });
+
+  it("asks for the page of the titles that did not come in, kept inside the range", async () => {
+    const at = (query: string) =>
+      loader({
+        request: new Request(`https://sagashelf.app/settings/import${query}`),
+        params: {},
+        context: {},
+      } as unknown as Route.LoaderArgs);
+
+    await at("?page=3");
+    await at("?page=0");
+    await at("?page=nope");
+    await at("?page=100000");
+
+    expect(mocks.progress.mock.calls.map((call) => call[2])).toEqual([
+      3, 1, 1, 100,
+    ]);
   });
 
   it("sends no progress for a person who never imported", async () => {
