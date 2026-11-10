@@ -64,8 +64,11 @@ export const dangerButtonClass = `border-danger-edge bg-danger-bg text-danger-fg
 /** A small button inside a line or a card, like the "+1": the same edge as the others, less padding. */
 export const smallButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 disabled:opacity-60`;
 
-/** A link to another page that acts as a button: the same look, as a box that sits in the line. */
-export const secondaryLinkClass = `${secondaryButtonClass} inline-block whitespace-nowrap`;
+/**
+ * A link to another page that acts as a button: the same look, as a box that sits in the line. Its
+ * text may wrap: a long label in Spanish at 320 px made the page scroll sideways (SAG-228).
+ */
+export const secondaryLinkClass = `${secondaryButtonClass} inline-block text-center`;
 
 /** One of several tabs: the chosen one is filled, the others have a border. */
 export const tabClass = (selected: boolean) =>

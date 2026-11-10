@@ -169,7 +169,7 @@ describe("the import page", () => {
       /<a[^>]*href="\/settings\/profile#data"[^>]*><svg[^>]*lucide-arrow-left/,
     );
     expect(library).toContain("border-input-edge");
-    expect(library).toContain("whitespace-nowrap");
+    expect(library).not.toContain("whitespace-nowrap");
     expect(library).not.toContain("underline");
   });
 

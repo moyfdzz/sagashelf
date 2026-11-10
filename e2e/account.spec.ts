@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+// A link that acts as a button must not push a page past a 320 px screen (SAG-228). The settings
+// page that had the problem needs a session, which this run does not have, so the same link class
+// is tried on the page of a restricted account, in both languages.
+for (const locale of ["es-MX", "en-US"]) {
+  test.describe(`a link that acts as a button, ${locale}`, () => {
+    test.use({ locale });
+
+    test("does not scroll sideways at 320 px", async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 640 });
+      await page.goto("/account-restricted");
+
+      const overflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  });
+}
+
 // The two routes that act on an account are not pages: they answer only to the form of the
 // settings page, with a POST and a session.
 for (const path of [

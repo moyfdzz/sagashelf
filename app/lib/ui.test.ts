@@ -24,8 +24,8 @@ describe("the look of what is pressed", () => {
     expect(segmentClass(false)).not.toContain("bg-accent");
   });
 
-  it("keeps a link that acts as a button on one line, in a box that sits in the line", () => {
-    expect(secondaryLinkClass).toContain("whitespace-nowrap");
+  it("lets a link that acts as a button wrap its text, in a box that sits in the line", () => {
+    expect(secondaryLinkClass).not.toContain("whitespace-nowrap");
     expect(secondaryLinkClass).toContain("inline-block");
     expect(secondaryLinkClass).toContain(secondaryButtonClass);
   });

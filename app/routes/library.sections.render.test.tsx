@@ -745,7 +745,7 @@ describe("the controls", () => {
     );
 
     const clear = tagOf(html, "Quitar filtros");
-    expect(clear).toContain("whitespace-nowrap");
+    expect(clear).not.toContain("whitespace-nowrap");
     expect(clear).toContain("border-input-edge");
     expect(clear).not.toContain("underline");
   });
@@ -765,7 +765,7 @@ describe("the controls", () => {
 
     for (const text of ["Anterior", "Siguiente"]) {
       const tag = tagOf(html, text);
-      expect(tag).toContain("whitespace-nowrap");
+      expect(tag).not.toContain("whitespace-nowrap");
       expect(tag).not.toContain("underline");
     }
   });
