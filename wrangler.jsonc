@@ -104,7 +104,8 @@
   // so it has its own 50 subrequests. The third one, at a quarter past every hour, delivers the
   // events of the webhooks to Discord (SAG-27, ADR-029); it is hourly and not every minute so the
   // database can sleep (the Neon Free plan pauses it after 5 minutes without a query). The Free
-  // plan allows 5 Cron Triggers per account, and three are used.
+  // plan allows 5 Cron Triggers per account, and four are used: the fourth one, every 15 minutes,
+  // saves the titles that a big import left waiting (SAG-241, ADR-047).
   "triggers": {
     "crons": [
       "0 */6 * * *",
