@@ -365,9 +365,18 @@ describe("banning", () => {
     expect(mocks.restrictAccount).not.toHaveBeenCalled();
   });
 
-  it("says not found when the write here finds nothing to change", async () => {
+  it("says Clerk changed when it banned and the write here finds nothing to change (SAG-169)", async () => {
     mocks.restrictAccount.mockResolvedValue(false);
 
+    expect(await run({ intent: "ban", id })).toBe("error=clerk_changed");
+    expect(mocks.banUser).toHaveBeenCalledWith("clerk_9");
+  });
+
+  it("says not found when the write finds nothing and Clerk changed nothing", async () => {
+    mocks.restrictAccount.mockResolvedValue(false);
+    expect(await run({ intent: "suspend", id })).toBe("error=not_found");
+
+    mocks.banUser.mockRejectedValue(planRefusal());
     expect(await run({ intent: "ban", id })).toBe("error=not_found");
   });
 

@@ -257,7 +257,12 @@ describe("the moderation panel (SAG-143)", () => {
     ]) {
       expect(await load(`?notice=${notice}`)).toMatchObject({ notice });
     }
-    for (const error of ["not_allowed", "picture_hidden", "outdated"]) {
+    for (const error of [
+      "not_allowed",
+      "picture_hidden",
+      "outdated",
+      "clerk_changed",
+    ]) {
       expect(await load(`?error=${error}`)).toMatchObject({ error });
     }
     expect(await load("?notice=%3Cb%3E&error=x")).toMatchObject({

@@ -1319,7 +1319,8 @@
         "not_allowed": "This account is an administrator's or is yours: nothing can be done to it.",
         "picture_hidden": "The picture is hidden: restore it or remove it first, and then warn.",
         "failed": "Clerk did not make the change. Nothing was changed here; try again.",
-        "failedWith": "Clerk did not make the change ({{detail}}). Nothing was changed here; try again."
+        "failedWith": "Clerk did not make the change ({{detail}}). Nothing was changed here; try again.",
+        "clerk_changed": "Clerk already banned the account, but the change was not saved here (another administrator acted first or the account no longer exists). Check the state of the account."
       },
       "reports": {
         "title": "Open reports",

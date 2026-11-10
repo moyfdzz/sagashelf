@@ -103,7 +103,8 @@ export type ModerationNotice = (typeof moderationNotices)[number];
  * Why an action did not happen: the report was answered already or is not what the action needs
  * (`not_found`), the person changed their picture since (`outdated`), the account is an
  * administrator or is the administrator's own (`not_allowed`), the picture is hidden and must be
- * restored or removed before a warning (`picture_hidden`), or Clerk refused (`failed`).
+ * restored or removed before a warning (`picture_hidden`), Clerk refused (`failed`), or Clerk banned
+ * the account and the write here found nothing to change (`clerk_changed`, SAG-169).
  */
 export const moderationErrors = [
   "invalid_request",
@@ -112,6 +113,7 @@ export const moderationErrors = [
   "not_allowed",
   "picture_hidden",
   "failed",
+  "clerk_changed",
 ] as const;
 export type ModerationError = (typeof moderationErrors)[number];
 
