@@ -146,6 +146,26 @@ describe("an entry with a name and a year but no id (SAG-243)", () => {
     expect(mocks.finishImportRows.mock.calls[0]?.[1].done).toEqual(["row-1"]);
   });
 
+  it("saves a series once when two seasons of it were found, and lists the second as repeated", async () => {
+    mocks.claimImportRows.mockResolvedValue([matchRow(1), matchRow(2)]);
+    mocks.claimTitleFetch.mockResolvedValue("ok");
+    mocks.importMedia.mockResolvedValue({ id: "m1" });
+    mocks.lookupTitles
+      .mockResolvedValueOnce(new Map())
+      .mockResolvedValueOnce(
+        new Map([["tmdb:tv/42", { mediaId: "m1", hasEntry: false }]]),
+      );
+    mocks.writeEntries.mockResolvedValue({ added: 1, replaced: 0 });
+
+    await runWith(vi.fn().mockResolvedValue("tv/42"));
+
+    expect(mocks.claimTitleFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.importMedia).toHaveBeenCalledTimes(1);
+    const outcome = mocks.finishImportRows.mock.calls[0]?.[1];
+    expect(outcome.done).toEqual(["row-1"]);
+    expect(outcome.skipped).toEqual([{ id: "row-2", reason: "duplicate" }]);
+  });
+
   it("is listed as having no catalog id when no series fits, and costs no budget", async () => {
     mocks.claimImportRows.mockResolvedValue([matchRow(1)]);
 

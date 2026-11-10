@@ -762,23 +762,45 @@ async function uploadWithMatches(
 }
 
 describe("a title looked up by name and year in the queue (SAG-243)", () => {
-  it("takes 3 of the 5 places of a run, so the requests of the run stay under 50", async () => {
+  it("looks a title up only when the 3 places of its person are free, after their plain titles", async () => {
     const ana = await newUser();
     const luis = await newUser();
     await uploadWithMatches(ana.id, [1, 2], [90]);
     await upload(luis.id, [11, 12]);
 
     const tmdb = {
-      ...provider([1, 2, 90]),
+      ...provider([1, 2, 11, 12, 90]),
+      matchByYear: vi.fn(async () => "movie/90"),
+    };
+    const first = await run(tmdb);
+
+    // The 2 titles of Ana and the 2 of Luis fit in the 5 places; the lookup needs 3 of Ana's.
+    expect(first.taken).toBe(4);
+    expect(tmdb.matchByYear).not.toHaveBeenCalled();
+
+    const second = await run(tmdb);
+
+    expect(second.taken).toBe(1);
+    expect(tmdb.matchByYear).toHaveBeenCalledTimes(1);
+    expect(await libraryOf(ana.id)).toBe(3);
+  });
+
+  it("does not let the titles to look up of one person take every place from the next person", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await uploadWithMatches(ana.id, [], [90, 91, 92]);
+    await upload(luis.id, [11, 12, 13]);
+
+    const tmdb = {
+      ...provider([11, 12, 13, 90]),
       matchByYear: vi.fn(async () => "movie/90"),
     };
     const summary = await run(tmdb);
 
-    // Two titles (2 places) and the one to match (3) are the 5 places: nothing is left for Luis.
+    // Ana's first lookup takes her 3 places; Luis still gets 2 of the 5, as a person always did.
     expect(summary.taken).toBe(3);
-    expect(await libraryOf(ana.id)).toBe(3);
-    expect(await libraryOf(luis.id)).toBe(0);
     expect(tmdb.matchByYear).toHaveBeenCalledTimes(1);
+    expect(await libraryOf(luis.id)).toBe(2);
   });
 
   it("saves the title that was found, and spends one unit of the budget on it", async () => {

@@ -136,6 +136,19 @@ export async function processImportBatch(deps: {
       });
     }
 
+    // Two rows can name one title once the lookups are done (two seasons of a series): the first
+    // goes on and the rest are duplicates, so the title is not fetched and charged twice.
+    const named = new Set<string>();
+    for (const item of entries.splice(0)) {
+      const key = keyOf(item.entry.source);
+      if (named.has(key)) {
+        skipped.push({ id: item.row.id, reason: "duplicate" });
+      } else {
+        named.add(key);
+        entries.push(item);
+      }
+    }
+
     const known = await lookupTitles(
       db,
       userId,

@@ -144,12 +144,19 @@ export async function claimImportRows(db: SqlExecutor): Promise<ClaimedRow[]> {
           LIMIT 1
         )
     ),
+    mine AS (
+      -- The places of one person add up on their own: a person with titles to look up (3 places
+      -- each) must not use up the places of the next person with rows they will not get.
+      SELECT id, who, n, weight,
+             sum(weight) OVER (PARTITION BY who ORDER BY n) AS own
+      FROM due WHERE who <= ${peoplePerRun}
+    ),
     ordered AS (
-      SELECT id, who, n, sum(weight) OVER (ORDER BY who, n) AS used FROM due
-      WHERE n <= ${rowsPerPersonPerRun} AND who <= ${peoplePerRun}
+      SELECT id, who, n, sum(weight) OVER (ORDER BY who, n) AS used FROM mine
+      WHERE own <= ${rowsPerPersonPerRun}
     ),
     picked AS (
-      -- The places add up from the first row: the first one that does not fit ends the run.
+      -- The places of the rows kept add up from the first: the first one that does not fit ends the run.
       SELECT id FROM ordered WHERE used <= ${rowsPerRun} ORDER BY who, n
     ),
     claimed AS (
