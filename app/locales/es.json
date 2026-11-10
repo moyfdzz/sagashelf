@@ -288,10 +288,10 @@
     },
     "import": {
       "title": "Importar tu biblioteca",
-      "description": "Recupera tu biblioteca desde el archivo JSON que descargaste en Mis datos.",
+      "description": "Recupera tu biblioteca desde el archivo JSON que descargaste en Mis datos, o trae la de Simkl con su copia de seguridad en JSON.",
       "back": "Volver a mis datos",
-      "file": "Archivo JSON de SagaShelf",
-      "fileHint": "Hasta {{mb}} MB y {{max}} títulos. Solo se lee tu biblioteca: tu perfil y lo que sea de otras personas se ignora.",
+      "file": "Archivo JSON de SagaShelf o de Simkl",
+      "fileHint": "Hasta {{mb}} MB y {{max}} títulos. Solo se lee tu biblioteca: tu perfil y lo que sea de otras personas se ignora. De Simkl solo entran los títulos que tienen un id de TMDB; los demás quedan en la lista de los que no se importaron.",
       "previewButton": "Ver qué se importaría",
       "previewing": "Revisando el archivo…",
       "preview": {
@@ -348,7 +348,7 @@
         "failed": "la fuente no respondió después de varios intentos: vuelve a importar el archivo más tarde"
       },
       "errors": {
-        "invalid_file": "El archivo no es una exportación válida de SagaShelf.",
+        "invalid_file": "El archivo no es una exportación válida de SagaShelf ni una copia de seguridad JSON de Simkl.",
         "unsupported_version": "Este archivo es de una versión que no se puede importar. Descarga uno nuevo en Mis datos.",
         "too_many": "El archivo tiene demasiados títulos (máximo {{max}}).",
         "file_missing": "Elige un archivo.",
