@@ -24,6 +24,7 @@ import {
   getClerkKeys,
   getDb,
   getMediaProviders,
+  getOpenLimiter,
   getWriteLimiter,
 } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
@@ -122,11 +123,14 @@ export async function action(args: Route.ActionArgs) {
       { headers: privateHeaders },
     );
   }
+  // A title only the provider knows costs one unit of the same per-person budget as /media/open.
+  const spendFetch = async () =>
+    !(await rateLimit(getOpenLimiter(), request, `media-open:${user.id}`));
   return data(
     {
       ok: true as const,
       step: "done" as const,
-      result: await runImport(deps, user.id, parsed.value, {
+      result: await runImport({ ...deps, spendFetch }, user.id, parsed.value, {
         replace: form.replace === "on",
         keepVisibility: form.keepVisibility === "on",
         locale: getLocale(args.context) === "en" ? "en" : "es",

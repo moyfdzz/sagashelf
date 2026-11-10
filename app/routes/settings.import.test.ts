@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   previewImport: vi.fn(),
   runImport: vi.fn(),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
+  openLimit:
+    vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
 vi.mock("@clerk/react-router/server", () => ({
@@ -19,6 +21,7 @@ vi.mock("~server/runtime-env", () => ({
   getDb: async () => ({ fake: "database" }),
   getMediaProviders: () => [{ id: "tmdb" }],
   getWriteLimiter: () => ({ limit: mocks.limit }),
+  getOpenLimiter: () => ({ limit: mocks.openLimit }),
   getClerkKeys: () => ({
     publishableKey: "publishable-key-for-tests",
     secretKey: "secret-for-tests",
@@ -47,6 +50,7 @@ beforeEach(() => {
   mocks.previewImport.mockReset().mockResolvedValue(preview);
   mocks.runImport.mockReset().mockResolvedValue(result);
   mocks.limit.mockReset().mockResolvedValue({ success: true });
+  mocks.openLimit.mockReset().mockResolvedValue({ success: true });
 });
 
 const goodFile = JSON.stringify({
@@ -189,6 +193,28 @@ describe("the import", () => {
     expect(mocks.runImport.mock.calls[0]?.[3]).toMatchObject({
       keepVisibility: true,
     });
+  });
+
+  it("gives the import a way to spend the open limit of the person, one unit a call (SAG-188)", async () => {
+    await send({ intent: "confirm", payload: goodFile });
+    const deps = mocks.runImport.mock.calls[0]?.[0] as {
+      spendFetch: () => Promise<boolean>;
+    };
+
+    expect(mocks.openLimit).not.toHaveBeenCalled();
+    expect(await deps.spendFetch()).toBe(true);
+    expect(mocks.openLimit).toHaveBeenCalledWith({
+      key: "media-open:user-from-session:unknown",
+    });
+
+    mocks.openLimit.mockResolvedValue({ success: false });
+    expect(await deps.spendFetch()).toBe(false);
+  });
+
+  it("does not spend the open limit for a preview, which asks no provider", async () => {
+    await send({ intent: "preview", file: jsonFile(goodFile) });
+
+    expect(mocks.openLimit).not.toHaveBeenCalled();
   });
 
   it("validates the file again, so a changed payload is not trusted", async () => {

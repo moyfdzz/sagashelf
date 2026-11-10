@@ -16,7 +16,7 @@ import { searchBackPath } from "~server/search/path";
 import {
   getDb,
   getMediaProviders,
-  getSearchLimiter,
+  getOpenLimiter,
   getWriteLimiter,
 } from "~server/runtime-env";
 import { privateHeaders } from "~server/http/cache";
@@ -101,8 +101,12 @@ export async function action(args: Route.ActionArgs) {
     parsed.data.id,
   );
   if (!title) {
-    // Only a call to the provider counts against the limit of the search.
-    const slowed = await rateLimit(getSearchLimiter(), request, "media-open");
+    // Only a call to the provider counts, against the same per-person limit as /media/open.
+    const slowed = await rateLimit(
+      getOpenLimiter(),
+      request,
+      `media-open:${user.id}`,
+    );
     if (slowed) return slowed;
 
     try {
