@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseImportFile } from "./import-file";
-import { runImport } from "./import";
+import { runImport, type FetchSpend } from "./import";
 
 const mocks = vi.hoisted(() => ({
   lookupTitles: vi.fn(),
@@ -38,12 +38,15 @@ function fileOf(count: number) {
   return parsed.value;
 }
 
-const run = (spendFetch: () => Promise<boolean>, count: number) =>
+const refund = vi.fn<(units: number) => Promise<void>>();
+
+const run = (spendFetch: () => Promise<FetchSpend>, count: number) =>
   runImport(
     {
       db: {} as never,
       providers: [{ id: "tmdb" }] as never,
       spendFetch,
+      refundFetches: refund,
     },
     "user-1",
     fileOf(count),
@@ -55,11 +58,12 @@ beforeEach(() => {
   mocks.lookupTitles.mockReset().mockResolvedValue(new Map());
   mocks.writeEntries.mockReset().mockResolvedValue({ added: 0, replaced: 0 });
   mocks.importMedia.mockReset().mockResolvedValue(null);
+  refund.mockReset().mockResolvedValue(undefined);
 });
 
 describe("the budget of new titles in an import (SAG-188, ADR-035)", () => {
   it("asks the provider for nothing, and says so, once the budget is spent", async () => {
-    const spend = vi.fn().mockResolvedValue(false);
+    const spend = vi.fn().mockResolvedValue("burst");
 
     const result = await run(spend, 4);
 
@@ -75,9 +79,9 @@ describe("the budget of new titles in an import (SAG-188, ADR-035)", () => {
   it("spends one unit for each title asked of the provider, and stops at the first refusal", async () => {
     const spend = vi
       .fn()
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValue(false);
+      .mockResolvedValueOnce("ok")
+      .mockResolvedValueOnce("ok")
+      .mockResolvedValue("burst");
 
     const result = await run(spend, 5);
 
@@ -102,11 +106,43 @@ describe("the budget of new titles in an import (SAG-188, ADR-035)", () => {
         ],
       ]),
     );
-    const spend = vi.fn().mockResolvedValue(true);
+    const spend = vi.fn().mockResolvedValue("ok");
 
     await run(spend, 1);
 
     expect(spend).not.toHaveBeenCalled();
     expect(mocks.importMedia).not.toHaveBeenCalled();
+  });
+  it("says the day is over, not that another import brings the titles, when the daily budget is spent", async () => {
+    const spend = vi
+      .fn()
+      .mockResolvedValueOnce("ok")
+      .mockResolvedValue("daily");
+
+    const result = await run(spend, 3);
+
+    expect(spend).toHaveBeenCalledTimes(2);
+    expect(
+      result.skipped.filter(({ reason }) => reason === "daily_limit"),
+    ).toEqual([
+      { title: "Title 2", reason: "daily_limit" },
+      { title: "Title 3", reason: "daily_limit" },
+    ]);
+    expect(result.skipped.some(({ reason }) => reason === "pending")).toBe(
+      false,
+    );
+  });
+
+  it("gives back the units of the titles the provider did not answer, and keeps the ones it answered", async () => {
+    mocks.importMedia
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("provider down"))
+      .mockRejectedValueOnce(new Error("provider down"));
+
+    await run(vi.fn().mockResolvedValue("ok"), 3);
+
+    // One not found (the call was made and stays spent), two that did not answer.
+    expect(refund).toHaveBeenCalledTimes(1);
+    expect(refund).toHaveBeenCalledWith(2);
   });
 });

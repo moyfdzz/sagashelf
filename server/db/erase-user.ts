@@ -84,6 +84,8 @@ export function erasureCtes(clerkUpdatedAt: SQL): SQL {
         username_changed_at = NULL,
         avatar_uploads_day = NULL,
         avatar_uploads_count = 0,
+        title_fetches_day = NULL,
+        title_fetches_count = 0,
         display_name = NULL,
         avatar_url = NULL,
         hidden_avatar_url = NULL,

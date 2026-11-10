@@ -5,6 +5,8 @@ import { action, headers } from "./settings.import";
 import { maxImportBytes } from "~server/library/import-file";
 
 const mocks = vi.hoisted(() => ({
+  claim: vi.fn<() => Promise<"ok" | "limit" | "gone">>(),
+  refund: vi.fn<(db: unknown, id: string, units: number) => Promise<void>>(),
   requireUser: vi.fn(),
   previewImport: vi.fn(),
   runImport: vi.fn(),
@@ -31,6 +33,10 @@ vi.mock("~server/library/import", () => ({
   previewImport: mocks.previewImport,
   runImport: mocks.runImport,
 }));
+vi.mock("~server/db/title-budget", () => ({
+  claimTitleFetch: mocks.claim,
+  refundTitleFetches: mocks.refund,
+}));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
   getLocale: () => "en",
@@ -49,6 +55,8 @@ beforeEach(() => {
   mocks.requireUser.mockReset().mockResolvedValue({ id: "user-from-session" });
   mocks.previewImport.mockReset().mockResolvedValue(preview);
   mocks.runImport.mockReset().mockResolvedValue(result);
+  mocks.claim.mockReset().mockResolvedValue("ok");
+  mocks.refund.mockReset().mockResolvedValue(undefined);
   mocks.limit.mockReset().mockResolvedValue({ success: true });
   mocks.openLimit.mockReset().mockResolvedValue({ success: true });
 });
@@ -198,17 +206,46 @@ describe("the import", () => {
   it("gives the import a way to spend the open limit of the person, one unit a call (SAG-188)", async () => {
     await send({ intent: "confirm", payload: goodFile });
     const deps = mocks.runImport.mock.calls[0]?.[0] as {
-      spendFetch: () => Promise<boolean>;
+      spendFetch: () => Promise<"ok" | "burst" | "daily">;
+      refundFetches: (units: number) => Promise<void>;
     };
 
     expect(mocks.openLimit).not.toHaveBeenCalled();
-    expect(await deps.spendFetch()).toBe(true);
+    expect(await deps.spendFetch()).toBe("ok");
     expect(mocks.openLimit).toHaveBeenCalledWith({
       key: "media-open:user-from-session:unknown",
     });
 
     mocks.openLimit.mockResolvedValue({ success: false });
-    expect(await deps.spendFetch()).toBe(false);
+    expect(await deps.spendFetch()).toBe("burst");
+  });
+
+  it("tells a burst from the daily budget, and an erased account is treated as a burst (SAG-239)", async () => {
+    await send({ intent: "confirm", payload: goodFile });
+    const deps = mocks.runImport.mock.calls[0]?.[0] as {
+      spendFetch: () => Promise<"ok" | "burst" | "daily">;
+      refundFetches: (units: number) => Promise<void>;
+    };
+
+    mocks.claim.mockResolvedValue("limit");
+    expect(await deps.spendFetch()).toBe("daily");
+    mocks.claim.mockResolvedValue("gone");
+    expect(await deps.spendFetch()).toBe("burst");
+  });
+
+  it("gives units back for the titles the provider did not answer (SAG-239)", async () => {
+    await send({ intent: "confirm", payload: goodFile });
+    const deps = mocks.runImport.mock.calls[0]?.[0] as {
+      refundFetches: (units: number) => Promise<void>;
+    };
+
+    await deps.refundFetches(2);
+
+    expect(mocks.refund).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-from-session",
+      2,
+    );
   });
 
   it("does not spend the open limit for a preview, which asks no provider", async () => {

@@ -1,47 +1,28 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { claimDailyUnit, type DailyClaim } from "./daily-counter";
 
 /** Each try costs a check by the moderation service, which has a monthly limit (ADR-037). */
 export const avatarUploadsPerDay = 5;
 
-export type AvatarClaim = "ok" | "limit" | "gone";
+export type AvatarClaim = DailyClaim;
 
 /**
  * Takes one of the uploads the person has today, before the moderation service is asked. It is one
  * statement that checks the count and adds to it, so requests sent together cannot pass the limit.
  * A try that fails afterwards is not given back: the check was already spent.
  */
-export async function claimAvatarUpload(
+export const claimAvatarUpload = (
   db: SqlExecutor,
   userId: string,
-): Promise<AvatarClaim> {
-  const today = sql`(now() AT TIME ZONE 'utc')::date`;
-  const { rows } = await db.execute(sql`
-    WITH found AS (
-      SELECT id FROM users WHERE id = ${userId} AND deleted_at IS NULL
-    ),
-    claimed AS (
-      UPDATE users SET
-        avatar_uploads_count = CASE
-          WHEN avatar_uploads_day = ${today} THEN avatar_uploads_count + 1
-          ELSE 1
-        END,
-        avatar_uploads_day = ${today}
-      WHERE id IN (SELECT id FROM found)
-        AND (
-          avatar_uploads_day IS DISTINCT FROM ${today}
-          OR avatar_uploads_count < ${avatarUploadsPerDay}
-        )
-      RETURNING 1
-    )
-    SELECT (SELECT count(*) FROM found)::int AS found,
-           (SELECT count(*) FROM claimed)::int AS claimed
-  `);
-  const row = rows[0] ?? {};
-  if (Number(row.claimed) === 1) return "ok";
-  return Number(row.found) === 0 ? "gone" : "limit";
-}
+): Promise<AvatarClaim> =>
+  claimDailyUnit(
+    db,
+    userId,
+    { day: "avatar_uploads_day", count: "avatar_uploads_count" },
+    avatarUploadsPerDay,
+  );
 
 /**
  * Writes the address of the picture here as soon as Clerk changed it, with the time Clerk gave to

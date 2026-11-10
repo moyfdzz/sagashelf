@@ -5,6 +5,7 @@ import { loader } from "./media.open";
 import { ProviderError } from "~server/providers/http";
 
 const mocks = vi.hoisted(() => ({
+  refund: vi.fn<(db: unknown, id: string, units: number) => Promise<void>>(),
   findMediaByExternalId: vi.fn(),
   importMedia: vi.fn(),
   getOptionalUser: vi.fn(),
@@ -23,6 +24,10 @@ vi.mock("~server/runtime-env", () => ({
   getMediaProviders: () => [],
   getOpenLimiter: () => ({ limit: mocks.limit }),
 }));
+vi.mock("~server/db/title-budget", () => ({
+  claimTitleFetch: async () => "ok",
+  refundTitleFetches: mocks.refund,
+}));
 vi.mock("~/middleware/i18next", () => ({ getLocale: () => "es" }));
 
 const id = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
@@ -34,6 +39,7 @@ beforeEach(() => {
     .mockResolvedValue({ id, type: "movie", title: "Matrix" });
   mocks.getOptionalUser.mockReset().mockResolvedValue({ id: "user-1" });
   mocks.limit.mockReset().mockResolvedValue({ success: true });
+  mocks.refund.mockReset().mockResolvedValue(undefined);
 });
 
 const open = (query: string) =>
@@ -158,6 +164,21 @@ describe("opening a title from a search result", () => {
     mocks.importMedia.mockRejectedValue(new ProviderError("tmdb", "timeout"));
 
     expect(await status(open("?provider=tmdb&id=movie%2F603"))).toBe(502);
+  });
+
+  it("gives the unit back when the provider fails, and keeps it when the provider says not found (SAG-239)", async () => {
+    mocks.importMedia.mockRejectedValue(new ProviderError("tmdb", "timeout"));
+    await status(open("?provider=tmdb&id=movie%2F603"));
+    expect(mocks.refund).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      1,
+    );
+
+    mocks.refund.mockClear();
+    mocks.importMedia.mockResolvedValue(null);
+    await status(open("?provider=tmdb&id=movie%2F0"));
+    expect(mocks.refund).not.toHaveBeenCalled();
   });
 
   it("answers 429 when the caller is over the limit, before asking the provider", async () => {

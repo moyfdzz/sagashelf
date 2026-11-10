@@ -130,6 +130,10 @@
     "unexpected": {
       "title": "Algo salió mal",
       "message": "Ocurrió un error inesperado. Inténtalo de nuevo."
+    },
+    "tooMany": {
+      "title": "Demasiadas solicitudes",
+      "message": "Llegaste al límite por ahora. Espera un momento e inténtalo de nuevo; si ya abriste muchos títulos nuevos hoy, el límite se reinicia a medianoche UTC."
     }
   },
   "auth": {
@@ -330,7 +334,8 @@
         "duplicate": "repetido en el archivo",
         "unsupported_provider": "esa fuente no está disponible",
         "not_found": "la fuente no lo encontró",
-        "pending": "pendiente: vuelve a importar el archivo para traerlo"
+        "pending": "pendiente: vuelve a importar el archivo para traerlo",
+        "daily_limit": "límite diario de títulos nuevos alcanzado: vuelve a importar el archivo mañana"
       },
       "errors": {
         "invalid_file": "El archivo no es una exportación válida de SagaShelf.",

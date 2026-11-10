@@ -67,6 +67,10 @@ export const users = pgTable(
     // a check by the moderation service, so the count includes the ones it refused.
     avatarUploadsDay: date("avatar_uploads_day", { mode: "string" }),
     avatarUploadsCount: smallint("avatar_uploads_count").notNull().default(0),
+    // How many titles the person made us fetch from a provider on this day, in UTC (SAG-239,
+    // ADR-035). Counted here, by person only, so changing address does not give a new budget.
+    titleFetchesDay: date("title_fetches_day", { mode: "string" }),
+    titleFetchesCount: smallint("title_fetches_count").notNull().default(0),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },
