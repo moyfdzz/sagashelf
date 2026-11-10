@@ -1,23 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseImportFile } from "./import-file";
-import { runImport, type FetchSpend } from "./import";
+import { runImport } from "./import";
 
 const mocks = vi.hoisted(() => ({
   lookupTitles: vi.fn(),
   writeEntries: vi.fn(),
-  importMedia: vi.fn(),
+  enqueueImport: vi.fn(),
 }));
 
 vi.mock("../db/import", () => ({
   lookupTitles: mocks.lookupTitles,
   writeEntries: mocks.writeEntries,
 }));
-vi.mock("../media/import", () => ({ importMedia: mocks.importMedia }));
+vi.mock("../db/import-queue", () => ({
+  enqueueImport: mocks.enqueueImport,
+}));
 
-const entry = (n: number) => ({
+const entry = (n: number, provider = "tmdb") => ({
   title: `Title ${n}`,
-  source: { provider: "tmdb", id: `movie/${n}` },
+  source: { provider, id: `movie/${n}` },
   status: "completed",
   progress: 0,
   score: null,
@@ -27,122 +29,117 @@ const entry = (n: number) => ({
   viewings: [],
 });
 
-function fileOf(count: number) {
+function fileOf(entries: unknown[]) {
   const parsed = parseImportFile(
-    JSON.stringify({
-      schemaVersion: 1,
-      libraryEntries: Array.from({ length: count }, (_, n) => entry(n + 1)),
-    }),
+    JSON.stringify({ schemaVersion: 1, libraryEntries: entries }),
   );
   if (!parsed.ok) throw new Error(parsed.error);
   return parsed.value;
 }
 
-const refund = vi.fn<(units: number) => Promise<void>>();
+const held = (mediaId: string) => ({
+  mediaId,
+  hasEntry: false,
+  type: "movie",
+  episodes: 0,
+});
 
-const run = (spendFetch: () => Promise<FetchSpend>, count: number) =>
+const run = (entries: unknown[], replace = false) =>
   runImport(
-    {
-      db: {} as never,
-      providers: [{ id: "tmdb" }] as never,
-      spendFetch,
-      refundFetches: refund,
-    },
+    { db: {} as never, providers: [{ id: "tmdb" }] as never },
     "user-1",
-    fileOf(count),
-    { replace: false, locale: "es" },
+    fileOf(entries),
+    { replace, keepVisibility: true, locale: "en" },
   );
 
 beforeEach(() => {
   // Nothing is held, so every entry of the file needs the provider.
   mocks.lookupTitles.mockReset().mockResolvedValue(new Map());
   mocks.writeEntries.mockReset().mockResolvedValue({ added: 0, replaced: 0 });
-  mocks.importMedia.mockReset().mockResolvedValue(null);
-  refund.mockReset().mockResolvedValue(undefined);
+  mocks.enqueueImport.mockReset().mockResolvedValue("job-1");
 });
 
-describe("the budget of new titles in an import (SAG-188, ADR-035)", () => {
-  it("asks the provider for nothing, and says so, once the budget is spent", async () => {
-    const spend = vi.fn().mockResolvedValue("burst");
+describe("the upload of an import (SAG-241, ADR-047)", () => {
+  it("queues every title only a provider knows, with no cap, and asks nobody", async () => {
+    const result = await run(
+      Array.from({ length: 40 }, (_, n) => entry(n + 1)),
+    );
 
-    const result = await run(spend, 4);
+    expect(result).toMatchObject({ added: 0, queued: 40, skipped: [] });
+    const [, userId, job] = mocks.enqueueImport.mock.calls[0] ?? [];
+    expect(userId).toBe("user-1");
+    expect(job.pending).toHaveLength(40);
+    expect(job.total).toBe(40);
+    expect(job.locale).toBe("en");
+    expect(job.keepVisibility).toBe(true);
+    // Each waiting title keeps its entry, so the queue can write it later.
+    expect(job.pending[0]).toMatchObject({
+      title: "Title 1",
+      entry: { source: { provider: "tmdb", id: "movie/1" } },
+    });
+  });
 
-    expect(mocks.importMedia).not.toHaveBeenCalled();
+  it("writes the titles we hold now and does not queue them", async () => {
+    mocks.lookupTitles.mockResolvedValue(
+      new Map([["tmdb:movie/1", held("m1")]]),
+    );
+    mocks.writeEntries.mockResolvedValue({ added: 1, replaced: 0 });
+
+    const result = await run([entry(1), entry(2)]);
+
+    expect(mocks.writeEntries).toHaveBeenCalledTimes(1);
+    expect(mocks.writeEntries.mock.calls[0]?.[2]).toHaveLength(1);
+    expect(result).toMatchObject({ added: 1, queued: 1 });
+    const job = mocks.enqueueImport.mock.calls[0]?.[2];
+    expect(job.pending.map((row: { title: string }) => row.title)).toEqual([
+      "Title 2",
+    ]);
+    expect(job.written).toEqual({ added: 1, replaced: 0, kept: 0 });
+  });
+
+  it("lists the titles left out, with the reason, in the job", async () => {
+    const result = await run([
+      entry(1),
+      entry(2, "mangadex"),
+      { title: "No id", status: "completed" },
+    ]);
+
     expect(result.skipped).toEqual([
-      { title: "Title 1", reason: "pending" },
-      { title: "Title 2", reason: "pending" },
-      { title: "Title 3", reason: "pending" },
-      { title: "Title 4", reason: "pending" },
+      { title: "No id", reason: "no_source" },
+      { title: "Title 2", reason: "unsupported_provider" },
+    ]);
+    const job = mocks.enqueueImport.mock.calls[0]?.[2];
+    expect(job.total).toBe(3);
+    expect(job.skipped.map((row: { reason: string }) => row.reason)).toEqual([
+      "no_source",
+      "unsupported_provider",
     ]);
   });
 
-  it("spends one unit for each title asked of the provider, and stops at the first refusal", async () => {
-    const spend = vi
-      .fn()
-      .mockResolvedValueOnce("ok")
-      .mockResolvedValueOnce("ok")
-      .mockResolvedValue("burst");
-
-    const result = await run(spend, 5);
-
-    expect(spend).toHaveBeenCalledTimes(3);
-    expect(mocks.importMedia).toHaveBeenCalledTimes(2);
-    expect(mocks.importMedia.mock.calls.map((call) => call[2])).toEqual([
-      "movie/1",
-      "movie/2",
-    ]);
-    // The provider did not know the two it was asked for; the other three wait for another import.
-    expect(
-      result.skipped.filter(({ reason }) => reason === "pending"),
-    ).toHaveLength(3);
-  });
-
-  it("spends nothing for a title we already hold", async () => {
+  it("lists the second id of a title as a duplicate, and counts what already existed as kept", async () => {
     mocks.lookupTitles.mockResolvedValue(
       new Map([
-        [
-          "tmdb:movie/1",
-          { mediaId: "m1", hasEntry: false, type: "movie", episodes: null },
-        ],
+        ["tmdb:movie/1", held("m1")],
+        ["tmdb:movie/2", held("m1")],
       ]),
     );
-    const spend = vi.fn().mockResolvedValue("ok");
+    // One row is written but it was already there.
+    mocks.writeEntries.mockResolvedValue({ added: 0, replaced: 0 });
 
-    await run(spend, 1);
+    const result = await run([entry(1), entry(2)]);
 
-    expect(spend).not.toHaveBeenCalled();
-    expect(mocks.importMedia).not.toHaveBeenCalled();
+    expect(mocks.writeEntries.mock.calls[0]?.[2]).toHaveLength(1);
+    expect(result).toMatchObject({ kept: 1, queued: 0 });
+    expect(result.skipped).toEqual([{ title: "Title 2", reason: "duplicate" }]);
   });
-  it("says the day is over, not that another import brings the titles, when the daily budget is spent", async () => {
-    const spend = vi
-      .fn()
-      .mockResolvedValueOnce("ok")
-      .mockResolvedValue("daily");
 
-    const result = await run(spend, 3);
+  it("gives every row of the job its own place, so the list keeps an order", async () => {
+    await run([entry(1), entry(2, "mangadex"), entry(3)]);
 
-    expect(spend).toHaveBeenCalledTimes(2);
-    expect(
-      result.skipped.filter(({ reason }) => reason === "daily_limit"),
-    ).toEqual([
-      { title: "Title 2", reason: "daily_limit" },
-      { title: "Title 3", reason: "daily_limit" },
-    ]);
-    expect(result.skipped.some(({ reason }) => reason === "pending")).toBe(
-      false,
+    const job = mocks.enqueueImport.mock.calls[0]?.[2];
+    const places = [...job.pending, ...job.skipped].map(
+      (row: { position: number }) => row.position,
     );
-  });
-
-  it("gives back the units of the titles the provider did not answer, and keeps the ones it answered", async () => {
-    mocks.importMedia
-      .mockResolvedValueOnce(null)
-      .mockRejectedValueOnce(new Error("provider down"))
-      .mockRejectedValueOnce(new Error("provider down"));
-
-    await run(vi.fn().mockResolvedValue("ok"), 3);
-
-    // One not found (the call was made and stays spent), two that did not answer.
-    expect(refund).toHaveBeenCalledTimes(1);
-    expect(refund).toHaveBeenCalledWith(2);
+    expect(new Set(places).size).toBe(places.length);
   });
 });

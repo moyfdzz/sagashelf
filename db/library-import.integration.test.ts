@@ -16,7 +16,7 @@ import {
 } from "../server/db/schema";
 import { addViewing, listViewings } from "../server/db/viewings";
 import { previewImport, runImport } from "../server/library/import";
-import { maxNewTitles, parseImportFile } from "../server/library/import-file";
+import { parseImportFile } from "../server/library/import-file";
 import type { EntryState } from "../server/library/rules";
 import type { MediaProvider, NormalizedMedia } from "../server/providers/types";
 import { createTestDb } from "./test-database";
@@ -106,8 +106,6 @@ const run = (
     {
       db,
       providers: options.providers ?? [provider()],
-      spendFetch: async () => "ok" as const,
-      refundFetches: async () => {},
     },
     userId,
     fileOf(entries),
@@ -394,71 +392,46 @@ describe("importing titles we already hold", () => {
   });
 });
 
-describe("importing titles we do not hold yet", () => {
-  it("asks the provider for them and saves them from what it answers, not from the file", async () => {
+describe("importing titles we do not hold yet (SAG-241)", () => {
+  it("does not ask the provider in the upload: the titles wait in a queue with the entry", async () => {
     const ana = await newUser();
     const tmdb = provider([movie(5, "Real title")]);
 
     const result = await run(
       ana.id,
       [entry("movie/5", { title: "Fake title" })],
-      {
-        providers: [tmdb],
-      },
+      { providers: [tmdb] },
     );
 
-    expect(result.added).toBe(1);
-    expect(tmdb.getById).toHaveBeenCalledTimes(1);
-    const saved = await db.select().from(mediaItems);
-    expect(saved.map((item) => item.title)).toEqual(["Real title"]);
+    expect(result).toMatchObject({ added: 0, queued: 1, skipped: [] });
+    expect(tmdb.getById).not.toHaveBeenCalled();
+    expect(await db.select().from(mediaItems)).toHaveLength(0);
+    const rows = (
+      await db.execute(
+        sql`SELECT title, state, attempts FROM import_rows ORDER BY position`,
+      )
+    ).rows;
+    expect(rows).toEqual([
+      { title: "Fake title", state: "pending", attempts: 0 },
+    ]);
   });
 
-  it("asks for at most the cap of new titles and lists the rest as pending", async () => {
+  it("queues every title of a big file, with no cap, in one job", async () => {
     const ana = await newUser();
-    const all = Array.from({ length: maxNewTitles + 3 }, (_, i) =>
-      movie(i + 1),
-    );
-    const tmdb = provider(all);
+    const ids = Array.from({ length: 40 }, (_, i) => `movie/${i + 1}`);
 
     const result = await run(
       ana.id,
-      all.map((item) => entry(item.externalId.id)),
-      { providers: [tmdb] },
+      ids.map((id) => entry(id)),
     );
 
-    expect(tmdb.getById).toHaveBeenCalledTimes(maxNewTitles);
-    expect(result.added).toBe(maxNewTitles);
-    expect(
-      result.skipped.filter((item) => item.reason === "pending"),
-    ).toHaveLength(3);
-
-    // A second import brings the next ones.
-    const second = await run(
-      ana.id,
-      all.map((item) => entry(item.externalId.id)),
-      { providers: [tmdb] },
-    );
-    expect(second.added).toBe(3);
-    expect(second.kept).toBe(maxNewTitles);
-  });
-
-  it("lists a title the provider does not know, and one it could not answer for", async () => {
-    const ana = await newUser();
-    const tmdb = provider();
-    vi.mocked(tmdb.getById).mockImplementation(async (id: string) => {
-      if (id === "movie/2") throw new Error("down");
-      return null;
-    });
-
-    const result = await run(ana.id, [entry("movie/1"), entry("movie/2")], {
-      providers: [tmdb],
-    });
-
-    expect(result.added).toBe(0);
-    expect(result.skipped.map((item) => item.reason).sort()).toEqual([
-      "not_found",
-      "pending",
-    ]);
+    expect(result.queued).toBe(40);
+    const jobs = (
+      await db.execute(
+        sql`SELECT total, added, replaced, kept FROM import_jobs`,
+      )
+    ).rows;
+    expect(jobs).toEqual([{ total: 40, added: 0, replaced: 0, kept: 0 }]);
   });
 
   it("skips a source that has no provider here, but still imports what it holds", async () => {
@@ -567,8 +540,6 @@ describe("export, delete the account, create another, import", () => {
       {
         db,
         providers: [provider()],
-        spendFetch: async () => "ok" as const,
-        refundFetches: async () => {},
       },
       again.id,
       (() => {
@@ -667,8 +638,6 @@ describe("the alerts switch of an entry in an import (SAG-101)", () => {
       {
         db,
         providers: [provider()],
-        spendFetch: async () => "ok" as const,
-        refundFetches: async () => {},
       },
       again.id,
       parsed.value,

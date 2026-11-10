@@ -10,20 +10,16 @@ import { primaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { readForm } from "~server/http/body";
-import {
-  previewImport,
-  runImport,
-  type FetchSpend,
-} from "~server/library/import";
+import { latestImportProgress } from "~server/db/import-queue";
+import { previewImport, runImport } from "~server/library/import";
 import {
   maxImportBytes,
   maxImportEntries,
-  maxNewTitles,
   parseImportFile,
   type ParseError,
   type Skipped,
 } from "~server/library/import-file";
-import { refundOpenUnits, trySpendOpenUnit } from "~server/open-limit";
+import { titleFetchesPerDay } from "~server/db/title-budget";
 import { rateLimit } from "~server/rate-limit";
 import {
   getClerkKeys,
@@ -52,15 +48,21 @@ const fail = (error: ErrorCode, status = 400) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
 
 export async function loader(args: Route.LoaderArgs) {
-  await requireUser(args);
+  const user = await requireUser(args);
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });
 
   const { t } = getInstance(args.context);
+  // What the latest import did and what still waits for the background queue (SAG-241).
+  const progress = await latestImportProgress(await getDb(), user.id);
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
   return rootAuthLoader(args, () => ({
     title: t("settings.import.title"),
     publishableKey: keys.publishableKey,
+    perDay: titleFetchesPerDay,
+    progress: progress
+      ? { ...progress, createdAt: progress.createdAt.toISOString() }
+      : null,
   }));
 }
 
@@ -127,32 +129,17 @@ export async function action(args: Route.ActionArgs) {
       { headers: privateHeaders },
     );
   }
-  // A title only the provider knows costs one unit of the same per-person budget as /media/open.
-  const spendFetch = async (): Promise<FetchSpend> => {
-    const spend = await trySpendOpenUnit(request, deps.db, user.id);
-    // An erased account has nothing to wait for: it is told the same as a burst.
-    return spend.status === "gone"
-      ? "burst"
-      : spend.status === "ok"
-        ? "ok"
-        : spend.status;
-  };
-  const refundFetches = (units: number) =>
-    refundOpenUnits(deps.db, user.id, units);
+  // The titles we hold are written now; the ones only a provider knows wait in the queue, which
+  // the scheduled job saves inside the per-person budget (ADR-047).
   return data(
     {
       ok: true as const,
       step: "done" as const,
-      result: await runImport(
-        { ...deps, spendFetch, refundFetches },
-        user.id,
-        parsed.value,
-        {
-          replace: form.replace === "on",
-          keepVisibility: form.keepVisibility === "on",
-          locale: getLocale(args.context) === "en" ? "en" : "es",
-        },
-      ),
+      result: await runImport(deps, user.id, parsed.value, {
+        replace: form.replace === "on",
+        keepVisibility: form.keepVisibility === "on",
+        locale: getLocale(args.context) === "en" ? "en" : "es",
+      }),
     },
     { headers: privateHeaders },
   );
@@ -160,7 +147,14 @@ export async function action(args: Route.ActionArgs) {
 
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
-function SkippedList({ skipped }: { skipped: Skipped[] }) {
+function SkippedList({
+  skipped,
+  total = skipped.length,
+}: {
+  skipped: Skipped[];
+  /** All the titles left out, when `skipped` holds only the first of them. */
+  total?: number;
+}) {
   const { t } = useTranslation();
   if (skipped.length === 0) return null;
   return (
@@ -168,7 +162,7 @@ function SkippedList({ skipped }: { skipped: Skipped[] }) {
       <h3 className="font-semibold">{t("settings.import.skipped")}</h3>
       <ul className="mt-2 list-disc space-y-1 pl-6">
         {skipped.slice(0, 50).map((item, index) => (
-          <li key={index}>
+          <li key={index} className="break-words">
             {t("settings.import.skippedLine", {
               title: item.title || t("settings.import.untitled"),
               reason: t(`settings.import.reasons.${item.reason}`),
@@ -176,12 +170,71 @@ function SkippedList({ skipped }: { skipped: Skipped[] }) {
           </li>
         ))}
       </ul>
-      {skipped.length > 50 ? (
+      {total > 50 ? (
         <p className="text-fg-muted mt-2 text-sm">
-          {t("settings.import.skippedMore", { count: skipped.length - 50 })}
+          {t("settings.import.skippedMore", { count: total - 50 })}
         </p>
       ) : null}
     </div>
+  );
+}
+
+type Progress = {
+  total: number;
+  pending: number;
+  skippedCount: number;
+  skipped: Skipped[];
+};
+
+/**
+ * What the latest import did: how many titles are in the library, how many still wait for the
+ * background queue, and which ones could not be imported and why (SAG-241).
+ */
+function ImportProgress({
+  progress,
+  perDay,
+}: {
+  progress: Progress;
+  perDay: number;
+}) {
+  const { t } = useTranslation();
+  const inLibrary = progress.total - progress.pending - progress.skippedCount;
+  return (
+    <section className="mt-8" aria-labelledby="import-progress">
+      <h2 id="import-progress" className="text-xl font-semibold">
+        {t("settings.import.progress.title")}
+      </h2>
+      <p className="mt-2" role="status">
+        {t("settings.import.progress.count", {
+          done: inLibrary,
+          total: progress.total,
+        })}
+      </p>
+      <p className="text-fg-muted mt-1">
+        {progress.pending > 0
+          ? t("settings.import.progress.waiting", {
+              count: progress.pending,
+              max: perDay,
+            })
+          : t("settings.import.progress.finished")}
+      </p>
+      {progress.skippedCount > 0 ? (
+        <div className="mt-4">
+          <p
+            role="alert"
+            className="border-danger-edge bg-danger-bg text-danger-fg rounded-md border px-4 py-3 font-semibold"
+          >
+            {t("settings.import.progress.problems", {
+              count: progress.skippedCount,
+            })}
+          </p>
+          <SkippedList
+            skipped={progress.skipped}
+            total={progress.skippedCount}
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -223,6 +276,13 @@ export default function SettingsImport({
           </p>
         ) : null}
 
+        {loaderData.progress ? (
+          <ImportProgress
+            progress={loaderData.progress}
+            perDay={loaderData.perDay}
+          />
+        ) : null}
+
         {actionData?.ok === true && actionData.step === "done" ? (
           <section className="mt-8" role="status">
             <h2 className="text-xl font-semibold">
@@ -248,8 +308,14 @@ export default function SettingsImport({
                   })}
                 </li>
               ) : null}
+              {actionData.result.queued > 0 ? (
+                <li>
+                  {t("settings.import.done.queued", {
+                    count: actionData.result.queued,
+                  })}
+                </li>
+              ) : null}
             </ul>
-            <SkippedList skipped={actionData.result.skipped} />
             <p className="mt-4">
               {/* A plain link: the library has its own security policy. */}
               <a href="/library" className={secondaryLinkClass}>
@@ -279,7 +345,7 @@ export default function SettingsImport({
                 <li>
                   {t("settings.import.preview.fetch", {
                     count: actionData.preview.fetch,
-                    max: maxNewTitles,
+                    max: actionData.preview.perDay,
                   })}
                 </li>
               ) : null}

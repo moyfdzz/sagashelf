@@ -1,5 +1,6 @@
 import { pruneContactMessages } from "../db/contact-messages";
 import { announceNewEpisodes } from "../db/episode-alerts";
+import { pruneImportJobs } from "../db/import-queue";
 import { prunePictureUploads } from "../db/picture-uploads";
 import { proposeSagaDrafts } from "../db/saga-drafts";
 import {
@@ -12,6 +13,7 @@ import {
 import { deliverDueEvents } from "./deliver-outbox";
 import { refreshNextEpisodes } from "./refresh-next-episodes";
 import { enrichWithWikidata } from "./enrich-wikidata";
+import { processImportBatch } from "./process-imports";
 import { refreshStaleMedia } from "./refresh-stale-media";
 import { syncSagas } from "./sync-sagas";
 
@@ -30,6 +32,15 @@ export const tvmazeCron = "30 */6 * * *";
  * string of `triggers.crons` in wrangler.jsonc; a test keeps the three equal.
  */
 export const outboxCron = "15 * * * *";
+
+/**
+ * The fourth Cron Trigger (SAG-241, ADR-047): the queue of the titles of an import. Every 15
+ * minutes, at 5, 20, 35 and 50, so it never starts with another one, and 5 titles a run is about 480
+ * a day, more than the 300 a day a person may bring. It has an invocation of its own, so its own 50
+ * subrequests. It must be the string of `triggers.crons` in wrangler.jsonc; a test keeps the four
+ * equal.
+ */
+export const importCron = "5,20,35,50 * * * *";
 
 const logJobFailed = (job: string, error: unknown) =>
   console.log(
@@ -124,6 +135,14 @@ export async function runTvmazeJobs(): Promise<void> {
     logJobFailed("prune-contact-messages", error);
   }
   try {
+    const deleted = await pruneImportJobs(await getDb());
+    if (deleted > 0) {
+      console.log(JSON.stringify({ event: "import_jobs.pruned", deleted }));
+    }
+  } catch (error) {
+    logJobFailed("prune-import-jobs", error);
+  }
+  try {
     const tvmaze = getTvmaze();
     if (!tvmaze) return;
     const summary = await refreshNextEpisodes({ db: await getDb(), tvmaze });
@@ -164,11 +183,33 @@ export async function runOutboxJobs(): Promise<void> {
 }
 
 /**
+ * What the fourth Cron Trigger runs: a few titles of the imports that wait are saved and written to
+ * the library, inside each person's daily budget. Without a provider there is nothing to ask for
+ * and the database stays asleep. At most 45 of the 50 subrequests (see `processImportBatch`).
+ */
+export async function runImportJobs(): Promise<void> {
+  try {
+    const providers = getMediaProviders();
+    if (providers.length === 0) return;
+    const summary = await processImportBatch({
+      db: await getDb(),
+      providers,
+    });
+    if (summary.taken > 0) {
+      console.log(JSON.stringify({ event: "imports.batch", ...summary }));
+    }
+  } catch (error) {
+    logJobFailed("process-imports", error);
+  }
+}
+
+/**
  * The job a Cron Trigger runs, told apart by the string it fired with. Anything that is not one of
- * the other two runs the first one's jobs, as it did before there were more.
+ * the other three runs the first one's jobs, as it did before there were more.
  */
 export function jobsForCron(cron: string): () => Promise<void> {
   if (cron === tvmazeCron) return runTvmazeJobs;
   if (cron === outboxCron) return runOutboxJobs;
+  if (cron === importCron) return runImportJobs;
   return runScheduledJobs;
 }

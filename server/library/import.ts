@@ -6,10 +6,10 @@ import {
   type KnownTitle,
 } from "../db/import";
 import type { ProfileDb } from "../db/profile";
-import { importMedia } from "../media/import";
-import type { Locale, MediaProvider } from "../providers/types";
+import { enqueueImport } from "../db/import-queue";
+import { titleFetchesPerDay } from "../db/title-budget";
+import type { MediaProvider } from "../providers/types";
 import {
-  maxNewTitles,
   normalizeImported,
   type ImportEntry,
   type ParsedImport,
@@ -22,7 +22,7 @@ type Db = ProfileDb & SqlExecutor;
 type Classified = {
   /** In the database already, with or without an entry of this person. */
   known: { key: string; entry: ImportEntry; title: KnownTitle }[];
-  /** Not in the database: the provider is asked for them, up to `maxNewTitles`. */
+  /** Not in the database: they wait in the queue until the provider is asked for them. */
   toFetch: { key: string; entry: ImportEntry }[];
   skipped: Skipped[];
 };
@@ -54,21 +54,21 @@ async function classify(
         title: entry.title,
         reason: "unsupported_provider",
       });
-    } else if (result.toFetch.length < maxNewTitles) {
-      result.toFetch.push({ key, entry });
     } else {
-      result.skipped.push({ title: entry.title, reason: "pending" });
+      result.toFetch.push({ key, entry });
     }
   }
   return result;
 }
 
 export type ImportPreview = {
+  /** Titles from a provider that one person may bring in a day: the pace of the queue. */
+  perDay: number;
   /** Titles we hold that the person does not have yet: they will be added. */
   add: number;
   /** Titles the person already has: they stay as they are, unless they choose to replace. */
   exists: number;
-  /** Titles we do not hold yet, asked of the provider when the person confirms. */
+  /** Titles we do not hold yet: they are asked of the provider in the background, within the daily budget. */
   fetch: number;
   /**
    * Of the titles that would be added (those we hold and those asked of the provider), how many
@@ -93,6 +93,7 @@ export async function previewImport(
   const countOf = (visibility: ImportEntry["visibility"]) =>
     added.filter(({ entry }) => entry.visibility === visibility).length;
   return {
+    perDay: titleFetchesPerDay,
     add: sorted.known.filter(({ title }) => !title.hasEntry).length,
     exists: sorted.known.filter(({ title }) => title.hasEntry).length,
     fetch: sorted.toFetch.length,
@@ -101,124 +102,96 @@ export async function previewImport(
   };
 }
 
-export type ImportResult = {
-  added: number;
-  replaced: number;
-  /** Entries the person already had that were left as they were. */
-  kept: number;
-  skipped: Skipped[];
-};
-
-/** The answer of the budget of new titles: a unit was taken, or why not (a burst or the day). */
-export type FetchSpend = "ok" | "burst" | "daily";
-
 /**
- * Imports the entries of a file for `userId`, who comes from the session. A title we do not hold
- * is saved only through the provider (never from the data of the file), up to `maxNewTitles`; the
- * rest are listed as pending and a second import brings them. The entries are written in one
- * statement. Nothing in the file chooses the person or an id of ours, and the visibility of the
- * file counts only with `keepVisibility`, only for new entries.
- *
- * Each call to the provider first asks `spendFetch` for one unit of the person's budget of new
- * titles (the same one as `/media/open`, ADR-035). When it says no, that title and the ones after
- * it are not asked for: they stay "pending" after a burst (another import a minute later brings
- * them) and are "daily_limit" after the day's budget (another import tomorrow). A title the
- * provider did not answer gives its unit back with `refundFetches`.
+ * The rows to write for the entries whose title we now hold. Two ids of one title would write the
+ * same entry twice: the first one wins and the other is listed as a duplicate. Written once for the
+ * upload and for the queue (ADR-033).
  */
-export async function runImport(
-  deps: {
-    db: Db;
-    providers: readonly MediaProvider[];
-    spendFetch: () => Promise<FetchSpend>;
-    refundFetches: (units: number) => Promise<void>;
-  },
-  userId: string,
-  parsed: ParsedImport,
-  options: { replace: boolean; keepVisibility?: boolean; locale: Locale },
-): Promise<ImportResult> {
-  const { db, providers, spendFetch, refundFetches } = deps;
-  const sorted = await classify(db, userId, parsed, providers);
-  const skipped = [...sorted.skipped];
-  const ready = [...sorted.known];
-
-  // The budget is spent one by one, in the order of the file, and stops at the first refusal.
-  let allowed = 0;
-  let refusal: FetchSpend = "ok";
-  while (allowed < sorted.toFetch.length) {
-    refusal = await spendFetch();
-    if (refusal !== "ok") break;
-    allowed++;
-  }
-  const toFetch = sorted.toFetch.slice(0, allowed);
-  for (const { entry } of sorted.toFetch.slice(allowed)) {
-    skipped.push({
-      title: entry.title,
-      reason: refusal === "daily" ? "daily_limit" : "pending",
-    });
-  }
-
-  if (toFetch.length > 0) {
-    const outcomes = await Promise.allSettled(
-      toFetch.map(({ entry }) =>
-        importMedia(
-          { db, providers },
-          entry.source.provider,
-          entry.source.id,
-          options.locale,
-        ),
-      ),
-    );
-    const saved = toFetch.filter(
-      (_, index) =>
-        outcomes[index]?.status === "fulfilled" && outcomes[index].value,
-    );
-    // A provider that did not answer used no quota and added no title: its units are given back.
-    await refundFetches(
-      outcomes.filter((outcome) => outcome.status === "rejected").length,
-    );
-    toFetch.forEach(({ entry }, index) => {
-      const outcome = outcomes[index];
-      if (outcome?.status === "fulfilled" && outcome.value) return;
-      // The provider does not know the id, or did not answer: another import can try again.
-      skipped.push({
-        title: entry.title,
-        reason: outcome?.status === "fulfilled" ? "not_found" : "pending",
-      });
-    });
-    if (saved.length > 0) {
-      const found = await lookupTitles(
-        db,
-        userId,
-        saved.map(({ entry }) => entry.source),
-      );
-      for (const { key, entry } of saved) {
-        const title = found.get(key);
-        if (title) ready.push({ key, entry, title });
-      }
-    }
-  }
-
-  // Two ids of one title would write the same entry twice: the first one wins.
+export function entriesToWrite(
+  ready: readonly { entry: ImportEntry; title: KnownTitle }[],
+  keepVisibility: boolean,
+): { rows: EntryToWrite[]; duplicates: ImportEntry[] } {
   const seen = new Set<string>();
   const rows: EntryToWrite[] = [];
+  const duplicates: ImportEntry[] = [];
   for (const { entry, title } of ready) {
     if (seen.has(title.mediaId)) {
-      skipped.push({ title: entry.title, reason: "duplicate" });
+      duplicates.push(entry);
       continue;
     }
     seen.add(title.mediaId);
     rows.push({
       mediaId: title.mediaId,
-      ...normalizeImported(entry, title, options.keepVisibility ?? false),
+      ...normalizeImported(entry, title, keepVisibility),
       viewings: entry.viewings,
     });
   }
+  return { rows, duplicates };
+}
 
+export type ImportResult = {
+  added: number;
+  replaced: number;
+  /** Entries the person already had that were left as they were. */
+  kept: number;
+  /** Titles that wait in the queue for the provider. */
+  queued: number;
+  skipped: Skipped[];
+};
+
+/**
+ * Imports the entries of a file for `userId`, who comes from the session. The titles we already
+ * hold are written now, in one statement. The ones only a provider knows are not asked for here
+ * (a request has 50 subrequests, a title costs up to 6): they are stored with the choices of the
+ * person as a job of the queue, and the scheduled job saves them within the daily budget
+ * (`processImportBatch`, ADR-047). Nothing in the file chooses the person or an id of ours, and the
+ * visibility of the file counts only with `keepVisibility`, only for new entries.
+ */
+export async function runImport(
+  deps: { db: Db; providers: readonly MediaProvider[] },
+  userId: string,
+  parsed: ParsedImport,
+  options: { replace: boolean; keepVisibility?: boolean; locale: "es" | "en" },
+): Promise<ImportResult> {
+  const { db, providers } = deps;
+  const sorted = await classify(db, userId, parsed, providers);
+  const keepVisibility = options.keepVisibility ?? false;
+  const skipped = [...sorted.skipped];
+
+  const { rows, duplicates } = entriesToWrite(sorted.known, keepVisibility);
+  for (const entry of duplicates) {
+    skipped.push({ title: entry.title, reason: "duplicate" });
+  }
   const written = await writeEntries(db, userId, rows, options.replace);
+  const kept = rows.length - written.added - written.replaced;
+
+  // Every entry that is not in the library has a place, so the list keeps a stable order.
+  let next = 0;
+  const position = () => next++;
+  const pending = sorted.toFetch.map(({ entry }) => ({
+    position: position(),
+    title: entry.title,
+    entry,
+  }));
+  const left = skipped.map((item) => ({
+    position: position(),
+    title: item.title,
+    reason: item.reason,
+  }));
+  await enqueueImport(db, userId, {
+    replace: options.replace,
+    keepVisibility,
+    locale: options.locale,
+    total: parsed.entries.length + parsed.skipped.length,
+    written: { added: written.added, replaced: written.replaced, kept },
+    pending,
+    skipped: left,
+  });
   return {
     added: written.added,
     replaced: written.replaced,
-    kept: rows.length - written.added - written.replaced,
+    kept,
+    queued: pending.length,
     skipped,
   };
 }

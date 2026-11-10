@@ -300,8 +300,8 @@
         "add_other": "Se añadirán {{count}} títulos a tu biblioteca.",
         "exists_one": "Ya tienes {{count}} título en tu biblioteca.",
         "exists_other": "Ya tienes {{count}} títulos en tu biblioteca.",
-        "fetch_one": "{{count}} título aún no está en SagaShelf y se buscará en TMDB (máximo {{max}} por importación).",
-        "fetch_other": "{{count}} títulos aún no están en SagaShelf y se buscarán en TMDB (máximo {{max}} por importación).",
+        "fetch_one": "{{count}} título aún no está en SagaShelf. Se buscará en TMDB en segundo plano, hasta {{max}} títulos nuevos al día, así que puede tardar.",
+        "fetch_other": "{{count}} títulos aún no están en SagaShelf. Se buscarán en TMDB en segundo plano, hasta {{max}} títulos nuevos al día, así que puede tardar.",
         "sharedPublic_one": "{{count}} de los títulos nuevos es público en el archivo. Quedará privado si no marcas la casilla de abajo.",
         "sharedPublic_other": "{{count}} de los títulos nuevos son públicos en el archivo. Quedarán privados si no marcas la casilla de abajo.",
         "sharedFriends_one": "{{count}} de los títulos nuevos es para amigos en el archivo. Quedará privado si no marcas la casilla de abajo.",
@@ -314,14 +314,25 @@
       "confirm": "Importar",
       "importing": "Importando…",
       "done": {
-        "title": "Listo, se importó tu biblioteca",
+        "title": "Recibimos tu archivo",
         "added_one": "Se añadió {{count}} título.",
         "added_other": "Se añadieron {{count}} títulos.",
         "replaced_one": "Se reemplazó {{count}} título.",
         "replaced_other": "Se reemplazaron {{count}} títulos.",
         "kept_one": "{{count}} título que ya tenías se quedó como estaba.",
         "kept_other": "{{count}} títulos que ya tenías se quedaron como estaban.",
+        "queued_one": "{{count}} título se está buscando en segundo plano.",
+        "queued_other": "{{count}} títulos se están buscando en segundo plano.",
         "library": "Ir a mi biblioteca"
+      },
+      "progress": {
+        "title": "Tu última importación",
+        "count": "{{done}} de {{total}} títulos ya están en tu biblioteca.",
+        "waiting_one": "Falta {{count}} título por buscar. Se buscan en segundo plano, hasta {{max}} títulos nuevos al día, y no necesitas dejar esta página abierta.",
+        "waiting_other": "Faltan {{count}} títulos por buscar. Se buscan en segundo plano, hasta {{max}} títulos nuevos al día, y no necesitas dejar esta página abierta.",
+        "finished": "La importación terminó.",
+        "problems_one": "No se pudo importar {{count}} título.",
+        "problems_other": "No se pudieron importar {{count}} títulos."
       },
       "skipped": "No se importaron",
       "skippedLine": "{{title}}: {{reason}}",
@@ -334,8 +345,7 @@
         "duplicate": "repetido en el archivo",
         "unsupported_provider": "esa fuente no está disponible",
         "not_found": "la fuente no lo encontró",
-        "pending": "pendiente: vuelve a importar el archivo para traerlo",
-        "daily_limit": "límite diario de títulos nuevos alcanzado: vuelve a importar el archivo mañana"
+        "failed": "la fuente no respondió después de varios intentos: vuelve a importar el archivo más tarde"
       },
       "errors": {
         "invalid_file": "El archivo no es una exportación válida de SagaShelf.",

@@ -3,6 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   contactMessages,
+  importJobs,
+  importRows,
   libraryEntries,
   mediaExternalIds,
   mediaItems,
@@ -29,7 +31,7 @@ beforeEach(async () => {
 const { newUser, newMedia } = factories(db);
 
 describe("migrations", () => {
-  it("build all 31 tables and the three extensions from zero", async () => {
+  it("build all 33 tables and the three extensions from zero", async () => {
     const tables = await db.execute<{ table_name: string }>(
       sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`,
     );
@@ -41,6 +43,8 @@ describe("migrations", () => {
       "custom_entries",
       "follow_requests",
       "follows",
+      "import_jobs",
+      "import_rows",
       "library_entries",
       "library_viewings",
       "likes",
@@ -608,5 +612,125 @@ describe("contact messages (SAG-110)", () => {
 
     await db.delete(users).where(eq(users.id, ana.id));
     expect(await db.select().from(contactMessages)).toHaveLength(1);
+  });
+});
+
+describe("import queue (SAG-241)", () => {
+  const job = (userId: string) => ({
+    userId,
+    replace: false,
+    keepVisibility: false,
+    locale: "es",
+    total: 1,
+  });
+  const entry = { title: "A", source: { provider: "tmdb", id: "movie/1" } };
+
+  async function newJob() {
+    const ana = await newUser();
+    const [made] = await db.insert(importJobs).values(job(ana.id)).returning();
+    if (!made) throw new Error("The job was not created");
+    return { ana, jobId: made.id };
+  }
+
+  it("refuses a language we do not have and counts below zero", async () => {
+    const ana = await newUser();
+
+    expect(
+      await failsWith(
+        db.insert(importJobs).values({ ...job(ana.id), locale: "fr" }),
+      ),
+    ).toEqual({ code: "23514", constraint: "import_jobs_locale_check" });
+    expect(
+      await failsWith(
+        db.insert(importJobs).values({ ...job(ana.id), total: -1 }),
+      ),
+    ).toEqual({ code: "23514", constraint: "import_jobs_counts_check" });
+  });
+
+  it("accepts a waiting title with its entry and a skipped one with its reason", async () => {
+    const { jobId } = await newJob();
+
+    await db.insert(importRows).values([
+      { jobId, position: 0, title: "A", state: "pending", entry },
+      { jobId, position: 1, title: "B", state: "skipped", reason: "not_found" },
+    ]);
+
+    expect(await db.select().from(importRows)).toHaveLength(2);
+  });
+
+  it("refuses a state or reason nobody knows, and a state that does not fit its fields", async () => {
+    const { jobId } = await newJob();
+    const bad = (values: Partial<typeof importRows.$inferInsert>) =>
+      failsWith(
+        db.insert(importRows).values({
+          jobId,
+          position: 0,
+          title: "A",
+          state: "pending",
+          entry,
+          ...values,
+        }),
+      );
+
+    expect(await bad({ state: "done", entry: null })).toMatchObject({
+      constraint: "import_rows_state_check",
+    });
+    // A waiting title has no reason, and a skipped one must have a known one.
+    expect(await bad({ reason: "not_found" })).toMatchObject({
+      constraint: "import_rows_reason_check",
+    });
+    expect(
+      await bad({ state: "skipped", reason: "pending", entry: null }),
+    ).toMatchObject({ constraint: "import_rows_reason_check" });
+    expect(await bad({ state: "skipped", entry: null })).toMatchObject({
+      constraint: "import_rows_reason_check",
+    });
+    // A waiting title needs its entry; a skipped one does not keep it.
+    expect(await bad({ entry: null })).toMatchObject({
+      constraint: "import_rows_entry_check",
+    });
+    expect(
+      await bad({ state: "skipped", reason: "failed", entry }),
+    ).toMatchObject({ constraint: "import_rows_entry_check" });
+  });
+
+  it("refuses a title over 300 characters, 4 tries, and a position used twice in a job", async () => {
+    const { jobId } = await newJob();
+    const bad = (values: Partial<typeof importRows.$inferInsert>) =>
+      failsWith(
+        db.insert(importRows).values({
+          jobId,
+          position: 0,
+          title: "A",
+          state: "pending",
+          entry,
+          ...values,
+        }),
+      );
+
+    expect(await bad({ title: "x".repeat(301) })).toMatchObject({
+      constraint: "import_rows_title_length_check",
+    });
+    expect(await bad({ attempts: 4 })).toMatchObject({
+      constraint: "import_rows_attempts_check",
+    });
+    await db
+      .insert(importRows)
+      .values({ jobId, position: 0, title: "A", state: "pending", entry });
+    expect(await bad({})).toMatchObject({
+      constraint: "import_rows_job_position_unique",
+    });
+  });
+
+  it("deletes the rows with their job, and the job with the person", async () => {
+    const { ana, jobId } = await newJob();
+    await db
+      .insert(importRows)
+      .values({ jobId, position: 0, title: "A", state: "pending", entry });
+
+    await db.delete(users).where(eq(users.id, ana.id));
+
+    expect(await db.select().from(importJobs)).toHaveLength(0);
+    expect(await db.select().from(importRows)).toHaveLength(0);
   });
 });

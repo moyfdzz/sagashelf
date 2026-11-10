@@ -67,6 +67,8 @@
     "server/testing/discord.ts",
     "server/providers/wikidata/map.ts",
     "server/db/import.ts",
+    "server/db/import-queue.ts",
+    "server/jobs/process-imports.ts",
     "server/media/import.ts",
     "server/library/**/*",
     "server/db/search-local.ts",

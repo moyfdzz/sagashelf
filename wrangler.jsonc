@@ -106,7 +106,12 @@
   // database can sleep (the Neon Free plan pauses it after 5 minutes without a query). The Free
   // plan allows 5 Cron Triggers per account, and three are used.
   "triggers": {
-    "crons": ["0 */6 * * *", "30 */6 * * *", "15 * * * *"],
+    "crons": [
+      "0 */6 * * *",
+      "30 */6 * * *",
+      "15 * * * *",
+      "5,20,35,50 * * * *",
+    ],
   },
   "observability": {
     "enabled": true,

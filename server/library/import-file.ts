@@ -11,15 +11,13 @@ import {
 import type { LibraryStatus } from "./schema";
 import { maxViewings } from "../db/viewings";
 
-/** The most bytes of a file to import. A library of 500 titles with notes is far under it. */
-export const maxImportBytes = 1024 * 1024;
-/** The most entries one file may hold. */
-export const maxImportEntries = 500;
+/** The most bytes of a file to import. A library of 5,000 titles with notes is under it. */
+export const maxImportBytes = 5 * 1024 * 1024;
 /**
- * The most titles that are not in our database yet and are asked of the provider in one import.
- * Each takes between 2 and 6 subrequests, and the Free plan allows 50 for the whole request.
+ * The most entries one file may hold. The titles that only a provider knows are not asked for in
+ * the request that carries the file: they wait in a queue (SAG-241, ADR-047).
  */
-export const maxNewTitles = 6;
+export const maxImportEntries = 5000;
 
 const isoDate = z
   .string()
@@ -46,7 +44,7 @@ const viewingSchema = z.object({
 });
 
 /** One library entry of the file. Only these fields are read: anything else is left alone. */
-const entrySchema = z.object({
+export const importEntrySchema = z.object({
   title: z
     .string()
     .max(300)
@@ -81,7 +79,7 @@ const entrySchema = z.object({
   viewings: z.array(viewingSchema).max(maxViewings).catch([]),
 });
 
-export type ImportEntry = z.output<typeof entrySchema>;
+export type ImportEntry = z.output<typeof importEntrySchema>;
 
 /** Why an entry is left out of an import. Each code has its text under library.import.reasons. */
 export type SkipReason =
@@ -90,8 +88,7 @@ export type SkipReason =
   | "duplicate"
   | "unsupported_provider"
   | "not_found"
-  | "pending"
-  | "daily_limit";
+  | "failed";
 
 export type Skipped = { title: string; reason: SkipReason };
 
@@ -112,7 +109,7 @@ const fileSchema = z.object({
 
 /**
  * Reads the text of a file made by the data export. The file is data from outside, so only the
- * library entries are read and only the fields of `entrySchema`: the profile, the lists and an id
+ * library entries are read and only the fields of `importEntrySchema`: the profile, the lists and an id
  * of a person in the file are never looked at. An entry that does not pass is left
  * out and listed, and the rest still import. Two entries of the same title count once.
  */
@@ -149,7 +146,7 @@ export function parseImportFile(
       skipped.push({ title: label, reason: "no_source" });
       continue;
     }
-    const parsed = entrySchema.safeParse(raw);
+    const parsed = importEntrySchema.safeParse(raw);
     if (!parsed.success || !datesInOrder(parsed.data)) {
       skipped.push({ title: label, reason: "invalid" });
       continue;
