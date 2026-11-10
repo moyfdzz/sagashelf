@@ -111,17 +111,38 @@ describe("POST /settings/delete", () => {
     expect(mocks.deleteUser).toHaveBeenCalledTimes(1);
   });
 
-  it("needs the box that says it cannot be undone", async () => {
+  it("says the box is missing when the username is right but the box is not ticked (SAG-172)", async () => {
     const result = await submit({ confirm: "ana_reads" });
 
+    expect(answer(result).data.error).toBe("understood_required");
+    expect(answer(result).init?.status).toBe(400);
+    expect(mocks.deleteUser).not.toHaveBeenCalled();
+    expect(mocks.eraseAccount).not.toHaveBeenCalled();
+  });
+
+  it("answers only the username error when both the username and the box fail", async () => {
+    const result = await submit({ confirm: "someone_else" });
+
     expect(answer(result).data.error).toBe("confirm_mismatch");
+    expect(mocks.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("answers a wrong box value or a missing username field as an invalid request", async () => {
+    const wrongBox = await submit({ confirm: "ana_reads", understood: "yes" });
+    const noUsername = await submit({ understood: "on" });
+
+    expect(answer(wrongBox).data.error).toBe("invalid_request");
+    const tooLong = await submit({ confirm: "a".repeat(65), understood: "on" });
+
+    expect(answer(noUsername).data.error).toBe("invalid_request");
+    expect(answer(tooLong).data.error).toBe("invalid_request");
     expect(mocks.deleteUser).not.toHaveBeenCalled();
   });
 
   it("refuses a form that carries other fields, such as another account's id", async () => {
     const result = await submit({ ...confirmed, clerkId: "clerk_victim" });
 
-    expect(answer(result).data.error).toBe("confirm_mismatch");
+    expect(answer(result).data.error).toBe("invalid_request");
     expect(mocks.deleteUser).not.toHaveBeenCalled();
   });
 
