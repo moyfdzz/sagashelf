@@ -132,7 +132,10 @@ describe("POST /settings/delete", () => {
     const noUsername = await submit({ understood: "on" });
 
     expect(answer(wrongBox).data.error).toBe("invalid_request");
+    const tooLong = await submit({ confirm: "a".repeat(65), understood: "on" });
+
     expect(answer(noUsername).data.error).toBe("invalid_request");
+    expect(answer(tooLong).data.error).toBe("invalid_request");
     expect(mocks.deleteUser).not.toHaveBeenCalled();
   });
 

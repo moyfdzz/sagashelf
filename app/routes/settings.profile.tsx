@@ -179,8 +179,12 @@ export default function ProfileSettings({
   const saving = navigation.state === "submitting";
   const deleter = useFetcher<typeof deleteAction>();
   const deleting = deleter.state !== "idle";
+  // The last answer is not shown while a new request is in flight: it would still mark a field
+  // the person has just corrected (SAG-172).
   const deleteError =
-    deleter.data && "error" in deleter.data ? deleter.data.error : null;
+    !deleting && deleter.data && "error" in deleter.data
+      ? deleter.data.error
+      : null;
   // The two errors of the fields show next to their field; the others show above the form.
   const deleteFormError =
     deleteError === "confirm_mismatch" || deleteError === "understood_required"

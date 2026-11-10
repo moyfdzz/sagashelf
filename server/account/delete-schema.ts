@@ -4,10 +4,10 @@ import { z } from "zod";
  * What the person sends to delete the account: their own username, typed as it is shown, and the
  * box that says they understand it cannot be undone. Nothing else is read from the form. The box
  * is not required here: the route answers a missing box with its own error, apart from the
- * username's (SAG-172). The size of the text is limited by the body limit of the route.
+ * username's (SAG-172). An empty text is a wrong username, not an invalid form.
  */
 export const deleteAccountSchema = z.strictObject({
-  confirm: z.string(),
+  confirm: z.string().max(64),
   understood: z.literal("on").optional(),
 });
 
