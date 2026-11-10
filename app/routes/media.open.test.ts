@@ -23,6 +23,9 @@ vi.mock("~server/runtime-env", () => ({
   getMediaProviders: () => [],
   getOpenLimiter: () => ({ limit: mocks.limit }),
 }));
+vi.mock("~server/db/title-budget", () => ({
+  claimTitleFetch: async () => "ok",
+}));
 vi.mock("~/middleware/i18next", () => ({ getLocale: () => "es" }));
 
 const id = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";

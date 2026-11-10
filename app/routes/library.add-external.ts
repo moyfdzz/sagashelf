@@ -98,7 +98,7 @@ export async function action(args: Route.ActionArgs) {
   );
   if (!title) {
     // Only a call to the provider counts, against the same per-person limit as /media/open.
-    const slowed = await spendOpenUnit(request, user.id);
+    const slowed = await spendOpenUnit(request, db, user.id);
     if (slowed) return slowed;
 
     try {

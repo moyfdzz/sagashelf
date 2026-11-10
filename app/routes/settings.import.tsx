@@ -124,7 +124,8 @@ export async function action(args: Route.ActionArgs) {
     );
   }
   // A title only the provider knows costs one unit of the same per-person budget as /media/open.
-  const spendFetch = async () => !(await spendOpenUnit(request, user.id));
+  const spendFetch = async () =>
+    !(await spendOpenUnit(request, deps.db, user.id));
   return data(
     {
       ok: true as const,

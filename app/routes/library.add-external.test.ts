@@ -29,6 +29,9 @@ vi.mock("~server/runtime-env", () => ({
   getWriteLimiter: () => ({ limit: mocks.writeLimit }),
   getOpenLimiter: () => ({ limit: mocks.openLimit }),
 }));
+vi.mock("~server/db/title-budget", () => ({
+  claimTitleFetch: async () => "ok",
+}));
 vi.mock("~/middleware/i18next", () => ({
   getLocale: () => mocks.locale,
 }));

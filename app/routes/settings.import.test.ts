@@ -31,6 +31,9 @@ vi.mock("~server/library/import", () => ({
   previewImport: mocks.previewImport,
   runImport: mocks.runImport,
 }));
+vi.mock("~server/db/title-budget", () => ({
+  claimTitleFetch: async () => "ok",
+}));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
   getLocale: () => "en",

@@ -51,7 +51,7 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   // Only a call to the provider counts against the limit, and it is counted per person.
-  const limited = await spendOpenUnit(request, user.id);
+  const limited = await spendOpenUnit(request, db, user.id);
   if (limited) throw limited;
 
   try {
