@@ -39,8 +39,35 @@ export type AccountExport = {
     createdAt: string;
   };
   libraryEntries: Record<string, unknown>[];
-  customEntries: Record<string, unknown>[];
-  lists: Record<string, unknown>[];
+  /**
+   * The titles the person created themselves (SAG-171): every descriptive field of the title, never
+   * the id, the moderation state or what only the catalog fills (popularity, when it was fetched).
+   * A file from before SAG-171 has only `title`, `originalTitle`, `visibility` and `createdAt`, so
+   * the import (SAG-41) must treat the other fields as optional. `schemaVersion` stays 1 because
+   * fields were only added.
+   */
+  customEntries: {
+    type: string;
+    title: string;
+    originalTitle: string | null;
+    year: number | null;
+    synopsis: Record<string, string>;
+    creators: string[] | null;
+    runtimeMinutes: number | null;
+    genres: string[] | null;
+    imageUrl: string | null;
+    status: string;
+    visibility: string;
+    createdAt: Date;
+  }[];
+  /** The lists the person made, with who may see each one (SAG-171). Never the id of a row. */
+  lists: {
+    title: string;
+    description: string | null;
+    visibility: string;
+    createdAt: Date;
+    items: { title: string; position: number; note: string | null }[];
+  }[];
   /**
    * The webhooks the person connected (SAG-27). The address is masked: it holds the token that lets
    * anyone post in the channel, and a file that is downloaded can be sent, stored or shared.
@@ -197,8 +224,16 @@ export async function exportAccount(
 
   const custom = await db
     .select({
+      type: mediaItems.type,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      year: mediaItems.year,
+      synopsis: mediaItems.synopsis,
+      creators: mediaItems.creators,
+      runtimeMinutes: mediaItems.runtimeMinutes,
+      genres: mediaItems.genres,
+      imageUrl: mediaItems.imageUrl,
+      status: mediaItems.status,
       visibility: customEntries.visibility,
       createdAt: customEntries.createdAt,
     })
@@ -211,6 +246,7 @@ export async function exportAccount(
       id: lists.id,
       title: lists.title,
       description: lists.description,
+      visibility: lists.visibility,
       createdAt: lists.createdAt,
     })
     .from(lists)

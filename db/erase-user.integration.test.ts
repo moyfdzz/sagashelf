@@ -97,7 +97,17 @@ async function personWithEverything() {
   });
   const bob = await newUser({ clerkId: "user_bob", username: "bob_reads" });
   const movie = await newMedia({ title: "A shared movie" });
-  const mine = await newMedia({ title: "Ana's secret custom title" });
+  const mine = await newMedia({
+    title: "Ana's secret custom title",
+    type: "custom",
+    originalTitle: "El título secreto de Ana",
+    year: 1999,
+    creators: ["Ana Author"],
+    runtimeMinutes: 90,
+    genres: ["drama"],
+    imageUrl: "https://example.test/cover.png",
+    status: "finished",
+  });
 
   const [entry] = await db
     .insert(libraryEntries)
@@ -114,13 +124,17 @@ async function personWithEverything() {
     finishedOn: "2025-05-03",
     notes: "an old viewing",
   });
-  await db.insert(customEntries).values({ mediaId: mine.id, ownerId: ana.id });
+  await db.insert(customEntries).values({
+    mediaId: mine.id,
+    ownerId: ana.id,
+    visibility: "friends",
+  });
   await db
     .insert(contactMessages)
     .values({ userId: ana.id, kind: "help", body: "a question of Ana" });
   const [list] = await db
     .insert(lists)
-    .values({ ownerId: ana.id, title: "Best of" })
+    .values({ ownerId: ana.id, title: "Best of", visibility: "public" })
     .returning();
   if (!list) throw new Error("The list was not created");
   await db
@@ -324,14 +338,35 @@ describe("exportAccount", () => {
       { title: "A shared movie", status: "completed", notes: "a private note" },
     ]);
     expect(data?.customEntries).toMatchObject([
-      { title: "Ana's secret custom title" },
+      {
+        type: "custom",
+        title: "Ana's secret custom title",
+        originalTitle: "El título secreto de Ana",
+        year: 1999,
+        creators: ["Ana Author"],
+        runtimeMinutes: 90,
+        genres: ["drama"],
+        imageUrl: "https://example.test/cover.png",
+        status: "finished",
+        visibility: "friends",
+      },
     ]);
     expect(data?.lists).toMatchObject([
       {
         title: "Best of",
+        visibility: "public",
         items: [{ title: "A shared movie", note: "ana's note" }],
       },
     ]);
+    // Never the id of a row, in a custom title or in a list (SAG-171).
+    for (const row of [
+      ...(data?.customEntries ?? []),
+      ...(data?.lists ?? []),
+    ]) {
+      expect(Object.keys(row)).not.toContain("id");
+      expect(Object.keys(row)).not.toContain("mediaId");
+      expect(Object.keys(row)).not.toContain("ownerId");
+    }
     // The notifications: both of hers, with what each said and when it was read, and not Bob's.
     expect(data?.notifications).toHaveLength(2);
     expect(data?.notifications).toContainEqual({
