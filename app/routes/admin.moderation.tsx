@@ -31,7 +31,9 @@ import {
   listSuspiciousUploads,
   queuePageSize,
 } from "~server/db/moderation";
+import { maxPage } from "~server/db/people-lists";
 import { privateRouteHeaders } from "~server/http/cache";
+import { pageParam } from "~server/http/page-param";
 import {
   asConfirmedAction,
   asModerationDetail,
@@ -59,12 +61,19 @@ export async function loader(args: Route.LoaderArgs) {
   const confirmId = asReportId(params.get("confirm"));
   const confirmAction = asConfirmedAction(params.get("do"));
   const db = await getDb();
+  // The restricted accounts come a page at a time (SAG-170).
+  const accountsPage = pageParam(args.request, maxPage);
   // The person asked for in the box "Act on a person" (SAG-146), found by username.
   const personName = asPersonName(params.get("person"));
   const [reports, uploads, accounts, person] = await Promise.all([
     listOpenReports(db, admin.id),
     listSuspiciousUploads(db),
-    listRestrictedAccounts(db, queuePageSize),
+    // One row more than a page tells whether there is a next one.
+    listRestrictedAccounts(
+      db,
+      queuePageSize + 1,
+      (accountsPage - 1) * queuePageSize,
+    ),
     personName ? findPersonByUsername(db, admin.id, personName) : null,
   ]);
   // Adds Clerk's state for this page, so Clerk's script can renew the session (ClerkSession).
@@ -119,7 +128,9 @@ export async function loader(args: Route.LoaderArgs) {
       ...upload,
       createdAt: upload.createdAt.getTime(),
     })),
-    accounts: accounts.map((account) => ({
+    accountsPage,
+    accountsHasMore: accounts.length > queuePageSize,
+    accounts: accounts.slice(0, queuePageSize).map((account) => ({
       id: account.id,
       username: account.username,
       state: account.state,
@@ -279,7 +290,11 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
           )}
         </section>
 
-        <RestrictedAccounts accounts={loaderData.accounts} />
+        <RestrictedAccounts
+          accounts={loaderData.accounts}
+          page={loaderData.accountsPage}
+          hasMore={loaderData.accountsHasMore}
+        />
 
         <section aria-labelledby="moderation-uploads" className="mt-10">
           <h2 id="moderation-uploads" className="text-xl font-semibold">

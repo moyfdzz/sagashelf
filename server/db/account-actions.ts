@@ -260,10 +260,14 @@ export type RestrictedAccount = {
   note: string | null;
 };
 
-/** The accounts that are suspended or banned, the latest first. */
+/**
+ * The accounts that are suspended or banned, the latest first. `offset` skips the pages before
+ * (SAG-170); the caller asks for one row more than a page to know whether there is a next one.
+ */
 export async function listRestrictedAccounts(
   db: SqlExecutor,
   limit: number,
+  offset = 0,
 ): Promise<RestrictedAccount[]> {
   const { rows } = await db.execute(sql`
     SELECT u.id, u.clerk_id, u.username::text AS username, u.moderation_status,
@@ -278,7 +282,7 @@ export async function listRestrictedAccounts(
     ) n ON TRUE
     WHERE u.moderation_status <> 'active' AND u.deleted_at IS NULL
     ORDER BY u.moderation_changed_at DESC NULLS LAST, u.id
-    LIMIT ${limit}::int
+    LIMIT ${limit}::int OFFSET ${offset}::int
   `);
   return rows.map((row) => ({
     id: String(row.id),

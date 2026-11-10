@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { ProfilePagination } from "~/components/ProfilePagination";
 import { ActionButton } from "~/components/moderation/ActionButton";
 import { useFormatters } from "~/lib/format";
 import { linkClass, secondaryButtonClass } from "~/lib/ui";
@@ -13,7 +14,15 @@ export type PanelAccount = {
 };
 
 /** The accounts that are suspended or banned, each with the button that gives it back. */
-export function RestrictedAccounts({ accounts }: { accounts: PanelAccount[] }) {
+export function RestrictedAccounts({
+  accounts,
+  page,
+  hasMore,
+}: {
+  accounts: PanelAccount[];
+  page: number;
+  hasMore: boolean;
+}) {
   const { t } = useTranslation();
   const { formatPanelTime } = useFormatters();
 
@@ -72,6 +81,14 @@ export function RestrictedAccounts({ accounts }: { accounts: PanelAccount[] }) {
           ))}
         </ul>
       )}
+      {/* A page past the last one (accounts lifted meanwhile) still offers the way back. */}
+      <ProfilePagination
+        page={page}
+        hasMore={hasMore}
+        pathTo={(toPage) => `/admin/moderation?page=${toPage}`}
+        label={t("admin.moderation.accounts.title")}
+        plain
+      />
     </section>
   );
 }
