@@ -51,7 +51,11 @@ export async function refreshStaleMedia(
   // A deployment with no provider secret has nothing to ask, so it does not wake the database.
   if (deps.providers.length === 0) return summary;
 
-  const rows = await findMediaToRefresh(deps.db, limit);
+  const rows = await findMediaToRefresh(
+    deps.db,
+    limit,
+    deps.providers.map((provider) => provider.id),
+  );
   summary.found = rows.length;
 
   for (const row of rows) {
