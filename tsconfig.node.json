@@ -47,6 +47,7 @@
     "server/db/episode-alerts.ts",
     "server/db/notifications.ts",
     "server/db/header-facts.ts",
+    "server/db/session-user.ts",
     "server/db/person.ts",
     "server/db/follows.ts",
     "server/db/blocks-mutes.ts",

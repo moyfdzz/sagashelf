@@ -1,6 +1,5 @@
 import { getAuth } from "@clerk/react-router/server";
 import { createClerkClient } from "@clerk/backend";
-import { eq } from "drizzle-orm";
 import { data, redirectDocument, type LoaderFunctionArgs } from "react-router";
 
 import { authorize, type Role, type SessionUser } from "./authorize";
@@ -9,23 +8,10 @@ import { signInPath } from "./sign-in-url";
 /** Where a suspended or banned person is sent: a page that says why and lets them sign out. */
 export const restrictedPath = "/account-restricted";
 import { getClerkKeys, getDb } from "../runtime-env";
-import { users } from "../db/schema";
+import { findSessionUser } from "../db/session-user";
 
 async function findUser(clerkId: string): Promise<SessionUser | null> {
-  const db = await getDb();
-  const [row] = await db
-    .select({
-      id: users.id,
-      clerkId: users.clerkId,
-      role: users.role,
-      status: users.moderationStatus,
-    })
-    .from(users)
-    .where(eq(users.clerkId, clerkId))
-    .limit(1);
-  if (!row) return null;
-  const { status, ...user } = row;
-  return status === "active" ? user : { ...user, restricted: true };
+  return findSessionUser(await getDb(), clerkId);
 }
 
 async function hasVerifiedGoogle(clerkId: string): Promise<boolean> {
