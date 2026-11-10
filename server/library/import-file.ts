@@ -10,6 +10,11 @@ import {
 } from "./schema";
 import type { LibraryStatus } from "./schema";
 import { maxViewings } from "../db/viewings";
+import {
+  convertSimklBackup,
+  isSimklBackup,
+  simklEntryCount,
+} from "./import-simkl";
 
 /** The most bytes of a file to import. A library of 5,000 titles with notes is under it. */
 export const maxImportBytes = 5 * 1024 * 1024;
@@ -108,7 +113,7 @@ const fileSchema = z.object({
 });
 
 /**
- * Reads the text of a file made by the data export. The file is data from outside, so only the
+ * Reads the text of a file made by the data export, or a Simkl JSON backup (SAG-242). The file is data from outside, so only the
  * library entries are read and only the fields of `importEntrySchema`: the profile, the lists and an id
  * of a person in the file are never looked at. An entry that does not pass is left
  * out and listed, and the rest still import. Two entries of the same title count once.
@@ -128,19 +133,29 @@ export function parseImportFile(
     return { ok: false, error: "invalid_file" };
   }
 
-  const file = fileSchema.safeParse(json);
-  if (!file.success) return { ok: false, error: "invalid_file" };
-  if (file.data.schemaVersion !== 1) {
-    return { ok: false, error: "unsupported_version" };
-  }
-  if (file.data.libraryEntries.length > maxImportEntries) {
-    return { ok: false, error: "too_many" };
+  // A Simkl backup is converted to the entries of our own export and then checked the same way.
+  let rawEntries: unknown[];
+  if (isSimklBackup(json)) {
+    if (simklEntryCount(json) > maxImportEntries) {
+      return { ok: false, error: "too_many" };
+    }
+    rawEntries = convertSimklBackup(json);
+  } else {
+    const file = fileSchema.safeParse(json);
+    if (!file.success) return { ok: false, error: "invalid_file" };
+    if (file.data.schemaVersion !== 1) {
+      return { ok: false, error: "unsupported_version" };
+    }
+    if (file.data.libraryEntries.length > maxImportEntries) {
+      return { ok: false, error: "too_many" };
+    }
+    rawEntries = file.data.libraryEntries;
   }
 
   const entries: ParsedImport["entries"] = [];
   const skipped: Skipped[] = [];
   const seen = new Set<string>();
-  for (const raw of file.data.libraryEntries) {
+  for (const raw of rawEntries) {
     const label = titleOf(raw);
     if (!hasSource(raw)) {
       skipped.push({ title: label, reason: "no_source" });
