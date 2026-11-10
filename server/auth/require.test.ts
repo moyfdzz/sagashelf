@@ -246,8 +246,8 @@ describe("an erased account", () => {
       const { sql: text } = new PgDialect().sqlToQuery(
         condition as Parameters<PgDialect["sqlToQuery"]>[0],
       );
-      expect(text).toContain('"clerk_id" = $1');
-      expect(text).toContain('"deleted_at" is null');
+      expect(text).toMatch(/clerk_id"?\s*=\s*\$1/);
+      expect(text).toMatch(/deleted_at"?\s+is null/i);
     }
   });
 
