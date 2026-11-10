@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
+import { escapeLike } from "./escape-like";
 import type { ProfileDb } from "./profile";
 import { libraryEntries, mediaItems } from "./schema";
 import { localizedTitleSql, sharedTitleSql } from "./titles";
@@ -328,9 +329,6 @@ const orderBy = (locale: Locale): Record<LibraryQuery["sort"], SQL[]> => ({
     desc(libraryEntries.updatedAt),
   ],
 });
-
-/** Makes the text of the search box literal for LIKE: `%` and `_` are not wildcards there. */
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
 /**
  * A title matches the search when it contains the text, ignoring case and accents, in its name,

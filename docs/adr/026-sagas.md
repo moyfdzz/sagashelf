@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-31
-- **Implementation:** Partial. The page, the badge and the 21 curated sagas are done (SAG-25), and so are the curation screen and the drafts that Wikidata suggests (SAG-92) and its link in the account menu (SAG-95). The suggestions of missing works by people are not (SAG-93).
-- **Tickets:** SAG-25, SAG-92, SAG-93, SAG-95, SAG-16, SAG-87
+- **Implementation:** Partial. The page, the badge and the 21 curated sagas are done (SAG-25), and so are the curation screen and the drafts that Wikidata suggests (SAG-92) and its link in the account menu (SAG-95). The list and search of sagas and their sitemap are done (SAG-245). The suggestions of missing works by people are not (SAG-93).
+- **Tickets:** SAG-25, SAG-92, SAG-93, SAG-95, SAG-245, SAG-16, SAG-87
 - **Related:** [ADR-025](025-wikidata.md), [ADR-007](007-background-work-cron-and-outbox.md), [ADR-018](018-personal-library.md)
 
 ## Context
@@ -48,11 +48,21 @@ The administrator was decided on 2026-10-31: **Google with 2-step verification**
 
 **The link in the account menu (SAG-95).** An administrator finds "Administration" in the account menu, above "Sign out"; nobody else gets it, in the page or in its data. The loader of the root reads the role of a person with a session and gives the header a yes or no, `isAdmin`, next to `signedIn` (since SAG-114 it is one read, `findHeaderFacts`, that also gives the username and the count of unread notifications, and nothing for a visitor); a failure of the database says no and is logged by name. It is a **convenience, not a check**: the pages and the changes of the administration still refuse anyone who is not an administrator with a verified Google login, and the link does not ask Clerk for that login because it would be a call on every page. The link is a plain anchor, like the others of the menu, because `/admin` has a policy of its own. Checking the menu on a 390 px screen found an older fault: the header wraps, the button of the account menu sits at the left, and its panel (opened to the left of the button) left the screen, so the links could not be read by anyone with a session. The panel now hangs from the edge of the button that leaves room (`menuAlign` in `app/lib/menu.ts`, decided when the menu opens), and it was checked in a browser at 320, 390, 768, 1280 and 1920 px.
 
+## The list, the search and the sitemap (SAG-245)
+
+A saga used to be reached only from the badge on the page of a title, so a title nobody had opened hid its saga. **`/sagas`** is a public page that lists the published sagas with the number of works and their formats, and a search form (`?q=`, a plain GET form that also works without JavaScript). It never shows a person's progress, so it is the same for everybody and does not ask who is reading; the progress stays on the page of each saga.
+
+- **One rule for "which sagas exist".** `listSagas` (`server/db/sagas.ts`) is the only reader of the list. It keeps the rule of `getSagaBySlug`: a saga is listed only when it is `published` and has at least one **described** work, so a card never leads to a 404. A draft is never listed and never found by a search. The search is `immutable_unaccent(lower(...)) LIKE` over the English name and the name of each language, with `%`, `_` and `\` escaped, and the text is cut at the 100 characters of the title search. With about 20 sagas an index is not worth it; the list is cut at 500 rows as a ceiling.
+- **The sitemap** is `/sitemap.xml`, built by `server/sitemap.ts` from the same list: `/sagas` and each published saga, always on the apex domain (`sagashelf.app`), with no `lastmod`. It lists **only the sagas**; the rest of the site is not in it. It is the same for everybody and may be cached for an hour. `public/robots.txt` announces it with a `Sitemap:` line.
+- **Navigation:** "Sagas" is in the header for visitors and for signed-in people.
+- **Not measured, not tried:** the page with real data in production. The CI has no database, so there is no end-to-end test of `/sagas`; it is covered by tests of the query on the real Postgres (`db/sagas-list.integration.test.ts`), of the loader and of the render.
+- **Left out on purpose:** searching sagas from the search of titles, and paging (a ceiling of 500 is far above the 21 published sagas).
+
 ## What is not in this ticket, and why
 
 - **Automatic suggestions as drafts, and the curation screen** were left out of SAG-25 for want of an administrator, and are SAG-92 (above).
 - **Suggestions of a missing work by a person** (goes to moderation). It needs a place to review it, the same missing screen, and a new target type in `reports`.
-- **A list of all sagas** (`/sagas`) and a sitemap. A saga is reached from the badge today.
+- **A list of all sagas** (`/sagas`) and a sitemap. They were left out of SAG-25 and are SAG-245 (below).
 
 ## Alternatives considered
 

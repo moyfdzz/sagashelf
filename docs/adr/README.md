@@ -29,7 +29,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [023](023-statistics.md)                         | Statistics of a person, worked out when the page opens; one length per title              | Accepted | Done (SAG-61, SAG-85, SAG-86, SAG-91) |
 | [024](024-genres.md)                             | Genres of a title, in a list of our own that every provider maps to                       | Accepted | Done (SAG-71, SAG-86)                 |
 | [025](025-wikidata.md)                           | Other formats of a story through Wikidata, found in the 6-hourly cron                     | Accepted | Done (SAG-16)                         |
-| [026](026-sagas.md)                              | Sagas, curated in code and built on Wikidata, with a page, a badge and your progress      | Accepted | Partial (SAG-25, SAG-92)              |
+| [026](026-sagas.md)                              | Sagas, curated in code and built on Wikidata, with a page, a badge and your progress      | Accepted | Partial (SAG-25, SAG-92, SAG-245)     |
 | [027](027-tvmaze-next-episode.md)                | The next episode of a series through TVmaze, in a Cron Trigger of its own                 | Accepted | Done (SAG-90)                         |
 | [028](028-recommendations.md)                    | Recommendations from the genres a person likes and the sagas they started                 | Accepted | Done (SAG-87)                         |
 | [029](029-discord-webhooks.md)                   | Outgoing webhooks to Discord: the outbox, the delivery and the settings page              | Accepted | Done (SAG-27)                         |

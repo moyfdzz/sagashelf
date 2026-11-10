@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import { escapeLike } from "./escape-like";
 import { sharedTitleSql } from "./titles";
 import type { LocalizedText } from "./schema/shared";
 import { mediaMatchesItem } from "./wikidata-store";
@@ -178,6 +179,60 @@ export async function getSagaBySlug(
         : null,
     })),
   };
+}
+
+/** One saga of the list: what a card says, with no work and no person's progress. */
+export type SagaListItem = {
+  slug: string;
+  title: string;
+  titles: LocalizedText;
+  /** The works Wikidata has described, the ones the page of the saga lists. */
+  works: number;
+  formats: WikidataFormat[];
+};
+
+/** The most sagas one list or one sitemap carries. There are about 20; this is a ceiling. */
+export const sagaListLimit = 500;
+
+/**
+ * The published sagas that have at least one described work (the rule of `getSagaBySlug`, so a card
+ * never leads to a 404), by name. `search` is already normalized (`normalizeQuery`): it is looked
+ * for in the English name and in the name of each language, without accents or capitals. A draft is
+ * never in the answer. The list is ordered by the name in the language of the reader.
+ */
+export async function listSagas(
+  db: SqlExecutor,
+  { search, locale }: { search: string; locale: "es" | "en" },
+): Promise<SagaListItem[]> {
+  const needle = `%${escapeLike(search)}%`;
+  const name = (value: ReturnType<typeof sql>) =>
+    sql`immutable_unaccent(lower(${value}))`;
+  const { rows } = await db.execute(sql`
+    SELECT s.slug, s.title, s.titles, count(*)::int AS works,
+           string_agg(DISTINCT i.format, ',' ORDER BY i.format) AS formats
+    FROM sagas s
+    JOIN saga_wikidata_members m ON m.saga_id = s.id
+    JOIN wikidata_items i ON i.qid = m.qid AND i.details_at IS NOT NULL
+    WHERE s.status = 'published'
+      AND (
+        ${search} = ''
+        OR ${name(sql`s.title`)} LIKE ${needle}
+        OR ${name(sql`coalesce(s.titles->>'es', '')`)} LIKE ${needle}
+        OR ${name(sql`coalesce(s.titles->>'en', '')`)} LIKE ${needle}
+      )
+    GROUP BY s.id
+    ORDER BY ${name(sql`coalesce(nullif(s.titles->>${locale}::text, ''), s.title)`)}, s.slug
+    LIMIT ${sagaListLimit}
+  `);
+  return rows.map((row) => ({
+    slug: String(row.slug),
+    title: String(row.title),
+    titles: (row.titles as LocalizedText | null) ?? {},
+    works: Number(row.works),
+    formats: String(row.formats ?? "")
+      .split(",")
+      .filter(isWikidataFormat),
+  }));
 }
 
 /** The sagas a title is part of, for the badge of its page. */

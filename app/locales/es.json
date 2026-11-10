@@ -13,6 +13,7 @@
     "settings": "Ajustes",
     "signOut": "Cerrar sesión",
     "search": "Buscar",
+    "sagas": "Sagas",
     "library": "Mi biblioteca",
     "lists": "Mis listas",
     "social": "Social",
@@ -1157,6 +1158,22 @@
     "entry": "{{status}} · {{percent}} %",
     "notHeld": "Las obras sin enlace todavía no están en el catálogo de SagaShelf: ábrelas desde la búsqueda para seguirlas.",
     "signIn": "Inicia sesión para ver tu progreso en esta saga"
+  },
+  "sagas": {
+    "title": "Sagas",
+    "description": "Todas las sagas de SagaShelf: cada historia con sus obras en todos los formatos.",
+    "intro": "Cada saga reúne una historia en todos sus formatos: anime, manga, libros, películas y series.",
+    "searchLabel": "Buscar una saga",
+    "placeholder": "Por ejemplo, Naruto",
+    "count_one": "{{count}} saga",
+    "count_other": "{{count}} sagas",
+    "resultsFor_one": "{{count}} saga para «{{q}}»",
+    "resultsFor_other": "{{count}} sagas para «{{q}}»",
+    "noResults": "No encontramos ninguna saga con ese nombre.",
+    "showAll": "Ver todas las sagas",
+    "empty": "Todavía no hay sagas publicadas.",
+    "works_one": "{{count}} obra",
+    "works_other": "{{count}} obras"
   },
   "contact": {
     "title": "Contacto",

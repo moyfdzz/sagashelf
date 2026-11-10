@@ -120,6 +120,7 @@ export function Navbar({
   const navItems = [
     { label: t("nav.home"), to: "/", session: false, badge: 0 },
     { label: t("nav.search"), to: "/search", session: false, badge: 0 },
+    { label: t("nav.sagas"), to: "/sagas", session: false, badge: 0 },
     ...(signedIn
       ? [
           { label: t("nav.library"), to: "/library", session: true, badge: 0 },
