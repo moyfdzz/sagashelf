@@ -1,4 +1,5 @@
 import { createHttpClient, ProviderError, type HttpClient } from "../http";
+import { airedIn, simplifyTitle, type TmdbShowDates } from "./match";
 import type {
   Locale,
   MediaProvider,
@@ -43,6 +44,8 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
     query: string,
     locale: Locale,
     signal?: AbortSignal,
+    /** Only for movies: TMDB keeps the ones released that year, so the first 3 are not the most popular. */
+    releasedIn?: number,
   ): Promise<NormalizedMedia[]> {
     const data = await http.getJson<Results>(
       url(`/search/${kind}`, {
@@ -50,6 +53,9 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
         language: tmdbLanguage[locale],
         include_adult: "false",
         page: "1",
+        ...(releasedIn && kind === "movie"
+          ? { primary_release_year: String(releasedIn) }
+          : {}),
       }),
       { signal },
     );
@@ -152,6 +158,47 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
         (season) => detailed.get(season.season_number) ?? season,
       );
       return mapParts(seasons);
+    },
+
+    async matchByYear({ title, kind, year }, { locale, signal }) {
+      const text = title.trim();
+      if (text === "") return null;
+      const simpler = simplifyTitle(text);
+      // The plain title first; the shorter one only when the first finds nothing that fits.
+      for (const query of simpler === text ? [text] : [text, simpler]) {
+        // Only anime: it is what the other tracker lists here, and a name that fits no anime must
+        // not land on an unrelated series that happened to air that year.
+        const found = (await searchKind(kind, query, locale, signal, year))
+          .filter((item) => item.type === "anime")
+          .slice(0, 3);
+        const checked = await Promise.all(
+          found.map(async (item): Promise<string | null> => {
+            const id = item.externalId.id;
+            // A movie has one date, and the search already sends it.
+            if (kind === "movie") return item.year === year ? id : null;
+            const numeric = parseExternalId(id)?.id;
+            if (numeric === undefined) return null;
+            try {
+              const show = await http.getJson<TmdbShowDates>(
+                url(`/tv/${numeric}`, {}),
+                { signal },
+              );
+              return airedIn(show, year) ? id : null;
+            } catch (error) {
+              // A series that vanished meanwhile is not a fit; any other failure is a try again.
+              if (error instanceof ProviderError && error.status === 404) {
+                return null;
+              }
+              throw error;
+            }
+          }),
+        );
+        const fits = checked.filter((id): id is string => id !== null);
+        // Two series that fit are a guess: better left for the person than a wrong title.
+        if (fits.length > 1) return null;
+        if (fits[0]) return fits[0];
+      }
+      return null;
     },
 
     async trending(window: TrendingWindow, { type, locale, signal }) {

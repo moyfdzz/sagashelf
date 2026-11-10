@@ -734,3 +734,105 @@ describe("the titles that did not come in, a page at a time (SAG-242)", () => {
     expect((await latestImportProgress(db, ana.id, 1))?.skippedCount).toBe(120);
   });
 });
+
+// No source: the file text leaves out a key that is undefined.
+const wanted = (n: number) => ({
+  ...entry(n),
+  source: undefined,
+  match: { kind: "tv", title: `Name ${n}`, year: 2015 },
+});
+
+/** Uploads these movies, then these entries that have only a name and a year. */
+async function uploadWithMatches(
+  userId: string,
+  numbers: number[],
+  matches: number[],
+) {
+  const parsed = parseImportFile(
+    JSON.stringify({
+      schemaVersion: 1,
+      libraryEntries: [...numbers.map(entry), ...matches.map(wanted)],
+    }),
+  );
+  if (!parsed.ok) throw new Error(parsed.error);
+  return runImport({ db, providers: [provider([])] }, userId, parsed.value, {
+    replace: false,
+    locale: "es",
+  });
+}
+
+describe("a title looked up by name and year in the queue (SAG-243)", () => {
+  it("looks a title up only when the 3 places of its person are free, after their plain titles", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await uploadWithMatches(ana.id, [1, 2], [90]);
+    await upload(luis.id, [11, 12]);
+
+    const tmdb = {
+      ...provider([1, 2, 11, 12, 90]),
+      matchByYear: vi.fn(async () => "movie/90"),
+    };
+    const first = await run(tmdb);
+
+    // The 2 titles of Ana and the 2 of Luis fit in the 5 places; the lookup needs 3 of Ana's.
+    expect(first.taken).toBe(4);
+    expect(tmdb.matchByYear).not.toHaveBeenCalled();
+
+    const second = await run(tmdb);
+
+    expect(second.taken).toBe(1);
+    expect(tmdb.matchByYear).toHaveBeenCalledTimes(1);
+    expect(await libraryOf(ana.id)).toBe(3);
+  });
+
+  it("does not let the titles to look up of one person take every place from the next person", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await uploadWithMatches(ana.id, [], [90, 91, 92]);
+    await upload(luis.id, [11, 12, 13]);
+
+    const tmdb = {
+      ...provider([11, 12, 13, 90]),
+      matchByYear: vi.fn(async () => "movie/90"),
+    };
+    const summary = await run(tmdb);
+
+    // Ana's first lookup takes her 3 places; Luis still gets 2 of the 5, as a person always did.
+    expect(summary.taken).toBe(3);
+    expect(tmdb.matchByYear).toHaveBeenCalledTimes(1);
+    expect(await libraryOf(luis.id)).toBe(2);
+  });
+
+  it("saves the title that was found, and spends one unit of the budget on it", async () => {
+    const ana = await newUser();
+    await uploadWithMatches(ana.id, [], [90]);
+
+    const tmdb = {
+      ...provider([90]),
+      matchByYear: vi.fn(async () => "movie/90"),
+    };
+    await run(tmdb);
+
+    expect(tmdb.getById).toHaveBeenCalledWith("movie/90", expect.anything());
+    expect(await libraryOf(ana.id)).toBe(1);
+    expect(await rows()).toEqual([]);
+  });
+
+  it("lists a title no series fits as having no catalog id, with no budget spent", async () => {
+    const ana = await newUser();
+    await uploadWithMatches(ana.id, [], [90]);
+
+    const tmdb = { ...provider([]), matchByYear: vi.fn(async () => null) };
+    await run(tmdb);
+
+    expect(tmdb.getById).not.toHaveBeenCalled();
+    expect(await rows()).toEqual([
+      expect.objectContaining({ state: "skipped", reason: "no_source" }),
+    ]);
+    const [row] = await db
+      .select({ used: users.titleFetchesCount })
+      .from(users)
+      .where(eq(users.id, ana.id));
+    expect(row?.used).toBe(0);
+  });
+});

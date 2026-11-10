@@ -99,3 +99,101 @@ describe("a failure in the run of a person (SAG-241 review)", () => {
     expect(mocks.refundTitleFetches).not.toHaveBeenCalled();
   });
 });
+
+describe("an entry with a name and a year but no id (SAG-243)", () => {
+  const matchRow = (n: number) => {
+    return {
+      ...row(n),
+      // No source, as a row stored for a title with only a name and a year.
+      entry: {
+        ...row(n).entry,
+        source: undefined,
+        match: { kind: "tv", title: `Name ${n}`, year: 2015 },
+      },
+    };
+  };
+  const runWith = (matchByYear: unknown) =>
+    processImportBatch({
+      db: {} as never,
+      providers: [{ id: "tmdb", matchByYear }] as never,
+    });
+
+  it("is looked up, and then saved like any title with the id found", async () => {
+    mocks.claimImportRows.mockResolvedValue([matchRow(1)]);
+    mocks.claimTitleFetch.mockResolvedValue("ok");
+    mocks.importMedia.mockResolvedValue({ id: "m1" });
+    // Not held yet at the first look, held once it was saved.
+    mocks.lookupTitles
+      .mockResolvedValueOnce(new Map())
+      .mockResolvedValueOnce(
+        new Map([["tmdb:tv/42", { mediaId: "m1", hasEntry: false }]]),
+      );
+    mocks.writeEntries.mockResolvedValue({ added: 1, replaced: 0 });
+    const matchByYear = vi.fn().mockResolvedValue("tv/42");
+
+    await runWith(matchByYear);
+
+    expect(matchByYear).toHaveBeenCalledWith(
+      { kind: "tv", title: "Name 1", year: 2015 },
+      { locale: "es" },
+    );
+    expect(mocks.importMedia).toHaveBeenCalledWith(
+      expect.anything(),
+      "tmdb",
+      "tv/42",
+      "es",
+    );
+    expect(mocks.finishImportRows.mock.calls[0]?.[1].done).toEqual(["row-1"]);
+  });
+
+  it("saves a series once when two seasons of it were found, and lists the second as repeated", async () => {
+    mocks.claimImportRows.mockResolvedValue([matchRow(1), matchRow(2)]);
+    mocks.claimTitleFetch.mockResolvedValue("ok");
+    mocks.importMedia.mockResolvedValue({ id: "m1" });
+    mocks.lookupTitles
+      .mockResolvedValueOnce(new Map())
+      .mockResolvedValueOnce(
+        new Map([["tmdb:tv/42", { mediaId: "m1", hasEntry: false }]]),
+      );
+    mocks.writeEntries.mockResolvedValue({ added: 1, replaced: 0 });
+
+    await runWith(vi.fn().mockResolvedValue("tv/42"));
+
+    expect(mocks.claimTitleFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.importMedia).toHaveBeenCalledTimes(1);
+    const outcome = mocks.finishImportRows.mock.calls[0]?.[1];
+    expect(outcome.done).toEqual(["row-1"]);
+    expect(outcome.skipped).toEqual([{ id: "row-2", reason: "duplicate" }]);
+  });
+
+  it("is listed as having no catalog id when no series fits, and costs no budget", async () => {
+    mocks.claimImportRows.mockResolvedValue([matchRow(1)]);
+
+    await runWith(vi.fn().mockResolvedValue(null));
+
+    expect(mocks.claimTitleFetch).not.toHaveBeenCalled();
+    expect(mocks.importMedia).not.toHaveBeenCalled();
+    expect(mocks.finishImportRows.mock.calls[0]?.[1].skipped).toEqual([
+      { id: "row-1", reason: "no_source" },
+    ]);
+  });
+
+  it("counts a try when TMDB does not answer, and the others of the run still go on", async () => {
+    mocks.claimImportRows.mockResolvedValue([matchRow(1)]);
+
+    const summary = await runWith(vi.fn().mockRejectedValue(new Error("down")));
+
+    expect(mocks.finishImportRows.mock.calls[0]?.[1].retry).toEqual(["row-1"]);
+    expect(summary.retried).toBe(1);
+  });
+
+  it("is listed as having no catalog id when the provider cannot match", async () => {
+    mocks.claimImportRows.mockResolvedValue([matchRow(1)]);
+
+    await runWith(undefined);
+
+    expect(mocks.finishImportRows.mock.calls[0]?.[1].skipped).toEqual([
+      { id: "row-1", reason: "no_source" },
+    ]);
+  });
+});

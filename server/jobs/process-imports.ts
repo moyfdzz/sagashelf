@@ -13,7 +13,9 @@ import { entriesToWrite } from "../library/import";
 import {
   importEntrySchema,
   keyOf,
+  matchEntrySchema,
   type ImportEntry,
+  type MatchEntry,
 } from "../library/import-file";
 import { importMedia } from "../media/import";
 import type { MediaProvider } from "../providers/types";
@@ -36,8 +38,13 @@ export type ImportBatchSummary = {
  * 5 from 2 people), saves each one through the provider inside the person's budget of new titles
  * (the same 300 a day as `/media/open`, ADR-035), and writes the entries to the library. It has a
  * Cron Trigger of its own and uses at most 46 of its 50 subrequests: the claim (1), the finish (1),
- * the budget (5), the providers (5 titles of up to 6 each) and for each of 2 people the lookups,
+ * the budget (5), the providers (5 places of up to 6 each) and for each of 2 people the lookups,
  * the write and a refund (4 each), plus the pause of the day (1).
+ *
+ * An entry that has a name and a year but no id (SAG-243) is looked for first (`matchByYear`, up to
+ * 8 requests) and then goes on like any other. It takes 3 of the 5 places, and 8 + 6 requests fit
+ * in 3 places of 6. One that fits no series (or two) is listed as having no catalog id; a provider
+ * that does not answer is a try, like for a title.
  *
  * A title we hold already (another person saved it meanwhile) costs no budget. A title the provider
  * does not know is listed as not found. When the provider does not answer, the unit is given back
@@ -87,11 +94,59 @@ export async function processImportBatch(deps: {
     const first = rows[0];
     if (!first) return;
     const entries: { row: ClaimedRow; entry: ImportEntry }[] = [];
+    const toMatch: { row: ClaimedRow; entry: MatchEntry }[] = [];
     for (const row of rows) {
       // The entry was checked when it was stored; this is a guard against a row edited by hand.
       const parsed = importEntrySchema.safeParse(row.entry);
-      if (parsed.success) entries.push({ row, entry: parsed.data });
+      if (parsed.success) {
+        entries.push({ row, entry: parsed.data });
+        continue;
+      }
+      const wanted = matchEntrySchema.safeParse(row.entry);
+      if (wanted.success) toMatch.push({ row, entry: wanted.data });
       else skipped.push({ id: row.id, reason: "invalid" });
+    }
+
+    const matcher = providers.find(
+      (provider) => provider.id === "tmdb" && provider.matchByYear,
+    );
+    if (toMatch.length > 0 && !matcher) {
+      for (const { row } of toMatch) {
+        skipped.push({ id: row.id, reason: "no_source" });
+      }
+    } else if (matcher?.matchByYear) {
+      const answers = await Promise.allSettled(
+        toMatch.map(({ row, entry }) =>
+          matcher.matchByYear?.(entry.match, { locale: row.locale }),
+        ),
+      );
+      toMatch.forEach(({ row, entry }, index) => {
+        const answer = answers[index];
+        if (answer?.status === "rejected") {
+          retry.push(row.id);
+        } else if (answer?.status === "fulfilled" && answer.value) {
+          // The name and year stay on the object, unread: only the source matters from here on.
+          entries.push({
+            row,
+            entry: { ...entry, source: { provider: "tmdb", id: answer.value } },
+          });
+        } else {
+          skipped.push({ id: row.id, reason: "no_source" });
+        }
+      });
+    }
+
+    // Two rows can name one title once the lookups are done (two seasons of a series): the first
+    // goes on and the rest are duplicates, so the title is not fetched and charged twice.
+    const named = new Set<string>();
+    for (const item of entries.splice(0)) {
+      const key = keyOf(item.entry.source);
+      if (named.has(key)) {
+        skipped.push({ id: item.row.id, reason: "duplicate" });
+      } else {
+        named.add(key);
+        entries.push(item);
+      }
     }
 
     const known = await lookupTitles(

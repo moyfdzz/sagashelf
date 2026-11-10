@@ -291,7 +291,7 @@
       "description": "Recupera tu biblioteca desde el archivo JSON que descargaste en Mis datos, o trae la de Simkl con su copia de seguridad en JSON.",
       "back": "Volver a mis datos",
       "file": "Archivo JSON de SagaShelf o de Simkl",
-      "fileHint": "Hasta {{mb}} MB y {{max}} títulos. Solo se lee tu biblioteca: tu perfil y lo que sea de otras personas se ignora. De Simkl solo entran los títulos que tienen un id de TMDB; los demás quedan en la lista de los que no se importaron.",
+      "fileHint": "Hasta {{mb}} MB y {{max}} títulos. Solo se lee tu biblioteca: tu perfil y lo que sea de otras personas se ignora. De Simkl entran los títulos que tienen un id de TMDB, y los animes sin id se buscan por nombre y año; lo que no se encuentre queda en la lista de los que no se importaron.",
       "previewButton": "Ver qué se importaría",
       "previewing": "Revisando el archivo…",
       "preview": {
@@ -302,6 +302,8 @@
         "exists_other": "Ya tienes {{count}} títulos en tu biblioteca.",
         "fetch_one": "{{count}} título aún no está en SagaShelf. Se buscará en TMDB en segundo plano, hasta {{max}} títulos nuevos al día, así que puede tardar.",
         "fetch_other": "{{count}} títulos aún no están en SagaShelf. Se buscarán en TMDB en segundo plano, hasta {{max}} títulos nuevos al día, así que puede tardar.",
+        "match_one": "{{count}} título no trae el id del catálogo. Se buscará en TMDB por su nombre y su año; si no hay una coincidencia clara, quedará en la lista de los que no se importaron. Varias temporadas de una misma serie se juntan en una sola.",
+        "match_other": "{{count}} títulos no traen el id del catálogo. Se buscarán en TMDB por su nombre y su año; si no hay una coincidencia clara, quedarán en la lista de los que no se importaron. Varias temporadas de una misma serie se juntan en una sola.",
         "sharedPublic_one": "{{count}} de los títulos nuevos es público en el archivo. Quedará privado si no marcas la casilla de abajo.",
         "sharedPublic_other": "{{count}} de los títulos nuevos son públicos en el archivo. Quedarán privados si no marcas la casilla de abajo.",
         "sharedFriends_one": "{{count}} de los títulos nuevos es para amigos en el archivo. Quedará privado si no marcas la casilla de abajo.",
@@ -336,6 +338,8 @@
         "problems_other": "No se pudieron importar {{count}} títulos."
       },
       "skipped": "No se importaron",
+      "skippedTitle_one": "No se importó {{count}} título",
+      "skippedTitle_other": "No se importaron {{count}} títulos",
       "skippedLine": "{{title}}: {{reason}}",
       "skippedMore_one": "Y {{count}} más.",
       "skippedMore_other": "Y {{count}} más.",

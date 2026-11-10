@@ -143,3 +143,36 @@ describe("the upload of an import (SAG-241, ADR-047)", () => {
     expect(new Set(places).size).toBe(places.length);
   });
 });
+
+describe("an entry with a name and a year but no id (SAG-243)", () => {
+  // No source: the file text leaves out a key that is undefined.
+  const wanted = (n: number) => ({
+    ...entry(n),
+    source: undefined,
+    match: { kind: "tv", title: `Name ${n}`, year: 2015 },
+  });
+
+  it("waits in the queue with its name and year, counted in the total, and asks nobody", async () => {
+    const result = await run([entry(1), wanted(2), wanted(3)]);
+
+    expect(result).toMatchObject({ added: 0, queued: 3, skipped: [] });
+    const job = mocks.enqueueImport.mock.calls[0]?.[2];
+    expect(job.total).toBe(3);
+    expect(job.pending).toHaveLength(3);
+    expect(job.pending[1].entry.match).toEqual({
+      kind: "tv",
+      title: "Name 2",
+      year: 2015,
+    });
+    expect(job.pending[1].entry.source).toBeUndefined();
+  });
+
+  it("prefers the id of the entry when it has both", async () => {
+    const result = await run([{ ...entry(1), match: wanted(1).match }]);
+
+    expect(result.queued).toBe(1);
+    expect(
+      mocks.enqueueImport.mock.calls[0]?.[2].pending[0].entry.source,
+    ).toEqual({ provider: "tmdb", id: "movie/1" });
+  });
+});

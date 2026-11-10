@@ -340,4 +340,89 @@ describe("the import page", () => {
 
     expect(html).toContain("6 títulos se están buscando en segundo plano.");
   });
+
+  describe("the titles left out (SAG-243)", () => {
+    const previewOf = (count: number, match = 0) => ({
+      ok: true,
+      step: "preview",
+      payload: "{}",
+      preview: {
+        add: 0,
+        exists: 0,
+        perDay: 300,
+        fetch: 0,
+        match,
+        shared: { public: 0, friends: 0 },
+        skipped: Array.from({ length: count }, (_, i) => ({
+          title: `Titulo ${i + 1}`,
+          reason: "no_source",
+        })),
+      },
+    });
+
+    it("says how many were not imported, in both languages and in the singular", async () => {
+      const many = await render(
+        "es",
+        <SettingsImport {...props(previewOf(3))} />,
+      );
+      const one = await render(
+        "es",
+        <SettingsImport {...props(previewOf(1))} />,
+      );
+      const english = await render(
+        "en",
+        <SettingsImport {...props(previewOf(2))} />,
+      );
+
+      expect(many).toContain("No se importaron 3 títulos");
+      expect(one).toContain("No se importó 1 título");
+      expect(english).toContain("2 titles were not imported");
+    });
+
+    it("shows a short list open and folds a long one behind its count", async () => {
+      const short = await render(
+        "es",
+        <SettingsImport {...props(previewOf(10))} />,
+      );
+      const long = await render(
+        "es",
+        <SettingsImport {...props(previewOf(11))} />,
+      );
+
+      expect(short).toMatch(/<details[^>]* open=""/);
+      expect(long).not.toMatch(/<details[^>]* open/);
+      // Folded up, the titles are still in the page for a person who opens it.
+      expect(long).toContain("Titulo 11: sin el identificador del catálogo");
+    });
+
+    it("keeps a later page of the failed titles open", async () => {
+      const skipped = Array.from({ length: 50 }, (_, i) => ({
+        title: `Titulo ${i + 51}`,
+        reason: "not_found",
+      }));
+      const html = await render(
+        "es",
+        <SettingsImport
+          {...props(
+            undefined,
+            { total: 120, pending: 0, skippedCount: 120, skipped },
+            2,
+          )}
+        />,
+      );
+
+      expect(html).toContain("No se importaron 120 títulos");
+      expect(html).toMatch(/<details[^>]* open=""/);
+    });
+
+    it("tells that titles with no id will be looked up by name and year", async () => {
+      const html = await render(
+        "es",
+        <SettingsImport {...props(previewOf(0, 2))} />,
+      );
+
+      expect(html).toContain("2 títulos no traen el id del catálogo");
+      expect(html).toContain("Varias temporadas de una misma serie se juntan");
+    });
+  });
 });

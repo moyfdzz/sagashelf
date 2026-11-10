@@ -81,6 +81,9 @@ export type SearchOptions = {
   signal?: AbortSignal;
 };
 
+/** The most requests `matchByYear` may make: two searches and three shows to read. */
+export const matchCallsMax = 8;
+
 export type TrendingWindow = "day" | "week";
 
 /** What every data source implements, so one can be added, removed or replaced alone. */
@@ -102,6 +105,15 @@ export interface MediaProvider {
     externalId: string,
     options?: { signal?: AbortSignal },
   ): Promise<NormalizedPart[]>;
+  /**
+   * Finds the one title of `kind` that a tracker without our ids means by `title` and `year`
+   * (SAG-243): the external id, or null when none fits or more than one does. It makes at most
+   * `matchCallsMax` requests.
+   */
+  matchByYear?(
+    request: { title: string; kind: "movie" | "tv"; year: number },
+    options: { locale: Locale; signal?: AbortSignal },
+  ): Promise<string | null>;
   trending?(
     window: TrendingWindow,
     options: SearchOptions,

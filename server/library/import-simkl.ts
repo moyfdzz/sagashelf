@@ -8,7 +8,9 @@ import type { LibraryStatus } from "./schema";
  *
  * Only the TMDB id is used. TMDB is the one source of ours that holds series, movies and anime
  * (ADR-005); the MyAnimeList, AniList and AniDB ids Simkl gives cannot be asked of any provider we
- * have. An entry without a TMDB id is left without a source, and the caller lists it as skipped.
+ * have. An entry without a TMDB id has no source: an anime of a kind we can name carries its name
+ * and year instead (`match`), so the queue looks for it on TMDB (SAG-243, ADR-049); any other
+ * entry is listed as skipped by the caller.
  */
 
 const statusOf: Record<string, LibraryStatus> = {
@@ -108,6 +110,13 @@ function convertEntry(
   const kind = kindOf(section, entry);
   const source =
     tmdb && kind ? { provider: "tmdb", id: `${kind}/${tmdb}` } : null;
+  // Only anime are looked for by name: shows and movies of Simkl all carry a TMDB id, and a title
+  // with no year cannot be told from another season.
+  const year = typeof item.year === "number" ? item.year : 0;
+  const match =
+    !source && section === "anime" && kind && title !== "" && year > 0
+      ? { kind, title, year }
+      : null;
   // Own keys only: a status like "constructor" must not read an inherited property.
   const status =
     typeof entry.status === "string" && Object.hasOwn(statusOf, entry.status)
@@ -120,6 +129,7 @@ function convertEntry(
     // The year only helps a person find a skipped title by hand: a title we can read keeps its own.
     title: source ? title : titleWithYear(title, item.year),
     ...(source ? { source } : {}),
+    ...(match ? { match } : {}),
     status,
     // Episodes watched. A movie has none; the importer caps it by the real total of the title.
     progress: section === "movies" ? 0 : count(entry.watched_episodes_count),

@@ -149,8 +149,8 @@ describe("a Simkl backup", () => {
     );
   });
 
-  it("skips, with its title and year, an anime that has no TMDB id", () => {
-    const { entries, skipped } = parsed(
+  it("queues an anime that has no TMDB id to be looked up by its name and year (SAG-243)", () => {
+    const { entries, toMatch, skipped } = parsed(
       backup({
         anime: [
           {
@@ -161,12 +161,75 @@ describe("a Simkl backup", () => {
               ids: { simkl: 9, mal: 1, anilist: 2, anidb: 3, kitsu: 4 },
             },
           },
+          {
+            ...anime(),
+            anime_type: "movie",
+            show: { title: "Anime pelicula", year: 2007, ids: { simkl: 10 } },
+          },
         ],
       }),
     );
     expect(entries).toEqual([]);
+    expect(skipped).toEqual([]);
+    expect(
+      toMatch.map(({ entry }) => [entry.title, entry.match, entry.visibility]),
+    ).toEqual([
+      [
+        "Anime sin id (2015)",
+        { kind: "tv", title: "Anime sin id", year: 2015 },
+        "private",
+      ],
+      [
+        "Anime pelicula (2007)",
+        { kind: "movie", title: "Anime pelicula", year: 2007 },
+        "private",
+      ],
+    ]);
+  });
+
+  it("lists, and does not look up, an anime with no id, no year, no name or no known type", () => {
+    const noId = (show: Record<string, unknown>, extra = {}) => ({
+      ...anime(),
+      ...extra,
+      show: { ids: { simkl: 9 }, ...show },
+    });
+    const { toMatch, skipped } = parsed(
+      backup({
+        anime: [
+          noId({ title: "Sin anio" }),
+          noId({ title: "", year: 2015 }),
+          noId({ title: "Tipo raro", year: 2015 }, { anime_type: "special" }),
+        ],
+      }),
+    );
+    expect(toMatch).toEqual([]);
+    expect(skipped.map((item) => item.reason)).toEqual(
+      Array(3).fill("no_source"),
+    );
+  });
+
+  it("looks up a show or a movie without a TMDB id by nothing: only anime have a name to follow", () => {
+    const { toMatch, skipped } = parsed(
+      backup({
+        shows: [{ ...show(), show: { title: "Serie", year: 2015, ids: {} } }],
+        movies: [{ ...movie(), movie: { title: "Peli", year: 2015, ids: {} } }],
+      }),
+    );
+    expect(toMatch).toEqual([]);
+    expect(skipped).toHaveLength(2);
+  });
+
+  it("keeps two seasons of one name apart, and lists the same name and year twice as repeated", () => {
+    const season = (year: number) => ({
+      ...anime(),
+      show: { title: "Anime sin id", year, ids: {} },
+    });
+    const { toMatch, skipped } = parsed(
+      backup({ anime: [season(2015), season(2016), season(2015)] }),
+    );
+    expect(toMatch).toHaveLength(2);
     expect(skipped).toEqual([
-      { title: "Anime sin id (2015)", reason: "no_source" },
+      { title: "Anime sin id (2015)", reason: "duplicate" },
     ]);
   });
 
@@ -283,7 +346,7 @@ describe("a Simkl backup", () => {
     });
     expect(parseImportFile(JSON.stringify({ shows: [], movies: [] }))).toEqual({
       ok: true,
-      value: { entries: [], skipped: [] },
+      value: { entries: [], toMatch: [], skipped: [] },
     });
   });
 
@@ -310,7 +373,7 @@ describe("a Simkl backup", () => {
     );
     expect(result).toEqual({
       ok: true,
-      value: { entries: [], skipped: [] },
+      value: { entries: [], toMatch: [], skipped: [] },
     });
   });
 });
