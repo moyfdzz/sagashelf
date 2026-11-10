@@ -136,19 +136,16 @@ export async function runImport(
   const ready = [...sorted.known];
 
   // The budget is spent one by one, in the order of the file, and stops at the first refusal.
-  const withinBudget: Classified["toFetch"] = [];
-  for (const item of sorted.toFetch) {
-    if (!(await spendFetch())) break;
-    withinBudget.push(item);
-  }
-  for (const { entry } of sorted.toFetch.slice(withinBudget.length)) {
+  let allowed = 0;
+  while (allowed < sorted.toFetch.length && (await spendFetch())) allowed++;
+  const toFetch = sorted.toFetch.slice(0, allowed);
+  for (const { entry } of sorted.toFetch.slice(allowed)) {
     skipped.push({ title: entry.title, reason: "pending" });
   }
-  sorted.toFetch = withinBudget;
 
-  if (sorted.toFetch.length > 0) {
+  if (toFetch.length > 0) {
     const outcomes = await Promise.allSettled(
-      sorted.toFetch.map(({ entry }) =>
+      toFetch.map(({ entry }) =>
         importMedia(
           { db, providers },
           entry.source.provider,
@@ -157,11 +154,11 @@ export async function runImport(
         ),
       ),
     );
-    const saved = sorted.toFetch.filter(
+    const saved = toFetch.filter(
       (_, index) =>
         outcomes[index]?.status === "fulfilled" && outcomes[index].value,
     );
-    sorted.toFetch.forEach(({ entry }, index) => {
+    toFetch.forEach(({ entry }, index) => {
       const outcome = outcomes[index];
       if (outcome?.status === "fulfilled" && outcome.value) return;
       // The provider does not know the id, or did not answer: another import can try again.

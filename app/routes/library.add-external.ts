@@ -10,15 +10,11 @@ import { externalTitleSchema } from "~server/library/schema";
 import { importMedia } from "~server/media/import";
 import { mediaPath } from "~server/media/slug";
 import { ProviderError } from "~server/providers/http";
+import { spendOpenUnit } from "~server/open-limit";
 import { rateLimit } from "~server/rate-limit";
 import { readForm } from "~server/http/body";
 import { searchBackPath } from "~server/search/path";
-import {
-  getDb,
-  getMediaProviders,
-  getOpenLimiter,
-  getWriteLimiter,
-} from "~server/runtime-env";
+import { getDb, getMediaProviders, getWriteLimiter } from "~server/runtime-env";
 import { privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
 
@@ -102,11 +98,7 @@ export async function action(args: Route.ActionArgs) {
   );
   if (!title) {
     // Only a call to the provider counts, against the same per-person limit as /media/open.
-    const slowed = await rateLimit(
-      getOpenLimiter(),
-      request,
-      `media-open:${user.id}`,
-    );
+    const slowed = await spendOpenUnit(request, user.id);
     if (slowed) return slowed;
 
     try {

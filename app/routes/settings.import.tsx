@@ -19,12 +19,12 @@ import {
   type ParseError,
   type Skipped,
 } from "~server/library/import-file";
+import { spendOpenUnit } from "~server/open-limit";
 import { rateLimit } from "~server/rate-limit";
 import {
   getClerkKeys,
   getDb,
   getMediaProviders,
-  getOpenLimiter,
   getWriteLimiter,
 } from "~server/runtime-env";
 import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
@@ -124,8 +124,7 @@ export async function action(args: Route.ActionArgs) {
     );
   }
   // A title only the provider knows costs one unit of the same per-person budget as /media/open.
-  const spendFetch = async () =>
-    !(await rateLimit(getOpenLimiter(), request, `media-open:${user.id}`));
+  const spendFetch = async () => !(await spendOpenUnit(request, user.id));
   return data(
     {
       ok: true as const,
