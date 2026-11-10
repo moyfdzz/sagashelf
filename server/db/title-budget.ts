@@ -1,6 +1,10 @@
-import { sql } from "drizzle-orm";
-
 import type { SqlExecutor } from "./clerk-sync";
+import {
+  claimDailyUnit,
+  refundDailyUnits,
+  type DailyClaim,
+  type DailyColumns,
+} from "./daily-counter";
 
 /**
  * Titles one person may make us fetch from a provider in a UTC day (SAG-239, ADR-035). It protects
@@ -9,40 +13,24 @@ import type { SqlExecutor } from "./clerk-sync";
  */
 export const titleFetchesPerDay = 300;
 
-export type TitleClaim = "ok" | "limit" | "gone";
+export type TitleClaim = DailyClaim;
+
+const columns: DailyColumns = {
+  day: "title_fetches_day",
+  count: "title_fetches_count",
+};
 
 /**
- * Takes one of the fetches the person has today, before a provider is asked. One statement checks
- * the count and adds to it, so requests sent together cannot pass the limit. A fetch that fails
- * afterwards is not given back: the call to the provider was already spent.
+ * Takes one of the fetches the person has today, before a provider is asked. A fetch that the
+ * provider answered (even with "not found") stays spent: the call was made. One that failed because
+ * the provider did not answer is given back with `refundTitleFetches`.
  */
-export async function claimTitleFetch(
+export const claimTitleFetch = (db: SqlExecutor, userId: string) =>
+  claimDailyUnit(db, userId, columns, titleFetchesPerDay);
+
+/** Gives back fetches the provider did not answer, so a provider outage does not use the budget. */
+export const refundTitleFetches = (
   db: SqlExecutor,
   userId: string,
-): Promise<TitleClaim> {
-  const today = sql`(now() AT TIME ZONE 'utc')::date`;
-  const { rows } = await db.execute(sql`
-    WITH found AS (
-      SELECT id FROM users WHERE id = ${userId} AND deleted_at IS NULL
-    ),
-    claimed AS (
-      UPDATE users SET
-        title_fetches_count = CASE
-          WHEN title_fetches_day = ${today} THEN title_fetches_count + 1
-          ELSE 1
-        END,
-        title_fetches_day = ${today}
-      WHERE id IN (SELECT id FROM found)
-        AND (
-          title_fetches_day IS DISTINCT FROM ${today}
-          OR title_fetches_count < ${titleFetchesPerDay}
-        )
-      RETURNING 1
-    )
-    SELECT (SELECT count(*) FROM found)::int AS found,
-           (SELECT count(*) FROM claimed)::int AS claimed
-  `);
-  const row = rows[0] ?? {};
-  if (Number(row.claimed) === 1) return "ok";
-  return Number(row.found) === 0 ? "gone" : "limit";
-}
+  units: number,
+) => refundDailyUnits(db, userId, columns, units);

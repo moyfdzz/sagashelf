@@ -10,7 +10,11 @@ import { primaryButtonClass, secondaryLinkClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
 import { readForm } from "~server/http/body";
-import { previewImport, runImport } from "~server/library/import";
+import {
+  previewImport,
+  runImport,
+  type FetchSpend,
+} from "~server/library/import";
 import {
   maxImportBytes,
   maxImportEntries,
@@ -19,7 +23,7 @@ import {
   type ParseError,
   type Skipped,
 } from "~server/library/import-file";
-import { spendOpenUnit } from "~server/open-limit";
+import { refundOpenUnits, trySpendOpenUnit } from "~server/open-limit";
 import { rateLimit } from "~server/rate-limit";
 import {
   getClerkKeys,
@@ -124,17 +128,31 @@ export async function action(args: Route.ActionArgs) {
     );
   }
   // A title only the provider knows costs one unit of the same per-person budget as /media/open.
-  const spendFetch = async () =>
-    !(await spendOpenUnit(request, deps.db, user.id));
+  const spendFetch = async (): Promise<FetchSpend> => {
+    const spend = await trySpendOpenUnit(request, deps.db, user.id);
+    // An erased account has nothing to wait for: it is told the same as a burst.
+    return spend.status === "gone"
+      ? "burst"
+      : spend.status === "ok"
+        ? "ok"
+        : spend.status;
+  };
+  const refundFetches = (units: number) =>
+    refundOpenUnits(deps.db, user.id, units);
   return data(
     {
       ok: true as const,
       step: "done" as const,
-      result: await runImport({ ...deps, spendFetch }, user.id, parsed.value, {
-        replace: form.replace === "on",
-        keepVisibility: form.keepVisibility === "on",
-        locale: getLocale(args.context) === "en" ? "en" : "es",
-      }),
+      result: await runImport(
+        { ...deps, spendFetch, refundFetches },
+        user.id,
+        parsed.value,
+        {
+          replace: form.replace === "on",
+          keepVisibility: form.keepVisibility === "on",
+          locale: getLocale(args.context) === "en" ? "en" : "es",
+        },
+      ),
     },
     { headers: privateHeaders },
   );

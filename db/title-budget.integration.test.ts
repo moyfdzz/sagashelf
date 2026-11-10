@@ -2,7 +2,12 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { users } from "../server/db/schema";
-import { claimTitleFetch, titleFetchesPerDay } from "../server/db/title-budget";
+import { eraseAccount } from "../server/db/erase-user";
+import {
+  claimTitleFetch,
+  refundTitleFetches,
+  titleFetchesPerDay,
+} from "../server/db/title-budget";
 import { createTestDb } from "./test-database";
 import { factories } from "./test-helpers";
 
@@ -104,5 +109,74 @@ describe("claimTitleFetch", () => {
     expect(
       await claimTitleFetch(db, "00000000-0000-7000-8000-000000000000"),
     ).toBe("gone");
+  });
+});
+
+describe("refundTitleFetches", () => {
+  it("gives back units taken today and never goes under zero", async () => {
+    const ana = await newUser();
+    await claimTitleFetch(db, ana.id);
+    await claimTitleFetch(db, ana.id);
+    await claimTitleFetch(db, ana.id);
+
+    await refundTitleFetches(db, ana.id, 2);
+    expect((await rowOf(ana.id))?.titleFetchesCount).toBe(1);
+
+    await refundTitleFetches(db, ana.id, 5);
+    expect((await rowOf(ana.id))?.titleFetchesCount).toBe(0);
+  });
+
+  it("lets the person claim again after the budget was spent and a unit came back", async () => {
+    const ana = await newUser();
+    await db
+      .update(users)
+      .set({
+        titleFetchesDay: sql`(now() AT TIME ZONE 'utc')::date`,
+        titleFetchesCount: titleFetchesPerDay,
+      })
+      .where(eq(users.id, ana.id));
+    expect(await claimTitleFetch(db, ana.id)).toBe("limit");
+
+    await refundTitleFetches(db, ana.id, 1);
+
+    expect(await claimTitleFetch(db, ana.id)).toBe("ok");
+    expect(await claimTitleFetch(db, ana.id)).toBe("limit");
+  });
+
+  it("does not touch a count of another day, nor another person", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await db
+      .update(users)
+      .set({ titleFetchesDay: "2026-01-01", titleFetchesCount: 7 })
+      .where(eq(users.id, ana.id));
+    await claimTitleFetch(db, luis.id);
+
+    await refundTitleFetches(db, ana.id, 3);
+
+    expect((await rowOf(ana.id))?.titleFetchesCount).toBe(7);
+    expect((await rowOf(luis.id))?.titleFetchesCount).toBe(1);
+  });
+
+  it("does nothing for zero units", async () => {
+    const ana = await newUser();
+    await claimTitleFetch(db, ana.id);
+
+    await refundTitleFetches(db, ana.id, 0);
+
+    expect((await rowOf(ana.id))?.titleFetchesCount).toBe(1);
+  });
+});
+
+describe("erasing an account", () => {
+  it("clears the counter, like the picture tries", async () => {
+    const ana = await newUser();
+    await claimTitleFetch(db, ana.id);
+
+    await eraseAccount(db, ana.clerkId);
+
+    const row = await rowOf(ana.id);
+    expect(row?.titleFetchesCount).toBe(0);
+    expect(row?.titleFetchesDay).toBeNull();
   });
 });

@@ -109,6 +109,9 @@ export type ImportResult = {
   skipped: Skipped[];
 };
 
+/** The answer of the budget of new titles: a unit was taken, or why not (a burst or the day). */
+export type FetchSpend = "ok" | "burst" | "daily";
+
 /**
  * Imports the entries of a file for `userId`, who comes from the session. A title we do not hold
  * is saved only through the provider (never from the data of the file), up to `maxNewTitles`; the
@@ -118,29 +121,40 @@ export type ImportResult = {
  *
  * Each call to the provider first asks `spendFetch` for one unit of the person's budget of new
  * titles (the same one as `/media/open`, ADR-035). When it says no, that title and the ones after
- * it are not asked for and stay pending, as if the provider had not answered.
+ * it are not asked for: they stay "pending" after a burst (another import a minute later brings
+ * them) and are "daily_limit" after the day's budget (another import tomorrow). A title the
+ * provider did not answer gives its unit back with `refundFetches`.
  */
 export async function runImport(
   deps: {
     db: Db;
     providers: readonly MediaProvider[];
-    spendFetch: () => Promise<boolean>;
+    spendFetch: () => Promise<FetchSpend>;
+    refundFetches: (units: number) => Promise<void>;
   },
   userId: string,
   parsed: ParsedImport,
   options: { replace: boolean; keepVisibility?: boolean; locale: Locale },
 ): Promise<ImportResult> {
-  const { db, providers, spendFetch } = deps;
+  const { db, providers, spendFetch, refundFetches } = deps;
   const sorted = await classify(db, userId, parsed, providers);
   const skipped = [...sorted.skipped];
   const ready = [...sorted.known];
 
   // The budget is spent one by one, in the order of the file, and stops at the first refusal.
   let allowed = 0;
-  while (allowed < sorted.toFetch.length && (await spendFetch())) allowed++;
+  let refusal: FetchSpend = "ok";
+  while (allowed < sorted.toFetch.length) {
+    refusal = await spendFetch();
+    if (refusal !== "ok") break;
+    allowed++;
+  }
   const toFetch = sorted.toFetch.slice(0, allowed);
   for (const { entry } of sorted.toFetch.slice(allowed)) {
-    skipped.push({ title: entry.title, reason: "pending" });
+    skipped.push({
+      title: entry.title,
+      reason: refusal === "daily" ? "daily_limit" : "pending",
+    });
   }
 
   if (toFetch.length > 0) {
@@ -157,6 +171,10 @@ export async function runImport(
     const saved = toFetch.filter(
       (_, index) =>
         outcomes[index]?.status === "fulfilled" && outcomes[index].value,
+    );
+    // A provider that did not answer used no quota and added no title: its units are given back.
+    await refundFetches(
+      outcomes.filter((outcome) => outcome.status === "rejected").length,
     );
     toFetch.forEach(({ entry }, index) => {
       const outcome = outcomes[index];

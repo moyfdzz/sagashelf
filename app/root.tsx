@@ -123,6 +123,16 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     );
   }
 
+  if (isRouteErrorResponse(error) && error.status === 429) {
+    return (
+      <ErrorPage
+        status={429}
+        title={t("errors.tooMany.title")}
+        message={t("errors.tooMany.message")}
+      />
+    );
+  }
+
   return (
     <ErrorPage
       status={isRouteErrorResponse(error) ? error.status : 500}

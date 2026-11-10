@@ -9,7 +9,7 @@ import { findMediaByExternalId } from "~server/db/media-detail";
 import { importMedia } from "~server/media/import";
 import { mediaPath } from "~server/media/slug";
 import { ProviderError } from "~server/providers/http";
-import { spendOpenUnit } from "~server/open-limit";
+import { refundOpenUnits, spendOpenUnit } from "~server/open-limit";
 import { getDb, getMediaProviders } from "~server/runtime-env";
 import { privateHeaders, privateRouteHeaders } from "~server/http/cache";
 
@@ -64,7 +64,11 @@ export async function loader(args: Route.LoaderArgs) {
     if (!saved) throw data(null, { status: 404 });
     return redirect(mediaPath(saved.type, saved.title, saved.id), 302);
   } catch (error) {
-    if (error instanceof ProviderError) throw data(null, { status: 502 });
+    if (error instanceof ProviderError) {
+      // The provider did not answer: that is not the person's doing, so the unit is given back.
+      await refundOpenUnits(db, user.id, 1);
+      throw data(null, { status: 502 });
+    }
     throw error;
   }
 }

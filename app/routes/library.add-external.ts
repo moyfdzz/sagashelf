@@ -10,7 +10,7 @@ import { externalTitleSchema } from "~server/library/schema";
 import { importMedia } from "~server/media/import";
 import { mediaPath } from "~server/media/slug";
 import { ProviderError } from "~server/providers/http";
-import { spendOpenUnit } from "~server/open-limit";
+import { refundOpenUnits, spendOpenUnit } from "~server/open-limit";
 import { rateLimit } from "~server/rate-limit";
 import { readForm } from "~server/http/body";
 import { searchBackPath } from "~server/search/path";
@@ -109,7 +109,11 @@ export async function action(args: Route.ActionArgs) {
         getLocale(args.context) === "en" ? "en" : "es",
       );
     } catch (error) {
-      if (error instanceof ProviderError) return refuse("unavailable", 502);
+      if (error instanceof ProviderError) {
+        // The provider did not answer: not the person's doing, so the unit is given back.
+        await refundOpenUnits(db, user.id, 1);
+        return refuse("unavailable", 502);
+      }
       throw error;
     }
     if (!title) return refuse("not_found", 404);

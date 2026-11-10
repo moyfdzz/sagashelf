@@ -18,6 +18,7 @@
     "server/db/profile-lists.ts",
     "server/lists/schema.ts",
     "server/db/avatar.ts",
+    "server/db/daily-counter.ts",
     "server/db/title-budget.ts",
     "server/db/picture-uploads.ts",
     "server/db/reports.ts",

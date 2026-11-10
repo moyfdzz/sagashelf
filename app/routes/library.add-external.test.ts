@@ -4,6 +4,7 @@ import type { Route } from "./+types/library.add-external";
 import { action, loader } from "./library.add-external";
 
 const mocks = vi.hoisted(() => ({
+  refund: vi.fn<(db: unknown, id: string, units: number) => Promise<void>>(),
   getOptionalUser: vi.fn(),
   addEntry: vi.fn(),
   findMediaByExternalId: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("~server/runtime-env", () => ({
 }));
 vi.mock("~server/db/title-budget", () => ({
   claimTitleFetch: async () => "ok",
+  refundTitleFetches: mocks.refund,
 }));
 vi.mock("~/middleware/i18next", () => ({
   getLocale: () => mocks.locale,
@@ -45,6 +47,7 @@ beforeEach(() => {
   mocks.locale = "es";
   mocks.getOptionalUser.mockReset().mockResolvedValue({ id: "user-1" });
   mocks.addEntry.mockReset().mockResolvedValue(true);
+  mocks.refund.mockReset().mockResolvedValue(undefined);
   mocks.findMediaByExternalId.mockReset().mockResolvedValue(null);
   mocks.importMedia.mockReset().mockResolvedValue(saved);
   mocks.writeLimit.mockReset().mockResolvedValue({ success: true });
@@ -158,6 +161,12 @@ describe("adding a title that a search found", () => {
       data: { ok: false, error: "unavailable" },
     });
     expect(mocks.addEntry).not.toHaveBeenCalled();
+    // The provider did not answer: the unit of the daily budget is given back (SAG-239).
+    expect(mocks.refund).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-1",
+      1,
+    );
   });
 
   it("does not hide a bug as a provider error", async () => {

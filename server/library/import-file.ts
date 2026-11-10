@@ -90,7 +90,8 @@ export type SkipReason =
   | "duplicate"
   | "unsupported_provider"
   | "not_found"
-  | "pending";
+  | "pending"
+  | "daily_limit";
 
 export type Skipped = { title: string; reason: SkipReason };
 
