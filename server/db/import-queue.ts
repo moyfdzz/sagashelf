@@ -108,7 +108,8 @@ export type ClaimedRow = {
 /**
  * Takes the titles that are due, for the run of the queue: at most `rowsPerRun`, from at most
  * `peoplePerRun` people (the ones waiting longest), at most `rowsPerPersonPerRun` each, and only
- * from the oldest job of a person that still has something waiting. Each is leased for 15 minutes
+ * from the oldest job of a person that has something due (a job whose rows are all paused or
+ * waiting after a failure does not hold back a newer one). Each is leased for 15 minutes
  * (`retry_at`), so a second run that starts meanwhile does not take it again, and a run that dies
  * leaves the title to be taken later. An erased account has nothing here: its jobs went with it.
  */
@@ -125,7 +126,10 @@ export async function claimImportRows(db: SqlExecutor): Promise<ClaimedRow[]> {
         AND j.id = (
           SELECT j2.id FROM import_jobs j2
           WHERE j2.user_id = j.user_id
-            AND EXISTS (SELECT 1 FROM import_rows p WHERE p.job_id = j2.id AND p.state = 'pending')
+            AND EXISTS (
+              SELECT 1 FROM import_rows p
+              WHERE p.job_id = j2.id AND p.state = 'pending' AND p.retry_at <= now()
+            )
           ORDER BY j2.created_at, j2.id
           LIMIT 1
         )

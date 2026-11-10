@@ -19,7 +19,7 @@ An import has two phases.
 
 The page `/settings/import` shows the latest import of the person: how many titles are in the library, how many wait (and that it can take days, at most 300 new titles a day, with no need to keep the page open), and, when something went wrong, a warning with the titles that did not import and why (the first 50, then a count). The rows live 30 days and are deleted with the account (`import_jobs` is in the erasure; the rows go with it). They are not in the data export: they are a copy of a file the person still has.
 
-A run uses at most 45 of the 50 subrequests of its invocation: the claim (1), the budget (up to 5), the providers (5 titles of up to 6 each), for each of 2 people the two lookups, the write and a refund (4 each), the finish (1) and the pause of the day (1). It is calculated, not measured under a full load. The claim leases each row for 15 minutes (`retry_at`), so a run that starts while another is working does not take the same titles.
+A run uses at most 46 of the 50 subrequests of its invocation: the claim (1), the budget (up to 5), the providers (5 titles of up to 6 each), for each of 2 people the two lookups, the write and a refund (4 each), the finish (1) and the pause of the day (1). It is calculated, not measured under a full load. The claim leases each row for 15 minutes (`retry_at`), so a run that starts while another is working does not take the same titles.
 
 ## Alternatives considered
 

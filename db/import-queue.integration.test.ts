@@ -335,6 +335,71 @@ describe("the batch of the import queue (SAG-241)", () => {
   });
 });
 
+describe("what a run does when something goes wrong (SAG-241 review)", () => {
+  it("does not let one person's failure hold back the others, and counts a try for the failed rows", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await upload(ana.id, [1]);
+    await upload(luis.id, [11]);
+    // The database refuses every entry written for Ana, as a broken row would.
+    await db.execute(sql`
+      CREATE FUNCTION refuse_ana() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.user_id = ${sql.raw(`'${ana.id}'`)}::uuid THEN RAISE EXCEPTION 'refused'; END IF;
+        RETURN NEW;
+      END $$ LANGUAGE plpgsql`);
+    await db.execute(
+      sql`CREATE TRIGGER refuse_ana BEFORE INSERT ON library_entries
+          FOR EACH ROW EXECUTE FUNCTION refuse_ana()`,
+    );
+    try {
+      const summary = await run(provider([1, 11]));
+      expect(summary.retried).toBe(1);
+    } finally {
+      await db.execute(sql`DROP TRIGGER refuse_ana ON library_entries`);
+      await db.execute(sql`DROP FUNCTION refuse_ana()`);
+    }
+
+    expect(await libraryOf(luis.id)).toBe(1);
+    expect(await libraryOf(ana.id)).toBe(0);
+    expect(await rows()).toEqual([
+      expect.objectContaining({ state: "pending", attempts: 1, waits: true }),
+    ]);
+  });
+
+  it("does not let an older import that is only waiting hold back a newer one", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1]);
+    await db.execute(
+      sql`UPDATE import_rows SET retry_at = now() + interval '5 hours'`,
+    );
+    await upload(ana.id, [2]);
+
+    const summary = await run(provider([1, 2]));
+
+    expect(summary).toMatchObject({ taken: 1, added: 1 });
+    expect(await libraryOf(ana.id)).toBe(1);
+    expect((await rows()).map((row) => row.title)).toEqual(["Movie 1"]);
+  });
+
+  it("lists a title as not found, with no second try, when the provider saved it under another id", async () => {
+    const ana = await newUser();
+    await upload(ana.id, [1]);
+    const tmdb = provider([]);
+    vi.mocked(tmdb.getById).mockResolvedValue(movie(99));
+
+    await run(tmdb);
+
+    expect(await rows()).toEqual([
+      expect.objectContaining({
+        state: "skipped",
+        reason: "not_found",
+        attempts: 0,
+      }),
+    ]);
+  });
+});
+
 describe("what the person is told (SAG-241)", () => {
   it("shows the latest import with what waits and the titles that went wrong", async () => {
     const ana = await newUser();

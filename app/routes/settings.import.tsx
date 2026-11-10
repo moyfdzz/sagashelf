@@ -204,7 +204,7 @@ function ImportProgress({
       <h2 id="import-progress" className="text-xl font-semibold">
         {t("settings.import.progress.title")}
       </h2>
-      <p className="mt-2" role="status">
+      <p className="mt-2">
         {t("settings.import.progress.count", {
           done: inLibrary,
           total: progress.total,
@@ -220,10 +220,7 @@ function ImportProgress({
       </p>
       {progress.skippedCount > 0 ? (
         <div className="mt-4">
-          <p
-            role="alert"
-            className="border-danger-edge bg-danger-bg text-danger-fg rounded-md border px-4 py-3 font-semibold"
-          >
+          <p className="border-danger-edge bg-danger-bg text-danger-fg rounded-md border px-4 py-3 font-semibold">
             {t("settings.import.progress.problems", {
               count: progress.skippedCount,
             })}

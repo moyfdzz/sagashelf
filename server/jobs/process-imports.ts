@@ -35,7 +35,7 @@ export type ImportBatchSummary = {
  * The scheduled job of the import queue (SAG-241, ADR-047). It takes a few titles that wait (at most
  * 5 from 2 people), saves each one through the provider inside the person's budget of new titles
  * (the same 300 a day as `/media/open`, ADR-035), and writes the entries to the library. It has a
- * Cron Trigger of its own and uses at most 45 of its 50 subrequests: the claim (1), the finish (1),
+ * Cron Trigger of its own and uses at most 46 of its 50 subrequests: the claim (1), the finish (1),
  * the budget (5), the providers (5 titles of up to 6 each) and for each of 2 people the lookups,
  * the write and a refund (4 each), plus the pause of the day (1).
  *
@@ -78,10 +78,10 @@ export async function processImportBatch(deps: {
     byPerson.set(row.userId, [...(byPerson.get(row.userId) ?? []), row]);
   }
 
-  for (const [userId, rows] of byPerson) {
+  const processPerson = async (userId: string, rows: ClaimedRow[]) => {
     // The rows of one person all come from one job, so they share its choices.
     const first = rows[0];
-    if (!first) continue;
+    if (!first) return;
     const entries: { row: ClaimedRow; entry: ImportEntry }[] = [];
     for (const row of rows) {
       // The entry was checked when it was stored; this is a guard against a row edited by hand.
@@ -153,7 +153,9 @@ export async function processImportBatch(deps: {
         for (const item of saved) {
           const title = found.get(keyOf(item.entry.source));
           if (title) ready.push({ ...item, title });
-          else retry.push(item.row.id);
+          // The provider answered and saved it, but not as the id of the file: asking again would
+          // spend the budget again for the same answer.
+          else skipped.push({ id: item.row.id, reason: "not_found" });
         }
       }
     }
@@ -163,6 +165,8 @@ export async function processImportBatch(deps: {
       ready,
       first.keepVisibility,
     );
+    const written = await writeEntries(db, userId, toWrite, first.replace);
+    // Only after the write: a row whose write failed must stay and count a try.
     const duplicated = new Set(duplicates);
     for (const item of ready) {
       if (duplicated.has(item.entry)) {
@@ -171,7 +175,6 @@ export async function processImportBatch(deps: {
         done.push(item.row.id);
       }
     }
-    const written = await writeEntries(db, userId, toWrite, first.replace);
     const kept = toWrite.length - written.added - written.replaced;
     counts.push({
       jobId: first.jobId,
@@ -182,6 +185,25 @@ export async function processImportBatch(deps: {
     summary.added += written.added;
     summary.replaced += written.replaced;
     summary.kept += kept;
+  };
+
+  for (const [userId, rows] of byPerson) {
+    try {
+      await processPerson(userId, rows);
+    } catch (error) {
+      // One person's failure must not hold back the others, and the rows must count a try, or a
+      // row that always throws would be taken again for ever.
+      console.log(
+        JSON.stringify({
+          event: "imports.person_failed",
+          error: error instanceof Error ? error.name : "unknown",
+        }),
+      );
+      const settled = new Set([...done, ...skipped.map((item) => item.id)]);
+      for (const row of rows) {
+        if (!settled.has(row.id) && !retry.includes(row.id)) retry.push(row.id);
+      }
+    }
   }
 
   await finishImportRows(db, { done, skipped, retry, counts });
