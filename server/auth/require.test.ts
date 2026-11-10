@@ -1,3 +1,4 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LoaderFunctionArgs } from "react-router";
@@ -209,5 +210,52 @@ describe("getOptionalUser", () => {
 
     expect(await getOptionalUser(readArgs())).toBeNull();
     expect(mocks.getAuth).not.toHaveBeenCalled();
+  });
+});
+
+// An erased account keeps its row and its Clerk id, so a token that is still valid must find no
+// account (SAG-166). The real filter against Postgres is in `db/session-user.integration.test.ts`;
+// here the SQL that the guards send is read, and the three guards answer as for "no account".
+describe("an erased account", () => {
+  /** A database that has no row for what it is asked, and keeps the condition it was asked. */
+  function emptyDatabase() {
+    const asked: unknown[] = [];
+    mocks.getAuth.mockResolvedValue({ userId: "user_1" });
+    mocks.getDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          where: (condition: unknown) => {
+            asked.push(condition);
+            return { limit: async () => [] };
+          },
+        }),
+      }),
+    });
+    return asked;
+  }
+
+  it("is left out by the query of every guard", async () => {
+    const asked = emptyDatabase();
+
+    await refusal(requireUser(args()));
+    await refusal(requireRole(args(), "moderator"));
+    await getOptionalUser(readArgs());
+
+    expect(asked).toHaveLength(3);
+    for (const condition of asked) {
+      const { sql: text } = new PgDialect().sqlToQuery(
+        condition as Parameters<PgDialect["sqlToQuery"]>[0],
+      );
+      expect(text).toContain('"clerk_id" = $1');
+      expect(text).toContain('"deleted_at" is null');
+    }
+  });
+
+  it("is refused by requireUser and requireRole, and is nobody for getOptionalUser", async () => {
+    emptyDatabase();
+
+    expect((await refusal(requireUser(args()))).init?.status).toBe(403);
+    expect((await refusal(requireRole(args(), "user"))).init?.status).toBe(403);
+    expect(await getOptionalUser(readArgs())).toBeNull();
   });
 });
