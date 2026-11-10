@@ -22,28 +22,30 @@ test.describe("a long link that acts as a button", () => {
     }) => {
       await page.setViewportSize({ width: 320, height: 640 });
       await page.goto("/account-restricted");
-      await page.evaluate(
+
+      // The link is added and measured in one step, with no wait in between: in the production
+      // build the page hydrates after it loads, and React removes a node it did not draw.
+      const result = await page.evaluate(
         ({ className, text }) => {
+          const main = document.querySelector("main");
           const link = document.createElement("a");
           link.href = "/settings/import";
           link.className = className;
           link.textContent = text;
-          document.querySelector("main")?.appendChild(link);
+          main?.appendChild(link);
+          return {
+            // Without the link there is nothing to measure, so a missing link must fail.
+            linkWidth: link.getBoundingClientRect().width,
+            overflow:
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth,
+          };
         },
         { className: wrappingSecondaryLinkClass, text: label },
       );
 
-      // Without the link there is nothing to measure, so a missing link must fail the test.
-      await expect(
-        page.locator('main a[href="/settings/import"]'),
-      ).toBeVisible();
-
-      const overflow = await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth -
-          document.documentElement.clientWidth,
-      );
-      expect(overflow).toBeLessThanOrEqual(0);
+      expect(result.linkWidth).toBeGreaterThan(0);
+      expect(result.overflow).toBeLessThanOrEqual(0);
     });
   }
 });
