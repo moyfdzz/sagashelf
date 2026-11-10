@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 
 import {
+  importCron,
   jobsForCron,
   outboxCron,
+  runImportJobs,
   runOutboxJobs,
   runScheduledJobs,
   runTvmazeJobs,
@@ -26,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   announceNewEpisodes: vi.fn(),
   prunePictureUploads: vi.fn(),
   pruneContactMessages: vi.fn(),
+  pruneImportJobs: vi.fn(),
+  processImportBatch: vi.fn(),
 }));
 
 vi.mock("../runtime-env", () => ({
@@ -40,6 +44,12 @@ vi.mock("../db/picture-uploads", () => ({
 }));
 vi.mock("../db/contact-messages", () => ({
   pruneContactMessages: mocks.pruneContactMessages,
+}));
+vi.mock("../db/import-queue", () => ({
+  pruneImportJobs: mocks.pruneImportJobs,
+}));
+vi.mock("./process-imports", () => ({
+  processImportBatch: mocks.processImportBatch,
 }));
 vi.mock("../db/episode-alerts", () => ({
   announceNewEpisodes: mocks.announceNewEpisodes,
@@ -360,6 +370,28 @@ describe("the second Cron Trigger (SAG-90)", () => {
     expect(mocks.refreshNextEpisodes).toHaveBeenCalled();
   });
 
+  it("deletes the imports older than 30 days too, and goes on when that fails (SAG-241)", async () => {
+    const db = { execute: vi.fn() };
+    mocks.getTvmaze.mockReturnValue({});
+    mocks.getDb.mockResolvedValue(db);
+    mocks.prunePictureUploads.mockResolvedValue(0);
+    mocks.pruneContactMessages.mockResolvedValue(0);
+    mocks.pruneImportJobs.mockResolvedValue(4);
+    mocks.refreshNextEpisodes.mockResolvedValue({});
+
+    await runTvmazeJobs();
+
+    expect(mocks.pruneImportJobs).toHaveBeenCalledWith(db);
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "import_jobs.pruned", deleted: 4 }),
+    );
+
+    mocks.pruneImportJobs.mockRejectedValue(new TypeError("no table"));
+    mocks.refreshNextEpisodes.mockClear();
+    await expect(runTvmazeJobs()).resolves.toBeUndefined();
+    expect(mocks.refreshNextEpisodes).toHaveBeenCalled();
+  });
+
   it("still looks for the episodes when deleting the records fails", async () => {
     const db = { execute: vi.fn() };
     mocks.getTvmaze.mockReturnValue({});
@@ -559,11 +591,60 @@ describe("the third Cron Trigger (SAG-27)", () => {
   });
 });
 
+describe("the fourth Cron Trigger (SAG-241)", () => {
+  it("is declared in wrangler.jsonc and differs from the other three", () => {
+    const config = readFileSync("wrangler.jsonc", "utf8");
+
+    expect(config).toContain(`"${importCron}"`);
+    expect(
+      new Set([importCron, outboxCron, tvmazeCron, "0 */6 * * *"]).size,
+    ).toBe(4);
+  });
+
+  it("never fires at the same minute as the hourly one or the 6 hourly ones", () => {
+    const minutes = importCron.split(" ")[0]?.split(",") ?? [];
+    expect(minutes).toEqual(["5", "20", "35", "50"]);
+    expect(minutes).not.toContain("15");
+    expect(minutes).not.toContain("0");
+    expect(minutes).not.toContain("30");
+  });
+
+  it("saves the waiting titles and logs the summary only when it took some", async () => {
+    const db = { execute: vi.fn() };
+    const providers = [{ id: "tmdb" }];
+    mocks.getMediaProviders.mockReturnValue(providers);
+    mocks.getDb.mockResolvedValue(db);
+    mocks.processImportBatch.mockResolvedValue({ taken: 0 });
+
+    await runImportJobs();
+
+    expect(mocks.processImportBatch).toHaveBeenCalledWith({ db, providers });
+    expect(console.log).not.toHaveBeenCalled();
+
+    mocks.processImportBatch.mockResolvedValue({ taken: 3, added: 2 });
+    await runImportJobs();
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "imports.batch", taken: 3, added: 2 }),
+    );
+  });
+
+  it("leaves the database asleep without a provider, and never throws", async () => {
+    mocks.getMediaProviders.mockReturnValue([]);
+    await runImportJobs();
+    expect(mocks.getDb).not.toHaveBeenCalled();
+
+    mocks.getMediaProviders.mockReturnValue([{ id: "tmdb" }]);
+    mocks.getDb.mockRejectedValue(new TypeError("down"));
+    await expect(runImportJobs()).resolves.toBeUndefined();
+  });
+});
+
 describe("jobsForCron (SAG-27)", () => {
   it("gives each Cron Trigger its own job, told apart by the string it fired with", () => {
     expect(jobsForCron("0 */6 * * *")).toBe(runScheduledJobs);
     expect(jobsForCron(tvmazeCron)).toBe(runTvmazeJobs);
     expect(jobsForCron(outboxCron)).toBe(runOutboxJobs);
+    expect(jobsForCron(importCron)).toBe(runImportJobs);
   });
 
   it("runs the jobs of the first trigger for a string it does not know, as before", () => {

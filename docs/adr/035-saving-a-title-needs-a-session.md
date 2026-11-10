@@ -4,6 +4,7 @@
 - **Date:** 2026-11-04
 - **Implementation:** Done (SAG-130)
 - **Tickets:** SAG-130, SAG-29, SAG-188, SAG-239
+- **Update (2026-11-10, ADR-047):** the import no longer spends units inside its request: the titles it cannot save at once wait in a queue, and a scheduled job spends the same budget one title at a time. The cap of 6 titles per import below was replaced by the queue.
 - **Related:** [ADR-017](017-media-pages-and-image-proxy.md) (this replaces its choice that anyone may save a title by opening it), [ADR-004](004-search-strategy.md), [ADR-006](006-security-model.md), [ADR-011](011-edge-security-and-domain.md)
 
 ## Context

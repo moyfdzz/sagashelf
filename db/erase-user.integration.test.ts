@@ -64,6 +64,8 @@ const notExportedColumns: Readonly<Record<string, string>> = {
   "activity.actor_id":
     "no code writes it yet; SAG-22 must export it when it does",
   "likes.user_id": "no code writes it yet; SAG-22 must export it when it does",
+  "import_jobs.user_id":
+    "a copy of the titles of a file the person uploaded and still has, kept 30 days (SAG-241)",
 };
 
 const erasedNames = erasedColumns.map(

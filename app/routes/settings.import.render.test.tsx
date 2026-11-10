@@ -37,11 +37,13 @@ async function render(
   );
 }
 
-const props = (actionData?: unknown) =>
+const props = (actionData?: unknown, progress: unknown = null) =>
   ({
     loaderData: {
       title: "Importar tu biblioteca",
       publishableKey: "publishable-key-for-tests",
+      perDay: 300,
+      progress,
     },
     actionData,
   }) as unknown as Parameters<typeof SettingsImport>[0];
@@ -69,6 +71,7 @@ describe("the import page", () => {
           preview: {
             add: 2,
             exists: 1,
+            perDay: 300,
             fetch: 3,
             shared: { public: 2, friends: 1 },
             skipped: [{ title: "Algo raro", reason: "invalid" }],
@@ -124,7 +127,7 @@ describe("the import page", () => {
     expect(html).not.toContain("in the file. They will be private");
   });
 
-  it("says what was imported and what was not", async () => {
+  it("says what was imported right away", async () => {
     const html = await render(
       "en",
       <SettingsImport
@@ -135,7 +138,8 @@ describe("the import page", () => {
             added: 1,
             replaced: 0,
             kept: 2,
-            skipped: [{ title: "Matrix", reason: "pending" }],
+            queued: 0,
+            skipped: [],
           },
         })}
       />,
@@ -143,7 +147,6 @@ describe("the import page", () => {
 
     expect(html).toContain("1 title was added.");
     expect(html).toContain("2 titles you already had stayed as they were.");
-    expect(html).toContain("Matrix: pending: import the file again");
     expect(html).toContain('href="/library"');
   });
 
@@ -155,7 +158,7 @@ describe("the import page", () => {
         {...props({
           ok: true,
           step: "done",
-          result: { added: 1, replaced: 0, kept: 0, skipped: [] },
+          result: { added: 1, replaced: 0, kept: 0, queued: 0, skipped: [] },
         })}
       />,
     );
@@ -179,6 +182,71 @@ describe("the import page", () => {
       <SettingsImport {...props({ ok: false, error: "too_many" })} />,
     );
 
-    expect(html).toContain("El archivo tiene demasiados títulos (máximo 500).");
+    expect(html).toContain(
+      "El archivo tiene demasiados títulos (máximo 5000).",
+    );
+  });
+
+  it("shows how far the latest import is and which titles went wrong, in both languages (SAG-241)", async () => {
+    const progress = {
+      total: 10,
+      pending: 3,
+      skippedCount: 2,
+      skipped: [
+        { title: "Titulo uno", reason: "not_found" },
+        { title: "Titulo dos", reason: "failed" },
+      ],
+    };
+
+    const es = await render(
+      "es",
+      <SettingsImport {...props(undefined, progress)} />,
+    );
+    const en = await render(
+      "en",
+      <SettingsImport {...props(undefined, progress)} />,
+    );
+
+    expect(es).toContain("5 de 10 títulos ya están en tu biblioteca.");
+    expect(es).toContain("Faltan 3 títulos por buscar.");
+    expect(es).toContain("hasta 300 títulos nuevos al día");
+    expect(es).toContain("No se pudieron importar 2 títulos.");
+    expect(es).toContain("Titulo uno: la fuente no lo encontró");
+    expect(es).toContain("Titulo dos: la fuente no respondió");
+    expect(en).toContain("5 of 10 titles are already in your library.");
+    expect(en).toContain("2 titles could not be imported.");
+  });
+
+  it("says the import is finished, with no warning, when nothing waits and nothing failed", async () => {
+    const html = await render(
+      "es",
+      <SettingsImport
+        {...props(undefined, {
+          total: 4,
+          pending: 0,
+          skippedCount: 0,
+          skipped: [],
+        })}
+      />,
+    );
+
+    expect(html).toContain("4 de 4 títulos ya están en tu biblioteca.");
+    expect(html).toContain("La importación terminó.");
+    expect(html).not.toContain("No se pudieron importar");
+  });
+
+  it("counts the titles that wait in the queue after an upload", async () => {
+    const html = await render(
+      "es",
+      <SettingsImport
+        {...props({
+          ok: true,
+          step: "done",
+          result: { added: 1, replaced: 0, kept: 0, queued: 6, skipped: [] },
+        })}
+      />,
+    );
+
+    expect(html).toContain("6 títulos se están buscando en segundo plano.");
   });
 });

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/settings.import";
-import { action, headers } from "./settings.import";
+import { action, headers, loader } from "./settings.import";
 import { maxImportBytes } from "~server/library/import-file";
 
 const mocks = vi.hoisted(() => ({
   claim: vi.fn<() => Promise<"ok" | "limit" | "gone">>(),
-  refund: vi.fn<(db: unknown, id: string, units: number) => Promise<void>>(),
+  progress: vi.fn(),
   requireUser: vi.fn(),
   previewImport: vi.fn(),
   runImport: vi.fn(),
@@ -35,7 +35,10 @@ vi.mock("~server/library/import", () => ({
 }));
 vi.mock("~server/db/title-budget", () => ({
   claimTitleFetch: mocks.claim,
-  refundTitleFetches: mocks.refund,
+  titleFetchesPerDay: 300,
+}));
+vi.mock("~server/db/import-queue", () => ({
+  latestImportProgress: mocks.progress,
 }));
 vi.mock("~/middleware/i18next", () => ({
   getInstance: () => ({ t: (key: string) => key }),
@@ -43,20 +46,21 @@ vi.mock("~/middleware/i18next", () => ({
 }));
 
 const preview = {
+  perDay: 300,
   add: 1,
   exists: 0,
   fetch: 0,
   shared: { public: 1, friends: 0 },
   skipped: [],
 };
-const result = { added: 1, replaced: 0, kept: 0, skipped: [] };
+const result = { added: 1, replaced: 0, kept: 0, queued: 0, skipped: [] };
 
 beforeEach(() => {
   mocks.requireUser.mockReset().mockResolvedValue({ id: "user-from-session" });
   mocks.previewImport.mockReset().mockResolvedValue(preview);
   mocks.runImport.mockReset().mockResolvedValue(result);
   mocks.claim.mockReset().mockResolvedValue("ok");
-  mocks.refund.mockReset().mockResolvedValue(undefined);
+  mocks.progress.mockReset().mockResolvedValue(null);
   mocks.limit.mockReset().mockResolvedValue({ success: true });
   mocks.openLimit.mockReset().mockResolvedValue({ success: true });
 });
@@ -203,49 +207,13 @@ describe("the import", () => {
     });
   });
 
-  it("gives the import a way to spend the open limit of the person, one unit a call (SAG-188)", async () => {
+  it("gives the upload no way to spend the budget of new titles: the queue does it later (SAG-241)", async () => {
     await send({ intent: "confirm", payload: goodFile });
-    const deps = mocks.runImport.mock.calls[0]?.[0] as {
-      spendFetch: () => Promise<"ok" | "burst" | "daily">;
-      refundFetches: (units: number) => Promise<void>;
-    };
+    const deps = mocks.runImport.mock.calls[0]?.[0] as Record<string, unknown>;
 
+    expect(Object.keys(deps).sort()).toEqual(["db", "providers"]);
     expect(mocks.openLimit).not.toHaveBeenCalled();
-    expect(await deps.spendFetch()).toBe("ok");
-    expect(mocks.openLimit).toHaveBeenCalledWith({
-      key: "media-open:user-from-session:unknown",
-    });
-
-    mocks.openLimit.mockResolvedValue({ success: false });
-    expect(await deps.spendFetch()).toBe("burst");
-  });
-
-  it("tells a burst from the daily budget, and an erased account is treated as a burst (SAG-239)", async () => {
-    await send({ intent: "confirm", payload: goodFile });
-    const deps = mocks.runImport.mock.calls[0]?.[0] as {
-      spendFetch: () => Promise<"ok" | "burst" | "daily">;
-      refundFetches: (units: number) => Promise<void>;
-    };
-
-    mocks.claim.mockResolvedValue("limit");
-    expect(await deps.spendFetch()).toBe("daily");
-    mocks.claim.mockResolvedValue("gone");
-    expect(await deps.spendFetch()).toBe("burst");
-  });
-
-  it("gives units back for the titles the provider did not answer (SAG-239)", async () => {
-    await send({ intent: "confirm", payload: goodFile });
-    const deps = mocks.runImport.mock.calls[0]?.[0] as {
-      refundFetches: (units: number) => Promise<void>;
-    };
-
-    await deps.refundFetches(2);
-
-    expect(mocks.refund).toHaveBeenCalledWith(
-      { fake: "database" },
-      "user-from-session",
-      2,
-    );
+    expect(mocks.claim).not.toHaveBeenCalled();
   });
 
   it("does not spend the open limit for a preview, which asks no provider", async () => {
@@ -315,5 +283,49 @@ describe("the headers", () => {
     } as unknown as Route.HeadersArgs);
 
     expect(merged.get("Cache-Control")).toBe("private, no-store");
+  });
+});
+
+describe("the loader (SAG-241)", () => {
+  const load = () =>
+    loader({
+      request: new Request("https://sagashelf.app/settings/import"),
+      params: {},
+      context: {},
+    } as unknown as Route.LoaderArgs);
+
+  it("sends the latest import of the person from the session, with the pace of the queue", async () => {
+    const createdAt = new Date("2026-11-10T12:00:00Z");
+    mocks.progress.mockResolvedValue({
+      createdAt,
+      total: 10,
+      added: 4,
+      replaced: 0,
+      kept: 0,
+      pending: 5,
+      skippedCount: 1,
+      skipped: [{ title: "A", reason: "not_found" }],
+    });
+
+    const loaded = (await load()) as unknown as {
+      perDay: number;
+      progress: { createdAt: string; pending: number };
+    };
+
+    expect(mocks.progress).toHaveBeenCalledWith(
+      { fake: "database" },
+      "user-from-session",
+    );
+    expect(loaded.perDay).toBe(300);
+    expect(loaded.progress).toMatchObject({
+      createdAt: createdAt.toISOString(),
+      pending: 5,
+    });
+  });
+
+  it("sends no progress for a person who never imported", async () => {
+    expect(
+      ((await load()) as unknown as { progress: unknown }).progress,
+    ).toBeNull();
   });
 });
