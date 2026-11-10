@@ -70,6 +70,8 @@ export type ImportPreview = {
   exists: number;
   /** Titles we do not hold yet: they are asked of the provider in the background, within the daily budget. */
   fetch: number;
+  /** Titles with no id of ours that the queue looks for by name and year (SAG-243). */
+  match: number;
   /**
    * Of the titles that would be added (those we hold and those asked of the provider), how many
    * the file marks as public or for friends. They become private unless the person keeps the
@@ -89,6 +91,7 @@ export async function previewImport(
   const added = [
     ...sorted.known.filter(({ title }) => !title.hasEntry),
     ...sorted.toFetch,
+    ...parsed.toMatch,
   ];
   const countOf = (visibility: ImportEntry["visibility"]) =>
     added.filter(({ entry }) => entry.visibility === visibility).length;
@@ -97,6 +100,7 @@ export async function previewImport(
     add: sorted.known.filter(({ title }) => !title.hasEntry).length,
     exists: sorted.known.filter(({ title }) => title.hasEntry).length,
     fetch: sorted.toFetch.length,
+    match: parsed.toMatch.length,
     shared: { public: countOf("public"), friends: countOf("friends") },
     skipped: sorted.skipped,
   };
@@ -168,7 +172,7 @@ export async function runImport(
   // Every entry that is not in the library has a place, so the list keeps a stable order.
   let next = 0;
   const position = () => next++;
-  const pending = sorted.toFetch.map(({ entry }) => ({
+  const pending = [...sorted.toFetch, ...parsed.toMatch].map(({ entry }) => ({
     position: position(),
     title: entry.title,
     entry,
@@ -182,7 +186,8 @@ export async function runImport(
     replace: options.replace,
     keepVisibility,
     locale: options.locale,
-    total: parsed.entries.length + parsed.skipped.length,
+    total:
+      parsed.entries.length + parsed.toMatch.length + parsed.skipped.length,
     written: { added: written.added, replaced: written.replaced, kept },
     pending,
     skipped: left,

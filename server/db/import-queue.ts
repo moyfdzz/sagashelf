@@ -44,6 +44,11 @@ export type NewImportJob = {
 export const rowsPerRun = 5;
 export const rowsPerPersonPerRun = 3;
 export const peoplePerRun = 2;
+/**
+ * A title to look for by name and year costs up to `matchCallsMax` requests before the 6 of saving
+ * it, so it takes 3 of the `rowsPerRun` places: 14 requests fit in 3 places of 6 (SAG-243).
+ */
+export const matchRowWeight = 3;
 /** Times a provider may not answer for a title before it is listed as failed. */
 export const maxAttempts = 3;
 
@@ -109,7 +114,8 @@ export type ClaimedRow = {
 };
 
 /**
- * Takes the titles that are due, for the run of the queue: at most `rowsPerRun`, from at most
+ * Takes the titles that are due, for the run of the queue: at most `rowsPerRun` places (a title to
+ * look for by name takes `matchRowWeight`), from at most
  * `peoplePerRun` people (the ones waiting longest), at most `rowsPerPersonPerRun` each, and only
  * from the oldest job of a person that has something due (a job whose rows are all paused or
  * waiting after a failure does not hold back a newer one). Each is leased for 15 minutes
@@ -120,6 +126,7 @@ export async function claimImportRows(db: SqlExecutor): Promise<ClaimedRow[]> {
   const { rows } = (await db.execute(sql`
     WITH due AS (
       SELECT r.id, j.user_id, r.position,
+             CASE WHEN jsonb_exists(r.entry, 'match') THEN ${matchRowWeight}::int ELSE 1 END AS weight,
              row_number() OVER (PARTITION BY j.user_id ORDER BY r.position) AS n,
              dense_rank() OVER (ORDER BY j.created_at, j.user_id) AS who
       FROM import_rows r
@@ -137,11 +144,13 @@ export async function claimImportRows(db: SqlExecutor): Promise<ClaimedRow[]> {
           LIMIT 1
         )
     ),
-    picked AS (
-      SELECT id FROM due
+    ordered AS (
+      SELECT id, who, n, sum(weight) OVER (ORDER BY who, n) AS used FROM due
       WHERE n <= ${rowsPerPersonPerRun} AND who <= ${peoplePerRun}
-      ORDER BY who, n
-      LIMIT ${rowsPerRun}
+    ),
+    picked AS (
+      -- The places add up from the first row: the first one that does not fit ends the run.
+      SELECT id FROM ordered WHERE used <= ${rowsPerRun} ORDER BY who, n
     ),
     claimed AS (
       UPDATE import_rows SET retry_at = now() + interval '15 minutes'

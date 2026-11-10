@@ -1,4 +1,5 @@
 import { createHttpClient, ProviderError, type HttpClient } from "../http";
+import { airedIn, simplifyTitle, type TmdbShowDates } from "./match";
 import type {
   Locale,
   MediaProvider,
@@ -152,6 +153,37 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
         (season) => detailed.get(season.season_number) ?? season,
       );
       return mapParts(seasons);
+    },
+
+    async matchByYear({ title, kind, year }, { locale, signal }) {
+      const text = title.trim();
+      if (text === "") return null;
+      const simpler = simplifyTitle(text);
+      // The plain title first; the shorter one only when the first finds nothing that fits.
+      for (const query of simpler === text ? [text] : [text, simpler]) {
+        const found = (await searchKind(kind, query, locale, signal)).slice(
+          0,
+          3,
+        );
+        const fits: string[] = [];
+        for (const item of found) {
+          const id = item.externalId.id;
+          if (kind === "movie") {
+            // A movie has one date, and the search already sends it.
+            if (item.year === year) fits.push(id);
+            continue;
+          }
+          const show = await http.getJson<TmdbShowDates>(
+            url(`/tv/${parseExternalId(id)?.id}`, {}),
+            { signal },
+          );
+          if (airedIn(show, year)) fits.push(id);
+        }
+        // Two series that fit are a guess: better left for the person than a wrong title.
+        if (fits.length > 1) return null;
+        if (fits[0]) return fits[0];
+      }
+      return null;
     },
 
     async trending(window: TrendingWindow, { type, locale, signal }) {

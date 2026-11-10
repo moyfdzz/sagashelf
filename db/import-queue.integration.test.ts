@@ -734,3 +734,83 @@ describe("the titles that did not come in, a page at a time (SAG-242)", () => {
     expect((await latestImportProgress(db, ana.id, 1))?.skippedCount).toBe(120);
   });
 });
+
+// No source: the file text leaves out a key that is undefined.
+const wanted = (n: number) => ({
+  ...entry(n),
+  source: undefined,
+  match: { kind: "tv", title: `Name ${n}`, year: 2015 },
+});
+
+/** Uploads these movies, then these entries that have only a name and a year. */
+async function uploadWithMatches(
+  userId: string,
+  numbers: number[],
+  matches: number[],
+) {
+  const parsed = parseImportFile(
+    JSON.stringify({
+      schemaVersion: 1,
+      libraryEntries: [...numbers.map(entry), ...matches.map(wanted)],
+    }),
+  );
+  if (!parsed.ok) throw new Error(parsed.error);
+  return runImport({ db, providers: [provider([])] }, userId, parsed.value, {
+    replace: false,
+    locale: "es",
+  });
+}
+
+describe("a title looked up by name and year in the queue (SAG-243)", () => {
+  it("takes 3 of the 5 places of a run, so the requests of the run stay under 50", async () => {
+    const ana = await newUser();
+    const luis = await newUser();
+    await uploadWithMatches(ana.id, [1, 2], [90]);
+    await upload(luis.id, [11, 12]);
+
+    const tmdb = {
+      ...provider([1, 2, 90]),
+      matchByYear: vi.fn(async () => "movie/90"),
+    };
+    const summary = await run(tmdb);
+
+    // Two titles (2 places) and the one to match (3) are the 5 places: nothing is left for Luis.
+    expect(summary.taken).toBe(3);
+    expect(await libraryOf(ana.id)).toBe(3);
+    expect(await libraryOf(luis.id)).toBe(0);
+    expect(tmdb.matchByYear).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the title that was found, and spends one unit of the budget on it", async () => {
+    const ana = await newUser();
+    await uploadWithMatches(ana.id, [], [90]);
+
+    const tmdb = {
+      ...provider([90]),
+      matchByYear: vi.fn(async () => "movie/90"),
+    };
+    await run(tmdb);
+
+    expect(tmdb.getById).toHaveBeenCalledWith("movie/90", expect.anything());
+    expect(await libraryOf(ana.id)).toBe(1);
+    expect(await rows()).toEqual([]);
+  });
+
+  it("lists a title no series fits as having no catalog id, with no budget spent", async () => {
+    const ana = await newUser();
+    await uploadWithMatches(ana.id, [], [90]);
+
+    const tmdb = { ...provider([]), matchByYear: vi.fn(async () => null) };
+    await run(tmdb);
+
+    expect(tmdb.getById).not.toHaveBeenCalled();
+    expect(await rows()).toEqual([
+      expect.objectContaining({ state: "skipped", reason: "no_source" }),
+    ]);
+    const [row] = await db
+      .select({ used: users.titleFetchesCount })
+      .from(users)
+      .where(eq(users.id, ana.id));
+    expect(row?.used).toBe(0);
+  });
+});

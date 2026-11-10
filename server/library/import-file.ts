@@ -86,6 +86,23 @@ export const importEntrySchema = z.object({
 
 export type ImportEntry = z.output<typeof importEntrySchema>;
 
+/**
+ * An entry from a tracker that has no id of ours (an anime in a Simkl backup without a TMDB id,
+ * SAG-243). It carries the name and the year of the entry instead of a source: the queue looks
+ * for the title on TMDB (`matchByYear`) and the entry then goes on like any other.
+ */
+export const matchEntrySchema = importEntrySchema
+  .omit({ source: true })
+  .extend({
+    match: z.object({
+      kind: z.enum(["movie", "tv"]),
+      title: z.string().trim().min(1).max(300),
+      year: z.number().int().min(1800).max(2200),
+    }),
+  });
+
+export type MatchEntry = z.output<typeof matchEntrySchema>;
+
 /** Why an entry is left out of an import. Each code has its text under library.import.reasons. */
 export type SkipReason =
   | "invalid"
@@ -99,6 +116,8 @@ export type Skipped = { title: string; reason: SkipReason };
 
 export type ParsedImport = {
   entries: { key: string; entry: ImportEntry }[];
+  /** Entries to look for by name and year once they are queued; never asked in the request. */
+  toMatch: { key: string; entry: MatchEntry }[];
   skipped: Skipped[];
 };
 
@@ -153,10 +172,29 @@ export function parseImportFile(
   }
 
   const entries: ParsedImport["entries"] = [];
+  const toMatch: ParsedImport["toMatch"] = [];
   const skipped: Skipped[] = [];
   const seen = new Set<string>();
   for (const raw of rawEntries) {
     const label = titleOf(raw);
+    if (hasMatch(raw) && !hasSource(raw)) {
+      const parsed = matchEntrySchema.safeParse(raw);
+      if (!parsed.success || !datesInOrder(parsed.data)) {
+        skipped.push({ title: label, reason: "invalid" });
+        continue;
+      }
+      // Two seasons of one series are different here (they may fit one series later, and the queue
+      // lists the second one as repeated then); only the same name and year twice is a duplicate.
+      const { kind, title, year } = parsed.data.match;
+      const key = `match:${kind}:${year}:${title.toLowerCase()}`;
+      if (seen.has(key)) {
+        skipped.push({ title: label, reason: "duplicate" });
+        continue;
+      }
+      seen.add(key);
+      toMatch.push({ key, entry: parsed.data });
+      continue;
+    }
     if (!hasSource(raw)) {
       skipped.push({ title: label, reason: "no_source" });
       continue;
@@ -174,7 +212,7 @@ export function parseImportFile(
     seen.add(key);
     entries.push({ key, entry: parsed.data });
   }
-  return { ok: true, value: { entries, skipped } };
+  return { ok: true, value: { entries, toMatch, skipped } };
 }
 
 function titleOf(raw: unknown): string {
@@ -182,12 +220,19 @@ function titleOf(raw: unknown): string {
   return typeof title === "string" ? title.slice(0, 300) : "";
 }
 
+function hasMatch(raw: unknown): boolean {
+  const match = (raw as { match?: unknown } | null)?.match;
+  return typeof match === "object" && match !== null;
+}
+
 function hasSource(raw: unknown): boolean {
   const source = (raw as { source?: unknown } | null)?.source;
   return typeof source === "object" && source !== null;
 }
 
-function datesInOrder(entry: ImportEntry): boolean {
+function datesInOrder(
+  entry: Pick<ImportEntry, "startedAt" | "finishedAt" | "viewings">,
+): boolean {
   const ordered = (from: string | null, to: string | null) =>
     !from || !to || to >= from;
   return (

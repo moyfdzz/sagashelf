@@ -291,7 +291,7 @@
       "description": "Get your library back from the JSON file you downloaded in My data, or bring in your Simkl library with its JSON backup.",
       "back": "Back to my data",
       "file": "SagaShelf or Simkl JSON file",
-      "fileHint": "Up to {{mb}} MB and {{max}} titles. Only your library is read: your profile and anything that belongs to other people is ignored. From Simkl, only titles that have a TMDB id come in; the others are listed as not imported.",
+      "fileHint": "Up to {{mb}} MB and {{max}} titles. Only your library is read: your profile and anything that belongs to other people is ignored. From Simkl, titles that have a TMDB id come in, and anime without one are looked up by name and year; whatever is not found is listed as not imported.",
       "previewButton": "See what would be imported",
       "previewing": "Checking the file…",
       "preview": {
@@ -302,6 +302,8 @@
         "exists_other": "You already have {{count}} titles in your library.",
         "fetch_one": "{{count}} title is not in SagaShelf yet. It will be looked up in TMDB in the background, at most {{max}} new titles a day, so it may take a while.",
         "fetch_other": "{{count}} titles are not in SagaShelf yet. They will be looked up in TMDB in the background, at most {{max}} new titles a day, so it may take a while.",
+        "match_one": "{{count}} title has no catalog id. It will be looked up in TMDB by its name and year; if there is no clear match, it will be listed as not imported. Several seasons of one series merge into one.",
+        "match_other": "{{count}} titles have no catalog id. They will be looked up in TMDB by their name and year; if there is no clear match, they will be listed as not imported. Several seasons of one series merge into one.",
         "sharedPublic_one": "{{count}} of the new titles is public in the file. It will be private unless you check the box below.",
         "sharedPublic_other": "{{count}} of the new titles are public in the file. They will be private unless you check the box below.",
         "sharedFriends_one": "{{count}} of the new titles is for friends in the file. It will be private unless you check the box below.",
@@ -336,6 +338,8 @@
         "problems_other": "{{count}} titles could not be imported."
       },
       "skipped": "Not imported",
+      "skippedTitle_one": "{{count}} title was not imported",
+      "skippedTitle_other": "{{count}} titles were not imported",
       "skippedLine": "{{title}}: {{reason}}",
       "skippedMore_one": "And {{count}} more.",
       "skippedMore_other": "And {{count}} more.",

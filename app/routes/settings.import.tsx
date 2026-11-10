@@ -158,6 +158,9 @@ export async function action(args: Route.ActionArgs) {
 
 const inputClass =
   "border-input-edge bg-surface text-fg focus-visible:outline-accent mt-1 block w-full rounded-md border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2";
+/** Up to this many titles left out are shown open; more fold up behind their count. */
+const skippedOpenUpTo = 10;
+
 function SkippedList({
   skipped,
   total = skipped.length,
@@ -173,8 +176,17 @@ function SkippedList({
   // A page past the last one (a stale link) has no titles but still shows the way back.
   if (skipped.length === 0 && !(paging && paging.page > 1)) return null;
   return (
-    <div className="mt-4">
-      <h3 className="font-semibold">{t("settings.import.skipped")}</h3>
+    // A long list would stretch the page, so it folds up when there are many; the count in the
+    // heading says how many are in it. A later page was opened on purpose, so it stays open.
+    <details
+      className="mt-4"
+      open={total <= skippedOpenUpTo || (paging?.page ?? 1) > 1}
+    >
+      <summary className="min-h-10 cursor-pointer py-2 font-semibold">
+        <h3 className="inline">
+          {t("settings.import.skippedTitle", { count: total })}
+        </h3>
+      </summary>
       <ul className="mt-2 list-disc space-y-1 pl-6">
         {skipped.slice(0, skippedShown).map((item, index) => (
           <li key={index} className="break-words">
@@ -198,7 +210,7 @@ function SkippedList({
           {t("settings.import.skippedMore", { count: total - 50 })}
         </p>
       ) : null}
-    </div>
+    </details>
   );
 }
 
@@ -385,6 +397,13 @@ export default function SettingsImport({
                   {t("settings.import.preview.fetch", {
                     count: actionData.preview.fetch,
                     max: actionData.preview.perDay,
+                  })}
+                </li>
+              ) : null}
+              {actionData.preview.match > 0 ? (
+                <li>
+                  {t("settings.import.preview.match", {
+                    count: actionData.preview.match,
                   })}
                 </li>
               ) : null}
