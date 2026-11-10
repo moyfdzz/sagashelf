@@ -103,7 +103,11 @@ const run = (
   } = {},
 ) =>
   runImport(
-    { db, providers: options.providers ?? [provider()] },
+    {
+      db,
+      providers: options.providers ?? [provider()],
+      spendFetch: async () => true,
+    },
     userId,
     fileOf(entries),
     {
@@ -559,7 +563,7 @@ describe("export, delete the account, create another, import", () => {
 
     const again = await newUser();
     const result = await runImport(
-      { db, providers: [provider()] },
+      { db, providers: [provider()], spendFetch: async () => true },
       again.id,
       (() => {
         const parsed = parseImportFile(JSON.stringify(exported));
@@ -653,10 +657,12 @@ describe("the alerts switch of an entry in an import (SAG-101)", () => {
     const again = await newUser();
     const parsed = parseImportFile(JSON.stringify(exported));
     if (!parsed.ok) throw new Error(parsed.error);
-    await runImport({ db, providers: [provider()] }, again.id, parsed.value, {
-      replace: false,
-      locale: "es",
-    });
+    await runImport(
+      { db, providers: [provider()], spendFetch: async () => true },
+      again.id,
+      parsed.value,
+      { replace: false, locale: "es" },
+    );
 
     expect(await notifyOf(again.id, loud)).toBe(true);
     expect(await notifyOf(again.id, quiet)).toBe(false);

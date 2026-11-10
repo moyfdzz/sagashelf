@@ -9,8 +9,8 @@ import { findMediaByExternalId } from "~server/db/media-detail";
 import { importMedia } from "~server/media/import";
 import { mediaPath } from "~server/media/slug";
 import { ProviderError } from "~server/providers/http";
-import { rateLimit } from "~server/rate-limit";
-import { getDb, getMediaProviders, getOpenLimiter } from "~server/runtime-env";
+import { spendOpenUnit } from "~server/open-limit";
+import { getDb, getMediaProviders } from "~server/runtime-env";
 import { privateHeaders, privateRouteHeaders } from "~server/http/cache";
 
 /**
@@ -51,11 +51,7 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   // Only a call to the provider counts against the limit, and it is counted per person.
-  const limited = await rateLimit(
-    getOpenLimiter(),
-    request,
-    `media-open:${user.id}`,
-  );
+  const limited = await spendOpenUnit(request, user.id);
   if (limited) throw limited;
 
   try {

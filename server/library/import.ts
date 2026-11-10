@@ -115,21 +115,37 @@ export type ImportResult = {
  * rest are listed as pending and a second import brings them. The entries are written in one
  * statement. Nothing in the file chooses the person or an id of ours, and the visibility of the
  * file counts only with `keepVisibility`, only for new entries.
+ *
+ * Each call to the provider first asks `spendFetch` for one unit of the person's budget of new
+ * titles (the same one as `/media/open`, ADR-035). When it says no, that title and the ones after
+ * it are not asked for and stay pending, as if the provider had not answered.
  */
 export async function runImport(
-  deps: { db: Db; providers: readonly MediaProvider[] },
+  deps: {
+    db: Db;
+    providers: readonly MediaProvider[];
+    spendFetch: () => Promise<boolean>;
+  },
   userId: string,
   parsed: ParsedImport,
   options: { replace: boolean; keepVisibility?: boolean; locale: Locale },
 ): Promise<ImportResult> {
-  const { db, providers } = deps;
+  const { db, providers, spendFetch } = deps;
   const sorted = await classify(db, userId, parsed, providers);
   const skipped = [...sorted.skipped];
   const ready = [...sorted.known];
 
-  if (sorted.toFetch.length > 0) {
+  // The budget is spent one by one, in the order of the file, and stops at the first refusal.
+  let allowed = 0;
+  while (allowed < sorted.toFetch.length && (await spendFetch())) allowed++;
+  const toFetch = sorted.toFetch.slice(0, allowed);
+  for (const { entry } of sorted.toFetch.slice(allowed)) {
+    skipped.push({ title: entry.title, reason: "pending" });
+  }
+
+  if (toFetch.length > 0) {
     const outcomes = await Promise.allSettled(
-      sorted.toFetch.map(({ entry }) =>
+      toFetch.map(({ entry }) =>
         importMedia(
           { db, providers },
           entry.source.provider,
@@ -138,11 +154,11 @@ export async function runImport(
         ),
       ),
     );
-    const saved = sorted.toFetch.filter(
+    const saved = toFetch.filter(
       (_, index) =>
         outcomes[index]?.status === "fulfilled" && outcomes[index].value,
     );
-    sorted.toFetch.forEach(({ entry }, index) => {
+    toFetch.forEach(({ entry }, index) => {
       const outcome = outcomes[index];
       if (outcome?.status === "fulfilled" && outcome.value) return;
       // The provider does not know the id, or did not answer: another import can try again.

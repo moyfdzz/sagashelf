@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   importMedia: vi.fn(),
   writeLimit:
     vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
-  searchLimit:
+  openLimit:
     vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
   locale: "es",
 }));
@@ -27,7 +27,7 @@ vi.mock("~server/runtime-env", () => ({
   getDb: async () => ({ fake: "database" }),
   getMediaProviders: () => [{ id: "tmdb" }],
   getWriteLimiter: () => ({ limit: mocks.writeLimit }),
-  getSearchLimiter: () => ({ limit: mocks.searchLimit }),
+  getOpenLimiter: () => ({ limit: mocks.openLimit }),
 }));
 vi.mock("~/middleware/i18next", () => ({
   getLocale: () => mocks.locale,
@@ -45,7 +45,7 @@ beforeEach(() => {
   mocks.findMediaByExternalId.mockReset().mockResolvedValue(null);
   mocks.importMedia.mockReset().mockResolvedValue(saved);
   mocks.writeLimit.mockReset().mockResolvedValue({ success: true });
-  mocks.searchLimit.mockReset().mockResolvedValue({ success: true });
+  mocks.openLimit.mockReset().mockResolvedValue({ success: true });
 });
 
 function send(
@@ -108,13 +108,13 @@ describe("adding a title that a search found", () => {
     expect(mocks.importMedia.mock.calls[0]?.[3]).toBe("en");
   });
 
-  it("does not call the provider, nor count against the search limit, for a title we already hold", async () => {
+  it("does not call the provider, nor spend the open limit, for a title we already hold", async () => {
     mocks.findMediaByExternalId.mockResolvedValue(saved);
 
     const result = await send();
 
     expect(mocks.importMedia).not.toHaveBeenCalled();
-    expect(mocks.searchLimit).not.toHaveBeenCalled();
+    expect(mocks.openLimit).not.toHaveBeenCalled();
     expect(mocks.addEntry).toHaveBeenCalledWith(
       { fake: "database" },
       "user-1",
@@ -123,14 +123,14 @@ describe("adding a title that a search found", () => {
     expect(result).toMatchObject({ data: { ok: true, mediaId: savedId } });
   });
 
-  it("counts the call to the provider against the limit of the search", async () => {
-    mocks.searchLimit.mockResolvedValue({ success: false });
+  it("counts the call to the provider against the open limit of the person, the one of /media/open", async () => {
+    mocks.openLimit.mockResolvedValue({ success: false });
 
     const result = (await send()) as Response;
 
     expect(result.status).toBe(429);
-    expect(mocks.searchLimit).toHaveBeenCalledWith({
-      key: expect.stringContaining("media-open"),
+    expect(mocks.openLimit).toHaveBeenCalledWith({
+      key: "media-open:user-1:unknown",
     });
     expect(mocks.importMedia).not.toHaveBeenCalled();
     expect(mocks.addEntry).not.toHaveBeenCalled();
