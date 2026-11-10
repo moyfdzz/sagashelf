@@ -25,11 +25,12 @@ type Section = (typeof sections)[number];
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** A Simkl backup has at least one of its lists and none of the keys of our own export. */
+/** A Simkl backup has at least one of its lists and none of the keys of our own export (a damaged export is an invalid file, not an empty Simkl one). */
 export function isSimklBackup(json: unknown): json is Record<string, unknown> {
   return (
     isRecord(json) &&
     !("libraryEntries" in json) &&
+    !("schemaVersion" in json) &&
     sections.some((section) => Array.isArray(json[section]))
   );
 }
@@ -89,17 +90,17 @@ function convertEntry(
   entry: unknown,
 ): Record<string, unknown> {
   if (!isRecord(entry)) return {};
-  const item = isRecord(entry[section === "movies" ? "movie" : "show"])
-    ? (entry[section === "movies" ? "movie" : "show"] as Record<
-        string,
-        unknown
-      >)
-    : {};
+  const inner = entry[section === "movies" ? "movie" : "show"];
+  const item = isRecord(inner) ? inner : {};
   const title =
     typeof item.title === "string" ? item.title.trim().slice(0, 300) : "";
   const tmdb = tmdbIdOf(item.ids);
-  const status = typeof entry.status === "string" ? entry.status : "";
-  const completed = statusOf[status] === "completed";
+  // Own keys only: a status like "constructor" must not read an inherited property.
+  const status =
+    typeof entry.status === "string" && Object.hasOwn(statusOf, entry.status)
+      ? statusOf[entry.status]
+      : undefined;
+  const completed = status === "completed";
   const rating = entry.user_rating;
 
   return {
@@ -110,7 +111,7 @@ function convertEntry(
           source: { provider: "tmdb", id: `${kindOf(section, entry)}/${tmdb}` },
         }
       : {}),
-    status: statusOf[status],
+    status,
     // Episodes watched. A movie has none; the importer caps it by the real total of the title.
     progress: section === "movies" ? 0 : count(entry.watched_episodes_count),
     progressUnit: null,

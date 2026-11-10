@@ -92,6 +92,19 @@ describe("a Simkl backup", () => {
     expect(entries.map((e) => e.entry.status)).toEqual(Object.values(statuses));
   });
 
+  it("does not read an inherited property as a status", () => {
+    const { entries, skipped } = parsed(
+      backup({
+        shows: [
+          show({ status: "constructor" }, { tmdb: "6" }),
+          show({ status: "__proto__" }, { tmdb: "7" }),
+        ],
+      }),
+    );
+    expect(entries).toEqual([]);
+    expect(skipped.map((s) => s.reason)).toEqual(["invalid", "invalid"]);
+  });
+
   it("lists an entry with an unknown status as invalid and imports the rest", () => {
     const { entries, skipped } = parsed(
       backup({
@@ -268,6 +281,12 @@ describe("a Simkl backup", () => {
       }),
     );
     expect(result).toEqual({ ok: false, error: "too_many" });
+  });
+
+  it("does not take a damaged file of our own export for a Simkl backup", () => {
+    expect(
+      parseImportFile(JSON.stringify({ schemaVersion: 1, movies: [movie()] })),
+    ).toEqual({ ok: false, error: "invalid_file" });
   });
 
   it("does not take a file of our own export for a Simkl backup", () => {

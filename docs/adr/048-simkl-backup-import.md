@@ -23,3 +23,5 @@ A file with 1,541 entries was counted on 2026-11-10 (ids only, no titles kept): 
 
 - A backup of mostly anime can leave many titles out (35 of 1,541 here). The page lists them; SAG-243 decides what to do.
 - The conversion runs on each step of the import (the file is sent again at each one, as for our own files). Its CPU cost for 1,541 entries was not measured on the Worker.
+- A Simkl backup weighs about 2 KB for each title (posters, slugs and ids): the file of 1,541 entries was 3.2 MB, so one of about 2,500 titles passes the 5 MB limit and is refused. The limit was not raised here because the same number sizes the body of the request and the payload that travels back at each step; a bigger one needs its own decision.
+- Anime types other than `movie` are all asked of TMDB as a series. The types seen in the one file were `tv`, `movie`, `ova` and `ona`; a type we have not seen (a special, a music video) could point at a TMDB movie and would be listed as not found.
