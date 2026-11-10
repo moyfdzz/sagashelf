@@ -27,6 +27,9 @@ export async function saveMedia(
   db: SqlExecutor,
   media: NormalizedMedia,
   locale: Locale = "es",
+  // False saves the language without marking the row as fresh, so a run that stops before the other
+  // language leaves the title due for a refresh (SAG-182).
+  markFresh = true,
 ): Promise<string> {
   const { provider, id } = media.externalId;
   // The title of the language asked for wins over one the source also sent for that language.
@@ -95,7 +98,7 @@ export async function saveMedia(
         status = CASE WHEN ${media.status} = 'unknown' THEN status
                       ELSE ${media.status}::media_status END,
         popularity = ${media.popularity},
-        fetched_at = now(),
+        fetched_at = CASE WHEN ${markFresh} THEN now() ELSE fetched_at END,
         updated_at = now()
       WHERE id IN (SELECT media_id FROM claimed WHERE NOT inserted)
       RETURNING id

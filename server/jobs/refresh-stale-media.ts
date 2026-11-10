@@ -5,6 +5,7 @@ import {
   saveMedia,
   saveParts,
 } from "../db/media-store";
+import { countOutgoingCalls } from "../providers/http";
 import type { Locale, MediaProvider } from "../providers/types";
 
 /**
@@ -13,6 +14,19 @@ import type { Locale, MediaProvider } from "../providers/types";
  * save them and 1 to note a failure: about 8, so 5 titles and the list query stay near 41.
  */
 export const refreshBatchSize = 5;
+
+/**
+ * The share of the 50 subrequests of the first Cron Trigger that this job may spend: the rest is for
+ * the Wikidata job (4), the sagas sync (4) and the drafts (1) that run after it. A provider call
+ * that is retried spends one more, so the count is read from the clients, not guessed (SAG-182).
+ * Before each title the job asks whether one more title (`titleCost`: about 7 with no retry, 12
+ * allowing for some) still fits; if not it stops and the title waits for the next run. The check
+ * is made before a title, not inside it, so a title whose calls are all retried can still pass the
+ * budget a little. Priority of the first trigger: this refresh, then
+ * Wikidata, then the sagas sync, then the drafts.
+ */
+export const refreshSubrequestBudget = 41;
+const titleCost = 12;
 
 /** The two languages of the app. `en` goes first so the title column ends in Spanish, the default. */
 const locales: readonly Locale[] = ["en", "es"];
@@ -46,6 +60,7 @@ const logFailure = (event: string, provider: string, error?: unknown) =>
 export async function refreshStaleMedia(
   deps: { db: SqlExecutor; providers: readonly MediaProvider[] },
   limit: number = refreshBatchSize,
+  budget: number = refreshSubrequestBudget,
 ): Promise<RefreshSummary> {
   const summary: RefreshSummary = { found: 0, refreshed: 0, failed: 0 };
   // A deployment with no provider secret has nothing to ask, so it does not wake the database.
@@ -58,7 +73,18 @@ export async function refreshStaleMedia(
   );
   summary.found = rows.length;
 
+  const startedAt = countOutgoingCalls();
+  // The list query, then the statements this loop runs.
+  let statements = 1;
+  const spent = () => countOutgoingCalls() - startedAt + statements;
+
   for (const row of rows) {
+    if (spent() + titleCost > budget) {
+      console.log(
+        JSON.stringify({ event: "media.refresh_budget", spent: spent() }),
+      );
+      break;
+    }
     const source = deps.providers.find(
       (candidate) => candidate.id === row.provider,
     );
@@ -73,6 +99,7 @@ export async function refreshStaleMedia(
       );
       if (media.some((item) => item === null)) {
         // The provider no longer knows it. It is tried again after a day, not on every run.
+        statements += 1;
         await markRefreshAttempt(deps.db, row.mediaId);
         logFailure("media.refresh_missing", row.provider);
         summary.failed += 1;
@@ -81,10 +108,20 @@ export async function refreshStaleMedia(
 
       let id = row.mediaId;
       for (const [index, item] of media.entries()) {
-        if (item) id = await saveMedia(deps.db, item, locales[index]);
+        if (!item) continue;
+        statements += 1;
+        // Only the last language marks the title as fresh: a run that stops between the two leaves
+        // it due again, not half saved and looking fresh.
+        id = await saveMedia(
+          deps.db,
+          item,
+          locales[index],
+          index === media.length - 1,
+        );
       }
       if (source.capabilities.parts) {
         try {
+          statements += 1;
           await saveParts(
             deps.db,
             id,
@@ -98,6 +135,7 @@ export async function refreshStaleMedia(
     } catch (error) {
       logFailure("media.refresh_failed", row.provider, error);
       summary.failed += 1;
+      statements += 1;
       await markRefreshAttempt(deps.db, row.mediaId).catch(() => undefined);
     }
   }

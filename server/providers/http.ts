@@ -70,6 +70,15 @@ function isTransient(error: ProviderError): boolean {
   );
 }
 
+let outgoingCalls = 0;
+
+/**
+ * How many requests every provider client of this isolate has sent, retries included. A scheduled
+ * run has 50 subrequests (ADR-001) and each retry spends one, so a job that must stay inside the
+ * budget reads this before and after its calls (SAG-182).
+ */
+export const countOutgoingCalls = (): number => outgoingCalls;
+
 /**
  * A small HTTP client for one provider. It gives every call a timeout, retries a failed GET a
  * couple of times with a random pause, keeps to the provider's rate with a token bucket, and
@@ -154,6 +163,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     const signal = outer ? AbortSignal.any([outer, timeout]) : timeout;
     let response: Response;
     try {
+      outgoingCalls += 1;
       response = await fetchImpl(url, {
         method: "GET",
         headers: {
