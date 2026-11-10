@@ -22,7 +22,11 @@ const maxFormBytes = 1024;
 
 // Each code has its text in app/locales, under settings.delete.errors.
 type ErrorCode =
-  "confirm_mismatch" | "reauth_required" | "failed" | "invalid_request";
+  | "confirm_mismatch"
+  | "understood_required"
+  | "reauth_required"
+  | "failed"
+  | "invalid_request";
 
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
@@ -67,12 +71,13 @@ export async function action(args: Route.ActionArgs) {
   const db = await getDb();
   const profile = await getProfile(db, user.id);
   if (!profile) throw data({ error: "forbidden" }, { status: 403 });
-  if (
-    !parsed.success ||
-    !confirmsUsername(parsed.data.confirm, profile.username)
-  ) {
+  // A form with a missing or extra field is not from this page. Each of the two checks has its
+  // own error, and the username's goes first when both fail (SAG-172).
+  if (!parsed.success) return fail("invalid_request", 400);
+  if (!confirmsUsername(parsed.data.confirm, profile.username)) {
     return fail("confirm_mismatch", 400);
   }
+  if (parsed.data.understood !== "on") return fail("understood_required", 400);
 
   const keys = getClerkKeys();
   if (!keys) throw data({ error: "auth_not_configured" }, { status: 503 });

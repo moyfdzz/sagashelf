@@ -181,6 +181,11 @@ export default function ProfileSettings({
   const deleting = deleter.state !== "idle";
   const deleteError =
     deleter.data && "error" in deleter.data ? deleter.data.error : null;
+  // The two errors of the fields show next to their field; the others show above the form.
+  const deleteFormError =
+    deleteError === "confirm_mismatch" || deleteError === "understood_required"
+      ? null
+      : deleteError;
   const renamer = useFetcher<typeof usernameAction>();
   const renaming = renamer.state !== "idle";
   const renameError =
@@ -485,12 +490,12 @@ export default function ProfileSettings({
           </h2>
           <p className="mt-2">{t("settings.delete.description")}</p>
           <p className="mt-2">{t("settings.delete.usernameFreed")}</p>
-          {deleteError ? (
+          {deleteFormError ? (
             <p
               role="alert"
               className="border-danger-edge bg-danger-bg text-danger-fg mt-4 rounded-md border px-4 py-3 font-semibold"
             >
-              {t(`settings.delete.errors.${deleteError}`)}
+              {t(`settings.delete.errors.${deleteFormError}`)}
             </p>
           ) : null}
           <deleter.Form
@@ -509,18 +514,54 @@ export default function ProfileSettings({
                 name="confirm"
                 autoComplete="off"
                 required
+                aria-invalid={
+                  deleteError === "confirm_mismatch" ? true : undefined
+                }
+                aria-describedby={
+                  deleteError === "confirm_mismatch"
+                    ? "delete-confirm-error"
+                    : undefined
+                }
                 className={inputClass}
               />
+              {deleteError === "confirm_mismatch" ? (
+                <p
+                  id="delete-confirm-error"
+                  role="alert"
+                  className="text-danger-fg mt-1 text-sm font-semibold"
+                >
+                  {t("settings.delete.errors.confirm_mismatch")}
+                </p>
+              ) : null}
             </div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="understood"
-                required
-                className="shrink-0"
-              />
-              {t("settings.delete.understood")}
-            </label>
+            <div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="understood"
+                  required
+                  aria-invalid={
+                    deleteError === "understood_required" ? true : undefined
+                  }
+                  aria-describedby={
+                    deleteError === "understood_required"
+                      ? "delete-understood-error"
+                      : undefined
+                  }
+                  className="shrink-0"
+                />
+                {t("settings.delete.understood")}
+              </label>
+              {deleteError === "understood_required" ? (
+                <p
+                  id="delete-understood-error"
+                  role="alert"
+                  className="text-danger-fg mt-1 text-sm font-semibold"
+                >
+                  {t("settings.delete.errors.understood_required")}
+                </p>
+              ) : null}
+            </div>
             <button
               type="submit"
               disabled={deleting}

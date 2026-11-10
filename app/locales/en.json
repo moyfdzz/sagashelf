@@ -196,6 +196,7 @@
       "submitting": "Deleting…",
       "errors": {
         "confirm_mismatch": "The username does not match.",
+        "understood_required": "Tick the box to confirm that you understand this cannot be undone.",
         "reauth_required": "For your safety, sign in again and try again: you must have signed in within the last 10 minutes.",
         "failed": "We could not delete the account. Try again.",
         "invalid_request": "We could not process the request."

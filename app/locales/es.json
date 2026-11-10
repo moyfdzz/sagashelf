@@ -196,6 +196,7 @@
       "submitting": "Eliminando…",
       "errors": {
         "confirm_mismatch": "El nombre de usuario no coincide.",
+        "understood_required": "Marca la casilla para confirmar que entiendes que no se puede deshacer.",
         "reauth_required": "Por seguridad, inicia sesión de nuevo y vuelve a intentarlo: debes haber iniciado sesión en los últimos 10 minutos.",
         "failed": "No pudimos eliminar la cuenta. Inténtalo de nuevo.",
         "invalid_request": "No pudimos procesar la solicitud."
