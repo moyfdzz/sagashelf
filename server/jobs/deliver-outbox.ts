@@ -42,6 +42,8 @@ export type DeliverySummary = {
   skipped: number;
   /** Events whose result could not be recorded; they come back after their lease. */
   errors: number;
+  /** The names of the errors that were caught and how many of each, never a message or a value. */
+  errorNames: Record<string, number>;
 };
 
 export type DeliveryResult = {
@@ -161,6 +163,12 @@ export async function deliverDueEvents(
     disabled: 0,
     skipped: 0,
     errors: 0,
+    errorNames: {},
+  };
+  const countError = (error: unknown) => {
+    summary.errors += 1;
+    const name = error instanceof Error ? error.name : "unknown";
+    summary.errorNames[name] = (summary.errorNames[name] ?? 0) + 1;
   };
 
   const events = await claimDueEvents(deps.db, limit, now());
@@ -180,8 +188,8 @@ export async function deliverDueEvents(
       try {
         await releaseEvent(deps.db, event.id, resumeAt);
         summary.paused += 1;
-      } catch {
-        summary.errors += 1;
+      } catch (error) {
+        countError(error);
       }
       continue;
     }
@@ -197,8 +205,8 @@ export async function deliverDueEvents(
         turnedOff.add(event.endpointId);
       }
       if (result.resumeAt) pausedUntil.set(event.endpointId, result.resumeAt);
-    } catch {
-      summary.errors += 1;
+    } catch (error) {
+      countError(error);
     }
   }
 
@@ -206,8 +214,8 @@ export async function deliverDueEvents(
   if (events.length > 0) {
     try {
       await pruneDeliveries(deps.db, now());
-    } catch {
-      summary.errors += 1;
+    } catch (error) {
+      countError(error);
     }
   }
   return summary;

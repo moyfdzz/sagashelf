@@ -21,6 +21,7 @@ import {
 import {
   disableAfterFailures,
   maxAttempts,
+  maxPendingAgeMs,
   retryDelaysMs,
 } from "../server/webhooks/outcome";
 import {
@@ -675,6 +676,9 @@ describe("a dead endpoint does not hold back the others (SAG-27)", () => {
     const summary = await deliverDueEvents(deps(server.fetch));
 
     expect(summary.errors).toBe(1);
+    // The log can say what kind of error it was: a name and a count, never a message.
+    expect(Object.values(summary.errorNames)).toEqual([1]);
+    expect(Object.keys(summary.errorNames)[0]).toMatch(/^\w+$/);
     expect(await eventRow(fineEvent.id)).toMatchObject({ status: "delivered" });
   });
 });
@@ -824,5 +828,50 @@ describe("a run that dies half way (SAG-27)", () => {
       status: "delivered",
       attempts: 2,
     });
+  });
+});
+
+describe("an event that cannot be sent any more (SAG-184)", () => {
+  it(`gives up on an event taken ${maxAttempts} times whose tries were never recorded, and does not send it`, async () => {
+    const endpoint = await endpointOf();
+    const event = await eventFor(endpoint.id);
+    // Each run takes the event and dies before it records anything.
+    for (let run = 0; run < maxAttempts; run += 1) {
+      expect(await claimDueEvents(db, 10, clock)).toHaveLength(1);
+      advance(leaseMs + 1);
+    }
+    const server = fakeFetch({});
+
+    const summary = await deliverDueEvents(deps(server.fetch));
+
+    expect(summary).toMatchObject({ found: 0, delivered: 0 });
+    expect(server.calls).toHaveLength(0);
+    expect(await eventRow(event.id)).toMatchObject({
+      status: "failed",
+      lastError: "too_many_attempts",
+      attempts: maxAttempts,
+    });
+  });
+
+  it("gives up on an event that waited longer than the announce window, and sends the fresh ones", async () => {
+    const endpoint = await endpointOf();
+    const stale = await eventFor(endpoint.id, {
+      createdAt: new Date(clock.getTime() - maxPendingAgeMs - 60_000),
+    });
+    const fresh = await eventFor(endpoint.id, {
+      createdAt: new Date(clock.getTime() - 60_000),
+    });
+    const server = fakeFetch({});
+
+    const summary = await deliverDueEvents(deps(server.fetch));
+
+    expect(summary).toMatchObject({ found: 1, delivered: 1 });
+    expect(server.calls).toHaveLength(1);
+    expect(await eventRow(stale.id)).toMatchObject({
+      status: "failed",
+      lastError: "expired",
+      attempts: 0,
+    });
+    expect(await eventRow(fresh.id)).toMatchObject({ status: "delivered" });
   });
 });
