@@ -128,6 +128,51 @@ describe("the import page", () => {
     expect(html).not.toContain("in the file. They will be private");
   });
 
+  it("says that no entry is removed but the data of the titles in both is replaced, blanks included (SAG-248)", async () => {
+    const preview = {
+      ok: true,
+      step: "preview" as const,
+      payload: "{}",
+      preview: {
+        add: 1,
+        exists: 1,
+        fetch: 0,
+        shared: { public: 0, friends: 0 },
+        skipped: [],
+      },
+    };
+    const es = await render("es", <SettingsImport {...props(preview)} />);
+    const en = await render("en", <SettingsImport {...props(preview)} />);
+
+    expect(es).toContain(
+      "Reemplazar los datos de los títulos que ya tengo con los del archivo",
+    );
+    expect(es).toContain("no se elimina ninguna entrada");
+    expect(es).toContain("ese dato queda vacío");
+    expect(es).not.toContain("No se borra nada");
+    expect(en).toContain("no entry is removed");
+    expect(en).toContain("it is left empty");
+    expect(en).not.toContain("Nothing is deleted");
+  });
+
+  it("says that the data of the titles was replaced with the data from the file (SAG-248)", async () => {
+    const done = (replaced: number) =>
+      props({
+        ok: true,
+        step: "done",
+        result: { added: 0, replaced, kept: 0, queued: 0, skipped: [] },
+      });
+    const one = await render("es", <SettingsImport {...done(1)} />);
+    const many = await render("en", <SettingsImport {...done(3)} />);
+
+    expect(one).toContain(
+      "Se reemplazaron los datos de 1 título con los del archivo.",
+    );
+    expect(many).toContain(
+      "The data of 3 titles was replaced with the data from the file.",
+    );
+  });
+
   it("says what was imported right away", async () => {
     const html = await render(
       "en",
