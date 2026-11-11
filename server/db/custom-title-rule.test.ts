@@ -42,7 +42,7 @@ const readsTitles = /\bmedia_items\b|\bmediaItems\b/;
 const readsOfTitles = (code: string) =>
   [
     ...code.matchAll(
-      /\b(?:FROM|JOIN)\s+media_items\b|\.from\(mediaItems\)|[jJ]oin\(mediaItems\b/g,
+      /\b(?:FROM|JOIN)\s+media_items\b|\.(?:from|(?:inner|left|right|full)?join)\(\s*(?:\w+\.)?mediaItems\b/gi,
     ),
   ].length;
 
@@ -123,19 +123,17 @@ describe("the rule for a custom title (SAG-196)", () => {
     const found = Object.fromEntries(
       sources
         .filter(
-          (file) =>
-            file.path !== shared &&
-            !ownRowsOnly.includes(file.path) &&
-            readsOfTitles(file.code) > 0,
+          (file) => file.path !== shared && !ownRowsOnly.includes(file.path),
         )
-        .map((file) => [
+        .map((file): [string, number] => [
           file.path,
           Math.max(0, readsOfTitles(file.code) - usesTheRule(file.code)),
-        ]),
+        ])
+        .filter(([path, count]) => count > 0 || path in readsWithoutTheRule),
     );
-    const expected = Object.fromEntries(
-      Object.keys(found).map((path) => [path, readsWithoutTheRule[path] ?? 0]),
-    );
+    // Every entry of the list must still name a file that has that many reads (a stale or
+    // mistyped entry would otherwise leave room for a new unprotected read).
+    const expected = readsWithoutTheRule;
     expect(found).toEqual(expected);
   });
 
