@@ -128,6 +128,51 @@ describe("the import page", () => {
     expect(html).not.toContain("in the file. They will be private");
   });
 
+  it("says that updating the titles you have deletes nothing, and which ones change (SAG-248)", async () => {
+    const preview = {
+      ok: true,
+      step: "preview" as const,
+      payload: "{}",
+      preview: {
+        add: 1,
+        exists: 1,
+        fetch: 0,
+        shared: { public: 0, friends: 0 },
+        skipped: [],
+      },
+    };
+    const es = await render("es", <SettingsImport {...props(preview)} />);
+    const en = await render("en", <SettingsImport {...props(preview)} />);
+
+    expect(es).toContain(
+      "Actualizar los títulos que ya tengo con los datos del archivo",
+    );
+    expect(es).toContain("Solo cambia los títulos que están en tu biblioteca");
+    expect(es).toContain("No se borra nada.");
+    expect(es).not.toContain("Reemplazar");
+    expect(en).toContain(
+      "Update the titles I already have with the data from the file",
+    );
+    expect(en).toContain("Nothing is deleted.");
+    expect(en).not.toContain("Replace what");
+  });
+
+  it("says that titles were updated with the data from the file, not replaced (SAG-248)", async () => {
+    const done = (replaced: number) =>
+      props({
+        ok: true,
+        step: "done",
+        result: { added: 0, replaced, kept: 0, queued: 0, skipped: [] },
+      });
+    const one = await render("es", <SettingsImport {...done(1)} />);
+    const many = await render("en", <SettingsImport {...done(3)} />);
+
+    expect(one).toContain("Se actualizó 1 título con los datos del archivo.");
+    expect(many).toContain(
+      "3 titles were updated with the data from the file.",
+    );
+  });
+
   it("says what was imported right away", async () => {
     const html = await render(
       "en",
