@@ -3,8 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   findMediaToRefresh,
-  findStaleMedia,
   markRefreshAttempt,
+  refreshAfterDays,
   saveMedia,
   saveParts,
 } from "../server/db/media-store";
@@ -671,45 +671,6 @@ describe("saveParts", () => {
   });
 });
 
-describe("findStaleMedia", () => {
-  it("lists the titles fetched too long ago, oldest first, with their source", async () => {
-    const old = await saveMedia(db, titan);
-    const older = await saveMedia(db, {
-      ...titan,
-      externalId: { provider: "tmdb", id: "tv/1" },
-    });
-    await saveMedia(db, {
-      ...titan,
-      externalId: { provider: "tmdb", id: "tv/2" },
-    });
-    await db.execute(
-      sql`UPDATE media_items SET fetched_at = now() - interval '160 days' WHERE id = ${old}`,
-    );
-    await db.execute(
-      sql`UPDATE media_items SET fetched_at = now() - interval '170 days' WHERE id = ${older}`,
-    );
-
-    const stale = await findStaleMedia(db);
-
-    expect(stale).toEqual([
-      { mediaId: older, provider: "tmdb", externalId: "tv/1" },
-      { mediaId: old, provider: "tmdb", externalId: "tv/1429" },
-    ]);
-  });
-
-  it("leaves out the titles people made themselves", async () => {
-    const [custom] = await db
-      .insert(mediaItems)
-      .values({ type: "custom", title: "My own" })
-      .returning();
-    await db.execute(
-      sql`UPDATE media_items SET fetched_at = now() - interval '400 days' WHERE id = ${custom.id}`,
-    );
-
-    expect(await findStaleMedia(db)).toEqual([]);
-  });
-});
-
 describe("findMediaToRefresh and markRefreshAttempt", () => {
   const allProviders = ["tmdb", "mangadex", "open_library"];
   const complete = {
@@ -930,6 +891,34 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
 
     expect(await findMediaToRefresh(db, 1, allProviders)).toHaveLength(1);
     expect(await findMediaToRefresh(db, 10, allProviders)).toHaveLength(2);
+  });
+
+  it("takes a complete title only once it is older than the refresh age (SAG-197)", async () => {
+    const young = await saveComplete("tv/1");
+    const due = await saveComplete("tv/2");
+    for (const id of [young, due]) await makeAttemptOld(id);
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - make_interval(days => ${refreshAfterDays - 5}) WHERE id = ${young}::uuid`,
+    );
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - make_interval(days => ${refreshAfterDays + 5}) WHERE id = ${due}::uuid`,
+    );
+
+    expect(
+      (await findMediaToRefresh(db, 10, allProviders)).map(
+        (row) => row.mediaId,
+      ),
+    ).toEqual([due]);
+  });
+
+  it("never returns a title people made themselves, even with an external id (SAG-197)", async () => {
+    const id = await saveComplete("tv/1");
+    await makeAttemptOld(id);
+    await db.execute(
+      sql`UPDATE media_items SET type = 'custom', fetched_at = now() - interval '400 days' WHERE id = ${id}::uuid`,
+    );
+
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 
   it("leaves a title out for a day after an attempt, so a failing one does not block the rest", async () => {

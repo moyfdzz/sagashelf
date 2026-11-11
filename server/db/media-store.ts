@@ -11,6 +11,9 @@ import type {
 /** How long TMDB lets us keep what it sent (ADR-016). Refresh a row well before this. */
 export const providerDataMaxAgeDays = 180;
 
+/** A title is refreshed this long before the 6 months TMDB lets us keep it (ADR-016). */
+export const refreshAfterDays = providerDataMaxAgeDays - 30;
+
 /**
  * Writes a title the first time we see its external id and refreshes it afterwards, and returns
  * its id. One statement: the external id is claimed first, so two requests that bring the same
@@ -174,46 +177,22 @@ export async function saveParts(
 }
 
 /**
- * The titles whose provider data is older than `maxAgeDays`, oldest first, so a job can refresh
- * them before the 6 months TMDB allows run out. Returns the source and its id.
- */
-export async function findStaleMedia(
-  db: SqlExecutor,
-  maxAgeDays: number = providerDataMaxAgeDays - 30,
-  limit = 100,
-): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
-  const { rows } = await db.execute(sql`
-    SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
-    FROM media_items m
-    JOIN media_external_ids e ON e.media_id = m.id
-    WHERE ${sharedTitleSql("m")}
-      AND m.fetched_at < now() - make_interval(days => ${maxAgeDays})
-    ORDER BY m.fetched_at
-    LIMIT ${limit}
-  `);
-  return rows.map((row) => ({
-    mediaId: String(row.media_id),
-    provider: String(row.provider),
-    externalId: String(row.external_id),
-  }));
-}
-
-/**
  * The titles the scheduled job should ask the provider about (SAG-54): the ones older than
- * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, the ones of
- * TMDB that were saved before their length was kept and the ones saved before their genres were
- * kept (SAG-71) and the manga saved before their ids in other catalogs were kept (SAG-16). The stale ones go first, then the ones that are in somebody's library (so what a
- * person sees is filled first), each group oldest first. A title attempted in the last
- * `retryAfterHours` is left out, so one the provider keeps failing on cannot take the whole
- * batch every run. A title of a provider not in `providerIds` (one that is switched off) is left
- * out too, for the same reason (SAG-179). The last attempt is the `updated_at`
+ * `refreshAfterDays` (150 days, 30 before the 6 months TMDB allows, ADR-016), then the ones with
+ * no title or synopsis in one of the two languages, the ones of TMDB that were saved before their
+ * length was kept and the ones saved before their genres were kept (SAG-71) and the manga saved
+ * before their ids in other catalogs were kept (SAG-16). The stale ones go first, then the ones
+ * that are in somebody's library (so what a person sees is filled first), each group oldest first.
+ * A title attempted in the last `retryAfterHours` is left out, so one the provider keeps failing
+ * on cannot take the whole batch every run. A title of a provider not in `providerIds` (one that
+ * is switched off) is left out too, for the same reason (SAG-179). A title people made themselves
+ * (`custom`) is never returned (`sharedTitleSql`, SAG-196). The last attempt is the `updated_at`
  * of its external id: `saveMedia` sets it on a success and `markRefreshAttempt` on a failure.
  */
 export async function findMediaToRefresh(
   db: SqlExecutor,
   limit: number,
   providerIds: readonly string[],
-  maxAgeDays: number = providerDataMaxAgeDays - 30,
   retryAfterHours = 24,
 ): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
   // No provider is on, so nothing can be asked.
@@ -231,7 +210,7 @@ export async function findMediaToRefresh(
       )})
       AND e.updated_at < now() - make_interval(hours => ${retryAfterHours})
       AND (
-        m.fetched_at < now() - make_interval(days => ${maxAgeDays})
+        m.fetched_at < now() - make_interval(days => ${refreshAfterDays})
         OR NOT jsonb_exists(m.synopsis, 'es') OR NOT jsonb_exists(m.synopsis, 'en')
         OR coalesce(m.titles->>'es', '') = '' OR coalesce(m.titles->>'en', '') = ''
         -- Saved before the length was kept (SAG-61): asked once, and then it is 0 or a number.
@@ -241,7 +220,7 @@ export async function findMediaToRefresh(
         -- A manga saved before its ids in other catalogs were kept (SAG-16).
         OR (e.provider = 'mangadex' AND m.cross_ids IS NULL)
       )
-    ORDER BY (m.fetched_at < now() - make_interval(days => ${maxAgeDays})) DESC,
+    ORDER BY (m.fetched_at < now() - make_interval(days => ${refreshAfterDays})) DESC,
              EXISTS (SELECT 1 FROM library_entries le WHERE le.media_id = m.id) DESC,
              m.fetched_at
     LIMIT ${limit}

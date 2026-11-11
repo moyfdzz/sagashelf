@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  importMedia,
-  isMissingLanguage,
-  isStale,
-  refreshAfterDays,
-} from "./import";
+import { refreshAfterDays } from "../db/media-store";
+import { importMedia, isMissingLanguage, isStale } from "./import";
 import type { MediaProvider, NormalizedMedia } from "../providers/types";
 
 const mocks = vi.hoisted(() => ({
