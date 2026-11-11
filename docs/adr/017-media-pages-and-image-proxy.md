@@ -92,3 +92,9 @@ A title page opened from the search shows "Back to the results" as the first thi
 - TMDB API terms of use, <https://www.themoviedb.org/api-terms-of-use> (read 2026-10-25)
 - Cloudflare Cache API, <https://developers.cloudflare.com/workers/runtime-apis/cache/> (read 2026-10-20)
 - Cloudflare `waitUntil`, <https://developers.cloudflare.com/workers/runtime-apis/context/> (read 2026-10-25)
+
+## Update (SAG-186, 2026-11-10)
+
+**The proxy stays open to any well-formed file name.** It does not check that the image belongs to a title we hold. A lookup in the database before each call would cost a query for every image, wake the Neon compute that the cache is there to leave asleep (ADR-012), and a signed path would need every page to be rendered with signatures that expire. What bounds the cost today is the limit of 300 calls a minute per address (`IMAGE_LIMITER`), the spacing of MangaDex, and the checks on the host, the size, the file name and the type. The risk (the site is used as an image proxy beyond our catalog, or fills the turns of a provider) was not seen in production. If it is, the next step is a lookup that is itself cached, in its own ticket.
+
+**A miss is remembered for 5 minutes.** A `404` from the provider is kept in the Cache API with `Cache-Control: public, max-age=300` (`missCacheSeconds`), so asking again for a name that does not exist makes no call to the provider and does not use the limit. A `502` or a `429` is still never kept.

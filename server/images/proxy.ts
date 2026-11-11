@@ -9,6 +9,8 @@ const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /** A day in the browser and in the edge cache, far inside the 6 months TMDB allows (ADR-017). */
 export const imageCacheSeconds = 24 * 60 * 60;
+/** A name the provider does not know is remembered this long, so a loop of them makes one call (SAG-186). */
+export const missCacheSeconds = 5 * 60;
 const upstreamTimeoutMs = 3000;
 /** An Open Library cover needs two redirects; a third is the most we follow. */
 const maxRedirects = 3;
@@ -154,7 +156,20 @@ export async function serveImage(
   } catch {
     return failure(502);
   }
-  if (answer.status === 404) return failure(404);
+  if (answer.status === 404) {
+    // Remember the miss for a short time: a caller asking for names that do not exist would
+    // otherwise cost a call to the provider every time.
+    const miss = new Response(null, {
+      status: 404,
+      headers: { "Cache-Control": `public, max-age=${missCacheSeconds}` },
+    });
+    try {
+      await deps.cache?.put(key, miss.clone());
+    } catch {
+      // Not keeping the miss costs a later call to the provider, nothing more.
+    }
+    return miss;
+  }
   if (!answer.ok) return failure(502);
 
   const type = answer.headers.get("Content-Type")?.split(";")[0]?.trim() ?? "";
