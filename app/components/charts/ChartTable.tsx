@@ -19,7 +19,7 @@ export function ChartTable({
 }) {
   return (
     <details className="text-sm">
-      <summary className="text-accent hover:text-link-hover focus-visible:outline-accent w-fit cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2">
+      <summary className="text-accent hover:text-link-hover focus-visible:outline-accent flex min-h-10 w-fit cursor-pointer items-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2">
         {summary}
       </summary>
       <div

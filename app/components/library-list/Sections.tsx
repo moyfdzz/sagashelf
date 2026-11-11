@@ -58,7 +58,7 @@ export function Sections({ sections, query, view, searching, pathTo }: Props) {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-fg-muted shrink-0 transition-transform group-open/section:rotate-180"
+                className="text-fg-muted shrink-0 transition-transform group-open/section:rotate-180 motion-reduce:transition-none"
               >
                 <path d="m6 9 6 6 6-6" />
               </svg>

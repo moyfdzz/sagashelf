@@ -267,6 +267,8 @@ describe("ChartTable", () => {
 
     expect(html).toContain("<details");
     expect(html).toContain("Show the numbers");
+    // A control of at least 24 px (WCAG 2.2, 2.5.8); the project uses 40 px (SAG-30).
+    expect(/<summary[^>]*>/.exec(html)?.[0]).toContain("min-h-10");
     expect(html).toContain('scope="col"');
     expect(html).toContain(">12<");
   });
