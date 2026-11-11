@@ -15,6 +15,12 @@ export const retryDelaysMs = [
 /** The first try plus one per wait. After the last one the event is given up on. */
 export const maxAttempts = retryDelaysMs.length + 1;
 
+/**
+ * A pending event older than this is given up on, not sent: a message about an episode of days ago
+ * is no longer news. It is the announce window of the episode alerts (3 days, SAG-184).
+ */
+export const maxPendingAgeMs = 3 * 24 * 3_600_000;
+
 /** Failures in a row, over any events, after which the endpoint is turned off. */
 export const disableAfterFailures = 5;
 

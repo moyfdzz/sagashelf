@@ -5,6 +5,8 @@ import { maskWebhookUrl } from "../webhooks/discord-url";
 import type { SubscribableEvent } from "../webhooks/events";
 import {
   disableAfterFailures,
+  maxAttempts,
+  maxPendingAgeMs,
   type DisableReason,
   type Outcome,
 } from "../webhooks/outcome";
@@ -322,7 +324,8 @@ const toClaimed = (row: Record<string, unknown>): ClaimedEvent => ({
  * Takes up to `limit` events that are due, for endpoints that are on, and starts a try for each: it
  * adds one to `attempts` and moves `next_attempt_at` out by the lease. `FOR UPDATE SKIP LOCKED`
  * makes two runs at once take different events, and the lease means a run that dies leaves the rest
- * of its events to come back later, not to be sent twice at once. Only rows with an endpoint are
+ * of its events to come back later, not to be sent twice at once. An event that has been taken
+ * `maxAttempts` times, or has waited longer than `maxPendingAgeMs`, is given up on instead of taken. Only rows with an endpoint are
  * read: the other events in the table (`clerk.user_rejected`) are not deliveries.
  */
 export async function claimDueEvents(
@@ -330,13 +333,30 @@ export async function claimDueEvents(
   limit: number,
   now: Date = new Date(),
 ): Promise<ClaimedEvent[]> {
+  const tooOld = new Date(now.getTime() - maxPendingAgeMs).toISOString();
   const { rows } = await db.execute(sql`
-    WITH due AS (
+    WITH given_up AS (
+      -- An event whose tries were never recorded (the record failed, the run died) would be claimed
+      -- again for ever, and one that waited for days would arrive as old news: both are given up
+      -- on here, before they are read (SAG-184).
+      UPDATE outbox
+      SET status = 'failed',
+          last_error = CASE WHEN attempts >= ${maxAttempts} THEN 'too_many_attempts'
+                            ELSE 'expired' END,
+          updated_at = now()
+      WHERE status = 'pending'
+        AND endpoint_id IS NOT NULL
+        AND (attempts >= ${maxAttempts} OR created_at < ${tooOld}::timestamptz)
+      RETURNING 1
+    ),
+    due AS (
       SELECT o.id
       FROM outbox o
       JOIN webhook_endpoints e ON e.id = o.endpoint_id AND e.enabled
       WHERE o.status = 'pending'
         AND o.endpoint_id IS NOT NULL
+        AND o.attempts < ${maxAttempts}
+        AND o.created_at >= ${tooOld}::timestamptz
         AND o.next_attempt_at <= ${now.toISOString()}::timestamptz
       ORDER BY o.next_attempt_at, o.id
       LIMIT ${limit}
