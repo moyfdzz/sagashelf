@@ -34,10 +34,7 @@ export function AccountAvatar({
           className="size-7 rounded-full object-cover"
         />
       ) : (
-        <span
-          data-avatar-initial
-          className="bg-accent text-accent-fg flex size-7 items-center justify-center rounded-full text-sm font-bold"
-        >
+        <span className="bg-accent text-accent-fg flex size-7 items-center justify-center rounded-full text-sm font-bold">
           {initial}
         </span>
       )}

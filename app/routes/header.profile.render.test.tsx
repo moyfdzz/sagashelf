@@ -221,17 +221,20 @@ describe("the initial of the person when there is no picture (SAG-39)", () => {
     const none = button(await render(<AccountMenu />));
 
     expect(picture).toContain("<img");
-    expect(picture).not.toContain("data-avatar-initial");
-    expect(none).not.toContain("data-avatar-initial");
+    expect(picture).not.toContain("bg-accent");
+    expect(none).not.toContain("bg-accent");
     expect(none).toContain("Cuenta");
   });
 
-  it("is next to the link to the profile in the panel of a phone", async () => {
-    const html = await render(
+  it("is inside the link to the profile in the panel of a phone, and not in the panel of a wide screen", async () => {
+    const phone = await render(
       <Navbar savedTheme={null} signedIn username="ana_reads" />,
     );
+    const link = /<a [^>]*href="\/u\/ana_reads"[^>]*>.*?<\/a>/gs;
+    const links = phone.match(link) ?? [];
 
-    // One in the panel of the phone, one on the button of a wide screen.
-    expect(html.split("data-avatar-initial")).toHaveLength(3);
+    // The panel of the phone has it; the panel of the menu of a wide screen only has the word.
+    expect(links).toHaveLength(2);
+    expect(links.filter((item) => item.includes(">A</span>"))).toHaveLength(1);
   });
 });

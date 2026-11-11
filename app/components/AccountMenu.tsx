@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { AccountAvatar } from "~/components/AccountAvatar";
 import { AccountLinks } from "~/components/AccountLinks";
+import { hasInitial } from "~/lib/avatar";
 import { menuAlign } from "~/lib/menu";
 
 const itemClass =
@@ -35,7 +36,7 @@ export function AccountMenu({
   const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   // A picture, or the initial of a username, replaces the word on the button.
-  const showsAvatar = Boolean(avatarUrl || username?.trim());
+  const showsAvatar = Boolean(avatarUrl) || hasInitial(username);
 
   useEffect(() => {
     if (!open) return;
