@@ -246,10 +246,16 @@ export function parseLookup(answer: SparqlResult): LookupHit[] {
   return hits;
 }
 
+/** No label of an item is this long; a longer one is cut before it is saved (SAG-185). */
+export const maxLabelLength = 300;
+
 function labelsOf(row: Record<string, { value?: string } | undefined>) {
   const es = bindingText(row, "labelEs");
   const en = bindingText(row, "labelEn");
-  return { ...(es ? { es } : {}), ...(en ? { en } : {}) };
+  return {
+    ...(es ? { es: es.slice(0, maxLabelLength) } : {}),
+    ...(en ? { en: en.slice(0, maxLabelLength) } : {}),
+  };
 }
 
 /** The most items one query about franchises brings back. */

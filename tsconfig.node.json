@@ -64,6 +64,7 @@
     "server/webhooks/message.ts",
     "server/webhooks/outcome.ts",
     "server/jobs/deliver-outbox.ts",
+    "server/providers/bounded-body.ts",
     "server/providers/http.ts",
     "server/testing/discord.ts",
     "server/providers/wikidata/map.ts",

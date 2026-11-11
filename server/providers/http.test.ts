@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { z } from "zod";
+
 import { createHttpClient, ProviderError, providerUserAgent } from "./http";
 
 const ok = (body: unknown = { ok: true }) =>
@@ -172,6 +174,51 @@ describe("getJson", () => {
   });
 });
 
+describe("what is read from an answer (SAG-185)", () => {
+  const schema = z.object({ id: z.number() });
+
+  it("refuses an answer that is not the shape that is read, and does not retry it", async () => {
+    const fetchMock = vi.fn(async () => ok({ name: "no id" }));
+    const { client } = setup(fetchMock as unknown as typeof fetch);
+
+    const error = await failureOf(
+      client.getJson("https://api.test/x", { schema }),
+    );
+
+    expect(error.kind).toBe("invalid");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the checked answer when it fits the schema", async () => {
+    const fetchMock = vi.fn(async () => ok({ id: 7, more: "kept out" }));
+    const { client } = setup(fetchMock as unknown as typeof fetch);
+
+    expect(await client.getJson("https://api.test/x", { schema })).toEqual({
+      id: 7,
+    });
+  });
+
+  it("refuses a body over the limit before it is all read", async () => {
+    let pulls = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1;
+        controller.enqueue(new Uint8Array(100).fill(32));
+      },
+    });
+    const fetchMock = vi.fn(async () => new Response(stream, { status: 200 }));
+    const { client } = setup(fetchMock as unknown as typeof fetch, {
+      maxBodyBytes: 1000,
+    });
+
+    const error = await failureOf(client.getJson("https://api.test/x"));
+
+    expect(error.kind).toBe("invalid");
+    // The stream never ends, so reading it all would have run for ever.
+    expect(pulls).toBeLessThan(20);
+  });
+});
+
 describe("rate limit", () => {
   it("waits for a free place when the bucket is empty", async () => {
     const fetchMock = vi.fn(async () => ok());
@@ -298,6 +345,31 @@ describe("circuit breaker", () => {
     fetchMock.mockImplementation(async () => ok({ back: true }));
     expect(await client.getJson("https://api.test/x")).toEqual({ back: true });
     expect(await client.getJson("https://api.test/x")).toEqual({ back: true });
+  });
+
+  it("does not stay shut when the call that tests the provider gets an answer that is not valid (SAG-185)", async () => {
+    const fetchMock = vi.fn(async () => status(503));
+    const { client, advance } = setup(
+      fetchMock as unknown as typeof fetch,
+      breaker,
+    );
+    for (let i = 0; i < 3; i += 1) {
+      await failureOf(client.getJson("https://api.test/x"));
+    }
+
+    advance(30_001);
+    fetchMock.mockImplementation(async () => ok({ name: "no id" }));
+    const invalid = await failureOf(
+      client.getJson("https://api.test/x", {
+        schema: z.object({ id: z.number() }),
+      }),
+    );
+    expect(invalid.kind).toBe("invalid");
+
+    // The provider answered, so the circuit closed and the next call goes out.
+    expect(await client.getJson("https://api.test/x")).toEqual({
+      name: "no id",
+    });
   });
 
   it("opens again when the call that tests the provider fails", async () => {

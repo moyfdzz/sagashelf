@@ -50,3 +50,7 @@ The terms say they can change at any time. This record is true only until the ne
 - Whether TMDB treats a search engine of our own over a cache as a "derivative". The terms do not say; the cache is within the 6 months.
 - Posters: the terms do not address images beyond the ban on using TMDB as an image host. The proxy of SAG-17 must not store them.
 - The credits page and the logo are SAG-31. Until it exists, the notice is not shown anywhere, and nothing calls TMDB yet.
+
+## Update (SAG-185, 2026-11-10)
+
+The shared client reads an answer with a byte limit (5 MB by default, `maxBodyBytes`): a body over it is refused as `invalid` without being read to the end, and the image proxy does the same with its 2 MB. A call can pass a Zod `schema` with the fields that are read; an answer that does not fit it is a `ProviderError` of kind `invalid`, is not retried and does not count against the circuit. TMDB uses it (a title needs an `id`, a list of results must be a list). The other clients are not validated yet. TMDB allows 15 MB, because the seasons of a long series come with their episodes. An `invalid` answer closes the circuit like a 404 does: the provider answered. Wikidata labels are cut at 300 characters.

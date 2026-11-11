@@ -1,10 +1,20 @@
+import type { z } from "zod";
+
+import { readBoundedBody } from "./bounded-body";
+
 /**
  * Why a call to a provider did not give an answer. `circuit_open` and `rate_limited` mean the
  * call was not even sent. The message never carries a URL, a header or a response body, so a
  * key cannot end up in a log through it.
  */
 export type ProviderErrorKind =
-  "timeout" | "network" | "http" | "rate_limited" | "circuit_open";
+  | "timeout"
+  | "network"
+  | "http"
+  | "rate_limited"
+  | "circuit_open"
+  // The answer came, but it is too big or not the shape that is read (SAG-185).
+  | "invalid";
 
 export class ProviderError extends Error {
   constructor(
@@ -27,6 +37,8 @@ export type HttpClientOptions = {
   /** Sent with every request. */
   headers?: Record<string, string>;
   timeoutMs?: number;
+  /** The most bytes of an answer that are read; a bigger one is refused (SAG-185). */
+  maxBodyBytes?: number;
   /** Extra tries after the first one, for a GET only. */
   retries?: number;
   /** Requests per second, with a burst up to `burst`. */
@@ -52,8 +64,18 @@ export type HttpClientOptions = {
 };
 
 export type HttpClient = {
-  getJson<T>(url: string, options?: { signal?: AbortSignal }): Promise<T>;
+  getJson<T>(
+    url: string,
+    options?: {
+      signal?: AbortSignal;
+      /** Checks the answer has the fields that are read; a wrong one is a `ProviderError`. */
+      schema?: z.ZodType<T>;
+    },
+  ): Promise<T>;
 };
+
+/** No JSON answer of a provider is this big; a bigger one is refused, not read (SAG-185). */
+export const defaultMaxBodyBytes = 5_000_000;
 
 const defaultSleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -91,6 +113,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     provider,
     headers = {},
     timeoutMs = 2500,
+    maxBodyBytes = defaultMaxBodyBytes,
     retries = 2,
     ratePerSecond,
     burst = Math.max(1, Math.ceil(ratePerSecond)),
@@ -158,7 +181,11 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     if (failures >= failureThreshold) openUntil = now() + openMs;
   }
 
-  async function attempt<T>(url: string, outer?: AbortSignal): Promise<T> {
+  async function attempt<T>(
+    url: string,
+    outer?: AbortSignal,
+    schema?: z.ZodType<T>,
+  ): Promise<T> {
     const timeout = AbortSignal.timeout(timeoutMs);
     const signal = outer ? AbortSignal.any([outer, timeout]) : timeout;
     let response: Response;
@@ -185,15 +212,30 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       await response.body?.cancel().catch(() => undefined);
       throw new ProviderError(provider, "http", response.status);
     }
+    let bytes: Uint8Array | null;
     try {
-      return (await response.json()) as T;
+      bytes = await readBoundedBody(response, maxBodyBytes);
     } catch {
       throw new ProviderError(provider, "network");
     }
+    if (!bytes) throw new ProviderError(provider, "invalid");
+    let body: unknown;
+    try {
+      body = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      throw new ProviderError(provider, "network");
+    }
+    if (!schema) return body as T;
+    const checked = schema.safeParse(body);
+    if (!checked.success) throw new ProviderError(provider, "invalid");
+    return checked.data;
   }
 
   return {
-    async getJson<T>(url: string, callOptions: { signal?: AbortSignal } = {}) {
+    async getJson<T>(
+      url: string,
+      callOptions: { signal?: AbortSignal; schema?: z.ZodType<T> } = {},
+    ) {
       checkCircuit();
       let lastError: ProviderError | undefined;
       for (let tryNumber = 0; tryNumber <= retries; tryNumber += 1) {
@@ -205,7 +247,11 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         }
         try {
           await acquire();
-          const result = await attempt<T>(url, callOptions.signal);
+          const result = await attempt<T>(
+            url,
+            callOptions.signal,
+            callOptions.schema,
+          );
           recordSuccess();
           return result;
         } catch (error) {
@@ -231,8 +277,12 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       // The caller cancelled: nothing is learned about the provider.
       if (callOptions.signal?.aborted) throw error;
       if (isTransient(error)) recordFailure();
-      // An answer such as 404 means the provider is up. A call that was never sent says nothing.
-      else if (error.kind === "http") recordSuccess();
+      // An answer such as 404 means the provider is up, and so does one that is too big or not the
+      // shape that is read: it answered. This also frees the call that tests a provider (SAG-185).
+      else if (error.kind === "http" || error.kind === "invalid")
+        recordSuccess();
+      // A call that was never sent says nothing, but it must not keep the testing call taken.
+      else probing = false;
       throw error;
     },
   };
