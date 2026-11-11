@@ -225,6 +225,24 @@ describe("refreshStaleMedia", () => {
     expect(mocks.saveMedia).not.toHaveBeenCalled();
   });
 
+  it("removes nothing when TMDB knows the title in one language only (SAG-180)", async () => {
+    mswServer.use(
+      http.get(`${tmdbBase}/movie/700`, ({ request }) =>
+        new URL(request.url).searchParams.get("language") === "es-MX"
+          ? HttpResponse.json({ status_code: 34 }, { status: 404 })
+          : HttpResponse.json({ id: 700, title: "Seven Hundred" }),
+      ),
+      ...tmdbHandlers(),
+    );
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/700", "half", true),
+    ]);
+
+    await refreshStaleMedia({ db, providers: [provider()] });
+
+    expect(mocks.removeProviderData).not.toHaveBeenCalled();
+  });
+
   it("notes the attempt, and keeps the data, when the removal fails (SAG-180)", async () => {
     mswServer.use(...tmdbHandlers());
     mocks.removeProviderData.mockRejectedValue(new Error("db down"));

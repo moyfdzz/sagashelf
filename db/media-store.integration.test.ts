@@ -1090,6 +1090,25 @@ describe("removeProviderData (SAG-180)", () => {
     expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
   });
 
+  it("leaves a title alone when it was refreshed after the job read it", async () => {
+    const id = await saveMedia(
+      db,
+      {
+        ...titan,
+        synopsis: { es: "Sinopsis", en: "Synopsis" },
+        externalId: { provider: "tmdb", id: "tv/12" },
+      },
+      "es",
+    );
+
+    await removeProviderData(db, id);
+
+    const [row] = (
+      await db.execute(sql`SELECT synopsis FROM media_items WHERE id = ${id}`)
+    ).rows;
+    expect(row?.synopsis).toMatchObject({ es: "Sinopsis" });
+  });
+
   it("does not touch another title", async () => {
     const other = await saveMedia(
       db,
@@ -1104,6 +1123,11 @@ describe("removeProviderData (SAG-180)", () => {
       db,
       { ...titan, externalId: { provider: "tmdb", id: "tv/11" } },
       "es",
+    );
+
+    // Both are stale, so only the id keeps the other one safe.
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '160 days' WHERE id IN (${gone}, ${other})`,
     );
 
     await removeProviderData(db, gone);

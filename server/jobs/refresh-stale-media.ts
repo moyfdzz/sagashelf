@@ -100,7 +100,10 @@ export async function refreshStaleMedia(
       );
       if (media.some((item) => item === null)) {
         statements += 1;
-        if (row.provider === "tmdb" && row.stale) {
+        // Only when TMDB says it does not know the title in either language: a miss in one language
+        // is not proof that it is gone.
+        const gone = media.every((item) => item === null);
+        if (row.provider === "tmdb" && row.stale && gone) {
           // TMDB no longer has it and the 6 months it allows are about to end: what it sent is
           // removed and the row stays for the libraries that hold it (SAG-180, ADR-016).
           await removeProviderData(deps.db, row.mediaId);

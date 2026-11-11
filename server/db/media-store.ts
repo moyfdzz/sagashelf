@@ -260,20 +260,24 @@ export async function removeProviderData(
   db: SqlExecutor,
   mediaId: string,
 ): Promise<void> {
+  // The row is changed only while it is still stale: a visit or a search that refreshed it after
+  // the job read it keeps its new data.
   await db.execute(sql`
-    WITH parts AS (
-      UPDATE media_parts SET title = NULL, air_date = NULL, updated_at = now()
-      WHERE media_id = ${mediaId}::uuid
+    WITH blanked AS (
+      UPDATE media_items SET
+        synopsis = '{"es": "", "en": ""}'::jsonb,
+        creators = NULL,
+        runtime_minutes = 0,
+        genres = '[]'::jsonb,
+        image_url = NULL,
+        popularity = 0,
+        fetched_at = now(),
+        updated_at = now()
+      WHERE id = ${mediaId}::uuid
+        AND fetched_at < now() - make_interval(days => ${refreshAfterDays})
+      RETURNING id
     )
-    UPDATE media_items SET
-      synopsis = '{"es": "", "en": ""}'::jsonb,
-      creators = NULL,
-      runtime_minutes = 0,
-      genres = '[]'::jsonb,
-      image_url = NULL,
-      popularity = 0,
-      fetched_at = now(),
-      updated_at = now()
-    WHERE id = ${mediaId}::uuid
+    UPDATE media_parts SET title = NULL, air_date = NULL, updated_at = now()
+    WHERE media_id IN (SELECT id FROM blanked)
   `);
 }
