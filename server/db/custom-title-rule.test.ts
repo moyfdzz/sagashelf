@@ -38,6 +38,14 @@ const writesTheRule = /\btype\s*(?:<>|!=|=)\s*'custom'/i;
 // A read of the titles table in any spelling: raw SQL or Drizzle.
 const readsTitles = /\bmedia_items\b|\bmediaItems\b/;
 
+// One query that reads the table: `FROM media_items`, `JOIN media_items` or the Drizzle spellings.
+const readsOfTitles = (code: string) =>
+  [
+    ...code.matchAll(
+      /\b(?:FROM|JOIN)\s+media_items\b|\.from\(mediaItems\)|[jJ]oin\(mediaItems\b/g,
+    ),
+  ].length;
+
 const usesTheRule = (code: string) =>
   [...code.matchAll(/\b(?:titleShownSql|sharedTitleSql)\(/g)].length;
 
@@ -48,6 +56,17 @@ const showTitlesToOthers: Record<string, number> = {
   "db/profile-lists.ts": 2,
   // The three sections of a profile and one page of a section.
   "db/profile-library.ts": 2,
+};
+
+// SAG-247: reads of `media_items` that do not use the rule, per file, as they were checked when
+// this list was written (the viewer's own rows, a refresh by id, a join already narrowed by a
+// query that uses the rule). A new query that reads the table without the rule raises the count
+// and fails. Do not raise a number to make the test pass: use the rule, or say in the pull request
+// why the new read only touches rows the viewer owns.
+const readsWithoutTheRule: Record<string, number> = {
+  "db/library.ts": 1,
+  "db/list-items.ts": 1,
+  "db/recommendations.ts": 1,
 };
 
 // Readers of `media_items` that only ever read the data of the person who asked (their library,
@@ -100,6 +119,26 @@ describe("the rule for a custom title (SAG-196)", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("has no new query that reads the titles without the rule (SAG-247)", () => {
+    const found = Object.fromEntries(
+      sources
+        .filter(
+          (file) =>
+            file.path !== shared &&
+            !ownRowsOnly.includes(file.path) &&
+            readsOfTitles(file.code) > 0,
+        )
+        .map((file) => [
+          file.path,
+          Math.max(0, readsOfTitles(file.code) - usesTheRule(file.code)),
+        ]),
+    );
+    const expected = Object.fromEntries(
+      Object.keys(found).map((path) => [path, readsWithoutTheRule[path] ?? 0]),
+    );
+    expect(found).toEqual(expected);
+  });
+
   it("recognizes the spellings it is meant to catch", () => {
     for (const bad of [
       "WHERE m.type <> 'custom'",
@@ -109,6 +148,9 @@ describe("the rule for a custom title (SAG-196)", () => {
     ]) {
       expect(writesTheRule.test(bad), bad).toBe(true);
     }
+    expect(
+      readsOfTitles("FROM media_items m JOIN media_items x .from(mediaItems)"),
+    ).toBe(3);
     expect(writesTheRule.test("const kind = 'custom';")).toBe(false);
     for (const read of [
       "FROM media_items m",
