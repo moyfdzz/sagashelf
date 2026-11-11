@@ -66,3 +66,29 @@ Two gaps remain, and SAG-180 stays open for them. If many more titles are saved 
 When the refresh job asks TMDB for a title that is past 150 days (`refreshAfterDays`) and TMDB answers 404, the job removes what TMDB sent (`removeProviderData`) instead of retrying it every 24 hours for ever. The synopsis, authors, length, genres, poster and popularity are emptied, and the titles and air dates of its seasons and episodes too. The row, its names in both languages and its parts stay, so the library entries that point to it, including those of people who hold it, are not lost. This holds for a title in a library as well: the 6 months rule goes first.
 
 The row is left as "asked, nothing known" and `fetched_at` is set to now, so it leaves the batch and is asked again only after another 150 days; if TMDB has it back by then, it is filled again. A title younger than 150 days that TMDB answers 404 is still retried every 24 hours, and an error that is not a 404 never removes anything. Sizing the batch for the 300 titles a day of ADR-035 is not part of this rule and stays open.
+
+## Update (SAG-180, sizing of the refresh, 2026-11-11)
+
+What the refresh can carry, from the code as it is today. The refresh runs in the first Cron Trigger (`0 */6 * * *`, 4 times a day) with 5 titles a run, so **20 titles a day**. Four of the 5 Cron Triggers the Free plan allows are in use, and each invocation has its own 50 subrequests (limits read in ADR-001 on 2026-10-20; read them again before relying on them).
+
+A title is refreshed again every 150 days, so the refresh must carry as many titles a day as are first saved a day, once the first ones reach 150 days (the first TMDB titles do around 2027-03-30):
+
+| Titles saved a day | Refreshes needed a day, from day 150 | Against 20 a day |
+| ------------------ | ------------------------------------ | ---------------- |
+| 20                 | 20                                   | no margin        |
+| 50                 | 50                                   | 2.5 times short  |
+| 100                | 100                                  | 5 times short    |
+| 300                | 300                                  | 15 times short   |
+
+300 is the daily cap of one person (ADR-035), not the expected total. Today 252 titles are held. The other limit is a burst: titles saved together become due together, and in the 30 days between day 150 and day 180 the refresh carries 600, so a single import of more than 600 TMDB titles passes the 6 months for the rest.
+
+What happens past the limit is not silent any more: a title TMDB still has but that was not refreshed in time keeps its data past 180 days (the gap this update does not close), and a title TMDB no longer has is emptied by the rule above.
+
+Levers, in the order they cost least; none is chosen:
+
+1. A fifth Cron Trigger for the refresh alone (the last one the Free plan allows): it has its own 50 subrequests, so as many titles a run as the first one, and every 30 minutes would carry about 240 a day. It keeps the Neon compute awake more often (ADR-012).
+2. The paid Workers plan: more subrequests per invocation, so a bigger batch. Read its limits when it is decided.
+3. Fewer provider calls a title: each title asks TMDB twice (one a language). One call with both languages would nearly halve the cost; the answer of TMDB for that has to be checked.
+4. Refresh only the titles that are in a library or were visited, and empty the rest as the 404 rule does. It needs a decision on what a catalog title nobody holds should show.
+
+The decision stays with the owner, and no code changes until the real rate of new titles is known. `server/db/title-budget.ts` already says how many titles each person saved a day, so the rate can be read after some weeks of use.
