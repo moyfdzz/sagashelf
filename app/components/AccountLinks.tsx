@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 
+import { AccountAvatar } from "~/components/AccountAvatar";
+
 /**
  * The links of the account of a signed-in person, as list items: the profile (SAG-114), settings, the
  * administration (only for an administrator, SAG-95) and sign-out. The account menu of a wide screen and the panel of the
@@ -11,13 +13,16 @@ export function AccountLinks({
   isAdmin,
   username = null,
   avatarUrl = null,
+  withAvatar = false,
   itemClass,
 }: {
   isAdmin: boolean;
   /** The username of the person, for the link to their profile (SAG-114). Without it there is none. */
   username?: string | null;
-  /** The picture next to the link to the profile, on a phone (SAG-109). */
+  /** The picture, or the initial, next to the link to the profile, on a phone (SAG-109, SAG-39). */
   avatarUrl?: string | null;
+  /** Draws the picture or the initial next to the profile link: on a phone, where there is no button with it. */
+  withAvatar?: boolean;
   itemClass: string;
 }) {
   const { t } = useTranslation();
@@ -27,19 +32,15 @@ export function AccountLinks({
       {username ? (
         <li>
           <a href={`/u/${encodeURIComponent(username)}`} className={itemClass}>
-            {avatarUrl ? (
+            {withAvatar || avatarUrl ? (
               <span className="flex items-center gap-2">
                 {/* The link says what it is, so a screen reader skips the picture. */}
-                <span aria-hidden="true" className="shrink-0">
-                  <img
-                    src={avatarUrl}
-                    alt={t("nav.profile")}
-                    width={28}
-                    height={28}
-                    loading="lazy"
-                    className="size-7 rounded-full object-cover"
-                  />
-                </span>
+                <AccountAvatar
+                  avatarUrl={avatarUrl}
+                  username={username}
+                  alt={t("nav.profile")}
+                  lazy
+                />
                 {t("nav.profile")}
               </span>
             ) : (
