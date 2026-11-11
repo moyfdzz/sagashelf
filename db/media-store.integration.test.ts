@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   findMediaToRefresh,
   markRefreshAttempt,
+  removeProviderData,
   refreshAfterDays,
   saveMedia,
   saveParts,
@@ -875,6 +876,7 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
       mediaId: older,
       provider: "tmdb",
       externalId: "tv/3",
+      stale: true,
     });
   });
 
@@ -1008,5 +1010,109 @@ describe("findMediaToRefresh and markRefreshAttempt", () => {
     await saveMedia(db, media, "es", true);
     await makeAttemptOld(id);
     expect(await findMediaToRefresh(db, 5, allProviders)).toEqual([]);
+  });
+});
+
+describe("removeProviderData (SAG-180)", () => {
+  const allProviders = ["tmdb", "mangadex", "open_library"];
+
+  it("empties what TMDB sent, keeps the row, its names and its parts, and leaves it out of the refresh until it is stale again", async () => {
+    const id = await saveMedia(
+      db,
+      {
+        ...titan,
+        synopsis: { es: "Sinopsis", en: "Synopsis" },
+        genres: ["drama"],
+        creators: ["Alguien"],
+        runtimeMinutes: 45,
+        imageUrl: "https://image.tmdb.org/t/p/w500/x.jpg",
+        popularity: 12,
+        externalId: { provider: "tmdb", id: "tv/9" },
+      },
+      "es",
+    );
+    await saveMedia(
+      db,
+      {
+        ...titan,
+        synopsis: { es: "Sinopsis", en: "Synopsis" },
+        genres: ["drama"],
+        externalId: { provider: "tmdb", id: "tv/9" },
+      },
+      "en",
+    );
+    await saveParts(db, id, [
+      {
+        kind: "season",
+        number: 1,
+        title: "Temporada 1",
+        airDate: "2020-01-01",
+      },
+    ]);
+    await db.execute(
+      sql`UPDATE media_items SET fetched_at = now() - interval '160 days' WHERE id = ${id}`,
+    );
+    await db.execute(
+      sql`UPDATE media_external_ids SET updated_at = now() - interval '3 days' WHERE media_id = ${id}`,
+    );
+    expect((await findMediaToRefresh(db, 10, allProviders))[0]?.stale).toBe(
+      true,
+    );
+
+    await removeProviderData(db, id);
+
+    const [item] = (
+      await db.execute(
+        sql`SELECT title, titles, synopsis, creators, runtime_minutes, genres, image_url,
+                   popularity, fetched_at > now() - interval '1 minute' AS fresh
+            FROM media_items WHERE id = ${id}`,
+      )
+    ).rows;
+    expect(item).toMatchObject({
+      title: titan.title,
+      synopsis: { es: "", en: "" },
+      creators: null,
+      runtime_minutes: 0,
+      genres: [],
+      image_url: null,
+      popularity: 0,
+      fresh: true,
+    });
+    expect(item?.titles).toBeTruthy();
+    const parts = (
+      await db.execute(
+        sql`SELECT number, title, air_date FROM media_parts WHERE media_id = ${id}`,
+      )
+    ).rows;
+    expect(parts).toHaveLength(1);
+    expect(parts[0]).toMatchObject({ number: 1, title: null, air_date: null });
+    // It does not take a place in the batch of every run, and the row is still in the catalog.
+    expect(await findMediaToRefresh(db, 10, allProviders)).toEqual([]);
+  });
+
+  it("does not touch another title", async () => {
+    const other = await saveMedia(
+      db,
+      {
+        ...titan,
+        synopsis: { es: "Sinopsis", en: "Synopsis" },
+        externalId: { provider: "tmdb", id: "tv/10" },
+      },
+      "es",
+    );
+    const gone = await saveMedia(
+      db,
+      { ...titan, externalId: { provider: "tmdb", id: "tv/11" } },
+      "es",
+    );
+
+    await removeProviderData(db, gone);
+
+    const [row] = (
+      await db.execute(
+        sql`SELECT synopsis FROM media_items WHERE id = ${other}`,
+      )
+    ).rows;
+    expect(row?.synopsis).toMatchObject({ es: "Sinopsis" });
   });
 });

@@ -2,6 +2,7 @@ import type { SqlExecutor } from "../db/clerk-sync";
 import {
   findMediaToRefresh,
   markRefreshAttempt,
+  removeProviderData,
   saveMedia,
   saveParts,
 } from "../db/media-store";
@@ -98,10 +99,17 @@ export async function refreshStaleMedia(
         ),
       );
       if (media.some((item) => item === null)) {
-        // The provider no longer knows it. It is tried again after a day, not on every run.
         statements += 1;
-        await markRefreshAttempt(deps.db, row.mediaId);
-        logFailure("media.refresh_missing", row.provider);
+        if (row.provider === "tmdb" && row.stale) {
+          // TMDB no longer has it and the 6 months it allows are about to end: what it sent is
+          // removed and the row stays for the libraries that hold it (SAG-180, ADR-016).
+          await removeProviderData(deps.db, row.mediaId);
+          logFailure("media.refresh_removed", row.provider);
+        } else {
+          // The provider no longer knows it. It is tried again after a day, not on every run.
+          await markRefreshAttempt(deps.db, row.mediaId);
+          logFailure("media.refresh_missing", row.provider);
+        }
         summary.failed += 1;
         continue;
       }
