@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AccountAvatar } from "~/components/AccountAvatar";
 import { AccountLinks } from "~/components/AccountLinks";
 import { menuAlign } from "~/lib/menu";
 
@@ -22,7 +23,7 @@ export function AccountMenu({
 }: {
   isAdmin?: boolean;
   username?: string | null;
-  /** With a picture the button shows it instead of the word, which stays as its name. */
+  /** With a picture, or an initial of the username, the button shows it instead of the word, which stays as its name. */
   avatarUrl?: string | null;
 }) {
   const { t } = useTranslation();
@@ -33,6 +34,8 @@ export function AccountMenu({
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
+  // A picture, or the initial of a username, replaces the word on the button.
+  const showsAvatar = Boolean(avatarUrl || username?.trim());
 
   useEffect(() => {
     if (!open) return;
@@ -66,21 +69,17 @@ export function AccountMenu({
           setOpen((value) => !value);
         }}
         className={`border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 focus-visible:outline-accent flex items-center gap-2 rounded-md border font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-          avatarUrl ? "h-[42px] px-2" : "px-3 py-2"
+          showsAvatar ? "h-[42px] px-2" : "px-3 py-2"
         }`}
       >
-        {avatarUrl ? (
+        {showsAvatar ? (
           <>
             {/* The name of the button says what it is, so a screen reader skips the picture. */}
-            <span aria-hidden="true" className="shrink-0">
-              <img
-                src={avatarUrl}
-                alt={t("nav.account")}
-                width={28}
-                height={28}
-                className="size-7 rounded-full object-cover"
-              />
-            </span>
+            <AccountAvatar
+              avatarUrl={avatarUrl}
+              username={username}
+              alt={t("nav.account")}
+            />
             <span className="sr-only">{t("nav.account")}</span>
           </>
         ) : (

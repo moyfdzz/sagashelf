@@ -248,6 +248,7 @@ export function Navbar({
                   isAdmin={isAdmin}
                   username={username}
                   avatarUrl={avatarUrl}
+                  withAvatar
                   itemClass={accountItemClass}
                 />
               ) : (

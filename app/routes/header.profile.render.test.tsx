@@ -175,3 +175,63 @@ describe("the link to the search of people (SAG-115)", () => {
     expect(hrefs(html)).not.toContain("/social");
   });
 });
+
+describe("the initial of the person when there is no picture (SAG-39)", () => {
+  const button = (html: string) =>
+    /<button.*?<\/button>/s.exec(html)?.[0] ?? "";
+
+  it("takes the place of the word on the button, and the word stays as its name", async () => {
+    const html = button(await render(<AccountMenu username="ana_reads" />));
+
+    expect(html).not.toContain("<img");
+    expect(html).toMatch(/<span aria-hidden="true"[^>]*><span[^>]*>A<\/span>/);
+    expect(html).toContain('<span class="sr-only">Cuenta</span>');
+  });
+
+  it("says its name in English", async () => {
+    const html = button(
+      await render(<AccountMenu username="ana_reads" />, "en"),
+    );
+
+    expect(html).toContain('<span class="sr-only">Account</span>');
+  });
+
+  it("is a circle of the same size as the picture, so the button does not change height", async () => {
+    const withInitial = button(await render(<AccountMenu username="ana" />));
+    const withPicture = button(
+      await render(<AccountMenu username="ana" avatarUrl="https://x/p.png" />),
+    );
+
+    expect(withInitial).toContain("size-7");
+    expect(withInitial).toContain("h-[42px]");
+    expect(withPicture).toContain("h-[42px]");
+  });
+
+  it("uses the accent colors of the app", async () => {
+    const html = button(await render(<AccountMenu username="ana" />));
+
+    expect(html).toContain("bg-accent");
+    expect(html).toContain("text-accent-fg");
+  });
+
+  it("leaves the picture when there is one, and the word when there is no username", async () => {
+    const picture = button(
+      await render(<AccountMenu username="ana" avatarUrl="https://x/p.png" />),
+    );
+    const none = button(await render(<AccountMenu />));
+
+    expect(picture).toContain("<img");
+    expect(picture).not.toContain("data-avatar-initial");
+    expect(none).not.toContain("data-avatar-initial");
+    expect(none).toContain("Cuenta");
+  });
+
+  it("is next to the link to the profile in the panel of a phone", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn username="ana_reads" />,
+    );
+
+    // One in the panel of the phone, one on the button of a wide screen.
+    expect(html.split("data-avatar-initial")).toHaveLength(3);
+  });
+});
