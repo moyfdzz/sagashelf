@@ -11,6 +11,9 @@ import type {
 /** How long TMDB lets us keep what it sent (ADR-016). Refresh a row well before this. */
 export const providerDataMaxAgeDays = 180;
 
+/** A title is refreshed this long before the 6 months TMDB lets us keep it (ADR-016). */
+export const refreshAfterDays = providerDataMaxAgeDays - 30;
+
 /**
  * Writes a title the first time we see its external id and refreshes it afterwards, and returns
  * its id. One statement: the external id is claimed first, so two requests that bring the same
@@ -174,31 +177,6 @@ export async function saveParts(
 }
 
 /**
- * The titles whose provider data is older than `maxAgeDays`, oldest first, so a job can refresh
- * them before the 6 months TMDB allows run out. Returns the source and its id.
- */
-export async function findStaleMedia(
-  db: SqlExecutor,
-  maxAgeDays: number = providerDataMaxAgeDays - 30,
-  limit = 100,
-): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
-  const { rows } = await db.execute(sql`
-    SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
-    FROM media_items m
-    JOIN media_external_ids e ON e.media_id = m.id
-    WHERE ${sharedTitleSql("m")}
-      AND m.fetched_at < now() - make_interval(days => ${maxAgeDays})
-    ORDER BY m.fetched_at
-    LIMIT ${limit}
-  `);
-  return rows.map((row) => ({
-    mediaId: String(row.media_id),
-    provider: String(row.provider),
-    externalId: String(row.external_id),
-  }));
-}
-
-/**
  * The titles the scheduled job should ask the provider about (SAG-54): the ones older than
  * `maxAgeDays`, then the ones with no title or synopsis in one of the two languages, the ones of
  * TMDB that were saved before their length was kept and the ones saved before their genres were
@@ -213,7 +191,7 @@ export async function findMediaToRefresh(
   db: SqlExecutor,
   limit: number,
   providerIds: readonly string[],
-  maxAgeDays: number = providerDataMaxAgeDays - 30,
+  maxAgeDays: number = refreshAfterDays,
   retryAfterHours = 24,
 ): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
   // No provider is on, so nothing can be asked.

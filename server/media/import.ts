@@ -1,14 +1,7 @@
 import type { SqlExecutor } from "../db/clerk-sync";
 import type { MediaDetail } from "../db/media-detail";
-import {
-  providerDataMaxAgeDays,
-  saveMedia,
-  saveParts,
-} from "../db/media-store";
+import { refreshAfterDays, saveMedia, saveParts } from "../db/media-store";
 import type { Locale, MediaKind, MediaProvider } from "../providers/types";
-
-/** A title is refreshed this long before the 6 months TMDB lets us keep it (ADR-016). */
-export const refreshAfterDays = providerDataMaxAgeDays - 30;
 
 const dayMs = 24 * 60 * 60 * 1000;
 
