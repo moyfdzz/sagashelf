@@ -1,3 +1,9 @@
+import {
+  resultsAnswer,
+  seasonDetailsAnswer,
+  showSeasonsAnswer,
+  titleAnswer,
+} from "./schemas";
 import { createHttpClient, ProviderError, type HttpClient } from "../http";
 import { airedIn, simplifyTitle, type TmdbShowDates } from "./match";
 import type {
@@ -57,7 +63,7 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
           ? { primary_release_year: String(releasedIn) }
           : {}),
       }),
-      { signal },
+      { signal, schema: resultsAnswer },
     );
     return (data.results ?? []).map((raw) => mapTitle(kind, raw, locale));
   }
@@ -113,7 +119,7 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
           url(`/${parsed.kind}/${parsed.id}`, {
             language: tmdbLanguage[locale],
           }),
-          { signal },
+          { signal, schema: titleAnswer },
         );
         return mapTitle(parsed.kind, raw, locale);
       } catch (error) {
@@ -129,7 +135,7 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
 
       const show = await http.getJson<{ seasons?: TmdbSeasonDetail[] }>(
         url(`/tv/${parsed.id}`, { language: tmdbLanguage.en }),
-        { signal },
+        { signal, schema: showSeasonsAnswer },
       );
       const numbers = (show.seasons ?? []).map(
         (season) => season.season_number,
@@ -145,7 +151,7 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
               .map((number) => `season/${number}`)
               .join(","),
           }),
-          { signal },
+          { signal, schema: seasonDetailsAnswer },
         );
         for (const number of batch) {
           const season = data[`season/${number}`];
@@ -212,7 +218,7 @@ export function createTmdbProvider(http: HttpClient): MediaProvider {
         url(`/trending/${path}/${window}`, {
           language: tmdbLanguage[locale],
         }),
-        { signal },
+        { signal, schema: resultsAnswer },
       );
       return (data.results ?? [])
         .filter((raw) => raw.media_type !== "person")

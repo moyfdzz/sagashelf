@@ -1,3 +1,4 @@
+import { readBoundedBody } from "../providers/bounded-body";
 import { providerUserAgent } from "../providers/http";
 import { isRemoved } from "../providers/removed";
 import { imageSourceOf, isAllowedRedirect, upstreamUrl } from "./sources";
@@ -161,8 +162,9 @@ export async function serveImage(
   if (Number(answer.headers.get("Content-Length") ?? 0) > maxImageBytes) {
     return failure(502);
   }
-  const body = await answer.arrayBuffer().catch(() => null);
-  if (!body || body.byteLength === 0 || body.byteLength > maxImageBytes) {
+  // Read up to the limit and no further: a body with no `Content-Length` is not read whole.
+  const body = await readBoundedBody(answer, maxImageBytes).catch(() => null);
+  if (!body || body.byteLength === 0) {
     return failure(502);
   }
 

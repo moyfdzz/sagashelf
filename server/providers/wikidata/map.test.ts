@@ -18,6 +18,7 @@ import {
   parseLookup,
   parseMembers,
   qidOf,
+  maxLabelLength,
   validSources,
 } from "./map";
 
@@ -117,6 +118,16 @@ describe("parseLookup", () => {
         basedOn: [mangaQid],
       },
     });
+  });
+
+  it("cuts a label that is too long (SAG-185)", () => {
+    const long = "x".repeat(maxLabelLength + 500);
+    const row = JSON.parse(JSON.stringify(lookupAnswer));
+    row.results.bindings[0].labelEn = { type: "literal", value: long };
+
+    const [hit] = parseLookup(row);
+
+    expect(hit?.item.labels.en).toHaveLength(maxLabelLength);
   });
 
   it("skips rows that are not an item", () => {

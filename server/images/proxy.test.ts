@@ -165,6 +165,24 @@ describe("serveImage", () => {
       async () => jpeg("x".repeat(maxImageBytes + 1)),
     ],
     [
+      "a body of many chunks that is too big without announcing it",
+      async () => {
+        const chunk = new Uint8Array(65_536);
+        let sent = 0;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              sent += 1;
+              // Endless: reading it all would never finish.
+              if (sent > 10_000) return controller.close();
+              controller.enqueue(chunk);
+            },
+          }),
+          { headers: { "Content-Type": "image/jpeg" } },
+        );
+      },
+    ],
+    [
       "a network failure",
       async () => {
         throw new TypeError("network");

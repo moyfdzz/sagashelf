@@ -215,4 +215,33 @@ describe("when TMDB has a problem", () => {
       name: "ProviderError",
     });
   });
+
+  it("refuses an answer with no id instead of saving movie/undefined (SAG-185)", async () => {
+    const provider = setup();
+    mswServer.use(
+      http.get(`${tmdbBase}/movie/603`, () =>
+        HttpResponse.json({ title: "The Matrix" }),
+      ),
+    );
+
+    await expect(
+      provider.getById("movie/603", { locale: "en" }),
+    ).rejects.toMatchObject({ name: "ProviderError", kind: "invalid" });
+  });
+
+  it("refuses search results that are not a list", async () => {
+    const provider = setup();
+    mswServer.use(
+      http.get(`${tmdbBase}/search/movie`, () =>
+        HttpResponse.json({ results: "nope" }),
+      ),
+      http.get(`${tmdbBase}/search/tv`, () =>
+        HttpResponse.json({ results: "nope" }),
+      ),
+    );
+
+    await expect(
+      provider.search("matrix", { locale: "en" }),
+    ).rejects.toMatchObject({ name: "ProviderError" });
+  });
 });
