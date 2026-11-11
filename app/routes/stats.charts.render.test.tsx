@@ -267,8 +267,12 @@ describe("ChartTable", () => {
 
     expect(html).toContain("<details");
     expect(html).toContain("Show the numbers");
-    // A control of at least 24 px (WCAG 2.2, 2.5.8); the project uses 40 px (SAG-30).
-    expect(/<summary[^>]*>/.exec(html)?.[0]).toContain("min-h-10");
+    // A control of at least 24 px (WCAG 2.2, 2.5.8); the project uses 40 px (SAG-30). The padding
+    // gives the height; `flex` or `list-none` would take the native triangle away.
+    const summary = /<summary[^>]*>/.exec(html)?.[0] ?? "";
+    expect(summary).toContain("py-2.5");
+    expect(summary.split(/[\s"]+/)).not.toContain("flex");
+    expect(summary.split(/[\s"]+/)).not.toContain("list-none");
     expect(html).toContain('scope="col"');
     expect(html).toContain(">12<");
   });
