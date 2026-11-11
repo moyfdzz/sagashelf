@@ -19,6 +19,7 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 | `npm run typecheck`                  | `wrangler types`, route typegen and `tsc -b`                                                                              |
 | `npm run test`                       | Vitest unit tests                                                                                                         |
 | `npm run test:coverage`              | Vitest with coverage; `server/` must stay at 80% or more                                                                  |
+| `npm run test:a11y`                  | axe on the HTML that the render tests draw, at 320 px light and dark (needs a build first; about 2 minutes)               |
 | `npm run test:e2e`                   | Playwright on desktop and Pixel 7, with axe and a no-sideways-scroll check (needs `npx playwright install chromium` once) |
 | `npm run build`                      | Builds the Worker                                                                                                         |
 | `npm run db:up`                      | Starts the local Postgres 18 (Docker); `db:down` stops it                                                                 |

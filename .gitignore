@@ -35,6 +35,7 @@ dist-ssr
 build
 coverage
 .lighthouseci
+.a11y-fragments
 playwright-report
 test-results
 
