@@ -1293,6 +1293,8 @@ describe("the header of a section", () => {
     expect(summary.indexOf("(1)")).toBeLessThan(summary.indexOf("<svg"));
     expect(summary).toContain('<svg aria-hidden="true"');
     expect(summary).toContain("group-open/section:rotate-180");
+    // The turn of the arrow does not move for a person who asked for less motion (SAG-30).
+    expect(summary).toContain("motion-reduce:transition-none");
     // The native triangle is hidden, and the whole bar can be pressed.
     expect(summary).toContain("list-none");
     expect(summary).toContain("cursor-pointer");
