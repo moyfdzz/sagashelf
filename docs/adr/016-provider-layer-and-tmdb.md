@@ -54,3 +54,9 @@ The terms say they can change at any time. This record is true only until the ne
 ## Update (SAG-185, 2026-11-10)
 
 The shared client reads an answer with a byte limit (5 MB by default, `maxBodyBytes`): a body over it is refused as `invalid` without being read to the end, and the image proxy does the same with its 2 MB. A call can pass a Zod `schema` with the fields that are read; an answer that does not fit it is a `ProviderError` of kind `invalid`, is not retried and does not count against the circuit. TMDB uses it (a title needs an `id`, a list of results must be a list). The other clients are not validated yet. TMDB allows 15 MB, because the seasons of a long series come with their episodes. An `invalid` answer closes the circuit like a 404 does: the provider answered. Wikidata labels are cut at 300 characters.
+
+## Update (SAG-180, 2026-11-11)
+
+Capacity of the 6-month rule, measured on the production database on 2026-11-11: 252 titles have TMDB data, all fetched less than 30 days ago, and the oldest `fetched_at` is 2026-10-31. The refresh job takes 5 titles per run and the first cron runs 4 times a day, so at most 20 titles a day. A title is a candidate at 150 days, which leaves 30 days before the 180 day limit: about 600 titles. 252 titles are refreshed in about 13 days, so the rule is met today without a code change. The first titles reach 150 days around 2027-03-30.
+
+Two gaps remain, and SAG-180 stays open for them. If many more titles are saved (the open question of 300 new titles a day in ADR-035), the 600 title margin is passed within days and the batch size or the order of candidates must change first. A title TMDB no longer has (a 404) is retried every 24 hours with no limit and keeps its TMDB data past 180 days; the rule for it is not written yet.
