@@ -242,6 +242,8 @@ export function createTmdbProviderWithToken(
       provider: "tmdb",
       headers: { Authorization: `Bearer ${token}` },
       ratePerSecond: requestsPerSecond,
+      // The seasons of a long series come with their episodes in one answer (20 seasons a call).
+      maxBodyBytes: 15_000_000,
       ...overrides,
     }),
   );

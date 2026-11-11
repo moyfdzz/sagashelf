@@ -277,8 +277,12 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       // The caller cancelled: nothing is learned about the provider.
       if (callOptions.signal?.aborted) throw error;
       if (isTransient(error)) recordFailure();
-      // An answer such as 404 means the provider is up. A call that was never sent says nothing.
-      else if (error.kind === "http") recordSuccess();
+      // An answer such as 404 means the provider is up, and so does one that is too big or not the
+      // shape that is read: it answered. This also frees the call that tests a provider (SAG-185).
+      else if (error.kind === "http" || error.kind === "invalid")
+        recordSuccess();
+      // A call that was never sent says nothing, but it must not keep the testing call taken.
+      else probing = false;
       throw error;
     },
   };

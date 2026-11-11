@@ -347,6 +347,31 @@ describe("circuit breaker", () => {
     expect(await client.getJson("https://api.test/x")).toEqual({ back: true });
   });
 
+  it("does not stay shut when the call that tests the provider gets an answer that is not valid (SAG-185)", async () => {
+    const fetchMock = vi.fn(async () => status(503));
+    const { client, advance } = setup(
+      fetchMock as unknown as typeof fetch,
+      breaker,
+    );
+    for (let i = 0; i < 3; i += 1) {
+      await failureOf(client.getJson("https://api.test/x"));
+    }
+
+    advance(30_001);
+    fetchMock.mockImplementation(async () => ok({ name: "no id" }));
+    const invalid = await failureOf(
+      client.getJson("https://api.test/x", {
+        schema: z.object({ id: z.number() }),
+      }),
+    );
+    expect(invalid.kind).toBe("invalid");
+
+    // The provider answered, so the circuit closed and the next call goes out.
+    expect(await client.getJson("https://api.test/x")).toEqual({
+      name: "no id",
+    });
+  });
+
   it("opens again when the call that tests the provider fails", async () => {
     const fetchMock = vi.fn(async () => status(500));
     const { client, advance } = setup(
