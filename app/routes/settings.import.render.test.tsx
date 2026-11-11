@@ -128,7 +128,7 @@ describe("the import page", () => {
     expect(html).not.toContain("in the file. They will be private");
   });
 
-  it("says that updating the titles you have deletes nothing, and which ones change (SAG-248)", async () => {
+  it("says that no entry is removed but the data of the titles in both is replaced, blanks included (SAG-248)", async () => {
     const preview = {
       ok: true,
       step: "preview" as const,
@@ -145,19 +145,17 @@ describe("the import page", () => {
     const en = await render("en", <SettingsImport {...props(preview)} />);
 
     expect(es).toContain(
-      "Actualizar los títulos que ya tengo con los datos del archivo",
+      "Reemplazar los datos de los títulos que ya tengo con los del archivo",
     );
-    expect(es).toContain("Solo cambia los títulos que están en tu biblioteca");
-    expect(es).toContain("No se borra nada.");
-    expect(es).not.toContain("Reemplazar");
-    expect(en).toContain(
-      "Update the titles I already have with the data from the file",
-    );
-    expect(en).toContain("Nothing is deleted.");
-    expect(en).not.toContain("Replace what");
+    expect(es).toContain("no se elimina ninguna entrada");
+    expect(es).toContain("ese dato queda vacío");
+    expect(es).not.toContain("No se borra nada");
+    expect(en).toContain("no entry is removed");
+    expect(en).toContain("it is left empty");
+    expect(en).not.toContain("Nothing is deleted");
   });
 
-  it("says that titles were updated with the data from the file, not replaced (SAG-248)", async () => {
+  it("says that the data of the titles was replaced with the data from the file (SAG-248)", async () => {
     const done = (replaced: number) =>
       props({
         ok: true,
@@ -167,9 +165,11 @@ describe("the import page", () => {
     const one = await render("es", <SettingsImport {...done(1)} />);
     const many = await render("en", <SettingsImport {...done(3)} />);
 
-    expect(one).toContain("Se actualizó 1 título con los datos del archivo.");
+    expect(one).toContain(
+      "Se reemplazaron los datos de 1 título con los del archivo.",
+    );
     expect(many).toContain(
-      "3 titles were updated with the data from the file.",
+      "The data of 3 titles was replaced with the data from the file.",
     );
   });
 
