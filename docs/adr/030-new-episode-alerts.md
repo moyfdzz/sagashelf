@@ -33,7 +33,7 @@ Four things in the ticket did not match what exists, and are decided here:
 
 **It is opt-in, per endpoint.** The settings page has one box for each webhook, "New episodes of what you are watching", off until the person ticks it, saved with its own button (`setEndpointEvents`; a Zod `strictObject`, the `Origin` check, the rate limit and the id of the session in the `WHERE`, like the other actions). An endpoint with no event ticked receives only the test message. There is no migration of existing endpoints: they have none ticked.
 
-**It runs in the hourly Cron Trigger** (`15 * * * *`, ADR-029), **before** the delivery, so an episode that came out is delivered in the same run. It adds **one statement**: the 42 subrequests of a full delivery become 43 of the 50. If it fails it is logged by name (`job.failed`, `announce-episodes`) and the delivery of what was already waiting goes on. With `WEBHOOKS_ENABLED` off it does not open the database.
+**It runs in the hourly Cron Trigger** (`15 * * * *`, ADR-029), **before** the delivery, so an episode that came out is delivered in the same run. It adds **one statement**: the 42 subrequests of a full delivery become 43 of the 50. If it fails it is logged by name (`job.failed`, `announce-episodes`) and the delivery of what was already waiting goes on. With `WEBHOOKS_ENABLED` off it does not open the database, so the in-app notifications (written by the same statement) stop too, and an episode that comes out during the pause is never announced once it is older than the 3-day window. This was left as it is on purpose (SAG-183): the switch is an incident lever and is always on in production.
 
 ## What is not here, and why
 
