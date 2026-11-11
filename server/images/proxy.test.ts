@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { providerUserAgent } from "../providers/http";
-import { maxImageBytes, serveImage } from "./proxy";
+import { maxImageBytes, missCacheSeconds, serveImage } from "./proxy";
 
 function fakeCache() {
   const store = new Map<string, Response>();
@@ -118,19 +118,35 @@ describe("serveImage", () => {
     expect(spy.put).not.toHaveBeenCalled();
   });
 
-  it("answers 404 when the provider has no such image, and does not keep the failure", async () => {
+  it("answers 404 when the provider has no such image, and remembers it for a short time (SAG-186)", async () => {
     const { cache, spy } = fakeCache();
+    const fetcher = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 404 }),
+    );
+    const limit = vi.fn(async () => true);
 
-    const response = await serveImage(
-      deps({ cache, fetch: async () => new Response(null, { status: 404 }) }),
+    const first = await serveImage(
+      deps({ cache, fetch: fetcher, allow: limit }),
+      "tmdb",
+      "w342",
+      "gone.jpg",
+    );
+    const second = await serveImage(
+      deps({ cache, fetch: fetcher, allow: limit }),
       "tmdb",
       "w342",
       "gone.jpg",
     );
 
-    expect(response.status).toBe(404);
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(spy.put).not.toHaveBeenCalled();
+    expect(first.status).toBe(404);
+    expect(first.headers.get("Cache-Control")).toBe(
+      `public, max-age=${missCacheSeconds}`,
+    );
+    expect(spy.put).toHaveBeenCalledTimes(1);
+    // The second ask never reaches the provider or the limit.
+    expect(second.status).toBe(404);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(limit).toHaveBeenCalledTimes(1);
   });
 
   it.each([
