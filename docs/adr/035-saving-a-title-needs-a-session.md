@@ -56,7 +56,7 @@ The security review (SAG-29, finding S-1) looked at that bound again. The route 
 ## Open questions
 
 - Whether visitors should see a title from the provider without signing in (a new ticket if so).
-- Whether the 300 a day fits real use (a big import over several days), and whether a record of who saved a title is worth a migration if abuse is ever seen.
+- Whether the 300 a day fits real use (a big import over several days), and whether a record of who saved a title is worth a migration if abuse is ever seen. The refresh of TMDB data can carry 20 titles a day, so a real rate above that needs one of the levers in ADR-016 (SAG-180, 2026-11-11).
 
 ## References
 
