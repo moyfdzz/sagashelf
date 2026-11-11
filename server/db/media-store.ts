@@ -194,11 +194,14 @@ export async function findMediaToRefresh(
   limit: number,
   providerIds: readonly string[],
   retryAfterHours = 24,
-): Promise<{ mediaId: string; provider: string; externalId: string }[]> {
+): Promise<
+  { mediaId: string; provider: string; externalId: string; stale: boolean }[]
+> {
   // No provider is on, so nothing can be asked.
   if (providerIds.length === 0) return [];
   const { rows } = await db.execute(sql`
-    SELECT m.id AS media_id, e.provider::text AS provider, e.external_id
+    SELECT m.id AS media_id, e.provider::text AS provider, e.external_id,
+           (m.fetched_at < now() - make_interval(days => ${refreshAfterDays})) AS stale
     FROM media_items m
     JOIN media_external_ids e ON e.media_id = m.id
     WHERE ${sharedTitleSql("m")}
@@ -229,6 +232,7 @@ export async function findMediaToRefresh(
     mediaId: String(row.media_id),
     provider: String(row.provider),
     externalId: String(row.external_id),
+    stale: row.stale === true,
   }));
 }
 
@@ -239,5 +243,41 @@ export async function markRefreshAttempt(
 ): Promise<void> {
   await db.execute(sql`
     UPDATE media_external_ids SET updated_at = now() WHERE media_id = ${mediaId}::uuid
+  `);
+}
+
+/**
+ * Removes what TMDB sent for a title that TMDB no longer has and that is past `refreshAfterDays`
+ * (SAG-180, ADR-016): TMDB lets us keep its data for 6 months and there is nothing left to
+ * refresh it with. The row, its names and its seasons and episodes stay, so the entries of the
+ * libraries that point to it are not lost; the synopsis, authors, length, genres, poster,
+ * popularity and the titles and air dates of the parts are emptied. The row is left in the
+ * state "asked, nothing known" (empty synopsis in both languages, length 0, no genres) and with
+ * `fetched_at` now, so `findMediaToRefresh` asks again only after another `refreshAfterDays`,
+ * and a title TMDB has brought back is filled again then.
+ */
+export async function removeProviderData(
+  db: SqlExecutor,
+  mediaId: string,
+): Promise<void> {
+  // The row is changed only while it is still stale: a visit or a search that refreshed it after
+  // the job read it keeps its new data.
+  await db.execute(sql`
+    WITH blanked AS (
+      UPDATE media_items SET
+        synopsis = '{"es": "", "en": ""}'::jsonb,
+        creators = NULL,
+        runtime_minutes = 0,
+        genres = '[]'::jsonb,
+        image_url = NULL,
+        popularity = 0,
+        fetched_at = now(),
+        updated_at = now()
+      WHERE id = ${mediaId}::uuid
+        AND fetched_at < now() - make_interval(days => ${refreshAfterDays})
+      RETURNING id
+    )
+    UPDATE media_parts SET title = NULL, air_date = NULL, updated_at = now()
+    WHERE media_id IN (SELECT id FROM blanked)
   `);
 }

@@ -9,6 +9,7 @@ import { tmdbBase, tmdbHandlers, type SeenRequest } from "../testing/tmdb";
 const mocks = vi.hoisted(() => ({
   findMediaToRefresh: vi.fn(),
   markRefreshAttempt: vi.fn(),
+  removeProviderData: vi.fn(),
   saveMedia: vi.fn(),
   saveParts: vi.fn(),
 }));
@@ -23,16 +24,22 @@ const provider = () =>
     retries: 0,
   });
 
-const row = (externalId: string, mediaId = `media-${externalId}`) => ({
+const row = (
+  externalId: string,
+  mediaId = `media-${externalId}`,
+  stale = false,
+) => ({
   mediaId,
   provider: "tmdb",
   externalId,
+  stale,
 });
 
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.saveMedia.mockImplementation(async () => "saved-id");
   mocks.markRefreshAttempt.mockResolvedValue(undefined);
+  mocks.removeProviderData.mockResolvedValue(undefined);
   mocks.saveParts.mockResolvedValue(undefined);
   vi.spyOn(console, "log").mockImplementation(() => undefined);
 });
@@ -201,6 +208,69 @@ describe("refreshStaleMedia", () => {
     expect(summary).toEqual({ found: 1, refreshed: 0, failed: 1 });
     expect(mocks.saveMedia).not.toHaveBeenCalled();
     expect(mocks.markRefreshAttempt).toHaveBeenCalledWith(db, "gone");
+    expect(mocks.removeProviderData).not.toHaveBeenCalled();
+  });
+
+  it("removes what TMDB sent for a title it no longer knows once it is past 150 days (SAG-180)", async () => {
+    mswServer.use(...tmdbHandlers());
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/999999", "gone", true),
+    ]);
+
+    const summary = await refreshStaleMedia({ db, providers: [provider()] });
+
+    expect(summary).toEqual({ found: 1, refreshed: 0, failed: 1 });
+    expect(mocks.removeProviderData).toHaveBeenCalledWith(db, "gone");
+    expect(mocks.markRefreshAttempt).not.toHaveBeenCalled();
+    expect(mocks.saveMedia).not.toHaveBeenCalled();
+  });
+
+  it("removes nothing when TMDB knows the title in one language only (SAG-180)", async () => {
+    mswServer.use(
+      http.get(`${tmdbBase}/movie/700`, ({ request }) =>
+        new URL(request.url).searchParams.get("language") === "es-MX"
+          ? HttpResponse.json({ status_code: 34 }, { status: 404 })
+          : HttpResponse.json({ id: 700, title: "Seven Hundred" }),
+      ),
+      ...tmdbHandlers(),
+    );
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/700", "half", true),
+    ]);
+
+    await refreshStaleMedia({ db, providers: [provider()] });
+
+    expect(mocks.removeProviderData).not.toHaveBeenCalled();
+  });
+
+  it("notes the attempt, and keeps the data, when the removal fails (SAG-180)", async () => {
+    mswServer.use(...tmdbHandlers());
+    mocks.removeProviderData.mockRejectedValue(new Error("db down"));
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/999999", "gone", true),
+    ]);
+
+    const summary = await refreshStaleMedia({ db, providers: [provider()] });
+
+    expect(summary).toEqual({ found: 1, refreshed: 0, failed: 1 });
+    expect(mocks.markRefreshAttempt).toHaveBeenCalledWith(db, "gone");
+  });
+
+  it("removes nothing when TMDB fails with an error that is not a 404, even past 150 days (SAG-180)", async () => {
+    mswServer.use(
+      http.get(`${tmdbBase}/movie/500`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+      ...tmdbHandlers(),
+    );
+    mocks.findMediaToRefresh.mockResolvedValue([
+      row("movie/500", "down", true),
+    ]);
+
+    await refreshStaleMedia({ db, providers: [provider()] });
+
+    expect(mocks.removeProviderData).not.toHaveBeenCalled();
+    expect(mocks.markRefreshAttempt).toHaveBeenCalledWith(db, "down");
   });
 
   it("still finishes the batch when noting the attempt fails too", async () => {
