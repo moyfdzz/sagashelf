@@ -314,17 +314,10 @@ body {
   @apply bg-surface text-fg font-sans antialiased;
 }
 
-/* A long word breaks instead of pushing the page sideways when the text is very large (SAG-257). */
+/* A long word breaks instead of pushing the page sideways when the text is very large (SAG-257).
+   The property is inherited, so one rule on the body covers every element. */
 @layer base {
-  h1,
-  h2,
-  h3,
-  h4,
-  p,
-  li,
-  dd,
-  figcaption,
-  blockquote {
+  body {
     overflow-wrap: break-word;
   }
 }
