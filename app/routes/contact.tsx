@@ -152,7 +152,7 @@ export default function Contact({
           <fieldset className="space-y-2">
             <legend className="font-semibold">{t("contact.kindLabel")}</legend>
             {contactKinds.map((kind) => (
-              <label key={kind} className="flex items-start gap-2">
+              <label key={kind} className="flex min-h-10 items-center gap-2">
                 <input
                   type="radio"
                   name="kind"
@@ -161,7 +161,7 @@ export default function Contact({
                   defaultChecked={
                     chosenKind ? chosenKind === kind : kind === "feedback"
                   }
-                  className="mt-1 shrink-0"
+                  className="shrink-0"
                 />
                 {t(`contact.kinds.${kind}`)}
               </label>

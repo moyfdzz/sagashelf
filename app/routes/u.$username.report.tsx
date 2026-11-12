@@ -217,13 +217,13 @@ export default function Report({
           <fieldset className="space-y-2">
             <legend className="font-semibold">{t("report.reasonLabel")}</legend>
             {reasons.map((reason) => (
-              <label key={reason} className="flex items-start gap-2">
+              <label key={reason} className="flex min-h-10 items-center gap-2">
                 <input
                   type="radio"
                   name="reason"
                   value={reason}
                   required
-                  className="mt-1 shrink-0"
+                  className="shrink-0"
                 />
                 {t(`report.reasons.${reason}`)}
               </label>

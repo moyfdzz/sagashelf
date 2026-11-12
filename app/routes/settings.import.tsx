@@ -431,11 +431,14 @@ export default function SettingsImport({
                   id="replace"
                   name="replace"
                   type="checkbox"
-                  className="mt-1 h-5 w-5 shrink-0"
+                  className="mt-3 h-5 w-5 shrink-0"
                   aria-describedby="replace-hint"
                 />
                 <div>
-                  <label htmlFor="replace" className="font-semibold">
+                  <label
+                    htmlFor="replace"
+                    className="inline-block py-2 font-semibold"
+                  >
                     {t("settings.import.replace")}
                   </label>
                   <p id="replace-hint" className="text-fg-muted text-sm">
@@ -448,11 +451,14 @@ export default function SettingsImport({
                   id="keepVisibility"
                   name="keepVisibility"
                   type="checkbox"
-                  className="mt-1 h-5 w-5 shrink-0"
+                  className="mt-3 h-5 w-5 shrink-0"
                   aria-describedby="keepVisibility-hint"
                 />
                 <div>
-                  <label htmlFor="keepVisibility" className="font-semibold">
+                  <label
+                    htmlFor="keepVisibility"
+                    className="inline-block py-2 font-semibold"
+                  >
                     {t("settings.import.keepVisibility")}
                   </label>
                   <p id="keepVisibility-hint" className="text-fg-muted text-sm">

@@ -443,11 +443,14 @@ export default function NotificationSettings({
                               value="on"
                               type="checkbox"
                               defaultChecked={endpoint.episodeAlerts}
-                              className="mt-1 h-5 w-5 shrink-0"
+                              className="mt-3 h-5 w-5 shrink-0"
                               aria-describedby={`episodes-hint-${endpoint.id}`}
                             />
                             <div>
-                              <label htmlFor={`episodes-${endpoint.id}`}>
+                              <label
+                                htmlFor={`episodes-${endpoint.id}`}
+                                className="inline-block py-2"
+                              >
                                 {t("settings.notifications.alerts.episodes")}
                               </label>
                               <p

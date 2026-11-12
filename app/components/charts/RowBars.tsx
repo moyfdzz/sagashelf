@@ -63,7 +63,7 @@ export function RowBars({
             {row.href ? (
               <a
                 href={row.href}
-                className="focus-visible:outline-accent hover:text-link-hover block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="focus-visible:outline-accent hover:text-link-hover flex min-h-10 flex-col justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 {body}
               </a>

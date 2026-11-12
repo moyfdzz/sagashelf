@@ -9,7 +9,7 @@ export function Footer() {
     <footer className="border-border mt-12 border-t">
       <nav
         aria-label={t("footer.label")}
-        className="container mx-auto flex flex-wrap gap-x-6 gap-y-2 px-4 py-6"
+        className="container mx-auto flex flex-wrap gap-x-6 px-4 py-4"
       >
         <Link to="/privacy" className={linkClass}>
           {t("footer.privacy")}

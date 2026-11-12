@@ -42,7 +42,11 @@ export default function Credits() {
   return (
     <LegalPage title={t("credits.title")} intro={t("credits.intro")}>
       <LegalSection title={t("credits.tmdb.title")}>
-        <a href="https://www.themoviedb.org/" rel="noreferrer">
+        <a
+          href="https://www.themoviedb.org/"
+          rel="noreferrer"
+          className="inline-flex min-h-10 items-center"
+        >
           <img
             src="/tmdb-logo.svg"
             alt={t("credits.tmdb.logoAlt")}

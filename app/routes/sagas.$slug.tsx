@@ -21,6 +21,9 @@ import {
 import { mediaPath } from "~server/media/slug";
 import { privateRouteHeaders } from "~server/http/cache";
 
+// The two orders are targets of 40 px like every other control (SAG-258).
+const orderLinkClass = "inline-flex min-h-10 items-center";
+
 const slugShape = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export async function loader(args: Route.LoaderArgs) {
@@ -176,8 +179,8 @@ export default function SagaPage({ loaderData }: Route.ComponentProps) {
               aria-current={saga.order === order ? "page" : undefined}
               className={
                 saga.order === order
-                  ? "font-semibold underline underline-offset-4"
-                  : linkClass
+                  ? `${orderLinkClass} font-semibold underline underline-offset-4`
+                  : `${linkClass} ${orderLinkClass}`
               }
             >
               {t(`saga.order.${order}`)}

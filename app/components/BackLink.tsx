@@ -18,7 +18,7 @@ type Props = {
 
 // 40 px high, like the buttons with text, so it is easy to tap on a phone. A back link is a link,
 // not a button: it keeps the colour and weight of the other links on their own.
-const backLinkClass = `${linkClass} inline-flex min-h-10 items-center gap-1.5`;
+const backLinkClass = `${linkClass} gap-1.5`;
 
 /** The link that goes back: an arrow in front of the text, the same on every page (SAG-156). */
 export function BackLink({ to, router = false, children }: Props) {

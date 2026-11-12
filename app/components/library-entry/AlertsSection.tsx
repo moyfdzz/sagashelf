@@ -31,11 +31,14 @@ export function AlertsSection({ entry, saving }: Props) {
             value="on"
             type="checkbox"
             defaultChecked={entry.notifyNewEpisodes}
-            className="mt-1 h-5 w-5 shrink-0"
+            className="mt-3 h-5 w-5 shrink-0"
             aria-describedby="notify-new-episodes-hint"
           />
           <div>
-            <label htmlFor="notify-new-episodes" className="font-semibold">
+            <label
+              htmlFor="notify-new-episodes"
+              className="inline-block py-2 font-semibold"
+            >
               {t("library.editor.alerts.label")}
             </label>
             <p id="notify-new-episodes-hint" className="text-fg-muted text-sm">
