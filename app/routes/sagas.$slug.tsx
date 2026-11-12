@@ -180,7 +180,7 @@ export default function SagaPage({ loaderData }: Route.ComponentProps) {
               className={
                 saga.order === order
                   ? `${orderLinkClass} font-semibold underline underline-offset-4`
-                  : `${linkClass} ${orderLinkClass}`
+                  : linkClass
               }
             >
               {t(`saga.order.${order}`)}

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { linkClass } from "../app/lib/ui";
+
 // A person who asked for less motion gets none, and the controls of the header have a size to press
 // (SAG-252). The first test reads the computed style, so it holds for every element, now and later.
 
@@ -136,4 +138,30 @@ test.describe("the controls of the public pages", () => {
       expect(small).toEqual([]);
     });
   }
+});
+
+// A link is a flex box now, and a long word with no spaces (a username) must still break inside it
+// instead of running out of the page. Added and measured in one step, as the hydration would remove
+// a node it did not draw.
+test("a link with a very long word does not widen the page at 320 px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/privacy");
+  await page.waitForLoadState("networkidle");
+
+  const overflow = await page.evaluate((className) => {
+    const link = document.createElement("a");
+    link.href = "/";
+    link.className = className;
+    link.textContent = "a".repeat(80);
+    document.querySelector("main")?.append(link);
+    return (
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth
+    );
+  }, linkClass);
+
+  // Negative on a desktop browser: its scrollbar takes 15 px of the 320.
+  expect(overflow).toBeLessThanOrEqual(0);
 });

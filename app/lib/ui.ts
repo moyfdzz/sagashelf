@@ -30,9 +30,10 @@ export const primaryButtonClass = `bg-accent text-accent-fg ${focus} rounded-md 
  * pointer and under the keyboard focus (SAG-114). A list or a line of links is understood as links by
  * where it is, as the links of the header are. No transition for a person who asked for less motion.
  * Inside a sentence use `textLinkClass`. It is a target of 40 px, like a button (SAG-258), and never
- * wider than its container.
+ * wider than its container: `anywhere` lets a long word with no spaces (a username) break inside
+ * the flex box, which `break-word` does not.
  */
-export const linkClass = `text-fg font-semibold ${focus} inline-flex min-h-10 max-w-full items-center rounded-sm transition-colors duration-150 hover:text-link-hover focus-visible:text-link-hover motion-reduce:transition-none`;
+export const linkClass = `text-fg font-semibold ${focus} inline-flex min-h-10 max-w-full items-center rounded-sm [overflow-wrap:anywhere] transition-colors duration-150 hover:text-link-hover focus-visible:text-link-hover motion-reduce:transition-none`;
 
 /**
  * A link inside a sentence: blue, a thin underline a little apart from the text, and amber under the
