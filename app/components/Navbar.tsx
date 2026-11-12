@@ -147,7 +147,7 @@ export function Navbar({
       <div className="container mx-auto flex flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3 xl:gap-x-4">
         <Link
           to="/"
-          className="text-accent mr-auto flex min-h-10 shrink-0 items-center gap-2 text-2xl font-bold whitespace-nowrap xl:order-1 xl:mr-0"
+          className="text-accent mr-auto flex min-h-10 shrink-0 items-center gap-2 text-xl font-bold sm:text-2xl whitespace-nowrap xl:order-1 xl:mr-0"
         >
           <LogoMark className="h-8 w-8 shrink-0" />
           {t("app.name")}

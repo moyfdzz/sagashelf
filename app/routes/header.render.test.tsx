@@ -253,10 +253,12 @@ describe("the header on a phone (SAG-104)", () => {
 
     expect(logo.filter((name) => /^order-/.test(name))).toEqual([]);
     expect(logo).toContain("xl:order-1");
-    // The name of the app keeps its size, and never shrinks or breaks, at any width.
+    // The name of the app never shrinks or breaks, at any width. It is one step smaller below 640 px
+    // so it still fits a 320 px phone with the text at 200% (SAG-257).
     expect(logo).toContain("shrink-0");
     expect(logo).toContain("whitespace-nowrap");
-    expect(logo).toContain("text-2xl");
+    expect(logo).toContain("text-xl");
+    expect(logo).toContain("sm:text-2xl");
   });
 
   it("gives the switches of the header a height of 40 px (SAG-252)", async () => {
