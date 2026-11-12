@@ -31,12 +31,14 @@ beforeEach(async () => {
 const { newUser, newMedia } = factories(db);
 
 describe("migrations", () => {
-  it("build all 33 tables and the three extensions from zero", async () => {
+  it("build all 35 tables and the three extensions from zero", async () => {
     const tables = await db.execute<{ table_name: string }>(
       sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`,
     );
     expect(tables.rows.map((row) => row.table_name)).toEqual([
       "activity",
+      "analytics_events",
+      "analytics_salts",
       "audit_log",
       "blocks",
       "contact_messages",
