@@ -555,6 +555,7 @@
       "pages": "Las páginas que abres, como tipo de página (por ejemplo «perfil de una persona» o «página de un título») y no con el nombre de la persona ni del título.",
       "source": "De dónde llegas: un buscador, una red social u otro sitio (solo su dirección principal, no la página exacta), y las etiquetas de campaña de la dirección, como utm_source, si las trae.",
       "time": "Cuánto tiempo estuvo visible cada página.",
+      "speed": "Qué tan rápido carga y responde cada página: cuánto tarda en aparecer su contenido principal, cuánto se mueve mientras carga y cuánto tarda en responder a un clic o un toque. Se cuenta para la página con la que empezó tu visita.",
       "search": "El tipo de cada búsqueda (por ejemplo anime o libros), nunca el texto que escribes.",
       "steps": "Cuando agregas un título a tu biblioteca y cuando sigues a una persona, sin guardar cuál título ni a quién.",
       "place": "Tu país y tu región (no tu ciudad), que nos indica Cloudflare, y si usas un teléfono o una computadora.",

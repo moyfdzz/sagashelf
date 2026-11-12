@@ -31,7 +31,7 @@ beforeEach(async () => {
 const { newUser, newMedia } = factories(db);
 
 describe("migrations", () => {
-  it("build all 36 tables and the three extensions from zero", async () => {
+  it("build all 37 tables and the three extensions from zero", async () => {
     const tables = await db.execute<{ table_name: string }>(
       sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`,
     );
@@ -40,6 +40,7 @@ describe("migrations", () => {
       "analytics_daily",
       "analytics_events",
       "analytics_salts",
+      "analytics_vitals_daily",
       "audit_log",
       "blocks",
       "contact_messages",

@@ -74,7 +74,40 @@ function startTracker(): Tracker | null {
     if (event.persisted && document.visibilityState === "visible")
       started.show();
   });
+  measureSpeed(started);
   return started;
+}
+
+/**
+ * The speed of the page (SAG-254): the library is loaded after the page, in a file of its own, so it
+ * is not part of what a page costs to open. Its callbacks hand each number to the tracker, and the
+ * tracker sends them in one event the first time the tab hides.
+ *
+ * The `visibilitychange` listener that sends is added after the library has added its own, and the
+ * browser calls them in that order, so the last value of the layout shift and of the interaction
+ * time (which the library gives when the tab hides) is already in the tracker when it is sent. If
+ * the tab hides before the file arrives, nothing was measured yet and nothing is sent.
+ */
+function measureSpeed(started: Tracker) {
+  import("web-vitals")
+    .then(({ onCLS, onINP, onLCP }) => {
+      onLCP((metric) => started.vital("LCP", metric.value));
+      onCLS((metric) => started.vital("CLS", metric.value));
+      onINP((metric) => started.vital("INP", metric.value));
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") started.flushVitals();
+      });
+      // When a page is left, the browser fires `pagehide` and, a moment later in the same task,
+      // `visibilitychange`; the library gives the last layout shift and interaction time in the
+      // second one. Sending in `pagehide` would leave them out (seen in Chrome, SAG-254), so it
+      // only waits one turn, as a way out for a browser that does not fire the second.
+      window.addEventListener("pagehide", () => {
+        setTimeout(() => started.flushVitals(), 0);
+      });
+    })
+    .catch(() => {
+      // The file could not be loaded (an ad blocker, a bad connection): nothing is measured.
+    });
 }
 
 /**

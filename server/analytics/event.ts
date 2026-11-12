@@ -1,6 +1,8 @@
 import { isbot } from "isbot";
 import { z } from "zod";
 
+import { maxCls, maxVitalMs } from "./vitals";
+
 /**
  * The events of the cookieless analytics and the pure rules around them (SAG-24, ADR-009,
  * ADR-050). Nothing here touches the database or the network, so every rule is tested alone.
@@ -49,10 +51,32 @@ const funnelSchema = z.object({
   path: pathSchema,
 });
 
+/**
+ * The speed of one page load (SAG-254): up to three numbers, each one missing when the browser could
+ * not measure it. At least one has to be there, or the event says nothing. `path` is the page where
+ * the visit started, since a browser measures a document and not each move inside the app.
+ */
+const vitalsSchema = z
+  .object({
+    kind: z.literal("vitals"),
+    path: pathSchema,
+    lcp: z.number().min(0).max(maxVitalMs).optional(),
+    cls: z.number().min(0).max(maxCls).optional(),
+    inp: z.number().min(0).max(maxVitalMs).optional(),
+  })
+  .refine(
+    (event) =>
+      event.lcp !== undefined ||
+      event.cls !== undefined ||
+      event.inp !== undefined,
+    { message: "a speed event needs at least one number" },
+  );
+
 export const collectEventSchema = z.discriminatedUnion("kind", [
   pageviewSchema,
   engagedSchema,
   searchSchema,
+  vitalsSchema,
   funnelSchema,
 ]);
 

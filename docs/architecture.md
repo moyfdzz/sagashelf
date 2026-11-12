@@ -167,7 +167,7 @@ erDiagram
   }
 ```
 
-All 20 tables of SAG-9 exist: users, the catalog, sagas, the library, lists and custom titles, social, moderation, and the outbox and webhook tables. The three analytics tables of SAG-24 (`analytics_events`, `analytics_salts` and `analytics_daily`, [ADR-050](adr/050-analytics-collector.md)) came later. Only the main tables and relations are drawn; the full list and the rules their constraints enforce are in [ADR-002](adr/002-data-postgres-neon-drizzle.md).
+All 20 tables of SAG-9 exist: users, the catalog, sagas, the library, lists and custom titles, social, moderation, and the outbox and webhook tables. The four analytics tables of SAG-24 and SAG-254 (`analytics_events`, `analytics_salts`, `analytics_daily` and `analytics_vitals_daily`, [ADR-050](adr/050-analytics-collector.md)) came later. Only the main tables and relations are drawn; the full list and the rules their constraints enforce are in [ADR-002](adr/002-data-postgres-neon-drizzle.md).
 
 ## 6. From a change to production
 

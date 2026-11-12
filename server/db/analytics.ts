@@ -47,6 +47,10 @@ export type NewAnalyticsEvent = {
   visitor: string;
   engagedMs: number | null;
   searchType: string | null;
+  /** Only for a speed event: each one empty when the browser could not measure it. */
+  lcpMs: number | null;
+  cls: number | null;
+  inpMs: number | null;
   referrerClass: string | null;
   referrerHost: string | null;
   utmSource: string | null;
@@ -64,11 +68,11 @@ export async function insertAnalyticsEvent(
 ): Promise<void> {
   await db.execute(sql`
     INSERT INTO analytics_events (
-      kind, path, visitor, engaged_ms, search_type, referrer_class, referrer_host,
-      utm_source, utm_medium, utm_campaign, country, region, device
+      kind, path, visitor, engaged_ms, search_type, lcp_ms, cls, inp_ms, referrer_class,
+      referrer_host, utm_source, utm_medium, utm_campaign, country, region, device
     ) VALUES (
       ${event.kind}, ${event.path}, ${event.visitor}, ${event.engagedMs}, ${event.searchType},
-      ${event.referrerClass}, ${event.referrerHost}, ${event.utmSource}, ${event.utmMedium},
+      ${event.lcpMs}, ${event.cls}, ${event.inpMs}, ${event.referrerClass}, ${event.referrerHost}, ${event.utmSource}, ${event.utmMedium},
       ${event.utmCampaign}, ${event.country}, ${event.region}, ${event.device}
     )
   `);

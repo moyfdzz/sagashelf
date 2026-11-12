@@ -13,6 +13,7 @@ import { analyticsRetentionMonths } from "../../server/db/analytics-rollup";
 import {
   analyticsDaily,
   analyticsEvents,
+  analyticsVitalsDaily,
 } from "../../server/db/schema/analytics";
 
 async function render(locale: "es" | "en"): Promise<string> {
@@ -87,6 +88,16 @@ describe("the privacy policy says what the analytics measure (SAG-24)", () => {
     }
   });
 
+  it("says the speed of the pages is measured, and for which page", async () => {
+    const es = textOf(await render("es"));
+    const en = textOf(await render("en"));
+
+    expect(es).toContain("Qué tan rápido carga y responde cada página");
+    expect(es).toContain("la página con la que empezó tu visita");
+    expect(en).toContain("How fast each page loads and responds");
+    expect(en).toContain("the page your visit started on");
+  });
+
   it("still says Cloudflare gives the country and the region, and Neon keeps the statistics", async () => {
     const es = textOf(await render("es"));
     const en = textOf(await render("en"));
@@ -136,6 +147,36 @@ describe("what the policy promises is what the code does", () => {
     expect(columns).not.toContain("visitor");
     expect(columns.sort()).toEqual(
       ["day", "dimension", "engaged_ms", "events", "value", "visitors"].sort(),
+    );
+  });
+
+  it("keeps no visitor code in the totals of the speed of the pages either", () => {
+    const columns = Object.values(getTableColumns(analyticsVitalsDaily)).map(
+      (column) => column.name,
+    );
+
+    expect(columns).not.toContain("visitor");
+    expect(columns.sort()).toEqual(
+      [
+        "day",
+        "good",
+        "metric",
+        "needs_improvement",
+        "p75",
+        "page",
+        "poor",
+        "samples",
+      ].sort(),
+    );
+  });
+
+  it("stores the speed as three numbers of one load, which is what the policy says is measured", () => {
+    const columns = Object.values(getTableColumns(analyticsEvents)).map(
+      (column) => column.name,
+    );
+
+    expect(columns).toEqual(
+      expect.arrayContaining(["lcp_ms", "cls", "inp_ms"]),
     );
   });
 

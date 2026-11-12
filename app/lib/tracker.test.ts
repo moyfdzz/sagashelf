@@ -389,3 +389,138 @@ describe("createTracker", () => {
     expect(events).toEqual([]);
   });
 });
+
+describe("createTracker: the speed of the page (SAG-254)", () => {
+  const vitalsOf = (events: TrackerEvent[]) =>
+    events.filter((event) => event.kind === "vitals");
+
+  it("sends the numbers that were measured in one event, for the page the visit started on", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("LCP", 1800.54);
+    tracker.vital("CLS", 0.03456789);
+    tracker.vital("INP", 120);
+
+    tracker.flushVitals();
+
+    expect(vitalsOf(events)).toEqual([
+      { kind: "vitals", path: "/", lcp: 1800.5, cls: 0.0346, inp: 120 },
+    ]);
+  });
+
+  it("belongs to the first page even if the visitor moved on, since a browser measures a document", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.visit(visit("/sagas"), true);
+    tracker.visit(visit("/search"), true);
+    tracker.vital("LCP", 2000);
+
+    tracker.flushVitals();
+
+    expect(vitalsOf(events)).toEqual([
+      { kind: "vitals", path: "/", lcp: 2000 },
+    ]);
+  });
+
+  it("leaves out a number that was not measured, as in a browser that has no layout shift", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("LCP", 2400);
+
+    tracker.flushVitals();
+
+    const [sent] = vitalsOf(events);
+    expect(sent).toEqual({ kind: "vitals", path: "/", lcp: 2400 });
+    expect(sent).not.toHaveProperty("cls");
+    expect(sent).not.toHaveProperty("inp");
+  });
+
+  it("sends a layout shift of zero, which is a measure and not a missing one", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("CLS", 0);
+
+    tracker.flushVitals();
+
+    expect(vitalsOf(events)).toEqual([{ kind: "vitals", path: "/", cls: 0 }]);
+  });
+
+  it("keeps the last value of a metric, since a layout shift and an interaction time can grow", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("CLS", 0.01);
+    tracker.vital("CLS", 0.2);
+    tracker.vital("INP", 300);
+    tracker.vital("INP", 150);
+
+    tracker.flushVitals();
+
+    expect(vitalsOf(events)).toEqual([
+      { kind: "vitals", path: "/", cls: 0.2, inp: 150 },
+    ]);
+  });
+
+  it("drops a number the collector would refuse and keeps the others", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("LCP", -5);
+    tracker.vital("INP", 60_001);
+    tracker.vital("CLS", Number.NaN);
+    tracker.vital("CLS", Number.POSITIVE_INFINITY);
+    tracker.vital("CLS", 101);
+
+    tracker.flushVitals();
+    expect(vitalsOf(events)).toEqual([]);
+
+    tracker.vital("LCP", 60_000);
+    tracker.flushVitals();
+    expect(vitalsOf(events)).toEqual([
+      { kind: "vitals", path: "/", lcp: 60_000 },
+    ]);
+  });
+
+  it("sends the speed once per visit, however many times the tab hides", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("LCP", 1500);
+
+    tracker.flushVitals();
+    tracker.vital("CLS", 0.5);
+    tracker.flushVitals();
+    tracker.flushVitals();
+
+    expect(vitalsOf(events)).toHaveLength(1);
+  });
+
+  it("sends nothing when no number was measured, and waits for the first one", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/"), true);
+
+    tracker.flushVitals();
+    expect(vitalsOf(events)).toEqual([]);
+
+    tracker.vital("LCP", 900);
+    tracker.flushVitals();
+    expect(vitalsOf(events)).toHaveLength(1);
+  });
+
+  it("sends nothing before a page opened, since there is no page to say it belongs to", () => {
+    const { tracker, events } = harness();
+    tracker.vital("LCP", 900);
+
+    tracker.flushVitals();
+
+    expect(events).toEqual([]);
+  });
+
+  it("is not sent by the time on the page, which has its own event", () => {
+    const { tracker, events, wait } = harness();
+    tracker.visit(visit("/"), true);
+    tracker.vital("LCP", 900);
+    wait(3000);
+
+    tracker.hide();
+
+    expect(events.map((event) => event.kind)).toEqual(["pageview", "engaged"]);
+  });
+});

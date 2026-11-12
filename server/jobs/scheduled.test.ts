@@ -83,7 +83,7 @@ beforeEach(() => {
   // Nothing came out, unless a test says so.
   mocks.announceNewEpisodes.mockResolvedValue({ episodes: 0, messages: 0 });
   // Nothing to roll up or to delete, unless a test says so.
-  mocks.rollUpAnalytics.mockResolvedValue({ days: 0, rows: 0 });
+  mocks.rollUpAnalytics.mockResolvedValue({ days: 0, rows: 0, vitals: 0 });
   mocks.pruneAnalyticsEvents.mockResolvedValue(0);
 });
 
@@ -412,10 +412,15 @@ describe("the second Cron Trigger (SAG-90)", () => {
       expect.stringContaining("analytics.rolled_up"),
     );
 
-    mocks.rollUpAnalytics.mockResolvedValue({ days: 2, rows: 40 });
+    mocks.rollUpAnalytics.mockResolvedValue({ days: 2, rows: 40, vitals: 7 });
     await runTvmazeJobs();
     expect(console.log).toHaveBeenCalledWith(
-      JSON.stringify({ event: "analytics.rolled_up", days: 2, rows: 40 }),
+      JSON.stringify({
+        event: "analytics.rolled_up",
+        days: 2,
+        rows: 40,
+        vitals: 7,
+      }),
     );
   });
 
@@ -426,7 +431,7 @@ describe("the second Cron Trigger (SAG-90)", () => {
     mocks.getDb.mockResolvedValue(db);
     mocks.rollUpAnalytics.mockImplementation(async () => {
       order.push("roll up");
-      return { days: 0, rows: 0 };
+      return { days: 0, rows: 0, vitals: 0 };
     });
     mocks.pruneAnalyticsEvents.mockImplementation(async () => {
       order.push("prune");

@@ -23,6 +23,7 @@ describe("collectEventSchema", () => {
       { kind: "signup", path: "/sign-up" },
       { kind: "add_to_library", path: "/media/anime/x" },
       { kind: "follow", path: "/u/someone" },
+      { kind: "vitals", path: "/", lcp: 1800.5, cls: 0.03, inp: 120 },
     ];
     for (const event of events) {
       expect(collectEventSchema.safeParse(event).success, event.kind).toBe(
@@ -74,6 +75,54 @@ describe("collectEventSchema", () => {
     ["an empty utm value", { kind: "pageview", path: "/", utmSource: "  " }],
   ])("rejects %s", (_name, event) => {
     expect(collectEventSchema.safeParse(event).success).toBe(false);
+  });
+
+  it.each([
+    ["only a load time", { lcp: 2000 }],
+    [
+      "only a layout shift, which is how Safari ends up with none of the others",
+      { cls: 0 },
+    ],
+    ["only an interaction time", { inp: 50 }],
+    [
+      "the biggest numbers the table takes",
+      { lcp: 60_000, inp: 60_000, cls: 100 },
+    ],
+    ["zero", { lcp: 0, inp: 0, cls: 0 }],
+  ])("accepts a speed event with %s", (_name, numbers) => {
+    expect(
+      collectEventSchema.safeParse({ kind: "vitals", path: "/", ...numbers })
+        .success,
+    ).toBe(true);
+  });
+
+  it.each([
+    ["no number at all", {}],
+    ["a load time below zero", { lcp: -1 }],
+    ["a load time over a minute", { lcp: 60_001 }],
+    ["an interaction time over a minute", { inp: 60_001 }],
+    ["a layout shift below zero", { cls: -0.1 }],
+    ["a layout shift over 100", { cls: 100.1 }],
+    ["a number that is not a number", { lcp: "fast" }],
+    ["a number that is not finite", { lcp: Infinity }],
+    ["a number that is not a number at all", { cls: NaN }],
+    ["a number alongside one that is invalid", { lcp: 1000, inp: -5 }],
+  ])("rejects a speed event with %s", (_name, numbers) => {
+    expect(
+      collectEventSchema.safeParse({ kind: "vitals", path: "/", ...numbers })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects a speed event with a path the collector would refuse", () => {
+    expect(
+      collectEventSchema.safeParse({ kind: "vitals", path: "/a?b=1", lcp: 1 })
+        .success,
+    ).toBe(false);
+    expect(
+      collectEventSchema.safeParse({ kind: "vitals", path: "x", lcp: 1 })
+        .success,
+    ).toBe(false);
   });
 
   it("drops a field it does not know, so the text of a search never gets through", () => {

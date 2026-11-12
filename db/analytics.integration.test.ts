@@ -26,6 +26,9 @@ const event = (fields: Partial<NewAnalyticsEvent> = {}): NewAnalyticsEvent => ({
   visitor,
   engagedMs: null,
   searchType: null,
+  lcpMs: null,
+  cls: null,
+  inpMs: null,
   referrerClass: "direct",
   referrerHost: null,
   utmSource: null,
@@ -84,6 +87,18 @@ describe("analytics_events", () => {
     ["a host over 100 characters", { referrerHost: "a".repeat(101) }],
     ["a utm value over 100 characters", { utmCampaign: "a".repeat(101) }],
     ["a region over 100 characters", { region: "a".repeat(101) }],
+    ["a speed event with none of the three numbers", { kind: "vitals" }],
+    ["a load time for a page view", { lcpMs: 1200 }],
+    ["a layout shift for a page view", { cls: 0.1 }],
+    [
+      "an interaction time for a search",
+      { kind: "search", searchType: "anime", inpMs: 50 },
+    ],
+    ["a load time below zero", { kind: "vitals", lcpMs: -1 }],
+    ["a load time over a minute", { kind: "vitals", lcpMs: 60_001 }],
+    ["an interaction time over a minute", { kind: "vitals", inpMs: 60_001 }],
+    ["a layout shift below zero", { kind: "vitals", cls: -0.01 }],
+    ["a layout shift over 100", { kind: "vitals", cls: 100.5 }],
   ] as [string, Partial<NewAnalyticsEvent>][])(
     "refuses %s",
     async (_name, fields) => {
@@ -106,6 +121,29 @@ describe("analytics_events", () => {
       event({ kind: "follow", path: "/u/:username", referrerClass: null }),
     );
     expect(await count()).toBe(2);
+  });
+
+  it("stores the speed of a page load with any of the three numbers", async () => {
+    await insertAnalyticsEvent(
+      db,
+      event({
+        kind: "vitals",
+        lcpMs: 1800.5,
+        cls: 0.03,
+        inpMs: 120,
+        referrerClass: null,
+      }),
+    );
+    // Safari has no layout shift, and a visit with no click has no interaction time.
+    await insertAnalyticsEvent(
+      db,
+      event({ kind: "vitals", lcpMs: 2400, referrerClass: null }),
+    );
+    await insertAnalyticsEvent(
+      db,
+      event({ kind: "vitals", cls: 0, referrerClass: null }),
+    );
+    expect(await count()).toBe(3);
   });
 
   it("has no column for an address, a city or a user", async () => {

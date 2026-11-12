@@ -85,6 +85,38 @@ describe("recordEvent", () => {
     expect(text).not.toContain("Coyoacan");
   });
 
+  it("stores the numbers of a speed event, empty where the browser measured nothing", async () => {
+    await recordEvent(
+      db,
+      visit(),
+      { kind: "vitals", path: "/", lcp: 1800.5, inp: 90 },
+      now,
+    );
+
+    expect(stored()).toMatchObject({
+      kind: "vitals",
+      path: "/",
+      lcpMs: 1800.5,
+      cls: null,
+      inpMs: 90,
+      engagedMs: null,
+      searchType: null,
+      referrerClass: null,
+    });
+  });
+
+  it("stores a layout shift of zero, which is a number and not an empty value", async () => {
+    await recordEvent(db, visit(), { kind: "vitals", path: "/", cls: 0 }, now);
+
+    expect(stored()).toMatchObject({ lcpMs: null, cls: 0, inpMs: null });
+  });
+
+  it("leaves the speed numbers empty for every other kind", async () => {
+    await recordEvent(db, visit(), { kind: "pageview", path: "/" }, now);
+
+    expect(stored()).toMatchObject({ lcpMs: null, cls: null, inpMs: null });
+  });
+
   it("keeps only the fields of the kind of event", async () => {
     await recordEvent(
       db,

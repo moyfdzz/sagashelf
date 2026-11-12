@@ -68,6 +68,7 @@ export default function Privacy() {
             t("privacy.stats.pages"),
             t("privacy.stats.source"),
             t("privacy.stats.time"),
+            t("privacy.stats.speed"),
             t("privacy.stats.search"),
             t("privacy.stats.steps"),
             t("privacy.stats.place"),
