@@ -5,6 +5,7 @@
   },
   "nav": {
     "label": "Principal",
+    "skipToContent": "Saltar al contenido",
     "home": "Inicio",
     "signIn": "Iniciar sesión",
     "signUp": "Crear cuenta",

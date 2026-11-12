@@ -15,6 +15,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { ErrorPage } from "~/components/ErrorPage";
 import { Footer } from "~/components/Footer";
+import { contentId, SkipLink } from "~/components/SkipLink";
 import { Navbar } from "~/components/Navbar";
 import { authMiddleware } from "~/middleware/clerk";
 import { readTheme } from "~/lib/theme";
@@ -82,6 +83,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       {/* The middle takes what is left of the screen, so on a short page the footer stays at the bottom. */}
       <body className="flex min-h-dvh flex-col">
+        <SkipLink />
         <Navbar
           savedTheme={theme}
           signedIn={signedIn}
@@ -90,7 +92,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           avatarUrl={avatarUrl}
           unread={unread}
         />
-        <div className="grow">{children}</div>
+        {/* The target of the skip link: it takes the focus by script or by the link, never by Tab,
+            and it is not a control, so it shows no ring. */}
+        <div id={contentId} tabIndex={-1} className="grow focus:outline-none">
+          {children}
+        </div>
         <Footer />
         <ScrollRestoration />
         <Scripts />

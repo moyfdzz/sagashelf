@@ -56,7 +56,9 @@ async function tabThrough(page: Page, limit = 60): Promise<Stop[]> {
           ? "header"
           : el.closest("footer")
             ? "footer"
-            : "main",
+            : el.getAttribute("href") === "#content"
+              ? "skip"
+              : "main",
       };
     });
     if (!stop || seen.has(stop.position)) break;
@@ -86,9 +88,11 @@ for (const path of ["/", "/search", "/privacy", "/contact"]) {
           `stop ${index + 1}: ${stop.tag} ${stop.name}`,
         ).toBe(true);
       }
-      // It goes header, then content, then footer.
+      // It goes the skip link, then the header, then the content, then the footer (SAG-256).
       const regions = stops.map((stop) => stop.region);
-      expect(regions[0]).toBe("header");
+      expect(regions[0]).toBe("skip");
+      expect(regions.slice(1)).not.toContain("skip");
+      expect(regions[1]).toBe("header");
       expect(regions.at(-1)).toBe("footer");
       expect(regions.join(",")).not.toMatch(/main,header|footer,main/);
     });
