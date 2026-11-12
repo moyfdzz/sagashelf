@@ -45,6 +45,14 @@ export function getOpenLimiter() {
   return env.OPEN_LIMITER;
 }
 
+/** The Workers Rate Limiting binding for the analytics collector (see `ratelimits` in wrangler.jsonc). */
+export function getCollectLimiter() {
+  if (!env.COLLECT_LIMITER) {
+    throw new Error("The COLLECT_LIMITER binding is missing in wrangler.jsonc");
+  }
+  return env.COLLECT_LIMITER;
+}
+
 /** The Workers Cache API, or null when the runtime has none (it may not run on every host). */
 function defaultCache(): Cache | null {
   if (typeof caches === "undefined") return null;

@@ -35,6 +35,7 @@ vi.mock("@clerk/react-router/server", () => ({ getAuth: mocks.getAuth }));
 vi.mock("~server/runtime-env", () => ({
   getWriteLimiter: () => ({ limit: mocks.limit }),
   getSearchLimiter: () => ({ limit: mocks.limit }),
+  getCollectLimiter: () => ({ limit: mocks.limit }),
   getDb: mocks.getDb,
   getClerkKeys: () => null,
   getModerationKeys: () => null,
@@ -81,6 +82,13 @@ function expectNoticeIfRedirect(row: Row, value: unknown, notice: string) {
 const uuid = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 
 const rows: Row[] = [
+  {
+    file: "api.collect.ts",
+    path: "/api/collect",
+    params: {},
+    who: "none",
+    limitKey: "collect",
+  },
   {
     file: "api.locale.ts",
     path: "/api/locale",

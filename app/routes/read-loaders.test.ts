@@ -125,6 +125,7 @@ const rows: Row[] = [
   }),
   row("media.open.ts", "visitor", "/media/open?provider=tmdb&id=1"),
 
+  row("api.collect.ts", "post-only", "/api/collect"),
   row("api.locale.ts", "post-only", "/api/locale"),
   row("library.add.ts", "post-only", "/library/add"),
   row("library.add-external.ts", "post-only", "/library/add-external"),

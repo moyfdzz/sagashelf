@@ -232,6 +232,13 @@
       "when": 1794331930211,
       "tag": "0032_import_finished",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794503240636,
+      "tag": "0033_analytics_events",
+      "breakpoints": true
     }
   ]
 }

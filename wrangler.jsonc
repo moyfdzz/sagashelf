@@ -63,6 +63,13 @@
       "namespace_id": "1004",
       "simple": { "limit": 10, "period": 60 },
     },
+    // The analytics collector gets a page view and a time on page for every page a visitor opens,
+    // so it has its own counter and does not use up the writes of the same person (SAG-24, ADR-050).
+    {
+      "name": "COLLECT_LIMITER",
+      "namespace_id": "1005",
+      "simple": { "limit": 60, "period": 60 },
+    },
   ],
   // Preview deployments (one per PR) get their own values and never reuse production ones.
   // Bindings are not inherited: each one is declared again here, with its own counter.
@@ -94,6 +101,11 @@
         "name": "OPEN_LIMITER",
         "namespace_id": "2004",
         "simple": { "limit": 10, "period": 60 },
+      },
+      {
+        "name": "COLLECT_LIMITER",
+        "namespace_id": "2005",
+        "simple": { "limit": 60, "period": 60 },
       },
     ],
   },

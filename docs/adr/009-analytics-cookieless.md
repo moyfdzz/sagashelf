@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Planned (SAG-24)
+- **Implementation:** Partial (SAG-24; the collector is built, see [ADR-050](050-analytics-collector.md))
 - **Tickets:** SAG-24, SAG-26, SAG-31
 
 ## Context
@@ -50,7 +50,7 @@ Cloudflare injects its Web Analytics beacon (`beacon.min.js`) into the pages of 
 
 ## Open questions
 
-- Whether `request.cf` city-level location is precise and stable enough to be worth storing, or whether country and region are enough.
+- ~~Whether `request.cf` city-level location is precise and stable enough to be worth storing, or whether country and region are enough.~~ Settled on 2026-11-12 in [ADR-050](050-analytics-collector.md): country and region only, no city. The same ADR settles where raw events are kept (straight to Postgres, measured before adding a buffer) and where the daily salt lives (a table, no secret).
 
 ## References
 
