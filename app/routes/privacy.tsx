@@ -46,6 +46,23 @@ export default function Privacy() {
           ]}
         />
       </LegalSection>
+      <LegalSection id="stats" title={t("privacy.stats.title")}>
+        <p>{t("privacy.stats.intro")}</p>
+        <LegalList
+          items={[
+            t("privacy.stats.pages"),
+            t("privacy.stats.source"),
+            t("privacy.stats.time"),
+            t("privacy.stats.search"),
+            t("privacy.stats.steps"),
+            t("privacy.stats.place"),
+          ]}
+        />
+        <p>{t("privacy.stats.notStored")}</p>
+        <p>{t("privacy.stats.visitor")}</p>
+        <p>{t("privacy.stats.optOut")}</p>
+        <p>{t("privacy.stats.keep")}</p>
+      </LegalSection>
       <LegalSection id="profile" title={t("privacy.profile.title")}>
         <p>{t("privacy.profile.intro")}</p>
         <LegalList

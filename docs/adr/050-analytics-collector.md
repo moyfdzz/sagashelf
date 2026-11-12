@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
-- **Implementation:** Partial (SAG-24: the collector and its tables; the tracker, the rollups, the owner opt-out and the privacy text come in the next pull requests of the same ticket)
+- **Implementation:** Done (SAG-24: the collector, the tracker, the funnel, the rollups with the retention and the privacy text; the owner turns it on with `ANALYTICS_ENABLED`, see the edge setup, section 16)
 - **Tickets:** SAG-24
 
 ## Context
@@ -68,7 +68,11 @@ Decided with the owner when the tracker was built. It changes two things the tex
 ## Open questions
 
 - Whether the compute hours stay under the Free plan once the tracker is live (measure for a few weeks).
-- Whether the text of `/privacy` needs the address and the way to use the ARCO rights that article 15 of the law asks for in an aviso de privacidad: read in the part of the law that could be read, not settled here. It belongs to the privacy-policy pull request of SAG-24, with a legal review.
+- Whether the contact email is enough for what article 15 of the law asks of an aviso de privacidad (the identity and the address of who handles the data, and the way to use the ARCO rights). The owner decided on 2026-11-12 to keep the email as the only contact in `/privacy`, which already says it is the address for questions and for the rights. Whether that satisfies the article was read only in the part of the law that could be read (articles 1 to 50) and is **not settled**: it needs a legal review.
+
+## Amendment: the privacy policy (SAG-24, 2026-11-12)
+
+`/privacy` has its own section, "Estadísticas de uso" (`privacy.stats`, Spanish and English), that says what is measured (the kind of page, where the visit came from, the time a page was visible, the type of a search, adding to the library and following, the country and region, mobile or desktop), what is not stored (the IP address, the account, the text of a search, the city, which exact title or person), how the visitor code is made (a hash with a salt that changes every day and is kept for today and yesterday), that Do Not Track and Global Privacy Control are honored, and how long things are kept (events 13 months, then daily totals with no visitor code, with no time limit). The Cloudflare Web Analytics sentences are gone, so turning that service off (edge setup, section 16) is part of the switch-over. `app/routes/privacy.render.test.tsx` ties the text to the code: the months come from `analyticsRetentionMonths`, the events table has no column for an address, a city, a user or a search text, the daily totals have no visitor, and the tracker uses no cookie or browser storage. `legalUpdatedAt` is 2026-11-12.
 
 ## References
 
