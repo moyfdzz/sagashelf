@@ -43,9 +43,9 @@ export type WorldwideTitle = {
 export type WorldwideTrending =
   /** The list, possibly empty, and its source. */
   | { status: "ok"; titles: WorldwideTitle[]; source: WorldwideSource }
-  /** The source did not answer (or there is no token): nothing is kept, so the next call asks again. */
+  /** The source did not answer: nothing is kept, so the next call asks again. */
   | { status: "unavailable" }
-  /** No source has a list for this type. */
+  /** No source has a list for this type. Also the answer without a TMDB token, since that provider is then not built. */
   | { status: "unsupported" };
 
 const toTitle = (item: NormalizedMedia): WorldwideTitle => ({
