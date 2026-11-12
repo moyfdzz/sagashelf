@@ -255,6 +255,12 @@ header[data-chrome] {
 
 /* Tailwind 4 no longer shows the hand over buttons. Anything that acts when clicked says so. */
 @layer base {
+  /* An element the script gives the focus to (the target of the skip link, SAG-256) is not a control:
+     it shows no ring when it is reached that way. */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+
   button:not(:disabled),
   select:not(:disabled),
   [role="button"]:not(:disabled) {
