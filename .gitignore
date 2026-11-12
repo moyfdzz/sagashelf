@@ -36,6 +36,7 @@ build
 coverage
 .lighthouseci
 .a11y-fragments
+.e2e-harness
 playwright-report
 test-results
 

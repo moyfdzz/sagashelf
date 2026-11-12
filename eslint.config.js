@@ -17,6 +17,7 @@ export default tseslint.config(
       ".react-router/",
       ".wrangler/",
       "coverage/",
+      ".e2e-harness/",
       "playwright-report/",
       "test-results/",
       "worker-configuration.d.ts",
@@ -80,6 +81,15 @@ export default tseslint.config(
             "Accessible and visible attribute text must come from t(), not a string literal.",
         },
       ],
+    },
+  },
+  {
+    // The page that mounts one component for the keyboard tests (SAG-251) has texts of its own that
+    // nobody reads: they are test fixtures, not the interface.
+    files: ["app/testing/**"],
+    rules: {
+      "react/jsx-no-literals": "off",
+      "no-restricted-syntax": "off",
     },
   },
   {
