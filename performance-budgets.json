@@ -1,0 +1,16 @@
+{
+  "comment": "Gzipped JavaScript that a page loads, in KB: the entry, the root and the route with their imports (SAG-250). Each limit is the size of 2026-11-11 plus 15%. A page without its own line uses `default`. Raise a limit only on purpose, in the PR that adds the weight.",
+  "routes": {
+    "routes/home": 203,
+    "routes/search": 234,
+    "routes/media.$type.$slug": 215,
+    "routes/u.$username": 208,
+    "routes/sagas": 232,
+    "routes/sagas.$slug": 210,
+    "routes/library": 239,
+    "routes/stats": 210,
+    "routes/settings.profile": 275
+  },
+  "default": 300,
+  "cssKb": 9
+}

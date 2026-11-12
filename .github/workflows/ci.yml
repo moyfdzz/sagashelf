@@ -98,11 +98,11 @@ jobs:
           retention-days: 7
 
   lighthouse:
-    name: Lighthouse (informational)
+    name: Lighthouse
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Reports only for now; budgets become blocking once the site has more pages.
-    continue-on-error: true
+    # The pages that need no database (SAG-250). A page over its budget fails the job; to make it block
+    # the merge, add the check to the ruleset of main.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
