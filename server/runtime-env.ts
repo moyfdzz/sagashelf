@@ -128,6 +128,11 @@ export function getWebhooksEnabled(): boolean {
   return getEnv().WEBHOOKS_ENABLED === "true";
 }
 
+/** Whether the pages load the tracker of the cookieless analytics (ANALYTICS_ENABLED, SAG-24). */
+export function getAnalyticsEnabled(): boolean {
+  return getEnv().ANALYTICS_ENABLED === "true";
+}
+
 /** The keys of the moderation service, or null when this deployment has none and takes no pictures. */
 export function getModerationKeys(): ModerationKeys | null {
   const { SIGHTENGINE_API_USER, SIGHTENGINE_API_SECRET } = getEnv();
