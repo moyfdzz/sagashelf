@@ -15,6 +15,7 @@
     "server/account/contact-schema.ts",
     "server/db/contact-messages.ts",
     "server/db/analytics.ts",
+    "server/db/analytics-rollup.ts",
     "server/db/escape-like.ts",
     "server/db/lists.ts",
     "server/db/list-items.ts",
