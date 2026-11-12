@@ -297,7 +297,26 @@ describe("rollUpAnalytics: which days", () => {
     expect(await rows()).toEqual(first);
   });
 
-  it("leaves a day alone once it is rolled up, so a late event does not change what was said", async () => {
+  it("rolls up a day that is older than the last one done and was never rolled up", async () => {
+    await event(2);
+    await rollUpAnalytics(db);
+
+    // Events for an older day (a restore or a backfill): not skipped because a later day is done.
+    await event(6);
+    await event(6, { visitor: "b" });
+    const summary = await rollUpAnalytics(db);
+
+    expect(summary.days).toBe(1);
+    const old = await rows(
+      sql`dimension = 'kind' AND value = 'pageview' AND day = ${await dayOf(6)}::date`,
+    );
+    expect(old).toMatchObject([{ events: 2, visitors: 2 }]);
+    expect((await rows(sql`dimension = 'kind'`)).map((row) => row.day)).toEqual(
+      [await dayOf(6), await dayOf(2)],
+    );
+  });
+
+  it("leaves a day alone once it is rolled up, so what was said does not change", async () => {
     await event(2);
     await rollUpAnalytics(db);
     const first = await rows();

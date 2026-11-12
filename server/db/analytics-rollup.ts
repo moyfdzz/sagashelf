@@ -16,8 +16,12 @@ export const rollupDaysPerRun = 7;
 /** The most values of a dimension kept for one day; the rest is one row, `(other)`. */
 export const rollupValuesPerDimension = 100;
 
-/** The most raw events one deletion takes, so it is a small statement however much is waiting. */
-export const pruneBatchSize = 5000;
+/**
+ * The most raw events one deletion takes, so it is a bounded statement however much is waiting. The
+ * job runs four times a day, so 80 000 events a day can be deleted, far more than a day of this site
+ * writes; a backlog after a long stop is gone in a few runs.
+ */
+export const pruneBatchSize = 20_000;
 
 export type RollupSummary = { days: number; rows: number };
 
@@ -25,7 +29,8 @@ export type RollupSummary = { days: number; rows: number };
  * Rolls up the days that are over and not rolled up yet, oldest first, a few at a time. The day of
  * today is never rolled up (it is not over), and a day is told to be done by its row of the
  * dimension `kind`, which every day with an event has. Running it twice does the same thing: the
- * rows are replaced, not added to.
+ * rows are replaced, not added to. An event is stored with the time it arrived, so once a day is
+ * over no event arrives for it: nothing that is deleted later was left out of the rollup.
  *
  * Every event is spread over the dimensions that apply to it (the page, the source, the place, the
  * kind of device…) and counted there: `events` is what a person did, `visitors` the distinct
@@ -42,18 +47,18 @@ export async function rollUpAnalytics(
   const values = options.values ?? rollupValuesPerDimension;
   const { rows } = await db.execute(sql`
     WITH todo AS (
-      SELECT DISTINCT (e.occurred_at AT TIME ZONE 'UTC')::date AS day
-      FROM analytics_events e
-      WHERE e.occurred_at < (((now() AT TIME ZONE 'UTC')::date)::timestamp AT TIME ZONE 'UTC')
-        AND e.occurred_at >= COALESCE(
-          ((SELECT max(day) FROM analytics_daily)::timestamp AT TIME ZONE 'UTC'),
-          '-infinity'::timestamptz
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM analytics_daily a
-          WHERE a.dimension = 'kind' AND a.day = (e.occurred_at AT TIME ZONE 'UTC')::date
-        )
-      ORDER BY 1
+      -- The days with events first, and only then which of them are not done: the check is made
+      -- once for a day and not once for each event. There is no lower bound on purpose: a day is
+      -- done by its own row, whatever the order the days were rolled up in.
+      SELECT d.day FROM (
+        SELECT DISTINCT (e.occurred_at AT TIME ZONE 'UTC')::date AS day
+        FROM analytics_events e
+        WHERE e.occurred_at < (((now() AT TIME ZONE 'UTC')::date)::timestamp AT TIME ZONE 'UTC')
+      ) d
+      WHERE NOT EXISTS (
+        SELECT 1 FROM analytics_daily a WHERE a.dimension = 'kind' AND a.day = d.day
+      )
+      ORDER BY d.day
       LIMIT ${days}::int
     ),
     picked AS (
