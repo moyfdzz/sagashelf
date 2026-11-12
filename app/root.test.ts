@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   isSignedIn: vi.fn(),
   getHeaderState: vi.fn(),
+  getAnalyticsEnabled: vi.fn(),
 }));
 
 vi.mock("~server/auth/signed-in", () => ({ isSignedIn: mocks.isSignedIn }));
 vi.mock("~server/auth/header-facts", () => ({
   getHeaderState: mocks.getHeaderState,
+}));
+vi.mock("~server/runtime-env", () => ({
+  getAnalyticsEnabled: mocks.getAnalyticsEnabled,
 }));
 vi.mock("~/middleware/clerk", () => ({ authMiddleware: vi.fn() }));
 vi.mock("~/middleware/i18next", () => ({
@@ -23,6 +27,7 @@ beforeEach(() => {
   mocks.getHeaderState
     .mockReset()
     .mockResolvedValue({ isAdmin: false, username: "ana_reads", unread: 0 });
+  mocks.getAnalyticsEnabled.mockReset().mockReturnValue(false);
 });
 
 const load = async () => {
@@ -49,6 +54,7 @@ describe("the loader of the root: what the header needs (SAG-95, SAG-102, SAG-11
     // A yes or no, the username for the link to the profile, the picture and a count: never the
     // role, the id or the email of the person.
     expect(Object.keys(root).sort()).toEqual([
+      "analytics",
       "avatarUrl",
       "isAdmin",
       "locale",
@@ -103,5 +109,32 @@ describe("the loader of the root: what the header needs (SAG-95, SAG-102, SAG-11
       unread: 0,
     });
     expect(mocks.getHeaderState).not.toHaveBeenCalled();
+  });
+});
+
+describe("the loader of the root: the tracker of the analytics (SAG-24)", () => {
+  it("does not load the tracker where the deployment has not switched it on", async () => {
+    mocks.getAnalyticsEnabled.mockReturnValue(false);
+
+    expect(await load()).toMatchObject({ analytics: false });
+  });
+
+  it("loads it for a person with a session and for a visitor when it is on", async () => {
+    mocks.getAnalyticsEnabled.mockReturnValue(true);
+    expect(await load()).toMatchObject({ analytics: true });
+
+    mocks.isSignedIn.mockResolvedValue(false);
+    expect(await load()).toMatchObject({ analytics: true });
+  });
+
+  it("never loads it for an administrator, so the owner is not counted", async () => {
+    mocks.getAnalyticsEnabled.mockReturnValue(true);
+    mocks.getHeaderState.mockResolvedValue({
+      isAdmin: true,
+      username: "ana_reads",
+      unread: 0,
+    });
+
+    expect(await load()).toMatchObject({ analytics: false });
   });
 });

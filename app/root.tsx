@@ -13,6 +13,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { Analytics } from "~/components/Analytics";
 import { ErrorPage } from "~/components/ErrorPage";
 import { Footer } from "~/components/Footer";
 import { SkipLink } from "~/components/SkipLink";
@@ -23,6 +24,7 @@ import { readTheme } from "~/lib/theme";
 import { getLocale, i18nextMiddleware } from "~/middleware/i18next";
 import { getHeaderState } from "~server/auth/header-facts";
 import { isSignedIn } from "~server/auth/signed-in";
+import { getAnalyticsEnabled } from "~server/runtime-env";
 
 export const middleware = [i18nextMiddleware, authMiddleware];
 
@@ -57,6 +59,9 @@ export async function loader(args: Route.LoaderArgs) {
     avatarUrl: header.avatarUrl,
     // How many notifications are unread, for the link in the header (SAG-102). 99 is the most shown.
     unread: header.unread,
+    // Whether the pages load the tracker of the analytics (SAG-24, ADR-050): only where the
+    // deployment switched it on, and never for an administrator, so the owner's visits are not counted.
+    analytics: getAnalyticsEnabled() && !header.isAdmin,
   });
 }
 
@@ -69,6 +74,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const unread = rootData?.unread ?? 0;
   const username = rootData?.username ?? null;
   const avatarUrl = rootData?.avatarUrl ?? null;
+  const analytics = rootData?.analytics ?? false;
 
   return (
     <html
@@ -99,6 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
         <Footer />
+        {analytics && <Analytics />}
         <ScrollRestoration />
         <Scripts />
       </body>

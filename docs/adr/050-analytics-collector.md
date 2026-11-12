@@ -44,6 +44,18 @@
 - The new rate limit is a change of `wrangler.jsonc` and needs its own namespace ids.
 - The migration is applied by hand in production (`0033`). Until it is, the collector answers 500 and the tracker (next pull request) is not shipped, so nothing is lost.
 
+## Amendment: the tracker (SAG-24, 2026-11-12)
+
+Decided with the owner when the tracker was built. It changes two things the text above (and ADR-009) said.
+
+- **A switch, off by default.** `ANALYTICS_ENABLED` (a plain variable, unset in CI and in previews) decides whether the pages load the tracker. The owner turns it on only after the privacy policy describes what is measured, so nothing is measured before the text says so. `e2e/analytics-off.spec.ts` fixes the default: no public page calls the collector.
+- **The events of the funnel are written by the server, not by the browser.** Adding to the library and following are recorded inside their own actions, only when the action worked, so they cannot be forged from a script and an ad blocker cannot cut them. The tracker in the browser sends the page view, the time on the page and the type of a search. This replaces the ADR-009 line that has the tracker send the funnel, and it is built in its own pull request. Signing up is not an event: the number of accounts comes from the `users` table for the admin dashboard (SAG-26).
+- **The owner is not measured when signed in as an administrator.** The root loader already knows the role, so it tells the page not to load the tracker. Nothing is kept in the browser (no cookie, no storage); a visit with no session is measured.
+- **A page is a kind of page, not an address.** The tracker sends `/u/:username`, `/sagas/:slug` or `/:splat` (an address nobody wrote a page for), so the name of a person, the slug of a title and a mistyped address never leave the browser. Values from a short list we wrote (the type of a title, a list kind, a status) stay as they are, to count by type.
+- **Of the referrer only the site travels** (`https://www.google.com`, not the path or the query), and a move between our own pages is sent as our own origin. The collector still keeps only its class and host.
+- **Do Not Track and Global Privacy Control are asked twice:** the browser sends nothing, and the collector drops it if it arrives.
+- **One tracker per document, outside the component.** React mounts the component again when a navigation shows a route; a tracker made by each mount lost which page was first and the time already seen (found by driving a real Chrome, not by the unit tests).
+
 ## Open questions
 
 - Whether the compute hours stay under the Free plan once the tracker is live (measure for a few weeks).

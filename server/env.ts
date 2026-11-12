@@ -42,6 +42,10 @@ const envSchema = z.object({
   // button and the delivery job. It needs no key (the address is the person's, kept in their row), so
   // it is a plain variable, unset in CI and in previews, where nothing is ever sent.
   WEBHOOKS_ENABLED: z.enum(["true", "false"]).optional(),
+  // Switches the tracker of the cookieless analytics on (SAG-24, ADR-050). Off, no page loads it and
+  // nothing is measured. It is turned on only once the privacy policy describes what is measured.
+  // A plain variable, unset in CI and in previews.
+  ANALYTICS_ENABLED: z.enum(["true", "false"]).optional(),
   // The moderation service that checks a profile picture before it is saved (SAG-109, ADR-037). The
   // user is an id and the secret a Workers secret. With either one missing nobody can upload a
   // picture, which is the case in CI and in previews, where nothing is ever sent.
