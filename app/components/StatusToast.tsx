@@ -41,7 +41,7 @@ export function StatusToast({ children }: { children: ReactNode }) {
         type="button"
         onClick={() => setOpen(false)}
         aria-label={t("common.close")}
-        className="focus-visible:outline-success-edge -m-1 rounded-md p-1 hover:bg-black/10 focus-visible:outline-2 dark:hover:bg-white/10"
+        className="focus-visible:outline-success-edge -m-2.5 rounded-md p-2.5 hover:bg-black/10 focus-visible:outline-2 dark:hover:bg-white/10"
       >
         <svg
           aria-hidden="true"

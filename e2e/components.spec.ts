@@ -233,6 +233,32 @@ test.describe("the account menu", () => {
   });
 });
 
+test.describe("the toast", () => {
+  test.beforeEach(async ({ page }) => {
+    await mountComponent(page, "toast");
+  });
+
+  test("has a close button of at least 40 px (SAG-252), reached and pressed with the keyboard", async ({
+    page,
+  }) => {
+    const close = page.getByRole("button", { name: "Cerrar" });
+    await expect(close).toBeVisible();
+    const box = await close.boundingBox();
+    // 40 px, with a tenth of a pixel of room for the rounding of the layout.
+    expect(box?.width).toBeGreaterThanOrEqual(39.9);
+    expect(box?.height).toBeGreaterThanOrEqual(39.9);
+
+    // Tab until the close button has the focus, whatever else the page has before it.
+    for (let stops = 0; stops < 6; stops += 1) {
+      if (await close.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(close).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Tu entrada se guardó.")).toHaveCount(0);
+  });
+});
+
 test.describe("the search field", () => {
   test.beforeEach(async ({ page }) => {
     await mountComponent(page, "search");

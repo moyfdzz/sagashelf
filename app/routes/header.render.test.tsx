@@ -259,6 +259,15 @@ describe("the header on a phone (SAG-104)", () => {
     expect(logo).toContain("text-2xl");
   });
 
+  it("gives the switches of the header a height of 40 px (SAG-252)", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const theme = classesOf(tag(html, /<button [^>]*role="switch"[^>]*>/));
+    const language = classesOf(tag(html, /<button [^>]*value="es"[^>]*>/));
+
+    expect(theme).toContain("size-10");
+    expect(language).toContain("min-h-10");
+  });
+
   it("opens the panel under the button: both are in one box, and the panel hangs from its bottom, right-aligned", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn />);
     const button = tag(html, /<button [^>]*aria-expanded[^>]*>/);

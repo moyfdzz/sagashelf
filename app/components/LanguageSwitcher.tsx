@@ -30,7 +30,7 @@ export function LanguageSwitcher() {
           // The visible text is `ES` or `EN` below 1280 px, so the name says the whole word.
           aria-label={localeNames[locale]}
           aria-pressed={i18n.language === locale}
-          className={`rounded-md px-2 py-1 text-sm font-semibold transition-colors ${
+          className={`min-h-10 rounded-md px-2 py-1 text-sm font-semibold transition-colors ${
             i18n.language === locale
               ? "bg-accent text-accent-fg"
               : "text-fg-muted hover:bg-fg/10 hover:text-accent"
