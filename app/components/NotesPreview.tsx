@@ -92,7 +92,7 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
         <summary
           ref={icon}
           aria-label={t("library.notes.button", { title })}
-          className="border-border text-fg-muted hover:border-accent hover:text-accent focus-visible:outline-accent inline-flex size-8 cursor-pointer list-none items-center justify-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
+          className="border-border text-fg-muted hover:border-accent hover:text-accent focus-visible:outline-accent inline-flex size-10 cursor-pointer list-none items-center justify-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden"
         >
           <svg
             aria-hidden="true"
@@ -124,7 +124,7 @@ export function NotesPreview({ title, notes, entryHref }: Props) {
                 setOpen(false);
                 dialog.current?.showModal();
               }}
-              className={`${secondaryButtonClass} mt-3`}
+              className={`${secondaryButtonClass} mt-3 min-h-10`}
             >
               {t("library.notes.full")}
             </button>

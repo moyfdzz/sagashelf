@@ -116,7 +116,7 @@ export default function Library({ loaderData }: Route.ComponentProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <h1 className="text-3xl font-bold">{t("library.title")}</h1>
         {/* A page of the session: a plain anchor, which loads a whole new document (ADR-018). */}
-        <a href="/lists" className={`${forwardLinkClass} inline-block py-2.5`}>
+        <a href="/lists" className={forwardLinkClass}>
           {t("library.listsLink")}
         </a>
       </div>

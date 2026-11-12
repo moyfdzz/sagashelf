@@ -195,10 +195,10 @@ describe("the page of the lists of a person (SAG-113)", () => {
     expect(remove).toContain(`href="/lists?confirm=${otherId}"`);
     expect(remove).toContain("bg-danger-bg");
     expect(edit).not.toContain("bg-danger-bg");
-    // The owner chose small ones (32 px) over 40 px on 2026-11-08.
-    expect(edit).toContain("size-8");
-    expect(remove).toContain("size-8");
-    expect(html).not.toContain("size-10");
+    // 40 px, the project minimum (SAG-258; they were 32 px by the owner's choice of 2026-11-08).
+    expect(edit).toContain("size-10");
+    expect(remove).toContain("size-10");
+    expect(html).not.toContain("size-8");
     // The icons are drawn, hidden from a screen reader, and nothing else is written in the buttons.
     expect(html.match(/<svg [^>]*aria-hidden="true"/g)?.length).toBe(4);
     expect(html).toContain("lucide-pencil");

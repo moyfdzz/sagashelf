@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { linkClass } from "../app/lib/ui";
+
 // A person who asked for less motion gets none, and the controls of the header have a size to press
 // (SAG-252). The first test reads the computed style, so it holds for every element, now and later.
 
@@ -93,4 +95,73 @@ test.describe("the switches of the header", () => {
       expect(language?.width, name).toBeGreaterThanOrEqual(24);
     }
   });
+});
+
+// Every control that stands on its own is at least 40 px high, the project minimum (SAG-258), on the
+// pages the E2E job can open. A link inside a sentence is left out (WCAG 2.2, 2.5.8 exempts it), and
+// so is the skip link, which is hidden until it has the focus. The pages that need a session are
+// measured from the HTML of the render tests with `npm run test:a11y`'s capture, not here.
+test.describe("the controls of the public pages", () => {
+  for (const path of ["/", "/privacy", "/community", "/credits", "/search"]) {
+    test(`${path} has no control under 40 px`, async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 800 });
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+
+      const small = await page.evaluate(() => {
+        const found: string[] = [];
+        const selector =
+          "a[href], button, summary, input:not([type=hidden]), select, textarea, [role=switch]";
+        for (const el of Array.from(document.querySelectorAll(selector))) {
+          const box = el.getBoundingClientRect();
+          if (box.width <= 1 || box.height <= 1) continue; // hidden, or the skip link
+          if (getComputedStyle(el).visibility === "hidden") continue;
+          // In a sentence: the parent has words of its own around the element.
+          const inSentence = Array.from(
+            el.parentElement?.childNodes ?? [],
+          ).some(
+            (node) =>
+              node.nodeType === Node.TEXT_NODE &&
+              (node.textContent ?? "").trim().length > 3,
+          );
+          if (inSentence) continue;
+          if (box.height < 39.5) {
+            const name = el.getAttribute("aria-label") ?? el.textContent ?? "";
+            found.push(
+              `${el.tagName.toLowerCase()} "${name.trim().slice(0, 30)}" ${Math.round(box.height)} px`,
+            );
+          }
+        }
+        return found;
+      });
+
+      expect(small).toEqual([]);
+    });
+  }
+});
+
+// A link is a flex box now, and a long word with no spaces (a username) must still break inside it
+// instead of running out of the page. Added and measured in one step, as the hydration would remove
+// a node it did not draw.
+test("a link with a very long word does not widen the page at 320 px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/privacy");
+  await page.waitForLoadState("networkidle");
+
+  const overflow = await page.evaluate((className) => {
+    const link = document.createElement("a");
+    link.href = "/";
+    link.className = className;
+    link.textContent = "a".repeat(80);
+    document.querySelector("main")?.append(link);
+    return (
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth
+    );
+  }, linkClass);
+
+  // Negative on a desktop browser: its scrollbar takes 15 px of the 320.
+  expect(overflow).toBeLessThanOrEqual(0);
 });

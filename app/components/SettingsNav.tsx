@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 const linkClass =
-  "text-fg-muted hover:text-accent focus-visible:outline-accent rounded-md px-3 py-2 font-semibold whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
+  "text-fg-muted hover:text-accent focus-visible:outline-accent inline-flex min-h-10 items-center rounded-md px-3 py-2 font-semibold whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
 
 /**
  * Jumps to the sections of the settings page, and links to the notifications page (SAG-27). It wraps

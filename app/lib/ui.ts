@@ -8,18 +8,17 @@ const focus =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2";
 
 /**
- * A button that is only an icon (SAG-113): a square of 32 px, which the owner chose on 2026-11-08
- * over 40 px as too big. It is above the 24 px that WCAG 2.2 asks of a target (2.5.8), and the
- * space between two of them is 8 px, but it is smaller than the 40 px of the buttons with text. It
- * has no text, so the element that uses it must carry an `aria-label`, and the icon is hidden from
- * a screen reader. The second is for an action that destroys something.
+ * A button that is only an icon (SAG-113): a square of 40 px, the project minimum for a target
+ * (SAG-258; it was 32 px, which the owner chose on 2026-11-08 and which met only the 24 px of WCAG
+ * 2.2, 2.5.8). It has no text, so the element that uses it must carry an `aria-label`, and the
+ * icon is hidden from a screen reader. The second is for an action that destroys something.
  */
-export const iconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-8 items-center justify-center rounded-md border hover:brightness-95`;
-export const dangerIconButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} inline-flex size-8 items-center justify-center rounded-md border hover:brightness-95`;
+export const iconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-10 items-center justify-center rounded-md border hover:brightness-95`;
+export const dangerIconButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} inline-flex size-10 items-center justify-center rounded-md border hover:brightness-95`;
 
 /**
- * The same, 40 px, for the buttons that are pressed in a column on a phone (the move and remove
- * buttons of the titles of a list). It can be turned off.
+ * The same as `iconButtonClass`, for the buttons that are pressed in a column on a phone (the move
+ * and remove buttons of the titles of a list). It can be turned off.
  */
 export const largeIconButtonClass = `border-input-edge bg-surface text-fg ${focus} inline-flex size-10 items-center justify-center rounded-md border hover:brightness-95 disabled:opacity-50`;
 
@@ -30,9 +29,11 @@ export const primaryButtonClass = `bg-accent text-accent-fg ${focus} rounded-md 
  * profile): the color of the text, in semibold, with no underline, which turns amber under the
  * pointer and under the keyboard focus (SAG-114). A list or a line of links is understood as links by
  * where it is, as the links of the header are. No transition for a person who asked for less motion.
- * Inside a sentence use `textLinkClass`.
+ * Inside a sentence use `textLinkClass`. It is a target of 40 px, like a button (SAG-258), and never
+ * wider than its container: `anywhere` lets a long word with no spaces (a username) break inside
+ * the flex box, which `break-word` does not.
  */
-export const linkClass = `text-fg font-semibold ${focus} rounded-sm transition-colors duration-150 hover:text-link-hover focus-visible:text-link-hover motion-reduce:transition-none`;
+export const linkClass = `text-fg font-semibold ${focus} inline-flex min-h-10 max-w-full items-center rounded-sm [overflow-wrap:anywhere] transition-colors duration-150 hover:text-link-hover focus-visible:text-link-hover motion-reduce:transition-none`;
 
 /**
  * A link inside a sentence: blue, a thin underline a little apart from the text, and amber under the
@@ -61,8 +62,8 @@ export const secondaryButtonClass = `border-input-edge bg-surface text-fg ${focu
  */
 export const dangerButtonClass = `border-danger-edge bg-danger-bg text-danger-fg ${focus} rounded-md border px-4 py-2 font-semibold hover:brightness-95 disabled:opacity-60`;
 
-/** A small button inside a line or a card, like the "+1": the same edge as the others, less padding. */
-export const smallButtonClass = `border-input-edge bg-surface text-fg ${focus} rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 disabled:opacity-60`;
+/** A small button inside a line or a card, like the "+1": the same edge as the others, less text, and still 40 px high (SAG-258). */
+export const smallButtonClass = `border-input-edge bg-surface text-fg ${focus} min-h-10 rounded-md border px-2.5 py-0.5 text-sm font-semibold hover:brightness-95 disabled:opacity-60`;
 
 // What the two link-buttons share, so that they do not drift apart.
 const linkButton = `${secondaryButtonClass} inline-block`;
@@ -80,7 +81,7 @@ export const wrappingSecondaryLinkClass = `${linkButton} max-w-full text-center 
 
 /** One of several tabs: the chosen one is filled, the others have a border. */
 export const tabClass = (selected: boolean) =>
-  `${focus} inline-block rounded-md border px-3 py-1.5 font-semibold transition-colors ${
+  `${focus} inline-flex min-h-10 items-center rounded-md border px-3 py-1.5 font-semibold transition-colors ${
     selected
       ? "bg-accent text-accent-fg border-transparent"
       : "border-border text-fg hover:border-accent"
@@ -88,7 +89,7 @@ export const tabClass = (selected: boolean) =>
 
 /** One of the options of a group that sits inside a shared border (see `segmentedGroupClass`). */
 export const segmentClass = (selected: boolean) =>
-  `${focus} block px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+  `${focus} flex min-h-10 items-center px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
     selected ? "bg-accent text-accent-fg" : "text-fg hover:bg-surface-raised"
   }`;
 

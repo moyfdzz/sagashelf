@@ -101,7 +101,7 @@ export default function SagasPage({ loaderData }: Route.ComponentProps) {
         <p className="mt-4">
           {searching ? t("sagas.noResults") : t("sagas.empty")}{" "}
           {searching ? (
-            <Link to="/sagas" className={`${linkClass} inline-block py-2`}>
+            <Link to="/sagas" className={linkClass}>
               {t("sagas.showAll")}
             </Link>
           ) : null}
@@ -115,7 +115,7 @@ export default function SagasPage({ loaderData }: Route.ComponentProps) {
             >
               <Link
                 to={`/sagas/${saga.slug}`}
-                className={`${linkClass} block py-2 text-lg break-words`}
+                className={`${linkClass} text-lg break-words`}
               >
                 {saga.title}
               </Link>

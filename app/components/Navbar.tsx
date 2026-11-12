@@ -147,7 +147,7 @@ export function Navbar({
       <div className="container mx-auto flex flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3 xl:gap-x-4">
         <Link
           to="/"
-          className="text-accent mr-auto flex shrink-0 items-center gap-2 text-2xl font-bold whitespace-nowrap xl:order-1 xl:mr-0"
+          className="text-accent mr-auto flex min-h-10 shrink-0 items-center gap-2 text-2xl font-bold whitespace-nowrap xl:order-1 xl:mr-0"
         >
           <LogoMark className="h-8 w-8 shrink-0" />
           {t("app.name")}
@@ -165,7 +165,7 @@ export function Navbar({
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((value) => !value)}
-            className={`border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 flex items-center gap-2 rounded-md border px-2 py-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 min-[420px]:px-3 xl:hidden ${focusClass}`}
+            className={`border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 flex min-h-10 items-center gap-2 rounded-md border px-2 py-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 min-[420px]:px-3 xl:hidden ${focusClass}`}
           >
             <svg
               aria-hidden="true"
