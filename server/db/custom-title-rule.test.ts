@@ -56,6 +56,8 @@ const showTitlesToOthers: Record<string, number> = {
   "db/profile-lists.ts": 2,
   // The three sections of a profile and one page of a section.
   "db/profile-library.ts": 2,
+  // The favorites of the site: the titles counted, and the titles shown.
+  "db/site-favorites.ts": 2,
 };
 
 // SAG-247: reads of `media_items` that do not use the rule, per file, as they were checked when
