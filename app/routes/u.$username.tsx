@@ -15,6 +15,7 @@ import {
   secondaryLinkClass,
 } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
+import { recordFunnelEvent } from "~server/analytics/funnel";
 import { getOptionalUser, requireUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import {
@@ -275,6 +276,14 @@ export async function action(args: Route.ActionArgs) {
   switch (parsed.data.intent) {
     case "follow": {
       const result = await followUser(db, user.id, params.username);
+      // The step of the funnel (SAG-24), only when the person really follows now. A request to a
+      // private profile is not a follow yet.
+      if (result === "followed") {
+        recordFunnelEvent(request, user, {
+          kind: "follow",
+          path: "/u/:username",
+        });
+      }
       return redirect(
         result === "followed"
           ? `${back}?notice=followed`

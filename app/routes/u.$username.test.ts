@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   getProfileSections: vi.fn(),
   listViewableLists: vi.fn(),
   followUser: vi.fn(),
+  recordFunnelEvent: vi.fn(),
   unfollowUser: vi.fn(),
   muteUser: vi.fn(),
   unmuteUser: vi.fn(),
@@ -25,6 +26,9 @@ const mocks = vi.hoisted(() => ({
   locale: "es",
 }));
 
+vi.mock("~server/analytics/funnel", () => ({
+  recordFunnelEvent: mocks.recordFunnelEvent,
+}));
 vi.mock("~server/auth/require", () => ({
   getOptionalUser: mocks.getOptionalUser,
   requireUser: mocks.requireUser,
@@ -99,6 +103,7 @@ beforeEach(() => {
   mocks.getOptionalUser.mockReset().mockResolvedValue(session);
   mocks.requireUser.mockReset().mockResolvedValue(session);
   mocks.getDb.mockReset().mockResolvedValue(db);
+  mocks.recordFunnelEvent.mockReset();
   mocks.limit.mockReset().mockResolvedValue({ success: true });
   mocks.findProfile.mockReset().mockResolvedValue({
     owner: head(),
@@ -715,6 +720,42 @@ describe("the profile page: the buttons (POST)", () => {
         status: 303,
         to: "/u/ana_reads?notice=followed",
       });
+    });
+
+    it("records the step of the funnel when the person follows now (SAG-24)", async () => {
+      await submit({ intent: "follow" });
+
+      expect(mocks.recordFunnelEvent).toHaveBeenCalledTimes(1);
+      const [request, user, event] =
+        mocks.recordFunnelEvent.mock.calls[0] ?? [];
+      expect(request).toBeInstanceOf(Request);
+      expect(user).toBe(session);
+      expect(event).toEqual({ kind: "follow", path: "/u/:username" });
+    });
+
+    it.each(["unavailable", "too_many"])(
+      "records nothing when the follow is %s",
+      async (answer) => {
+        mocks.followUser.mockResolvedValue(answer);
+
+        await submit({ intent: "follow" });
+
+        expect(mocks.recordFunnelEvent).not.toHaveBeenCalled();
+      },
+    );
+
+    it("records nothing for the other buttons, a request to follow included", async () => {
+      for (const intent of [
+        "request",
+        "cancel_request",
+        "unfollow",
+        "mute",
+        "unmute",
+      ]) {
+        await submit({ intent });
+      }
+
+      expect(mocks.recordFunnelEvent).not.toHaveBeenCalled();
     });
 
     it.each(["unavailable", "too_many"])(

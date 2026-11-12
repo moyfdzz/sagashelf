@@ -2,6 +2,7 @@ import { data, redirect, redirectDocument } from "react-router";
 
 import type { Route } from "./+types/library.add-external";
 import { getLocale } from "~/middleware/i18next";
+import { recordFunnelEvent } from "~server/analytics/funnel";
 import { getOptionalUser } from "~server/auth/require";
 import { signInPath } from "~server/auth/sign-in-url";
 import { addEntry } from "~server/db/library";
@@ -123,6 +124,12 @@ export async function action(args: Route.ActionArgs) {
   if (!(await addEntry(db, user.id, title.id))) {
     return refuse("not_found", 404);
   }
+
+  // The step of the funnel (SAG-24): written by the server, only when the title was added.
+  recordFunnelEvent(request, user, {
+    kind: "add_to_library",
+    path: "/library/add-external",
+  });
 
   return asksForData(request)
     ? data(

@@ -1,16 +1,19 @@
 import type { Route } from "./+types/api.collect";
 import {
+  canMeasure,
   collectEventSchema,
-  isRobot,
   maxCollectBytes,
-  optedOut,
 } from "~server/analytics/event";
 import { recordEvent } from "~server/analytics/record";
 import { drainBody, readText } from "~server/http/body";
 import { privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
 import { rateLimit } from "~server/rate-limit";
-import { getCollectLimiter, getDb } from "~server/runtime-env";
+import {
+  getAnalyticsEnabled,
+  getCollectLimiter,
+  getDb,
+} from "~server/runtime-env";
 
 const empty = (status: number) =>
   new Response(null, { status, headers: privateHeaders });
@@ -44,13 +47,9 @@ export async function action({ request }: Route.ActionArgs) {
     return limited;
   }
 
-  // Without the address Cloudflare sets there is no visitor to tell apart (a preview behind a proxy,
-  // a call that did not come through the edge): every browser of one kind would be the same visitor.
-  if (
-    optedOut(request.headers) ||
-    isRobot(request.headers) ||
-    !request.headers.get("CF-Connecting-IP")
-  ) {
+  // Where the analytics are off, or for a visitor who asked not to be measured, a robot or a call
+  // that did not come through the edge, nothing is kept (see `canMeasure`).
+  if (!getAnalyticsEnabled() || !canMeasure(request.headers)) {
     await drainBody(request);
     return empty(204);
   }
