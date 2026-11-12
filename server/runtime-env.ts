@@ -64,6 +64,11 @@ export function getImageCache() {
   return defaultCache();
 }
 
+/** Where the worldwide trending list keeps its copy, for an hour (SAG-23, ADR-051). */
+export function getTrendingCache() {
+  return defaultCache();
+}
+
 /**
  * The search cache on the Workers Cache API, or one that keeps nothing when the runtime has no
  * `caches` (the Cache API may not run on every host, so the search must work without it).
