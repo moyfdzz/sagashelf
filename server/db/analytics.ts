@@ -10,7 +10,8 @@ import type { SqlExecutor } from "./clerk-sync";
 /**
  * The salt of `day` (`YYYY-MM-DD`, UTC). The first call of the day stores `candidate`, a random
  * value the caller made, and every call after that returns the stored one. It also deletes the salts
- * older than yesterday, so a hash of an earlier day cannot be recomputed. Returns null when another
+ * older than yesterday (by the clock of the database), so a hash of an earlier day cannot be
+ * recomputed. Returns null when another
  * call stored the salt at the same moment and this statement could not see it yet: ask again.
  */
 export async function getDailySalt(
@@ -25,8 +26,11 @@ export async function getDailySalt(
       ON CONFLICT (day) DO NOTHING
       RETURNING salt
     ),
+    -- By the clock of the database, not by the day the caller says: a Worker with a wrong clock
+    -- must not delete a salt that other Workers still use.
     pruned AS (
-      DELETE FROM analytics_salts WHERE day < ${day}::date - 1 RETURNING 1
+      DELETE FROM analytics_salts
+      WHERE day < (now() AT TIME ZONE 'UTC')::date - 1 RETURNING 1
     )
     SELECT salt FROM fresh
     UNION ALL

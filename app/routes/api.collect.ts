@@ -22,6 +22,15 @@ const empty = (status: number) =>
  * a robot (answered as if it had been counted, and nothing is kept), and then the event.
  */
 export async function action({ request }: Route.ActionArgs) {
+  // The framework runs an action for PUT, PATCH and DELETE too; only a beacon, which is a POST, counts.
+  if (request.method !== "POST") {
+    await drainBody(request);
+    return new Response(null, {
+      status: 405,
+      headers: { ...privateHeaders, Allow: "POST" },
+    });
+  }
+
   // A page on another site must not be able to fill the numbers of this one.
   const unsafe = checkWrite(request, maxCollectBytes);
   if (unsafe) {
@@ -35,7 +44,13 @@ export async function action({ request }: Route.ActionArgs) {
     return limited;
   }
 
-  if (optedOut(request.headers) || isRobot(request.headers)) {
+  // Without the address Cloudflare sets there is no visitor to tell apart (a preview behind a proxy,
+  // a call that did not come through the edge): every browser of one kind would be the same visitor.
+  if (
+    optedOut(request.headers) ||
+    isRobot(request.headers) ||
+    !request.headers.get("CF-Connecting-IP")
+  ) {
     await drainBody(request);
     return empty(204);
   }
@@ -57,5 +72,8 @@ export async function action({ request }: Route.ActionArgs) {
 
 // Opening this URL directly records nothing.
 export function loader() {
-  return empty(405);
+  return new Response(null, {
+    status: 405,
+    headers: { ...privateHeaders, Allow: "POST" },
+  });
 }

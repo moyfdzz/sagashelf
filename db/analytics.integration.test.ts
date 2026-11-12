@@ -110,38 +110,56 @@ describe("analytics_events", () => {
   });
 });
 
+/** A day in UTC, counted from today by the clock of this machine, as `YYYY-MM-DD`. */
+const day = (fromToday: number) =>
+  new Date(Date.now() + fromToday * 86_400_000).toISOString().slice(0, 10);
+
+const savedDays = async () =>
+  (
+    await db.execute(
+      sql`SELECT day::text AS day FROM analytics_salts ORDER BY day`,
+    )
+  ).rows.map((row) => row.day);
+
 describe("getDailySalt", () => {
   it("stores the first salt of the day and returns that one to everybody after", async () => {
-    expect(await getDailySalt(db, "2026-11-12", "first")).toBe("first");
-    expect(await getDailySalt(db, "2026-11-12", "second")).toBe("first");
-    expect(await getDailySalt(db, "2026-11-12", "third")).toBe("first");
+    expect(await getDailySalt(db, day(0), "first")).toBe("first");
+    expect(await getDailySalt(db, day(0), "second")).toBe("first");
+    expect(await getDailySalt(db, day(0), "third")).toBe("first");
   });
 
   it("gives every day its own salt", async () => {
-    expect(await getDailySalt(db, "2026-11-12", "monday")).toBe("monday");
-    expect(await getDailySalt(db, "2026-11-13", "tuesday")).toBe("tuesday");
+    expect(await getDailySalt(db, day(0), "today")).toBe("today");
+    expect(await getDailySalt(db, day(1), "tomorrow")).toBe("tomorrow");
   });
 
   it("deletes the salts older than yesterday, so an old hash cannot be recomputed", async () => {
-    await getDailySalt(db, "2026-11-10", "old");
-    await getDailySalt(db, "2026-11-11", "yesterday");
-    await getDailySalt(db, "2026-11-12", "today");
+    await getDailySalt(db, day(-3), "old");
+    await getDailySalt(db, day(-1), "yesterday");
+    await getDailySalt(db, day(0), "today");
 
-    const { rows } = await db.execute(
-      sql`SELECT day::text AS day FROM analytics_salts ORDER BY day`,
-    );
-    expect(rows.map((row) => row.day)).toEqual(["2026-11-11", "2026-11-12"]);
+    expect(await savedDays()).toEqual([day(-1), day(0)]);
+  });
+
+  it("prunes by the clock of the database, so a Worker with a wrong clock deletes nothing of today", async () => {
+    await getDailySalt(db, day(0), "today");
+    await getDailySalt(db, day(-1), "yesterday");
+
+    // A Worker whose clock is a week ahead asks for its own day.
+    await getDailySalt(db, day(7), "future");
+
+    expect(await savedDays()).toEqual([day(-1), day(0), day(7)]);
   });
 
   it("returns one salt to every caller of the same moment", async () => {
     const answers = await Promise.all(
       ["a", "b", "c", "d", "e", "f"].map((candidate) =>
-        getDailySalt(db, "2026-11-12", candidate),
+        getDailySalt(db, day(0), candidate),
       ),
     );
     // A caller that could not see the salt yet is told to ask again, never given another one.
     const given = new Set(answers.filter((salt) => salt !== null));
     expect(given.size).toBe(1);
-    expect(await getDailySalt(db, "2026-11-12", "late")).toBe([...given][0]);
+    expect(await getDailySalt(db, day(0), "late")).toBe([...given][0]);
   });
 });

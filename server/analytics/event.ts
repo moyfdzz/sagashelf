@@ -8,19 +8,23 @@ import { z } from "zod";
 
 const mediaKinds = ["anime", "movie", "series", "book", "manga"] as const;
 
-/** A path of this site: no query string, no fragment, no spaces. */
+/** Postgres cannot store the NUL character in text: it would turn a request into a server error. */
+const hasNoNul = (value: string) => !value.includes("\u0000");
+
+/** A path of this site: no query string, no fragment, no spaces, no NUL. */
 const pathSchema = z
   .string()
   .max(200)
-  .regex(/^\/[^?#\s]*$/);
+  .regex(/^\/[^?#\s]*$/)
+  .refine(hasNoNul);
 
-const utmSchema = z.string().trim().min(1).max(100).optional();
+const utmSchema = z.string().trim().min(1).max(100).refine(hasNoNul).optional();
 
 const pageviewSchema = z.object({
   kind: z.literal("pageview"),
   path: pathSchema,
   // The page the visitor came from. Only its class and its host are kept, never the address.
-  referrer: z.string().max(500).optional(),
+  referrer: z.string().max(500).refine(hasNoNul).optional(),
   utmSource: utmSchema,
   utmMedium: utmSchema,
   utmCampaign: utmSchema,
@@ -60,7 +64,7 @@ export const maxCollectBytes = 2048;
 export type ReferrerClass =
   "direct" | "search" | "social" | "internal" | "other";
 
-const searchHosts = [
+const searchEngines = [
   "google",
   "bing",
   "duckduckgo",
@@ -71,6 +75,15 @@ const searchHosts = [
   "baidu",
   "startpage",
 ];
+
+/**
+ * A search engine: its name, then only a country domain or a generic one (google.com, google.com.mx,
+ * google.co.uk, search.brave.com, www.bing.com). A host that merely has the name as one of its labels
+ * (google.evil.example) is not one.
+ */
+const searchHost = new RegExp(
+  `^(?:[a-z0-9-]+\\.)*(?:${searchEngines.join("|")})\\.(?:com?\\.)?[a-z]{2,3}$`,
+);
 
 const socialHosts = [
   "facebook.com",
@@ -116,8 +129,7 @@ export function classifyReferrer(
 
   const own = siteHost.toLowerCase().replace(/^www\./, "");
   if (hostIs(host, own)) return { class: "internal", host: null };
-  // google.com, www.google.com.mx, search.brave.com: the name of the engine is one label of the host.
-  if (host.split(".").some((label) => searchHosts.includes(label))) {
+  if (searchHost.test(host)) {
     return { class: "search", host: host.slice(0, 100) };
   }
   if (socialHosts.some((domain) => hostIs(host, domain))) {
@@ -164,9 +176,14 @@ export async function visitorHash(
 ): Promise<string> {
   const bytes = new TextEncoder().encode(`${salt}\n${address}\n${agent}`);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  return Array.from(digest.slice(0, 16), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
+  return toHex(digest.slice(0, 16));
+}
+
+/** Bytes as lowercase hex. */
+export function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
 }
 
 /** The day of a moment in UTC, as `YYYY-MM-DD`: the day of a salt. */

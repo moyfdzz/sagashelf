@@ -38,10 +38,16 @@ beforeEach(() => {
 function send(
   body: string,
   headers: Record<string, string> = {},
+  method = "POST",
 ): Promise<Response> {
   const request = new Request("http://localhost/api/collect", {
-    method: "POST",
-    headers: { Origin: "http://localhost", "User-Agent": browser, ...headers },
+    method,
+    headers: {
+      Origin: "http://localhost",
+      "User-Agent": browser,
+      "CF-Connecting-IP": "203.0.113.7",
+      ...headers,
+    },
     body,
   });
   return action({ request } as Route.ActionArgs) as Promise<Response>;
@@ -138,6 +144,22 @@ describe("POST /api/collect", () => {
       JSON.stringify({ kind: "pageview", path: "/search?q=secret" }),
     ],
     ["JSON that is not an object", "[1, 2]"],
+    [
+      "a NUL character in a path, which Postgres cannot store",
+      JSON.stringify({ kind: "pageview", path: "/a\u0000b" }),
+    ],
+    [
+      "a NUL character in a utm value",
+      JSON.stringify({ kind: "pageview", path: "/", utmSource: "x\u0000" }),
+    ],
+    [
+      "a NUL character in a referrer",
+      JSON.stringify({
+        kind: "pageview",
+        path: "/",
+        referrer: "http://h/\u0000",
+      }),
+    ],
   ])("answers 400 for %s", async (_name, body) => {
     const response = await send(body);
 
@@ -145,8 +167,36 @@ describe("POST /api/collect", () => {
     expect(mocks.recordEvent).not.toHaveBeenCalled();
   });
 
+  it("counts nothing without the address Cloudflare sets, and answers as if it had", async () => {
+    const request = new Request("http://localhost/api/collect", {
+      method: "POST",
+      headers: { Origin: "http://localhost", "User-Agent": browser },
+      body: pageview,
+    });
+    const response = (await action({
+      request,
+    } as Route.ActionArgs)) as Response;
+
+    expect(response.status).toBe(204);
+    expect(mocks.recordEvent).not.toHaveBeenCalled();
+  });
+
+  it.each(["PUT", "PATCH", "DELETE"])(
+    "does not count a %s, and says which method it takes",
+    async (method) => {
+      const response = await send(pageview, {}, method);
+
+      expect(response.status).toBe(405);
+      expect(response.headers.get("Allow")).toBe("POST");
+      expect(mocks.recordEvent).not.toHaveBeenCalled();
+    },
+  );
+
   it("opening the address with a GET stores nothing", () => {
-    expect(loader().status).toBe(405);
+    const response = loader();
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("POST");
     expect(mocks.recordEvent).not.toHaveBeenCalled();
   });
 });

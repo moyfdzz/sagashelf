@@ -61,6 +61,15 @@ describe("collectEventSchema", () => {
       { kind: "search", path: "/", type: "porn" },
     ],
     ["a search with no type", { kind: "search", path: "/" }],
+    ["a NUL in a path", { kind: "pageview", path: "/a\u0000" }],
+    [
+      "a NUL in a utm value",
+      { kind: "pageview", path: "/", utmMedium: "a\u0000" },
+    ],
+    [
+      "a NUL in a referrer",
+      { kind: "pageview", path: "/", referrer: "x\u0000" },
+    ],
     ["an empty utm value", { kind: "pageview", path: "/", utmSource: "  " }],
   ])("rejects %s", (_name, event) => {
     expect(collectEventSchema.safeParse(event).success).toBe(false);
@@ -106,6 +115,36 @@ describe("classifyReferrer", () => {
     );
     expect(JSON.stringify(result)).not.toContain("private");
     expect(JSON.stringify(result)).not.toContain("token");
+  });
+
+  it("does not take a host that only has the name of an engine as a label for a search engine", () => {
+    for (const host of [
+      "google.evil.example",
+      "bing.someblog.net",
+      "yahoo.example.org",
+      "brave.anything.io",
+      "google.evil.com",
+    ]) {
+      expect(classifyReferrer(`https://${host}/`, site).class, host).toBe(
+        "other",
+      );
+    }
+  });
+
+  it("takes the country domains and the subdomains of an engine for a search engine", () => {
+    for (const host of [
+      "google.com",
+      "www.google.com.mx",
+      "google.co.uk",
+      "google.es",
+      "search.brave.com",
+      "www.bing.com",
+      "es.search.yahoo.com",
+    ]) {
+      expect(classifyReferrer(`https://${host}/`, site).class, host).toBe(
+        "search",
+      );
+    }
   });
 
   it("does not take a site that merely ends like ours for ours", () => {

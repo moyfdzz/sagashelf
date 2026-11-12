@@ -3,6 +3,7 @@ import type { SqlExecutor } from "../db/clerk-sync";
 import {
   classifyReferrer,
   deviceFrom,
+  toHex,
   utcDay,
   visitorHash,
   type CollectEvent,
@@ -17,10 +18,7 @@ export function forgetCachedSalt() {
 }
 
 function randomSalt(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
-    "",
-  );
+  return toHex(crypto.getRandomValues(new Uint8Array(32)));
 }
 
 async function saltOf(db: SqlExecutor, day: string): Promise<string> {
@@ -42,21 +40,14 @@ function placeOf(request: Request): {
   region: string | null;
 } {
   const cf = (request as Request & { cf?: Record<string, unknown> }).cf;
-  const country = typeof cf?.country === "string" ? cf.country : null;
   const region =
     typeof cf?.region === "string" ? cf.region.slice(0, 100) : null;
+  const country = typeof cf?.country === "string" ? cf.country : "";
   // A country is two capital letters. "XX" and "T1" are two letters too but are not countries (they
   // are not described in the Cloudflare page read for ADR-050), so they are left out.
-  return {
-    country:
-      country &&
-      /^[A-Z]{2}$/.test(country) &&
-      country !== "XX" &&
-      country !== "T1"
-        ? country
-        : null,
-    region,
-  };
+  const isCountry =
+    /^[A-Z]{2}$/.test(country) && country !== "XX" && country !== "T1";
+  return { country: isCountry ? country : null, region };
 }
 
 /**

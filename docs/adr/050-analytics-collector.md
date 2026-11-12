@@ -16,7 +16,8 @@
 - **The visitor is the first 128 bits of SHA-256 over the salt, the address and the browser name**, in hex. The address and the browser name are read in the Worker, hashed and dropped: no column holds them (a test asserts the table has no column for an address, a city, a user or a browser name).
 - **Place: country and region only.** The city is not stored. The privacy of the visitor is the reason: with a small city, "city + day + browser" comes close to naming a person, and with the low traffic of the site a count per city would be a handful. A city can be added in a ticket of its own, with its text in the privacy policy. Cloudflare gives `request.cf.country` (two letters) and `request.cf.region` (the name of the first-level region); both are `string | null` and the page says no more about when they are missing (<https://developers.cloudflare.com/workers/runtime-apis/request/>, read 2026-11-12, last updated by Cloudflare on 2026-11-02). `XX` and `T1` are not described there and are not kept.
 - **What an event holds:** the kind, the path (no query string, no fragment), the visitor hash, and by kind: milliseconds of a visible tab, the type of a search (never its text), the class and host of the referrer (never its path or query), the three UTM values, the country, the region and mobile or desktop.
-- **Order of the checks:** size and `Origin`, rate limit, Do Not Track, Global Privacy Control and robots (answered as if counted, nothing kept), then the body. The robots filter uses `isbot` plus the names of headless browsers and Lighthouse; a request with no browser name is not counted.
+- **Order of the checks:** only `POST`, size and `Origin`, rate limit, Do Not Track, Global Privacy Control, robots and a request without the address Cloudflare sets (answered as if counted, nothing kept), then the body. The robots filter uses `isbot` plus the names of headless browsers and Lighthouse; a request with no browser name is not counted. Without `CF-Connecting-IP` there is no visitor to tell apart, so nothing is kept.
+- **The salt is pruned by the clock of the database,** not by the day the Worker says, so a Worker with a wrong clock cannot delete the salt other Workers still use.
 - **Its own rate limit,** `COLLECT_LIMITER`, 60 a minute per caller. A visitor sends a page view and a time on page for every page, and the 30 a minute of the write endpoints would drop events of a person who browses fast.
 - **Every answer is empty** (`204`, or the error status) and uncached, because `sendBeacon` ignores it.
 
@@ -37,6 +38,7 @@
 **Costs and risks**
 
 - Every counted event is a database write. If traffic grows, the Neon compute hours are the limit to watch (ADR-009).
+- **A public beacon can be forged.** The collector refuses a page of another site (`Origin`) and limits each caller, but anyone can send events from a script, and the events of the funnel (`signup`, `add_to_library`, `follow`) have no server-side proof that they happened. The numbers are a measure of use, not an audit; the figures that must be exact (users, entries, follows) come from their own tables in the admin dashboard (SAG-26).
 - A visitor on two days counts as two, and a visitor who changes browser or network counts as two on the same day. Counting without cookies is approximate.
 - Two requests of the first moment of a day can both miss the salt: the first call returns nothing and the route asks once more.
 - The new rate limit is a change of `wrangler.jsonc` and needs its own namespace ids.
