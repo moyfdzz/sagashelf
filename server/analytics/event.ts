@@ -165,6 +165,18 @@ export function isRobot(headers: Headers): boolean {
 }
 
 /**
+ * Whether a request may be measured at all, written once for the collector and for the events the
+ * server makes itself (SAG-24, ADR-050): the visitor did not ask not to be measured, it is not a
+ * robot, and it came through the edge. Without the address Cloudflare sets there is no visitor to
+ * tell apart (a preview behind a proxy): every browser of one kind would be the same visitor.
+ */
+export function canMeasure(headers: Headers): boolean {
+  return (
+    !optedOut(headers) && !isRobot(headers) && !!headers.get("CF-Connecting-IP")
+  );
+}
+
+/**
  * The visitor of one day: the first 128 bits of SHA-256 over the salt of the day, the address and
  * the browser, in hex. The address is read here and goes nowhere else; the salt is new every day, so
  * the same person cannot be followed from one day to the next.

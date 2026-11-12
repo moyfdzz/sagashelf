@@ -6,6 +6,7 @@ import type { CollectEvent } from "~server/analytics/event";
 
 // The real bindings only exist inside the Worker runtime.
 const mocks = vi.hoisted(() => ({
+  enabled: vi.fn<() => boolean>(() => true),
   limiter: {
     limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(
       async () => ({ success: true }),
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   >(async () => undefined),
 }));
 vi.mock("~server/runtime-env", () => ({
+  getAnalyticsEnabled: () => mocks.enabled(),
   getCollectLimiter: () => mocks.limiter,
   getDb: async () => ({}),
 }));
@@ -30,6 +32,7 @@ const browser =
   "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/130.0 Safari/537.36";
 
 beforeEach(() => {
+  mocks.enabled.mockReset().mockReturnValue(true);
   mocks.limiter.limit.mockClear();
   mocks.limiter.limit.mockResolvedValue({ success: true });
   mocks.recordEvent.mockClear();
@@ -164,6 +167,15 @@ describe("POST /api/collect", () => {
     const response = await send(body);
 
     expect(response.status).toBe(400);
+    expect(mocks.recordEvent).not.toHaveBeenCalled();
+  });
+
+  it("counts nothing where the deployment did not switch the analytics on, and answers as if it had", async () => {
+    mocks.enabled.mockReturnValue(false);
+
+    const response = await send(pageview);
+
+    expect(response.status).toBe(204);
     expect(mocks.recordEvent).not.toHaveBeenCalled();
   });
 

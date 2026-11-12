@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canMeasure,
   classifyReferrer,
   collectEventSchema,
   deviceFrom,
@@ -207,6 +208,30 @@ describe("isRobot", () => {
 
   it("counts a person with a browser", () => {
     expect(isRobot(new Headers({ "User-Agent": browser }))).toBe(false);
+  });
+});
+
+describe("canMeasure", () => {
+  const person = {
+    "User-Agent": browser,
+    "CF-Connecting-IP": "203.0.113.7",
+  };
+
+  it("measures a person with a browser who came through the edge", () => {
+    expect(canMeasure(new Headers(person))).toBe(true);
+  });
+
+  it.each([
+    ["Do Not Track", { DNT: "1" }],
+    ["Global Privacy Control", { "Sec-GPC": "1" }],
+    ["a robot", { "User-Agent": "Googlebot/2.1" }],
+    ["a headless browser", { "User-Agent": `${browser} HeadlessChrome/130.0` }],
+  ])("does not measure %s", (_name, extra) => {
+    expect(canMeasure(new Headers({ ...person, ...extra }))).toBe(false);
+  });
+
+  it("does not measure a call without the address Cloudflare sets", () => {
+    expect(canMeasure(new Headers({ "User-Agent": browser }))).toBe(false);
   });
 });
 

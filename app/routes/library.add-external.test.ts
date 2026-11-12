@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   refund: vi.fn<(db: unknown, id: string, units: number) => Promise<void>>(),
   getOptionalUser: vi.fn(),
   addEntry: vi.fn(),
+  recordFunnelEvent: vi.fn(),
   findMediaByExternalId: vi.fn(),
   importMedia: vi.fn(),
   writeLimit:
@@ -18,6 +19,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("~server/auth/require", () => ({
   getOptionalUser: mocks.getOptionalUser,
+}));
+vi.mock("~server/analytics/funnel", () => ({
+  recordFunnelEvent: mocks.recordFunnelEvent,
 }));
 vi.mock("~server/db/library", () => ({ addEntry: mocks.addEntry }));
 vi.mock("~server/db/media-detail", () => ({
@@ -47,6 +51,7 @@ beforeEach(() => {
   mocks.locale = "es";
   mocks.getOptionalUser.mockReset().mockResolvedValue({ id: "user-1" });
   mocks.addEntry.mockReset().mockResolvedValue(true);
+  mocks.recordFunnelEvent.mockReset();
   mocks.refund.mockReset().mockResolvedValue(undefined);
   mocks.findMediaByExternalId.mockReset().mockResolvedValue(null);
   mocks.importMedia.mockReset().mockResolvedValue(saved);
@@ -82,6 +87,50 @@ async function statusOf(promise: Promise<unknown>) {
 }
 
 describe("adding a title that a search found", () => {
+  it("records the step of the funnel, for the person of the session, once the title is added (SAG-24)", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1", role: "user" });
+
+    await send();
+
+    expect(mocks.recordFunnelEvent).toHaveBeenCalledTimes(1);
+    const [request, user, event] = mocks.recordFunnelEvent.mock.calls[0] ?? [];
+    expect(request).toBeInstanceOf(Request);
+    expect(user).toMatchObject({ role: "user" });
+    expect(event).toEqual({
+      kind: "add_to_library",
+      path: "/library/add-external",
+    });
+  });
+
+  it("records the step for a title we already held, and for a form without JavaScript", async () => {
+    mocks.findMediaByExternalId.mockResolvedValue(saved);
+    await send();
+    await send(fields, {});
+
+    expect(mocks.recordFunnelEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it("records nothing when the title could not be added", async () => {
+    // The provider does not know it, the title is not ours to add, the provider is down.
+    mocks.importMedia.mockResolvedValue(null);
+    await statusOf(send());
+    mocks.importMedia.mockResolvedValue(saved);
+    mocks.addEntry.mockResolvedValue(false);
+    await statusOf(send());
+    mocks.addEntry.mockResolvedValue(true);
+    // A visitor, a limit, an invalid form and a form from another site.
+    mocks.getOptionalUser.mockResolvedValue(null);
+    await statusOf(send());
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1", role: "user" });
+    mocks.writeLimit.mockResolvedValue({ success: false });
+    await statusOf(send());
+    mocks.writeLimit.mockResolvedValue({ success: true });
+    await statusOf(send({ provider: "nope", id: "x" }));
+    await statusOf(send(fields, { Origin: "https://evil.example" }));
+
+    expect(mocks.recordFunnelEvent).not.toHaveBeenCalled();
+  });
+
   it("saves a title we do not hold, adds it for the person of the session and says where its page is", async () => {
     const result = await send();
 

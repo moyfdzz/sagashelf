@@ -92,6 +92,22 @@ describe("analytics_events", () => {
     },
   );
 
+  it("stores the steps of the funnel with the address of their action", async () => {
+    await insertAnalyticsEvent(
+      db,
+      event({
+        kind: "add_to_library",
+        path: "/library/add-external",
+        referrerClass: null,
+      }),
+    );
+    await insertAnalyticsEvent(
+      db,
+      event({ kind: "follow", path: "/u/:username", referrerClass: null }),
+    );
+    expect(await count()).toBe(2);
+  });
+
   it("has no column for an address, a city or a user", async () => {
     const { rows } = await db.execute(sql`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'analytics_events'

@@ -6,11 +6,15 @@ import { action, loader } from "./library.add";
 const mocks = vi.hoisted(() => ({
   getOptionalUser: vi.fn(),
   addEntry: vi.fn(),
+  recordFunnelEvent: vi.fn(),
   limit: vi.fn<(options: { key: string }) => Promise<{ success: boolean }>>(),
 }));
 
 vi.mock("~server/auth/require", () => ({
   getOptionalUser: mocks.getOptionalUser,
+}));
+vi.mock("~server/analytics/funnel", () => ({
+  recordFunnelEvent: mocks.recordFunnelEvent,
 }));
 vi.mock("~server/db/library", () => ({ addEntry: mocks.addEntry }));
 vi.mock("~server/runtime-env", () => ({
@@ -23,6 +27,7 @@ const mediaId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 beforeEach(() => {
   mocks.getOptionalUser.mockReset().mockResolvedValue({ id: "user-1" });
   mocks.addEntry.mockReset().mockResolvedValue(true);
+  mocks.recordFunnelEvent.mockReset();
   mocks.limit.mockReset().mockResolvedValue({ success: true });
 });
 
@@ -54,6 +59,42 @@ async function statusOf(promise: Promise<unknown>) {
 }
 
 describe("adding a title to the library", () => {
+  it("records the step of the funnel, for the person of the session, once the title is added (SAG-24)", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1", role: "user" });
+
+    await send();
+
+    expect(mocks.recordFunnelEvent).toHaveBeenCalledTimes(1);
+    const [request, user, event] = mocks.recordFunnelEvent.mock.calls[0] ?? [];
+    expect(request).toBeInstanceOf(Request);
+    expect(user).toMatchObject({ role: "user" });
+    expect(event).toEqual({ kind: "add_to_library", path: "/library/add" });
+  });
+
+  it("records the step for a fetch of the title page too", async () => {
+    await send({ mediaId }, { "Sec-Fetch-Dest": "empty" });
+
+    expect(mocks.recordFunnelEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("records nothing when the title was not added", async () => {
+    mocks.addEntry.mockResolvedValue(false);
+    await statusOf(send());
+    await statusOf(send({ mediaId }, { "Sec-Fetch-Dest": "empty" }));
+
+    mocks.getOptionalUser.mockResolvedValue(null);
+    await statusOf(send());
+
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1", role: "user" });
+    mocks.limit.mockResolvedValue({ success: false });
+    await statusOf(send());
+    mocks.limit.mockResolvedValue({ success: true });
+    await statusOf(send({}));
+    await statusOf(send({ mediaId }, { Origin: "https://evil.example" }));
+
+    expect(mocks.recordFunnelEvent).not.toHaveBeenCalled();
+  });
+
   it("adds it for the person of the session and goes to their entry", async () => {
     const response = (await send()) as Response;
 
