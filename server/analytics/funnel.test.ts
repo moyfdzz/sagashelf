@@ -17,12 +17,13 @@ const mocks = vi.hoisted(() => ({
     >(),
   logUnhandled: vi.fn(),
   background: [] as Promise<unknown>[],
+  runInBackground: vi.fn<(work: Promise<unknown>) => void>(),
 }));
 
 vi.mock("../runtime-env", () => ({
   getAnalyticsEnabled: mocks.enabled,
   getDb: mocks.getDb,
-  runInBackground: (work: Promise<unknown>) => mocks.background.push(work),
+  runInBackground: mocks.runInBackground,
 }));
 vi.mock("./record", () => ({ recordEvent: mocks.recordEvent }));
 vi.mock("../http/error-log", () => ({ logUnhandled: mocks.logUnhandled }));
@@ -53,6 +54,9 @@ beforeEach(() => {
   mocks.recordEvent.mockReset().mockResolvedValue(undefined);
   mocks.logUnhandled.mockReset();
   mocks.background.length = 0;
+  mocks.runInBackground
+    .mockReset()
+    .mockImplementation((work) => void mocks.background.push(work));
 });
 
 describe("recordFunnelEvent", () => {
@@ -135,6 +139,28 @@ describe("recordFunnelEvent", () => {
     await expect(settled()).resolves.toBeDefined();
 
     expect(mocks.logUnhandled).toHaveBeenCalledWith(failure, request);
+  });
+
+  it("never fails the action, which is already done, when the environment cannot be read", () => {
+    mocks.enabled.mockImplementation(() => {
+      throw new Error("The environment is not valid");
+    });
+    const request = post();
+
+    expect(() => recordFunnelEvent(request, person, added)).not.toThrow();
+
+    expect(mocks.logUnhandled).toHaveBeenCalledTimes(1);
+    expect(mocks.recordEvent).not.toHaveBeenCalled();
+  });
+
+  it("never fails the action when there is no request to run work after", () => {
+    mocks.runInBackground.mockImplementation(() => {
+      throw new Error("No request context");
+    });
+
+    expect(() => recordFunnelEvent(post(), person, added)).not.toThrow();
+
+    expect(mocks.logUnhandled).toHaveBeenCalledTimes(1);
   });
 
   it("logs the failure of the database too", async () => {

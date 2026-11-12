@@ -1,19 +1,12 @@
 import type { Route } from "./+types/api.collect";
-import {
-  canMeasure,
-  collectEventSchema,
-  maxCollectBytes,
-} from "~server/analytics/event";
+import { collectEventSchema, maxCollectBytes } from "~server/analytics/event";
+import { isMeasured } from "~server/analytics/measure";
 import { recordEvent } from "~server/analytics/record";
 import { drainBody, readText } from "~server/http/body";
 import { privateHeaders } from "~server/http/cache";
 import { checkWrite } from "~server/http/write-guard";
 import { rateLimit } from "~server/rate-limit";
-import {
-  getAnalyticsEnabled,
-  getCollectLimiter,
-  getDb,
-} from "~server/runtime-env";
+import { getCollectLimiter, getDb } from "~server/runtime-env";
 
 const empty = (status: number) =>
   new Response(null, { status, headers: privateHeaders });
@@ -48,8 +41,8 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // Where the analytics are off, or for a visitor who asked not to be measured, a robot or a call
-  // that did not come through the edge, nothing is kept (see `canMeasure`).
-  if (!getAnalyticsEnabled() || !canMeasure(request.headers)) {
+  // that did not come through the edge, nothing is kept (see `isMeasured`).
+  if (!isMeasured(request)) {
     await drainBody(request);
     return empty(204);
   }
