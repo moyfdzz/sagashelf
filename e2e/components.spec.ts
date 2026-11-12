@@ -242,13 +242,17 @@ test.describe("the toast", () => {
     page,
   }) => {
     const close = page.getByRole("button", { name: "Cerrar" });
+    await expect(close).toBeVisible();
     const box = await close.boundingBox();
     // 40 px, with a tenth of a pixel of room for the rounding of the layout.
     expect(box?.width).toBeGreaterThanOrEqual(39.9);
     expect(box?.height).toBeGreaterThanOrEqual(39.9);
 
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    // Tab until the close button has the focus, whatever else the page has before it.
+    for (let stops = 0; stops < 6; stops += 1) {
+      if (await close.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
     await expect(close).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.getByText("Tu entrada se guardó.")).toHaveCount(0);

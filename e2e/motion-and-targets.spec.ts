@@ -31,28 +31,45 @@ test.describe("reduced motion", () => {
     expect(seconds(await transitionOfSwitch(page))).toBeGreaterThanOrEqual(0.1);
   });
 
-  test("stops the smooth scroll and the animations of any element", async ({
-    page,
-  }) => {
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.goto("/privacy");
-    // One element with a long animation and a smooth scroll, added and measured in one step.
-    const result = await page.evaluate(() => {
+  // An element with a long animation of the app (`toast-in`, which the CSS defines) and a delay,
+  // added and measured in one step. The same measure runs with and without the setting, so a test
+  // that reads a wrong value, or a keyframe that does not exist, shows up as the first one failing.
+  const measure = (page: import("@playwright/test").Page) =>
+    page.evaluate(() => {
       const el = document.createElement("div");
-      el.style.setProperty("animation", "spin 5s infinite");
+      el.style.setProperty("animation", "toast-in 5s 2s infinite");
+      el.style.setProperty("transition", "opacity 5s 2s");
       el.style.setProperty("scroll-behavior", "smooth");
       document.body.append(el);
       const style = getComputedStyle(el);
       return {
         duration: style.animationDuration,
+        delay: style.animationDelay,
         count: style.animationIterationCount,
+        transitionDelay: style.transitionDelay,
         scroll: style.scrollBehavior,
       };
     });
 
-    expect(seconds(result.duration)).toBeLessThanOrEqual(0.001);
-    expect(result.count).toBe("1");
-    expect(result.scroll).toBe("auto");
+  test("stops the animations, the delays and the smooth scroll of any element", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/privacy");
+    const normal = await measure(page);
+    // What the test measures is there without the setting: 5 s, 2 s of delay, forever, smooth.
+    expect(seconds(normal.duration)).toBe(5);
+    expect(seconds(normal.delay)).toBe(2);
+    expect(normal.count).toBe("infinite");
+    expect(normal.scroll).toBe("smooth");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const reduced = await measure(page);
+    expect(seconds(reduced.duration)).toBeLessThanOrEqual(0.001);
+    expect(seconds(reduced.delay)).toBe(0);
+    expect(seconds(reduced.transitionDelay)).toBe(0);
+    expect(reduced.count).toBe("1");
+    expect(reduced.scroll).toBe("auto");
   });
 });
 
