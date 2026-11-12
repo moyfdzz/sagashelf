@@ -3,7 +3,8 @@ import { renderToString } from "react-dom/server";
 import { I18nextProvider, initReactI18next } from "react-i18next";
 import { describe, expect, it } from "vitest";
 
-import { contentId, SkipLink } from "~/components/SkipLink";
+import { SkipLink } from "~/components/SkipLink";
+import { contentId } from "~/lib/skip";
 import { resources } from "~/locales";
 
 async function render(locale: "es" | "en"): Promise<string> {

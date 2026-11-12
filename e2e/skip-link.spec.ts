@@ -49,7 +49,7 @@ for (const [locale, text] of [
 test.describe("using it", () => {
   test.use({ locale: "es-MX" });
 
-  test("Enter moves the focus to the content, and the next Tab is the first control of the page, not the header", async ({
+  test("Enter moves the focus to the main landmark of the page, with no ring and no change of the address, and the next Tab is a control of the content, not of the header", async ({
     page,
   }) => {
     await page.goto("/search");
@@ -57,18 +57,24 @@ test.describe("using it", () => {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
 
-    await expect(page).toHaveURL(/#content$/);
-    expect(await page.evaluate(() => document.activeElement?.id)).toBe(
-      "content",
+    // A landmark, which a screen reader announces, and the address is left alone.
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe(
+      "MAIN",
     );
-
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("combobox")).toBeFocused();
+    expect(page.url()).not.toContain("#");
     expect(
       await page.evaluate(
-        () => document.activeElement?.closest("header") === null,
+        () => getComputedStyle(document.activeElement as Element).outlineStyle,
       ),
-    ).toBe(true);
+    ).toBe("none");
+
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(() => ({
+        inMain: document.activeElement?.closest("main") !== null,
+        inHeader: document.activeElement?.closest("header") !== null,
+      })),
+    ).toEqual({ inMain: true, inHeader: false });
   });
 
   test("is the first stop on every page that needs no session, and the target is there", async ({

@@ -14,7 +14,7 @@ describe("the root layout and the skip link (SAG-256)", () => {
   });
 
   it("gives the box of the pages the id of the link, so the focus can go there, and no ring", () => {
-    const box = /<div id=\{contentId\}[^>]*>/.exec(root)?.[0] ?? "";
+    const box = /<div\s+id=\{contentId\}[^>]*>/.exec(root)?.[0] ?? "";
 
     expect(box).toContain("tabIndex={-1}");
     expect(box).toContain("focus:outline-none");
