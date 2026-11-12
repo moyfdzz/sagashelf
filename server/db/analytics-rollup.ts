@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 
+import { vitalThresholds } from "../analytics/vitals";
 import type { SqlExecutor } from "./clerk-sync";
 
 /**
@@ -23,7 +24,8 @@ export const rollupValuesPerDimension = 100;
  */
 export const pruneBatchSize = 20_000;
 
-export type RollupSummary = { days: number; rows: number };
+/** How many days were rolled up, how many rows of `analytics_daily` and of `analytics_vitals_daily`. */
+export type RollupSummary = { days: number; rows: number; vitals: number };
 
 /**
  * Rolls up the days that are over and not rolled up yet, oldest first, a few at a time. The day of
@@ -124,11 +126,64 @@ export async function rollUpAnalytics(
           visitors = EXCLUDED.visitors,
           engaged_ms = EXCLUDED.engaged_ms
       RETURNING day
+    ),
+    -- The speed of the pages (SAG-254): one row for each load and metric that was measured.
+    measured AS (
+      SELECT p.day, p.path AS page, m.metric, m.value
+      FROM picked p
+      CROSS JOIN LATERAL (VALUES ('LCP', p.lcp_ms), ('CLS', p.cls), ('INP', p.inp_ms)) AS m(metric, value)
+      WHERE p.kind = 'vitals' AND m.value IS NOT NULL
+    ),
+    measured_pages AS (
+      SELECT day, page,
+             row_number() OVER (PARTITION BY day ORDER BY count(*) DESC, page) AS place
+      FROM measured
+      GROUP BY day, page
+    ),
+    measured_named AS (
+      SELECT s.day, s.metric, s.value,
+             -- A page always starts with a slash (the table says so), so it can never be the row of the rest.
+             CASE WHEN p.place > ${values}::int THEN '(other)' ELSE s.page END AS page
+      FROM measured s
+      JOIN measured_pages p USING (day, page)
+    ),
+    vitals_counted AS (
+      SELECT n.day, n.page, n.metric,
+             count(*)::int AS samples,
+             percentile_cont(0.75) WITHIN GROUP (ORDER BY n.value) AS p75,
+             (count(*) FILTER (WHERE n.value <= t.good))::int AS good,
+             (count(*) FILTER (WHERE n.value > t.good AND n.value <= t.poor))::int AS needs_improvement,
+             (count(*) FILTER (WHERE n.value > t.poor))::int AS poor
+      FROM measured_named n
+      JOIN (VALUES
+        ('LCP', ${vitalThresholds.LCP.good}::float8, ${vitalThresholds.LCP.poor}::float8),
+        ('CLS', ${vitalThresholds.CLS.good}::float8, ${vitalThresholds.CLS.poor}::float8),
+        ('INP', ${vitalThresholds.INP.good}::float8, ${vitalThresholds.INP.poor}::float8)
+      ) AS t(metric, good, poor) USING (metric)
+      GROUP BY n.day, n.page, n.metric
+    ),
+    vitals_rolled AS (
+      INSERT INTO analytics_vitals_daily (day, page, metric, samples, p75, good, needs_improvement, poor)
+      SELECT day, page, metric, samples, p75, good, needs_improvement, poor FROM vitals_counted
+      ON CONFLICT (day, page, metric) DO UPDATE
+      SET samples = EXCLUDED.samples,
+          p75 = EXCLUDED.p75,
+          good = EXCLUDED.good,
+          needs_improvement = EXCLUDED.needs_improvement,
+          poor = EXCLUDED.poor
+      RETURNING 1
     )
-    SELECT count(DISTINCT day)::int AS days, count(*)::int AS rows FROM rolled
+    SELECT (SELECT count(DISTINCT day) FROM rolled)::int AS days,
+           (SELECT count(*) FROM rolled)::int AS rows,
+           (SELECT count(*) FROM vitals_rolled)::int AS vitals
   `);
-  const row = rows[0] as { days?: number; rows?: number } | undefined;
-  return { days: Number(row?.days ?? 0), rows: Number(row?.rows ?? 0) };
+  const row = rows[0] as
+    { days?: number; rows?: number; vitals?: number } | undefined;
+  return {
+    days: Number(row?.days ?? 0),
+    rows: Number(row?.rows ?? 0),
+    vitals: Number(row?.vitals ?? 0),
+  };
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   bigint,
   check,
   date,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -47,6 +48,12 @@ export const analyticsEvents = pgTable(
     engagedMs: integer("engaged_ms"),
     // Only for a search: the type of title searched, never the text.
     searchType: text("search_type"),
+    // Only for the speed of a page load (SAG-254): the three Core Web Vitals of one load, each one
+    // empty when the browser cannot measure it (CLS only exists in Chromium; INP needs a click).
+    // Milliseconds for LCP and INP, a score with no unit for CLS.
+    lcpMs: doublePrecision("lcp_ms"),
+    cls: doublePrecision("cls"),
+    inpMs: doublePrecision("inp_ms"),
     // Where the visit came from: a class and, when it came from another site, its host.
     referrerClass: text("referrer_class"),
     referrerHost: text("referrer_host"),
@@ -61,7 +68,7 @@ export const analyticsEvents = pgTable(
   (t) => [
     check(
       "analytics_events_kind_check",
-      sql`${t.kind} in ('pageview', 'engaged', 'search', 'signup', 'add_to_library', 'follow')`,
+      sql`${t.kind} in ('pageview', 'engaged', 'search', 'signup', 'add_to_library', 'follow', 'vitals')`,
     ),
     check(
       "analytics_events_path_check",
@@ -78,6 +85,12 @@ export const analyticsEvents = pgTable(
     check(
       "analytics_events_search_check",
       sql`(${t.kind} = 'search') = (${t.searchType} is not null)`,
+    ),
+    // A speed event has at least one of the three numbers and the others have none, and each is in
+    // a range a real page cannot pass (a minute, and a score of 100).
+    check(
+      "analytics_events_vitals_check",
+      sql`(${t.kind} = 'vitals') = (${t.lcpMs} is not null or ${t.cls} is not null or ${t.inpMs} is not null) and (${t.lcpMs} is null or ${t.lcpMs} between 0 and 60000) and (${t.inpMs} is null or ${t.inpMs} between 0 and 60000) and (${t.cls} is null or ${t.cls} between 0 and 100)`,
     ),
     check(
       "analytics_events_referrer_class_check",
@@ -145,6 +158,44 @@ export const analyticsDaily = pgTable(
     check(
       "analytics_daily_counts_check",
       sql`${t.events} >= 0 and ${t.visitors} >= 0 and ${t.engagedMs} >= 0`,
+    ),
+  ],
+);
+
+/**
+ * The daily rollup of the speed of the pages (SAG-254, ADR-050): for each day, kind of page and
+ * Core Web Vital, how many loads were measured, the 75th percentile (the number Google asks to
+ * judge a page by) and how many were good, needed improvement or were poor by the thresholds of
+ * `server/analytics/vitals.ts`. Kept forever, like `analytics_daily`, and it holds no visitor. The
+ * page is the one where the visit started, since the browser measures a document and not each move
+ * inside the app: LCP is of that page, but CLS and INP are of the whole visit. Past 100 pages a day,
+ * the rest is one row `(other)`.
+ */
+export const analyticsVitalsDaily = pgTable(
+  "analytics_vitals_daily",
+  {
+    day: date("day").notNull(),
+    page: text("page").notNull(),
+    metric: text("metric").notNull(),
+    samples: integer("samples").notNull(),
+    p75: doublePrecision("p75").notNull(),
+    good: integer("good").notNull(),
+    needsImprovement: integer("needs_improvement").notNull(),
+    poor: integer("poor").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.page, t.metric] }),
+    check(
+      "analytics_vitals_daily_metric_check",
+      sql`${t.metric} in ('LCP', 'CLS', 'INP')`,
+    ),
+    check(
+      "analytics_vitals_daily_page_check",
+      sql`char_length(${t.page}) between 1 and 200`,
+    ),
+    check(
+      "analytics_vitals_daily_counts_check",
+      sql`${t.samples} > 0 and ${t.good} >= 0 and ${t.needsImprovement} >= 0 and ${t.poor} >= 0 and ${t.good} + ${t.needsImprovement} + ${t.poor} = ${t.samples} and ${t.p75} >= 0`,
     ),
   ],
 );

@@ -31,7 +31,20 @@ export type TrackerEvent =
       utmCampaign?: string;
     }
   | { kind: "engaged"; path: string; ms: number }
-  | { kind: "search"; path: string; type: string };
+  | { kind: "search"; path: string; type: string }
+  | { kind: "vitals"; path: string; lcp?: number; cls?: number; inp?: number };
+
+/** The Core Web Vitals the tracker keeps (SAG-254). */
+export type VitalName = "LCP" | "CLS" | "INP";
+
+/**
+ * The most a time (LCP, INP) and a layout shift score can be. A copy of the limits of the collector
+ * (`server/analytics/vitals.ts`) and of the table, since client code cannot import the server's;
+ * `app/routes/analytics-limits.test.ts` fails if they differ, so a number the collector would refuse
+ * is never sent and a change in one place is not forgotten in the others.
+ */
+export const maxVitalMs = 60_000;
+export const maxCls = 100;
 
 /** What the browser says about the wish not to be measured: Do Not Track and Global Privacy Control. */
 export type PrivacySignals = {
@@ -168,6 +181,11 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
   let visibleMs = 0;
   let first = true;
   let lastSearch: string | null = null;
+  // The page where the visit started and the speed of its load (SAG-254). The browser measures a
+  // document and not each move inside the app, so the numbers belong to the first page.
+  let landing: string | null = null;
+  const vitals: Partial<Record<VitalName, number>> = {};
+  let vitalsSent = false;
 
   function stopClock() {
     if (visibleSince !== null) {
@@ -200,6 +218,7 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
     visit({ page: next, search, referrer }: Visit, visible: boolean) {
       flush(true);
       page = next;
+      landing ??= next;
       if (visible) visibleSince = now();
       send({
         kind: "pageview",
@@ -229,6 +248,38 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
     /** The tab was hidden or is being left: what was seen so far is sent. */
     hide() {
       flush(false);
+    },
+    /**
+     * A Core Web Vital was measured, or measured again: the last value is the one that counts. A
+     * number the collector would refuse (negative, not finite, or past what a real page does) is
+     * left out, so one bad number does not cost the others.
+     */
+    vital(name: VitalName, value: number) {
+      const limit = name === "CLS" ? maxCls : maxVitalMs;
+      if (!Number.isFinite(value) || value < 0 || value > limit) return;
+      // Milliseconds with a decimal, and a score with four.
+      vitals[name] =
+        name === "CLS"
+          ? Math.round(value * 10_000) / 10_000
+          : Math.round(value * 10) / 10;
+    },
+    /**
+     * Sends the speed of the page where the visit started, once, in one event with the numbers that
+     * were measured. Later hides send nothing: the visit is one event. With no number there is no
+     * event, and with no page opened there is nothing to say it belongs to.
+     */
+    flushVitals() {
+      if (vitalsSent || !landing) return;
+      const { LCP: lcp, CLS: cls, INP: inp } = vitals;
+      if (lcp === undefined && cls === undefined && inp === undefined) return;
+      vitalsSent = true;
+      send({
+        kind: "vitals",
+        path: landing,
+        ...(lcp !== undefined ? { lcp } : {}),
+        ...(cls !== undefined ? { cls } : {}),
+        ...(inp !== undefined ? { inp } : {}),
+      });
     },
   };
 }

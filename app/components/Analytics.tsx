@@ -74,7 +74,41 @@ function startTracker(): Tracker | null {
     if (event.persisted && document.visibilityState === "visible")
       started.show();
   });
+  measureSpeed(started);
   return started;
+}
+
+/**
+ * The speed of the page (SAG-254): the library is loaded after the page, in a file of its own, so it
+ * is not part of what a page costs to open. Its callbacks hand each number to the tracker, and the
+ * tracker sends them in one event the first time the tab hides.
+ *
+ * If the tab hides before the file arrives, nothing was measured yet and nothing is sent. The layout
+ * shift and the interaction time are of the whole visit, with every move inside the app, and are
+ * counted for the page where the visit started (ADR-050).
+ */
+function measureSpeed(started: Tracker) {
+  import("web-vitals")
+    .then(({ onCLS, onINP, onLCP }) => {
+      // Every change is handed over, not only the final value the library gives when the tab hides.
+      // The tracker only keeps the last number, so it costs nothing, and it means that the number
+      // is already there before the tab hides, whatever the order of `pagehide` and
+      // `visibilitychange` (Chrome fires the first and then the second, and the library's last
+      // value comes in the second) and whatever the order of the listeners of the library and ours.
+      const all = { reportAllChanges: true };
+      onLCP((metric) => started.vital("LCP", metric.value), all);
+      onCLS((metric) => started.vital("CLS", metric.value), all);
+      onINP((metric) => started.vital("INP", metric.value), all);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") started.flushVitals();
+      });
+      // A browser that does not fire `visibilitychange` when a tab is closed (Safari, sometimes)
+      // still fires this one.
+      window.addEventListener("pagehide", () => started.flushVitals());
+    })
+    .catch(() => {
+      // The file could not be loaded (an ad blocker, a bad connection): nothing is measured.
+    });
 }
 
 /**

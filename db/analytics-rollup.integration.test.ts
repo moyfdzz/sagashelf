@@ -14,7 +14,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await db.execute(sql`TRUNCATE analytics_events, analytics_daily`);
+  await db.execute(
+    sql`TRUNCATE analytics_events, analytics_daily, analytics_vitals_daily`,
+  );
 });
 
 type Fields = {
@@ -23,6 +25,9 @@ type Fields = {
   visitor?: string;
   engagedMs?: number | null;
   searchType?: string | null;
+  lcpMs?: number | null;
+  cls?: number | null;
+  inpMs?: number | null;
   referrerClass?: string | null;
   referrerHost?: string | null;
   utmSource?: string | null;
@@ -42,13 +47,13 @@ async function event(daysAgo: number, fields: Fields = {}) {
   const f = { kind: "pageview", path: "/", visitor: "a", ...fields };
   await db.execute(sql`
     INSERT INTO analytics_events (
-      occurred_at, kind, path, visitor, engaged_ms, search_type, referrer_class, referrer_host,
-      utm_source, country, region, device
+      occurred_at, kind, path, visitor, engaged_ms, search_type, lcp_ms, cls, inp_ms, referrer_class,
+      referrer_host, utm_source, country, region, device
     ) VALUES (
       ((date_trunc('day', now() AT TIME ZONE 'UTC') - make_interval(days => ${daysAgo}::int)
         + interval '12 hours') AT TIME ZONE 'UTC'),
       ${f.kind}, ${f.path}, ${visitorOf(f.visitor)}, ${f.engagedMs ?? null}, ${f.searchType ?? null},
-      ${f.referrerClass ?? null}, ${f.referrerHost ?? null}, ${f.utmSource ?? null},
+      ${f.lcpMs ?? null}, ${f.cls ?? null}, ${f.inpMs ?? null}, ${f.referrerClass ?? null}, ${f.referrerHost ?? null}, ${f.utmSource ?? null},
       ${f.country ?? null}, ${f.region ?? null}, ${f.device ?? null}
     )
   `);
@@ -271,7 +276,11 @@ describe("rollUpAnalytics: the counts of a finished day", () => {
 
 describe("rollUpAnalytics: which days", () => {
   it("does nothing when there is nothing to roll up", async () => {
-    expect(await rollUpAnalytics(db)).toEqual({ days: 0, rows: 0 });
+    expect(await rollUpAnalytics(db)).toEqual({
+      days: 0,
+      rows: 0,
+      vitals: 0,
+    });
     expect(await rows()).toEqual([]);
   });
 
@@ -293,7 +302,7 @@ describe("rollUpAnalytics: which days", () => {
     const first = await rows();
     const again = await rollUpAnalytics(db);
 
-    expect(again).toEqual({ days: 0, rows: 0 });
+    expect(again).toEqual({ days: 0, rows: 0, vitals: 0 });
     expect(await rows()).toEqual(first);
   });
 
@@ -419,6 +428,219 @@ describe("rollUpAnalytics: a flood of values", () => {
       engagedMs: 0,
     });
     expect(await cell("utm_source", "(other)")).toBeUndefined();
+  });
+});
+
+type VitalsRow = {
+  day: string;
+  page: string;
+  metric: string;
+  samples: number;
+  p75: number;
+  good: number;
+  needs_improvement: number;
+  poor: number;
+};
+
+async function vitalsRows(where = sql`true`): Promise<VitalsRow[]> {
+  const result = await db.execute(sql`
+    SELECT day::text AS day, page, metric, samples, p75, good, needs_improvement, poor
+    FROM analytics_vitals_daily WHERE ${where} ORDER BY day, page, metric
+  `);
+  return result.rows as unknown as VitalsRow[];
+}
+
+const vital = async (page: string, metric: string) =>
+  (await vitalsRows(sql`page = ${page} AND metric = ${metric}`))[0];
+
+describe("rollUpAnalytics: the speed of the pages (SAG-254)", () => {
+  const load = (page: string, visitor: string, fields: Fields) =>
+    event(3, { kind: "vitals", path: page, visitor, ...fields });
+
+  beforeEach(async () => {
+    await db.execute(sql`TRUNCATE analytics_vitals_daily`);
+  });
+
+  it("takes the 75th percentile of each metric of a page and day", async () => {
+    await load("/", "a", { lcpMs: 1000, cls: 0.05 });
+    await load("/", "b", { lcpMs: 2000, cls: 0.1 });
+    await load("/", "c", { lcpMs: 3000, cls: 0.2 });
+    await load("/", "d", { lcpMs: 5000, cls: 0.3 });
+
+    await rollUpAnalytics(db);
+
+    // The value that is three quarters of the way up the sorted list, in between its neighbors.
+    expect((await vital("/", "LCP"))?.p75).toBeCloseTo(3500, 6);
+    expect((await vital("/", "CLS"))?.p75).toBeCloseTo(0.225, 6);
+  });
+
+  it("sorts each load as good, needing improvement or poor, with the thresholds in the code", async () => {
+    await load("/", "a", { lcpMs: 1000, cls: 0.05 });
+    await load("/", "b", { lcpMs: 2500, cls: 0.1 });
+    await load("/", "c", { lcpMs: 4000, cls: 0.25 });
+    await load("/", "d", { lcpMs: 4001, cls: 0.2501 });
+
+    await rollUpAnalytics(db);
+
+    // A value equal to a threshold falls on the better side of it.
+    expect(await vital("/", "LCP")).toMatchObject({
+      samples: 4,
+      good: 2,
+      needs_improvement: 1,
+      poor: 1,
+    });
+    expect(await vital("/", "CLS")).toMatchObject({
+      samples: 4,
+      good: 2,
+      needs_improvement: 1,
+      poor: 1,
+    });
+  });
+
+  it("uses the thresholds of INP in milliseconds, on the better side too", async () => {
+    await load("/", "a", { inpMs: 200 });
+    await load("/", "b", { inpMs: 500 });
+    await load("/", "c", { inpMs: 501 });
+
+    await rollUpAnalytics(db);
+
+    expect(await vital("/", "INP")).toMatchObject({
+      samples: 3,
+      good: 1,
+      needs_improvement: 1,
+      poor: 1,
+    });
+    expect((await vital("/", "INP"))?.p75).toBeCloseTo(500.5, 6);
+  });
+
+  it("counts only the loads that measured the metric", async () => {
+    // Safari has no CLS and a visit with no click has no INP.
+    await load("/", "a", { lcpMs: 1000 });
+    await load("/", "b", { lcpMs: 2000, cls: 0.05 });
+    await load("/", "c", { lcpMs: 3000, cls: 0.5, inpMs: 100 });
+
+    await rollUpAnalytics(db);
+
+    expect((await vital("/", "LCP"))?.samples).toBe(3);
+    expect((await vital("/", "CLS"))?.samples).toBe(2);
+    expect((await vital("/", "INP"))?.samples).toBe(1);
+  });
+
+  it("keeps each page apart, and counts a speed event as a load and not as a visit", async () => {
+    await load("/", "a", { lcpMs: 1000 });
+    await load("/sagas/:slug", "a", { lcpMs: 9000 });
+    await event(3, { kind: "pageview", path: "/", visitor: "a" });
+
+    await rollUpAnalytics(db);
+
+    expect((await vital("/", "LCP"))?.p75).toBe(1000);
+    expect((await vital("/sagas/:slug", "LCP"))?.p75).toBe(9000);
+    // The speed event is a kind of its own, and it is not a view of the page.
+    expect(await cell("kind", "vitals")).toEqual({
+      events: 2,
+      visitors: 1,
+      engagedMs: 0,
+    });
+    expect(await cell("page", "/")).toEqual({
+      events: 1,
+      visitors: 1,
+      engagedMs: 0,
+    });
+    expect(await cell("page", "/sagas/:slug")).toBeUndefined();
+  });
+
+  it("says how many rows of speed it wrote, and rolls a day only once", async () => {
+    await load("/", "a", { lcpMs: 1000, cls: 0.1 });
+    await load("/credits", "b", { lcpMs: 1500 });
+
+    const first = await rollUpAnalytics(db);
+    const again = await rollUpAnalytics(db);
+
+    expect(first.vitals).toBe(3);
+    expect(first.vitals).toBe((await vitalsRows()).length);
+    expect(again).toEqual({ days: 0, rows: 0, vitals: 0 });
+  });
+
+  it("writes nothing for a day that had no speed events", async () => {
+    await event(3);
+
+    const summary = await rollUpAnalytics(db);
+
+    expect(summary.days).toBe(1);
+    expect(summary.vitals).toBe(0);
+    expect(await vitalsRows()).toEqual([]);
+  });
+
+  it("keeps the pages with most loads and puts the rest in one row, with all their values", async () => {
+    for (const visitor of ["a", "b", "c"]) {
+      await load("/", visitor, { lcpMs: 1000 });
+    }
+    for (const visitor of ["a", "b"]) {
+      await load("/search", visitor, { lcpMs: 2000 });
+    }
+    await load("/x", "a", { lcpMs: 3000 });
+    await load("/y", "a", { lcpMs: 5000 });
+
+    await rollUpAnalytics(db, { values: 2 });
+
+    expect((await vitalsRows()).map((row) => row.page).sort()).toEqual([
+      "(other)",
+      "/",
+      "/search",
+    ]);
+    expect(await vital("(other)", "LCP")).toMatchObject({
+      samples: 2,
+      good: 0,
+      needs_improvement: 1,
+      poor: 1,
+    });
+    expect((await vital("(other)", "LCP"))?.p75).toBeCloseTo(4500, 6);
+  });
+
+  it("cannot take a page that is called (other), since a page starts with a slash", async () => {
+    await expect(load("(other)", "a", { lcpMs: 2000 })).rejects.toThrow();
+  });
+});
+
+describe("analytics_vitals_daily", () => {
+  const insert = (fields: Partial<VitalsRow> = {}) => {
+    const f = {
+      day: "2026-01-01",
+      page: "/",
+      metric: "LCP",
+      samples: 3,
+      p75: 1200,
+      good: 2,
+      needs_improvement: 1,
+      poor: 0,
+      ...fields,
+    };
+    return db.execute(sql`
+      INSERT INTO analytics_vitals_daily (day, page, metric, samples, p75, good, needs_improvement, poor)
+      VALUES (${f.day}::date, ${f.page}, ${f.metric}, ${f.samples}, ${f.p75}, ${f.good},
+              ${f.needs_improvement}, ${f.poor})
+    `);
+  };
+
+  beforeEach(async () => {
+    await db.execute(sql`TRUNCATE analytics_vitals_daily`);
+  });
+
+  it("takes a row, and refuses the same day, page and metric twice", async () => {
+    await insert();
+    await expect(insert()).rejects.toThrow();
+  });
+
+  it.each([
+    ["a metric that does not exist", { metric: "FCP" }],
+    ["no samples", { samples: 0, good: 0, needs_improvement: 0, poor: 0 }],
+    ["buckets that do not add up to the samples", { good: 3, poor: 1 }],
+    ["a negative bucket", { good: 4, needs_improvement: -1 }],
+    ["a negative percentile", { p75: -1 }],
+    ["an empty page", { page: "" }],
+    ["a page over 200 characters", { page: "a".repeat(201) }],
+  ] as [string, Partial<VitalsRow>][])("refuses %s", async (_name, fields) => {
+    await expect(insert(fields)).rejects.toThrow();
   });
 });
 

@@ -555,6 +555,7 @@
       "pages": "The pages you open, as a kind of page (for example “a person's profile” or “a title page”), not with the name of the person or of the title.",
       "source": "Where you come from: a search engine, a social network or another site (only its main address, not the exact page), and the campaign tags in the address, such as utm_source, if it has them.",
       "time": "How long each page was visible.",
+      "speed": "How fast each page loads and responds: how long its main content takes to appear, how much it moves while it loads and how long it takes to answer a click or a tap. The movement and response measures cover your whole visit, and all of them are counted for the page your visit started on.",
       "search": "The type of each search (for example anime or books), never the text you type.",
       "steps": "When you add a title to your library and when you follow a person, without keeping which title or whom.",
       "place": "Your country and region (not your city), which Cloudflare tells us, and whether you use a phone or a computer.",

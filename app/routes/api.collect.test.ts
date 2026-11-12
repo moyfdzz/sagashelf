@@ -72,6 +72,36 @@ describe("POST /api/collect", () => {
     });
   });
 
+  it("stores the speed of a page load, with the numbers that were measured (SAG-254)", async () => {
+    const body = JSON.stringify({
+      kind: "vitals",
+      path: "/",
+      lcp: 1800.5,
+      cls: 0,
+    });
+
+    const response = await send(body);
+
+    expect(response.status).toBe(204);
+    expect(mocks.recordEvent.mock.calls[0]?.[2]).toEqual({
+      kind: "vitals",
+      path: "/",
+      lcp: 1800.5,
+      cls: 0,
+    });
+  });
+
+  it.each([
+    ["no number", { kind: "vitals", path: "/" }],
+    ["a time over a minute", { kind: "vitals", path: "/", lcp: 120_000 }],
+    ["a negative layout shift", { kind: "vitals", path: "/", cls: -1 }],
+  ])("answers 400 for a speed event with %s", async (_name, event) => {
+    const response = await send(JSON.stringify(event));
+
+    expect(response.status).toBe(400);
+    expect(mocks.recordEvent).not.toHaveBeenCalled();
+  });
+
   it("takes the body of a beacon, whatever its content type says", async () => {
     const response = await send(pageview, {
       "Content-Type": "text/plain;charset=UTF-8",
