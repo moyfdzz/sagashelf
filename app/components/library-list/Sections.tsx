@@ -41,7 +41,7 @@ export function Sections({ sections, query, view, searching, pathTo }: Props) {
             open={open}
             className={`group/section border-border rounded-md border border-l-4 p-4 ${stripe[section.status]}`}
           >
-            <summary className="focus-visible:outline-accent flex cursor-pointer list-none items-center justify-between gap-3 rounded text-xl font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 [&::-webkit-details-marker]:hidden">
+            <summary className="focus-visible:outline-accent flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded text-xl font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 items-center gap-3">
                 {name}
                 <span className="border-border bg-surface-raised text-fg-muted rounded-full border px-2.5 py-0.5 text-sm font-semibold">

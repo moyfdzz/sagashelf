@@ -50,7 +50,7 @@ export function ThemeSwitch({ saved }: { saved: Theme | null }) {
       aria-checked={dark}
       aria-label={t("theme.darkMode")}
       onClick={toggle}
-      className="border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 focus-visible:outline-accent flex size-9 items-center justify-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+      className="border-input-edge text-fg-muted hover:text-accent hover:bg-fg/10 focus-visible:outline-accent flex size-10 items-center justify-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
     >
       {dark ? (
         <svg

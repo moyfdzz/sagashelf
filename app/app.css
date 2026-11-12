@@ -266,6 +266,23 @@ header[data-chrome] {
   }
 }
 
+/* A person who asked for less motion (the setting of their system) gets none from any element: an
+   animation or a transition ends at once and nothing scrolls smoothly (SAG-252). It is written once
+   here instead of one `motion-reduce` per element, so a new transition is covered without anyone
+   remembering. The time is almost nothing and not zero, so `animationend` and `transitionend` still
+   fire; the app does not listen to them today. The `motion-reduce` classes on some elements say the
+   same and stay. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* A modal dialog blocks the clicks and the focus behind it, but not the scroll of the page: while
    one is open, the page stays where it is, and it scrolls again when the dialog closes. Hiding the
    scroll also hides the scrollbar, which widens the window and moved everything centered by half of

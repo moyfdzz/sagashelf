@@ -18,6 +18,7 @@ import { AccountMenu } from "~/components/AccountMenu";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { NotesPreview } from "~/components/NotesPreview";
 import { SearchBox } from "~/components/SearchBox";
+import { StatusRegion } from "~/components/StatusRegion";
 import { resources } from "~/locales";
 import type { HarnessName } from "~/testing/harness-names";
 
@@ -72,6 +73,9 @@ function Page({ name }: { name: HarnessName }) {
         />
       ) : null}
       {name === "account" ? <AccountMenu username="ana_reads" /> : null}
+      {name === "toast" ? (
+        <StatusRegion message="Tu entrada se guardó." />
+      ) : null}
       {name === "search" ? (
         <SearchBox initialQuery="" type={undefined} />
       ) : null}
