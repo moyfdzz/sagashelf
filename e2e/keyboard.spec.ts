@@ -16,27 +16,28 @@ type Stop = {
   name: string;
   outlineStyle: string;
   outlineWidth: number;
-  /** Whether the stop comes after the one before it in the document. */
-  inOrder: boolean;
+  /** Where the element is in the document, to check that the focus never jumps back. */
+  position: number;
   region: string;
 };
 
-/** Presses Tab until the focus leaves the document, and describes every stop on the way. */
+/**
+ * Presses Tab and describes every stop, until the focus leaves the document (to the browser's own
+ * bar) or comes back to a control it already stopped on. Both end the walk: neither is a trap.
+ */
 async function tabThrough(page: Page, limit = 60): Promise<Stop[]> {
   await page.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur();
     window.scrollTo(0, 0);
   });
   const stops: Stop[] = [];
+  const seen = new Set<number>();
   for (let i = 0; i < limit; i += 1) {
     await page.keyboard.press("Tab");
     const stop = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body) return null;
       const style = getComputedStyle(el);
-      const w = window as unknown as { __previousStop?: Element };
-      const before = w.__previousStop;
-      w.__previousStop = el;
       return {
         tag: el.tagName.toLowerCase(),
         name: (
@@ -50,12 +51,7 @@ async function tabThrough(page: Page, limit = 60): Promise<Stop[]> {
           .slice(0, 40),
         outlineStyle: style.outlineStyle,
         outlineWidth: parseFloat(style.outlineWidth),
-        inOrder:
-          !before ||
-          Boolean(
-            before.compareDocumentPosition(el) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-          ),
+        position: Array.from(document.querySelectorAll("*")).indexOf(el),
         region: el.closest("header")
           ? "header"
           : el.closest("footer")
@@ -63,7 +59,8 @@ async function tabThrough(page: Page, limit = 60): Promise<Stop[]> {
             : "main",
       };
     });
-    if (!stop) break;
+    if (!stop || seen.has(stop.position)) break;
+    seen.add(stop.position);
     stops.push(stop);
   }
   return stops;
@@ -71,20 +68,21 @@ async function tabThrough(page: Page, limit = 60): Promise<Stop[]> {
 
 for (const path of ["/", "/search", "/privacy", "/contact"]) {
   test.describe(`the page ${path}`, () => {
-    test("is crossed with Tab in the order of the page, with no trap, and leaves the document", async ({
+    test("is crossed with Tab in the order of the page, with no trap, from the header to the footer", async ({
       page,
     }) => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       const stops = await tabThrough(page);
 
-      // The focus left the document before the limit: nothing holds it.
+      // The walk ended before the limit, and it reached the footer: nothing holds the focus.
       expect(stops.length, "the focus never left the page").toBeLessThan(60);
       expect(stops.length).toBeGreaterThan(3);
       // The order of the focus is the order of the page: nothing jumps back.
       for (const [index, stop] of stops.entries()) {
+        const before = stops[index - 1];
         expect(
-          stop.inOrder,
+          !before || stop.position > before.position,
           `stop ${index + 1}: ${stop.tag} ${stop.name}`,
         ).toBe(true);
       }

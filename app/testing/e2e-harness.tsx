@@ -19,8 +19,7 @@ import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { NotesPreview } from "~/components/NotesPreview";
 import { SearchBox } from "~/components/SearchBox";
 import { resources } from "~/locales";
-
-export type HarnessName = "confirm" | "notes" | "account" | "search";
+import type { HarnessName } from "~/testing/harness-names";
 
 const longNote = Array.from(
   { length: 30 },

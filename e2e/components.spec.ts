@@ -1,11 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { mountComponent } from "./harness/mount";
+import { mountComponent, prepareHarness } from "./harness/mount";
 
 // Keyboard and focus of the components that only a signed-in person sees (SAG-251). The E2E job
 // cannot sign in, so each one is drawn alone in a real Chromium, with the CSS of the production
 // build. The phone project is skipped: these are keyboard behaviors, and the layout of a phone is
 // measured elsewhere.
+
+// One bundle per worker, and only when this spec runs.
+// eslint-disable-next-line no-empty-pattern
+test.beforeAll(async ({}, testInfo) => {
+  await prepareHarness(testInfo.workerIndex);
+});
 
 test.skip(
   ({ isMobile }) => isMobile,
@@ -62,19 +68,27 @@ test.describe("the confirmation dialog", () => {
     ).toBeVisible();
   });
 
-  test("never lets Tab or Shift+Tab reach the page behind, and comes back to Cancel", async ({
+  test("never lets Tab or Shift+Tab reach the page behind, and comes back to its first control", async ({
     page,
   }) => {
-    for (const key of ["Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab", "Tab"]) {
-      await page.keyboard.press(key);
-      expect(await focusIsBehind(page), `after ${key}`).toBe(false);
-    }
-    // Cancel, Delete, out of the document, and back to Cancel: no trap and no way into the page.
-    await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+    const cancel = page.getByRole("link", { name: "Cancelar" });
+    const confirm = page.getByRole("button", { name: "Eliminar" });
+    const outOfTheDocument = () =>
+      page.evaluate(() => document.activeElement === document.body);
+
+    // The focus starts on Cancel. Tab goes to Delete, then out of the document (the browser's own
+    // bar), then back to Cancel; Shift+Tab goes the other way. Never to the page behind.
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Cancelar" })).toBeFocused();
+    await expect(confirm).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Eliminar" })).toBeFocused();
+    expect(await outOfTheDocument()).toBe(true);
+    await page.keyboard.press("Tab");
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    expect(await outOfTheDocument()).toBe(true);
+    await page.keyboard.press("Shift+Tab");
+    await expect(confirm).toBeFocused();
+    expect(await focusIsBehind(page)).toBe(false);
 
     // The page behind is inert: a script cannot give it the focus either.
     await page.evaluate(() => document.getElementById("before")?.focus());
@@ -96,9 +110,15 @@ test.describe("the confirmation dialog", () => {
       .getByRole("heading", { name: "¿Eliminar esta entrada?" })
       .click();
     await expect(page.locator("dialog[open]")).toBeVisible();
+    await expect(page.getByTestId("where")).toHaveText("/entry?confirm=1");
 
-    await page.mouse.click(4, 4);
+    // A point between the corner of the window and the box: on the dim layer, whatever the layout.
+    const box = await page.locator("dialog").boundingBox();
+    if (!box) throw new Error("The dialog has no box");
+    await page.mouse.click(Math.max(2, box.x / 2), Math.max(2, box.y / 2));
+
     await expect(page.getByTestId("where")).toHaveText("/entry");
+    await expect(page.locator("dialog")).toHaveCount(0);
   });
 
   test("Cancel is reached and pressed with the keyboard", async ({ page }) => {

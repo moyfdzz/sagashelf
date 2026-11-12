@@ -8,6 +8,7 @@
     "drizzle.config.ts",
     "e2e/**/*",
     "app/lib/ui.ts",
+    "app/testing/harness-names.ts",
     "db/**/*",
     "server/db/schema/**/*",
     "server/account/report-schema.ts",

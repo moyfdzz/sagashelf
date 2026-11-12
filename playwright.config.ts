@@ -16,8 +16,6 @@ process.env.E2E_CALLER = caller;
 
 export default defineConfig({
   testDir: "./e2e",
-  // Bundles the components that `e2e/components.spec.ts` mounts alone (SAG-251).
-  globalSetup: "./e2e/harness/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
