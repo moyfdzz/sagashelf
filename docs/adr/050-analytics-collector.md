@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
-- **Implementation:** Partial (SAG-24: the collector and its tables; the tracker, the rollups, the owner opt-out and the privacy text come in the next pull requests of the same ticket)
+- **Implementation:** Partial (SAG-24: everything is built and the privacy text is written, but it is not switched on: the owner turns off Cloudflare Web Analytics and sets `ANALYTICS_ENABLED`, edge setup section 16. This becomes Done when it is on and checked)
 - **Tickets:** SAG-24
 
 ## Context
@@ -61,6 +61,7 @@ Decided with the owner when the tracker was built. It changes two things the tex
 - **Table `analytics_daily`:** one row for each day, dimension and value, kept forever. The dimensions are the kind of event, the page, the class and host of the referrer, the three UTM values, the country, the region, the device and the type of a search. `events` is what a person did (a page view, a search, a step of the funnel; the times on a page are not events), `visitors` the distinct visitors of that day, and `engaged_ms` the visible time. A visitor is a hash that changes every day, so `visitors` never adds up across days: a week's visitors are not the sum of its days, and the dashboard must say so.
 - **Complete days only.** The job rolls up the days that are over, oldest first, at most 7 a run, so it catches up after a stop with a small statement. The day of today is never rolled up. A day is done when it has its row of the dimension `kind`, and a day that is done is not touched again. An event is stored with the time it arrived, so once a day is over no event arrives for it, and nothing that is deleted later was left out of the rollup; the rule only protects what a restore or a backfill puts in. A day is found by its own row, not by being later than the last one done, so an older day that was never rolled up is not skipped. Running the job twice does the same thing (the rows are replaced, not added to).
 - **A flood of values cannot grow a table kept forever.** Past 100 values of a dimension in a day, the rest is one row `(other)`, with its own distinct visitors. The free values (a UTM value, a referrer host) come from outside, and a script can send as many as the rate limit lets it. A real value that is `(other)` is stored with a space after it, which a value never has (UTM values are trimmed), so it cannot meet the row of the rest.
+- **The salts of the visitor code older than yesterday are also deleted by this job,** in the same statement, because the deletion that happens when a salt is asked for does not run while nobody visits, and the policy says only today's and yesterday's are kept.
 - **The raw events are deleted after 13 months, only those of a day that was rolled up,** a batch of 20 000 at a time, oldest first (the job runs four times a day). If the rollup is stuck, nothing is lost.
 - **Where it runs:** in the second Cron Trigger (`30 */6 * * *`), which always runs and had 26 of the 50 subrequests; two statements more make 28. No new Cron Trigger (4 of the 5 of the Free plan are in use). Rolling up first and then deleting, in that order, is part of the job. Both run whether or not `ANALYTICS_ENABLED` is on: with no events they cost two small statements, and what was measured stays valid.
 - **Migration `0034`** is applied by hand in production. Until it is, the two statements fail, are logged by name (`roll-up-analytics`, `prune-analytics-events`) and do not stop the other jobs of the invocation.
@@ -68,7 +69,11 @@ Decided with the owner when the tracker was built. It changes two things the tex
 ## Open questions
 
 - Whether the compute hours stay under the Free plan once the tracker is live (measure for a few weeks).
-- Whether the text of `/privacy` needs the address and the way to use the ARCO rights that article 15 of the law asks for in an aviso de privacidad: read in the part of the law that could be read, not settled here. It belongs to the privacy-policy pull request of SAG-24, with a legal review.
+- Whether the contact email is enough for what article 15 of the law asks of an aviso de privacidad (the identity and the address of who handles the data, and the way to use the ARCO rights). The owner decided on 2026-11-12 to keep the email as the only contact in `/privacy`, which already says it is the address for questions and for the rights. Whether that satisfies the article was read only in the part of the law that could be read (articles 1 to 50) and is **not settled**: it needs a legal review.
+
+## Amendment: the privacy policy (SAG-24, 2026-11-12)
+
+`/privacy` has its own section, "Estadísticas de uso" (`privacy.stats`, Spanish and English), that says what is measured (the kind of page, where the visit came from, the time a page was visible, the type of a search, adding to the library and following, the country and region, mobile or desktop), what is not stored (the IP address, the account, the text of a search, the city, which exact title or person), how the visitor code is made (a hash with a salt that changes every day and is kept for today and yesterday), that Do Not Track and Global Privacy Control are honored, and how long things are kept (events 13 months, then daily totals with no visitor code, with no time limit). The Cloudflare Web Analytics sentences are gone, so turning that service off is part of the switch-over, and it goes **first** (edge setup, section 16): off, then the policy deployed, then `ANALYTICS_ENABLED`, so the policy never says less than what is measured. `app/routes/privacy.render.test.tsx` ties the text to the code: the months come from `analyticsRetentionMonths`, the events table has no column for an address, a city, a user or a search text, the daily totals have no visitor, and the tracker uses no cookie or browser storage. `legalUpdatedAt` is 2026-11-12.
 
 ## References
 

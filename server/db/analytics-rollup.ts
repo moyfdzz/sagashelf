@@ -133,7 +133,8 @@ export async function rollUpAnalytics(
 
 /**
  * Deletes the raw events older than 13 months, a batch at a time, and only the ones whose day was
- * rolled up: if the rollup is stuck, nothing is lost. Returns how many were deleted.
+ * rolled up: if the rollup is stuck, nothing is lost. In the same statement it deletes the salts of
+ * the visitor code older than yesterday. Returns how many events were deleted.
  */
 export async function pruneAnalyticsEvents(
   db: SqlExecutor,
@@ -150,6 +151,12 @@ export async function pruneAnalyticsEvents(
         )
       ORDER BY e.occurred_at
       LIMIT ${batch}::int
+    ),
+    -- The salts of the daily visitor code older than yesterday go too, whether or not anybody
+    -- came: the policy says only today's and yesterday's are kept, and they are also deleted when
+    -- a salt is asked for, which does not happen while nobody visits.
+    salts AS (
+      DELETE FROM analytics_salts WHERE day < (now() AT TIME ZONE 'UTC')::date - 1 RETURNING 1
     ),
     deleted AS (
       DELETE FROM analytics_events WHERE id IN (SELECT id FROM old) RETURNING 1

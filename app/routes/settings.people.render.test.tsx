@@ -8,6 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import Privacy from "./privacy";
 import People from "./settings.people";
 import Terms from "./terms";
+import { formatDate } from "~/lib/format";
+import { legalUpdatedAt } from "~/lib/legal";
 import { resources } from "~/locales";
 
 // The loader and the action are tested in their own file; here only the pages are drawn.
@@ -179,7 +181,12 @@ describe("the legal pages after the profiles (SAG-107)", () => {
   });
 
   it("show the new date, in both languages", async () => {
-    expect(await render(<Privacy />)).toContain("6 de noviembre de 2026");
-    expect(await render(<Terms />, "en")).toContain("November 6, 2026");
+    // Worked out from the date itself, so the next update of the policy does not break this test.
+    expect(await render(<Privacy />)).toContain(
+      formatDate(legalUpdatedAt, "es"),
+    );
+    expect(await render(<Terms />, "en")).toContain(
+      formatDate(legalUpdatedAt, "en"),
+    );
   });
 });

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Partial (SAG-24; the collector is built, see [ADR-050](050-analytics-collector.md))
+- **Implementation:** Partial (SAG-24: built, not switched on yet, see [ADR-050](050-analytics-collector.md))
 - **Tickets:** SAG-24, SAG-26, SAG-31
 
 ## Context
@@ -46,7 +46,7 @@ Cloudflare injects its Web Analytics beacon (`beacon.min.js`) into the pages of 
 
 - The privacy policy no longer says "no analytics": it says that Cloudflare Web Analytics measures visits and page speed, and what Cloudflare states it collects. The cookies text stays as it was, because Cloudflare states the beacon uses no cookies or `localStorage`.
 - What Cloudflare states (read 2026-10-26): "It does not use any client-side state, such as cookies or `localStorage`, to collect usage metrics" and it does not fingerprint people by IP address or User Agent (<https://developers.cloudflare.com/web-analytics/data-metrics/core-web-vitals/>); it collects "the minimum amount of information - timing metrics" and "does not track individual end users across our customers' Internet properties" (<https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/>). The fields the beacon sends beyond timings were not found in the documentation. These are Cloudflare's own statements, not an audit. Its "no personal data" wording has an exception for visitors from the EU and the UK (<https://blog.cloudflare.com/the-rum-diaries-enabling-web-analytics-by-default/>).
-- When SAG-24 ships: turn Web Analytics off in the Cloudflare dashboard and update the policy again.
+- When SAG-24 ships: turn Web Analytics off in the Cloudflare dashboard and update the policy again. The policy was updated on 2026-11-12 (ADR-050); turning the service off is a step of the owner, in the edge setup, section 16.
 
 ## Open questions
 

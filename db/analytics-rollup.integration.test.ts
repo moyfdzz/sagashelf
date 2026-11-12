@@ -462,6 +462,23 @@ describe("pruneAnalyticsEvents", () => {
         .rows[0]?.n,
     );
 
+  it("deletes the salts older than yesterday even when nobody came and there is nothing else to delete", async () => {
+    await db.execute(sql`TRUNCATE analytics_salts`);
+    for (const daysAgo of [9, 2, 1, 0]) {
+      await db.execute(sql`
+        INSERT INTO analytics_salts (day, salt)
+        VALUES (((now() AT TIME ZONE 'UTC')::date - ${daysAgo}::int), ${`salt-${daysAgo}`})
+      `);
+    }
+
+    expect(await pruneAnalyticsEvents(db)).toBe(0);
+
+    const left = await db.execute(
+      sql`SELECT salt FROM analytics_salts ORDER BY day`,
+    );
+    expect(left.rows.map((row) => row.salt)).toEqual(["salt-1", "salt-0"]);
+  });
+
   it("deletes what is older than 13 months and was rolled up, and keeps the rest", async () => {
     await event(430);
     await event(430, { visitor: "b" });
