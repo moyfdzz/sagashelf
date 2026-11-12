@@ -150,7 +150,7 @@ test.describe("the menu of a phone", () => {
     expect(logo.x + logo.width).toBeLessThanOrEqual(language.x);
     expect(language.x + language.width).toBeLessThanOrEqual(theme.x);
     expect(theme.x + theme.width).toBeLessThanOrEqual(menu.x);
-    expect(logo.width).toBeGreaterThanOrEqual(145);
+    expect(logo.width).toBeGreaterThanOrEqual(130); // text-xl below 640 px (SAG-257)
     // A phone of 412 px has room for the icon only; the word stays as the name of the button.
     expect(menu.width).toBeLessThan(50);
     expect(menu.height).toBeGreaterThanOrEqual(36);
