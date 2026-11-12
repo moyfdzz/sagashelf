@@ -313,3 +313,18 @@ header[data-chrome] {
 body {
   @apply bg-surface text-fg font-sans antialiased;
 }
+
+/* A long word breaks instead of pushing the page sideways when the text is very large (SAG-257). */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote {
+    overflow-wrap: break-word;
+  }
+}
