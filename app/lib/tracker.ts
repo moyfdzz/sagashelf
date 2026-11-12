@@ -34,11 +34,17 @@ export type TrackerEvent =
   | { kind: "search"; path: string; type: string }
   | { kind: "vitals"; path: string; lcp?: number; cls?: number; inp?: number };
 
-/** The Core Web Vitals the tracker keeps (SAG-254). The same limits as the collector takes. */
+/** The Core Web Vitals the tracker keeps (SAG-254). */
 export type VitalName = "LCP" | "CLS" | "INP";
 
-const maxVitalMs = 60_000;
-const maxCls = 100;
+/**
+ * The most a time (LCP, INP) and a layout shift score can be. A copy of the limits of the collector
+ * (`server/analytics/vitals.ts`) and of the table, since client code cannot import the server's;
+ * `app/routes/analytics-limits.test.ts` fails if they differ, so a number the collector would refuse
+ * is never sent and a change in one place is not forgotten in the others.
+ */
+export const maxVitalMs = 60_000;
+export const maxCls = 100;
 
 /** What the browser says about the wish not to be measured: Do Not Track and Global Privacy Control. */
 export type PrivacySignals = {

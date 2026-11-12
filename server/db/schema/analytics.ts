@@ -168,7 +168,8 @@ export const analyticsDaily = pgTable(
  * judge a page by) and how many were good, needed improvement or were poor by the thresholds of
  * `server/analytics/vitals.ts`. Kept forever, like `analytics_daily`, and it holds no visitor. The
  * page is the one where the visit started, since the browser measures a document and not each move
- * inside the app. Past 100 pages a day, the rest is one row `(other)`.
+ * inside the app: LCP is of that page, but CLS and INP are of the whole visit. Past 100 pages a day,
+ * the rest is one row `(other)`.
  */
 export const analyticsVitalsDaily = pgTable(
   "analytics_vitals_daily",

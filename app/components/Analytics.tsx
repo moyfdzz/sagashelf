@@ -83,27 +83,28 @@ function startTracker(): Tracker | null {
  * is not part of what a page costs to open. Its callbacks hand each number to the tracker, and the
  * tracker sends them in one event the first time the tab hides.
  *
- * The `visibilitychange` listener that sends is added after the library has added its own, and the
- * browser calls them in that order, so the last value of the layout shift and of the interaction
- * time (which the library gives when the tab hides) is already in the tracker when it is sent. If
- * the tab hides before the file arrives, nothing was measured yet and nothing is sent.
+ * If the tab hides before the file arrives, nothing was measured yet and nothing is sent. The layout
+ * shift and the interaction time are of the whole visit, with every move inside the app, and are
+ * counted for the page where the visit started (ADR-050).
  */
 function measureSpeed(started: Tracker) {
   import("web-vitals")
     .then(({ onCLS, onINP, onLCP }) => {
-      onLCP((metric) => started.vital("LCP", metric.value));
-      onCLS((metric) => started.vital("CLS", metric.value));
-      onINP((metric) => started.vital("INP", metric.value));
+      // Every change is handed over, not only the final value the library gives when the tab hides.
+      // The tracker only keeps the last number, so it costs nothing, and it means that the number
+      // is already there before the tab hides, whatever the order of `pagehide` and
+      // `visibilitychange` (Chrome fires the first and then the second, and the library's last
+      // value comes in the second) and whatever the order of the listeners of the library and ours.
+      const all = { reportAllChanges: true };
+      onLCP((metric) => started.vital("LCP", metric.value), all);
+      onCLS((metric) => started.vital("CLS", metric.value), all);
+      onINP((metric) => started.vital("INP", metric.value), all);
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") started.flushVitals();
       });
-      // When a page is left, the browser fires `pagehide` and, a moment later in the same task,
-      // `visibilitychange`; the library gives the last layout shift and interaction time in the
-      // second one. Sending in `pagehide` would leave them out (seen in Chrome, SAG-254), so it
-      // only waits one turn, as a way out for a browser that does not fire the second.
-      window.addEventListener("pagehide", () => {
-        setTimeout(() => started.flushVitals(), 0);
-      });
+      // A browser that does not fire `visibilitychange` when a tab is closed (Safari, sometimes)
+      // still fires this one.
+      window.addEventListener("pagehide", () => started.flushVitals());
     })
     .catch(() => {
       // The file could not be loaded (an ad blocker, a bad connection): nothing is measured.
