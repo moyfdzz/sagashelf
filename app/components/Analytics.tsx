@@ -69,6 +69,11 @@ function startTracker(): Tracker | null {
   });
   // Safari does not always fire `visibilitychange` when a tab is closed; `pagehide` does.
   window.addEventListener("pagehide", () => started.hide());
+  // A page restored from the back/forward cache was flushed by `pagehide`: its clock starts again.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted && document.visibilityState === "visible")
+      started.show();
+  });
   return started;
 }
 
@@ -86,10 +91,12 @@ export function Analytics() {
   // query string is not part of the page, and a render with the same path is not a new page.
   useEffect(() => {
     if (lastPathname === location.pathname) return;
+    // Set first, so a path the tracker will not send (too long) or a visitor who asked not to be
+    // measured is not worked out again at every render.
+    lastPathname = location.pathname;
     const page = pageOf(location.pathname, params);
     const started = startTracker();
     if (!page || !started) return;
-    lastPathname = location.pathname;
     started.visit(
       {
         page,

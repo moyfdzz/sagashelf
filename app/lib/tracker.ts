@@ -5,6 +5,8 @@
  * events of the browser. Nothing here reads or writes a cookie or any storage.
  */
 
+import { entryStatuses } from "./title-library";
+
 /** Where a beacon goes. Same site, so the Content Security Policy needs no new origin. */
 export const collectUrl = "/api/collect";
 
@@ -50,38 +52,50 @@ function decoded(segment: string): string {
   }
 }
 
-/** Parameters whose value is one of a short list we wrote (a type of title, a list kind): kept as they are. */
-const keptParams = new Set(["type", "kind", "status"]);
+/**
+ * Parameters whose value is one of a short list we wrote (a type of title, a list kind, a status):
+ * kept as they are, so the numbers can group by type. Any other value in those places is typed text
+ * and is named like the rest.
+ */
+const keptValues: Readonly<Record<string, readonly string[]>> = {
+  type: ["anime", "movie", "series", "book", "manga"],
+  kind: ["followers", "following", "friends"],
+  status: entryStatuses,
+};
 
 /**
- * The page a path is, not the path itself: `/u/ana_reads` is `/u/:username` and a path nobody wrote
- * a page for is `/:splat`. The names of people, the slug of a title and the words of a mistyped
- * address never leave the browser, and the numbers group by kind of page. A parameter is found by
- * its value in the path.
+ * The page a path is, not the path itself: `/u/ana_reads` is `/u/:username` and an address nobody
+ * wrote a page for is `/:splat`. The names of people, the slug of a title and the words of a
+ * mistyped address never leave the browser, and the numbers group by kind of page.
+ *
+ * A parameter is found by its value. The segments are read from the end with the parameters from the
+ * last one, each used once, so a slug that equals a word of the path (`/media/movie/media`) is still
+ * the slug and the word `media` at the start stays the word.
  */
 export function pageOf(
   pathname: string,
   params: Readonly<Record<string, string | undefined>>,
 ): string | null {
+  const segments = pathname.split("/");
+  let end = segments.length;
   const splat = params["*"];
-  let path = pathname;
   if (splat) {
-    const whole = decoded(pathname);
-    const cut = whole.lastIndexOf(splat);
-    path = cut > 0 ? `${whole.slice(0, cut)}:splat` : "/:splat";
-  } else {
-    const names = new Map<string, string>();
-    for (const [name, value] of Object.entries(params)) {
-      if (value && !keptParams.has(name)) names.set(value, name);
-    }
-    path = pathname
-      .split("/")
-      .map((segment) => {
-        const name = names.get(decoded(segment));
-        return name ? `:${name}` : segment;
-      })
-      .join("/");
+    const count = Math.min(splat.split("/").length, segments.length - 1);
+    segments.splice(segments.length - count, count, ":splat");
+    end = segments.length - 1;
   }
+
+  const queue = Object.entries(params).filter(
+    ([name, value]) => name !== "*" && value,
+  );
+  for (let i = end - 1; i > 0 && queue.length > 0; i -= 1) {
+    const [name, value] = queue[queue.length - 1] ?? [];
+    if (!name || decoded(segments[i] ?? "") !== value) continue;
+    queue.pop();
+    if (!keptValues[name]?.includes(value ?? "")) segments[i] = `:${name}`;
+  }
+
+  const path = segments.join("/");
   if (!path.startsWith("/") || path.length > maxPathLength) return null;
   return path;
 }
@@ -153,6 +167,7 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
   let visibleSince: number | null = null;
   let visibleMs = 0;
   let first = true;
+  let lastSearch: string | null = null;
 
   function stopClock() {
     if (visibleSince !== null) {
@@ -161,7 +176,12 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
     }
   }
 
-  function flush() {
+  /**
+   * Sends the time seen so far once it is worth an event. Short visits to a tab are kept and added
+   * up, so a person who comes back to a page many times is not lost; leaving the page (`final`)
+   * drops what is too short, since it is a click through.
+   */
+  function flush(final: boolean) {
     stopClock();
     if (page && visibleMs >= minEngagedMs) {
       send({
@@ -169,14 +189,16 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
         path: page,
         ms: Math.min(Math.round(visibleMs), maxEngagedMs),
       });
+      visibleMs = 0;
+    } else if (final) {
+      visibleMs = 0;
     }
-    visibleMs = 0;
   }
 
   return {
     /** A page opened (the first one or after a move). The one before is closed first. */
     visit({ page: next, search, referrer }: Visit, visible: boolean) {
-      flush();
+      flush(true);
       page = next;
       if (visible) visibleSince = now();
       send({
@@ -187,10 +209,18 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
       });
       first = false;
     },
-    /** A search was made on the open page: only its type is sent. */
+    /**
+     * A search was made on the open page: only its type is sent. The same words and type again (the
+     * next page of the results, a reload of the address) are the same search, not a new one.
+     */
     search(search: string) {
-      if (page)
-        send({ kind: "search", path: page, type: searchTypeOf(search) });
+      if (!page) return;
+      const query = new URLSearchParams(search);
+      const type = searchTypeOf(search);
+      const same = `${(query.get("q") ?? "").trim().toLowerCase()}|${type}`;
+      if (same === lastSearch) return;
+      lastSearch = same;
+      send({ kind: "search", path: page, type });
     },
     /** The tab became visible again. */
     show() {
@@ -198,7 +228,7 @@ export function createTracker({ send, now, origin }: TrackerDeps) {
     },
     /** The tab was hidden or is being left: what was seen so far is sent. */
     hide() {
-      flush();
+      flush(false);
     },
   };
 }

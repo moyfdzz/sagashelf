@@ -64,6 +64,60 @@ describe("pageOf", () => {
     expect(pageOf("/nowhere", { "*": "nowhere" })).toBe("/:splat");
   });
 
+  it("names a parameter that sits before a catch-all too", () => {
+    expect(
+      pageOf("/u/ana_reads/whatever/else", {
+        username: "ana_reads",
+        "*": "whatever/else",
+      }),
+    ).toBe("/u/:username/:splat");
+  });
+
+  it("names a value that is not on the short list, so typed text never gets through", () => {
+    expect(
+      pageOf("/media/typed-by-someone/some-title", {
+        type: "typed-by-someone",
+        slug: "some-title",
+      }),
+    ).toBe("/media/:type/:slug");
+    expect(
+      pageOf("/u/ana_reads/whatever", {
+        username: "ana_reads",
+        kind: "whatever",
+      }),
+    ).toBe("/u/:username/:kind");
+    expect(
+      pageOf("/u/ana_reads/library/not-a-status", {
+        username: "ana_reads",
+        status: "not-a-status",
+      }),
+    ).toBe("/u/:username/library/:status");
+  });
+
+  it("keeps a status from the list", () => {
+    expect(
+      pageOf("/u/ana_reads/library/in_progress", {
+        username: "ana_reads",
+        status: "in_progress",
+      }),
+    ).toBe("/u/:username/library/in_progress");
+  });
+
+  it("is not fooled by a slug that equals a word of the path", () => {
+    expect(pageOf("/media/movie/media", { type: "movie", slug: "media" })).toBe(
+      "/media/movie/:slug",
+    );
+    expect(pageOf("/media/movie/movie", { type: "movie", slug: "movie" })).toBe(
+      "/media/movie/:slug",
+    );
+  });
+
+  it("names two parameters that have the same value, each in its place", () => {
+    expect(pageOf("/a/same/same", { first: "same", second: "same" })).toBe(
+      "/a/:first/:second",
+    );
+  });
+
   it("gives nothing for a path the collector would refuse", () => {
     expect(pageOf(`/${"a".repeat(250)}`, {})).toBeNull();
   });
@@ -274,6 +328,55 @@ describe("createTracker", () => {
       type: "anime",
     });
     expect(JSON.stringify(events)).not.toContain("secret");
+  });
+
+  it("counts a search once, not at every change of the address that keeps the same words and type", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/search"), true);
+
+    tracker.search("?q=naruto&type=anime");
+    tracker.search("?q=naruto&type=anime&page=2");
+    tracker.search("?q=Naruto%20&type=anime");
+
+    expect(events.filter((event) => event.kind === "search")).toHaveLength(1);
+  });
+
+  it("counts another search when the words or the type change", () => {
+    const { tracker, events } = harness();
+    tracker.visit(visit("/search"), true);
+
+    tracker.search("?q=naruto&type=anime");
+    tracker.search("?q=naruto&type=manga");
+    tracker.search("?q=bleach&type=manga");
+
+    expect(events.filter((event) => event.kind === "search")).toHaveLength(3);
+  });
+
+  it("adds up short visits of a tab, so a person who comes back many times is not lost", () => {
+    const { tracker, events, wait } = harness();
+    tracker.visit(visit("/"), true);
+    for (let i = 0; i < 3; i += 1) {
+      wait(800);
+      tracker.hide();
+      tracker.show();
+    }
+
+    const engaged = events.filter((event) => event.kind === "engaged");
+    expect(engaged).toEqual([{ kind: "engaged", path: "/", ms: 1600 }]);
+  });
+
+  it("does not carry the short time of a page over to the next one", () => {
+    const { tracker, events, wait } = harness();
+    tracker.visit(visit("/"), true);
+    wait(800);
+    tracker.hide();
+    tracker.show();
+
+    tracker.visit(visit("/sagas"), true);
+    wait(300);
+    tracker.hide();
+
+    expect(events.filter((event) => event.kind === "engaged")).toEqual([]);
   });
 
   it("sends nothing before a page opened", () => {
