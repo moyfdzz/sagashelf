@@ -1,3 +1,4 @@
+import { pruneAnalyticsEvents, rollUpAnalytics } from "../db/analytics-rollup";
 import { pruneContactMessages } from "../db/contact-messages";
 import { announceNewEpisodes } from "../db/episode-alerts";
 import { pruneImportJobs } from "../db/import-queue";
@@ -110,10 +111,11 @@ export async function runScheduledJobs(): Promise<void> {
 }
 
 /**
- * What the second Cron Trigger runs: the records of picture uploads and the messages of the contact
- * page past their time, then the next episode of the series that are due. They go here because this
- * one always runs, and the hourly one does not when the webhooks are off. Two subrequests, on top of
- * the 23 of the episodes: 25 of the 50.
+ * What the second Cron Trigger runs: the records of picture uploads, the messages of the contact
+ * page and the finished import jobs past their time, the analytics (the days that are over rolled
+ * up, then the raw events past 13 months deleted), then the next episode of the series that are
+ * due. They go here because this one always runs, and the hourly one does not when the webhooks
+ * are off. Five subrequests, on top of the 23 of the episodes: 28 of the 50.
  */
 export async function runTvmazeJobs(): Promise<void> {
   try {
@@ -141,6 +143,26 @@ export async function runTvmazeJobs(): Promise<void> {
     }
   } catch (error) {
     logJobFailed("prune-import-jobs", error);
+  }
+  // The analytics (SAG-24, ADR-050): the days that are over are rolled up, and then the raw events
+  // past 13 months are deleted, only those of a day that was rolled up. The order matters.
+  try {
+    const summary = await rollUpAnalytics(await getDb());
+    if (summary.days > 0) {
+      console.log(JSON.stringify({ event: "analytics.rolled_up", ...summary }));
+    }
+  } catch (error) {
+    logJobFailed("roll-up-analytics", error);
+  }
+  try {
+    const deleted = await pruneAnalyticsEvents(await getDb());
+    if (deleted > 0) {
+      console.log(
+        JSON.stringify({ event: "analytics_events.pruned", deleted }),
+      );
+    }
+  } catch (error) {
+    logJobFailed("prune-analytics-events", error);
   }
   try {
     const tvmaze = getTvmaze();

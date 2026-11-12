@@ -1,10 +1,12 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   check,
   date,
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
@@ -95,5 +97,54 @@ export const analyticsEvents = pgTable(
     ),
     // The daily rollup reads one day at a time, and the cleanup looks at age only.
     index("analytics_events_occurred_idx").on(t.occurredAt),
+  ],
+);
+
+/** The dimensions of the daily rollup, written once for the table, the job and the tests. */
+export const analyticsDimensions = [
+  "kind",
+  "page",
+  "referrer_class",
+  "referrer_host",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "country",
+  "region",
+  "device",
+  "search_type",
+] as const;
+
+/**
+ * The daily rollup of the raw events (SAG-24, ADR-050): one row for each day, dimension and value,
+ * kept forever, so the raw events can be deleted after 13 months. `events` counts what a person did
+ * (a page view, a search, a step of the funnel) and not the times on a page; `visitors` counts the
+ * distinct visitors of that day (a visitor is a hash that changes every day, so it never adds up
+ * across days); `engaged_ms` is the visible time. The dimension `kind` always has a row for a day
+ * that was rolled up, and that row is what says so. Past 100 values a day, the rest of a dimension
+ * is one row with the value `(other)`, so a forged flood of values cannot grow a table that is kept
+ * forever.
+ */
+export const analyticsDaily = pgTable(
+  "analytics_daily",
+  {
+    day: date("day").notNull(),
+    dimension: text("dimension").notNull(),
+    value: text("value").notNull(),
+    events: integer("events").notNull(),
+    visitors: integer("visitors").notNull(),
+    engagedMs: bigint("engaged_ms", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.dimension, t.value] }),
+    check(
+      "analytics_daily_dimension_check",
+      sql`${t.dimension} in ('kind', 'page', 'referrer_class', 'referrer_host', 'utm_source', 'utm_medium', 'utm_campaign', 'country', 'region', 'device', 'search_type')`,
+    ),
+    check("analytics_daily_value_check", sql`char_length(${t.value}) <= 200`),
+    check(
+      "analytics_daily_counts_check",
+      sql`${t.events} >= 0 and ${t.visitors} >= 0 and ${t.engagedMs} >= 0`,
+    ),
   ],
 );

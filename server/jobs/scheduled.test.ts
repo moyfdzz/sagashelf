@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   prunePictureUploads: vi.fn(),
   pruneContactMessages: vi.fn(),
   pruneImportJobs: vi.fn(),
+  rollUpAnalytics: vi.fn(),
+  pruneAnalyticsEvents: vi.fn(),
   processImportBatch: vi.fn(),
 }));
 
@@ -44,6 +46,10 @@ vi.mock("../db/picture-uploads", () => ({
 }));
 vi.mock("../db/contact-messages", () => ({
   pruneContactMessages: mocks.pruneContactMessages,
+}));
+vi.mock("../db/analytics-rollup", () => ({
+  rollUpAnalytics: mocks.rollUpAnalytics,
+  pruneAnalyticsEvents: mocks.pruneAnalyticsEvents,
 }));
 vi.mock("../db/import-queue", () => ({
   pruneImportJobs: mocks.pruneImportJobs,
@@ -76,6 +82,9 @@ beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   // Nothing came out, unless a test says so.
   mocks.announceNewEpisodes.mockResolvedValue({ episodes: 0, messages: 0 });
+  // Nothing to roll up or to delete, unless a test says so.
+  mocks.rollUpAnalytics.mockResolvedValue({ days: 0, rows: 0 });
+  mocks.pruneAnalyticsEvents.mockResolvedValue(0);
 });
 
 describe("runScheduledJobs", () => {
@@ -389,6 +398,73 @@ describe("the second Cron Trigger (SAG-90)", () => {
     mocks.pruneImportJobs.mockRejectedValue(new TypeError("no table"));
     mocks.refreshNextEpisodes.mockClear();
     await expect(runTvmazeJobs()).resolves.toBeUndefined();
+    expect(mocks.refreshNextEpisodes).toHaveBeenCalled();
+  });
+
+  it("rolls up the analytics, and logs only when it did something (SAG-24)", async () => {
+    const db = { execute: vi.fn() };
+    mocks.getTvmaze.mockReturnValue(null);
+    mocks.getDb.mockResolvedValue(db);
+
+    await runTvmazeJobs();
+    expect(mocks.rollUpAnalytics).toHaveBeenCalledWith(db);
+    expect(console.log).not.toHaveBeenCalledWith(
+      expect.stringContaining("analytics.rolled_up"),
+    );
+
+    mocks.rollUpAnalytics.mockResolvedValue({ days: 2, rows: 40 });
+    await runTvmazeJobs();
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "analytics.rolled_up", days: 2, rows: 40 }),
+    );
+  });
+
+  it("deletes the old raw events of the analytics after rolling up, and logs only when it deleted", async () => {
+    const db = { execute: vi.fn() };
+    const order: string[] = [];
+    mocks.getTvmaze.mockReturnValue(null);
+    mocks.getDb.mockResolvedValue(db);
+    mocks.rollUpAnalytics.mockImplementation(async () => {
+      order.push("roll up");
+      return { days: 0, rows: 0 };
+    });
+    mocks.pruneAnalyticsEvents.mockImplementation(async () => {
+      order.push("prune");
+      return 12;
+    });
+
+    await runTvmazeJobs();
+
+    expect(order).toEqual(["roll up", "prune"]);
+    expect(mocks.pruneAnalyticsEvents).toHaveBeenCalledWith(db);
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({ event: "analytics_events.pruned", deleted: 12 }),
+    );
+  });
+
+  it("logs a failure of the analytics by name, and the other jobs still run", async () => {
+    mocks.getTvmaze.mockReturnValue({});
+    mocks.getDb.mockResolvedValue({ execute: vi.fn() });
+    mocks.rollUpAnalytics.mockRejectedValue(new TypeError("no table"));
+    mocks.pruneAnalyticsEvents.mockRejectedValue(new RangeError("no table"));
+    mocks.refreshNextEpisodes.mockResolvedValue({});
+
+    await expect(runTvmazeJobs()).resolves.toBeUndefined();
+
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "job.failed",
+        job: "roll-up-analytics",
+        error: "TypeError",
+      }),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "job.failed",
+        job: "prune-analytics-events",
+        error: "RangeError",
+      }),
+    );
     expect(mocks.refreshNextEpisodes).toHaveBeenCalled();
   });
 
