@@ -42,6 +42,13 @@ This changes the ticket on purpose: "computed from library activity in daily rol
 - Whether to count a rating by the day it was given needs a new column (`rated_at`). Not worth a migration until someone asks.
 - Books and manga: the site's lists work for them (they are types like the others); the worldwide list for books needs a separate look at Open Library's terms, and manga has no popularity source.
 
+## Update: the worldwide list (SAG-23, PR 2, 2026-11-12)
+
+- **Source.** Only TMDB, through `trending` of its adapter (ADR-016): movies, series and anime, with the windows `day` and `week` that TMDB offers. The month and the year exist only for the favorites of the site. TMDB's "popular" list is not used.
+- **One function**, `getWorldwideTrending` in `server/trending/worldwide.ts`. It takes the providers, the cache, the type, the window and the language, and answers `ok` (up to 20 titles, plus the source: name, address, the notice TMDB requires and the logo), `unavailable` (the source failed or there is no token) or `unsupported` (books and manga: Open Library needs its own look at its terms, and MangaDex has no popularity). It never throws and touches no database and no data of a person.
+- **A copy of 1 hour at the edge**, in the Workers Cache API (`getTrendingCache` in `server/runtime-env.ts`), under a made-up address with a version, one copy for each source, type, window and language. TMDB allows a copy for 6 months (ADR-016). An empty answer is kept for the same hour; a failure is never kept, so the next call asks again. A runtime without the Cache API, or a broken copy, only means one more call to TMDB.
+- **The link of each title** (`/media/open` for a title we do not hold, its own page for one we do) and the logo and notice on the page come with the page, in the next pull request.
+
 ## References
 
 - [ADR-014](014-account-deletion-erases-everything.md), [ADR-016](016-provider-layer-and-tmdb.md) (TMDB data may be kept at most 6 months), [ADR-031](031-social-graph.md).
