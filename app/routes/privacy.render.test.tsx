@@ -47,6 +47,8 @@ describe("the privacy policy says what the analytics measure (SAG-24)", () => {
     const text = textOf(html);
 
     expect(html).toContain('id="stats"');
+    // The line in the list of data leads to the section.
+    expect(html).toMatch(/<a [^>]*href="#stats"[^>]*>[^<]*Estadísticas de uso/);
     expect(text).toContain("Estadísticas de uso");
     expect(text).toContain("sistema propio");
     expect(text).toContain("No usa cookies");

@@ -14,7 +14,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [006](006-security-model.md)                     | Threat model, controls and where they live                                                | Accepted | Partial (see the ADR)                 |
 | [007](007-background-work-cron-and-outbox.md)    | One Cron Trigger handler plus a transactional outbox                                      | Accepted | Partly done (SAG-54); outbox planned  |
 | [008](008-i18n-spanish-default.md)               | Spanish by default, English selectable                                                    | Accepted | Done (SAG-8)                          |
-| [009](009-analytics-cookieless.md)               | Cookieless first-party analytics with daily rollups                                       | Accepted | Done (SAG-24)                         |
+| [009](009-analytics-cookieless.md)               | Cookieless first-party analytics with daily rollups                                       | Accepted | Partial (SAG-24)                      |
 | [010](010-ci-cd-and-repository-rules.md)         | CI, security scans, previews and the `main` ruleset                                       | Accepted | Done (SAG-5)                          |
 | [011](011-edge-security-and-domain.md)           | Domain, security headers, CSP with nonces, rate limiting and crawler policy               | Accepted | Partial (SAG-7, plus dashboard steps) |
 | [012](012-neon-over-supabase.md)                 | Neon for the database, compared with Supabase on the Free plan                            | Accepted | Done (SAG-9)                          |
@@ -53,7 +53,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [047](047-import-queue.md)                       | Big libraries are imported in the background, through a queue                             | Accepted | Done (SAG-241)                        |
 | [048](048-simkl-backup-import.md)                | A Simkl JSON backup is imported through its TMDB ids, not its API                         | Accepted | Done (SAG-242)                        |
 | [049](049-match-anime-by-name-and-year.md)       | An anime with no TMDB id is looked up by name and year, in the queue                      | Accepted | Done (SAG-243)                        |
-| [050](050-analytics-collector.md)                | The analytics collector writes straight to Postgres, with a daily salt                    | Accepted | Done (SAG-24)                         |
+| [050](050-analytics-collector.md)                | The analytics collector writes straight to Postgres, with a daily salt                    | Accepted | Partial (SAG-24)                      |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

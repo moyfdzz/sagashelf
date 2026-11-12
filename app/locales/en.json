@@ -545,7 +545,7 @@
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "contact": "Contact messages: what you write on the contact page (the kind of message, the text and, if you were not signed in and want a reply, the email you leave) is kept to handle it, is seen only by whoever runs the site and is deleted after 90 days. If you sent it with your account, it is also deleted when you delete your account and is in your data export.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
-      "analytics": "Usage statistics: we measure how the site is used with our own system, with no cookies and without storing your IP address or your account. The details are in “Usage statistics”.",
+      "analytics": "Usage statistics: we measure how the site is used with our own system, with no cookies and without storing your IP address or your account. The details are in <stats>“Usage statistics”</stats>.",
       "social": "Relationships: whom you follow, whom you blocked and whom you muted, and the follow requests you send and receive. The person you mute does not know.",
       "reports": "Reports and pictures: the reports you send, and for each picture you try to upload, the date, a fingerprint of the file (not the image), the result of the check and your IP address. We do not tell the person you report that it was you."
     },

@@ -225,6 +225,7 @@ describe("a link on its own is not drawn as a link inside a sentence (SAG-114)",
     join("routes", "account-restricted.tsx"),
     join("routes", "community.tsx"),
     join("routes", "credits.tsx"),
+    join("routes", "privacy.tsx"),
     join("routes", "terms.tsx"),
     join("routes", "media.$type.$slug.tsx"),
   ];

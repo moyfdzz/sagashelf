@@ -1,9 +1,20 @@
-import { useTranslation } from "react-i18next";
+import type { ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import type { Route } from "./+types/privacy";
 import { LegalList, LegalPage, LegalSection } from "~/components/LegalPage";
 import { contactEmail } from "~/lib/legal";
+import { textLinkClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
+
+/** A link to the section on usage statistics, inside the sentence of the list of data. */
+function SectionLink({ children }: { children?: ReactNode }) {
+  return (
+    <a href="#stats" className={textLinkClass}>
+      {children}
+    </a>
+  );
+}
 
 export function loader({ context }: Route.LoaderArgs) {
   const { t } = getInstance(context);
@@ -42,7 +53,11 @@ export default function Privacy() {
             t("privacy.data.reports"),
             t("privacy.data.contact"),
             t("privacy.data.technical"),
-            t("privacy.data.analytics"),
+            <Trans
+              key="analytics"
+              i18nKey="privacy.data.analytics"
+              components={{ stats: <SectionLink /> }}
+            />,
           ]}
         />
       </LegalSection>

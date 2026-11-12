@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
-- **Implementation:** Done (SAG-24, see [ADR-050](050-analytics-collector.md))
+- **Implementation:** Partial (SAG-24: built, not switched on yet, see [ADR-050](050-analytics-collector.md))
 - **Tickets:** SAG-24, SAG-26, SAG-31
 
 ## Context
