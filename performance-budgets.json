@@ -5,6 +5,7 @@
     "routes/admin.messages": 244,
     "routes/admin.moderation": 247,
     "routes/admin.sagas": 242,
+    "routes/admin.stats": 250,
     "routes/admin.sagas.$id": 242,
     "routes/community": 210,
     "routes/contact": 232,

@@ -10,10 +10,11 @@ import { tabClass } from "~/lib/ui";
 export function AdminNav({
   current,
 }: {
-  current: "sagas" | "moderation" | "messages";
+  current: "stats" | "sagas" | "moderation" | "messages";
 }) {
   const { t } = useTranslation();
   const items = [
+    { key: "stats", href: "/admin/stats", label: t("admin.nav.stats") },
     { key: "sagas", href: "/admin/sagas", label: t("admin.nav.sagas") },
     {
       key: "moderation",
