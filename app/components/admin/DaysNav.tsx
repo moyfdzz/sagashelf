@@ -19,7 +19,7 @@ export function DaysNav({
   const { t } = useTranslation();
 
   return (
-    <nav aria-label={t("admin.stats.traffic.period.label")}>
+    <nav aria-label={t("admin.stats.common.period.label")}>
       <ul className="flex flex-wrap gap-2">
         {options.map((option) => {
           const active = option === days;
@@ -30,7 +30,7 @@ export function DaysNav({
                 aria-current={active ? "page" : undefined}
                 className={tabClass(active)}
               >
-                {t("admin.stats.traffic.period.days", { count: option })}
+                {t("admin.stats.common.period.days", { count: option })}
               </a>
             </li>
           );

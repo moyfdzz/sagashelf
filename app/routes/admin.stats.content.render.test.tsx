@@ -42,6 +42,7 @@ async function render(
 
 const content = (fields: Record<string, unknown> = {}) => ({
   days: 30,
+  rolledDays: 30,
   from: "2026-10-13",
   to: "2026-11-11",
   searches: [
@@ -78,6 +79,16 @@ describe("the content page of the administration (SAG-26)", () => {
     expect(html).toContain("Anime");
     expect(html).toContain("Películas");
     expect(html).toContain("weird");
+  });
+
+  it("says when the nightly count has not done every day of the window", async () => {
+    const full = await render(<AdminStatsContent {...props()} />);
+    const partial = await render(
+      <AdminStatsContent {...props({ rolledDays: 4 })} />,
+    );
+
+    expect(full).not.toContain("tienen datos");
+    expect(partial).toContain("Solo 4 de 30 días tienen datos");
   });
 
   it("says what is not measured: searches with no result", async () => {

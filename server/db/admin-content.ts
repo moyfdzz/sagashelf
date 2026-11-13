@@ -21,6 +21,8 @@ export type AdminContent = {
   /** First and last day of the window, `YYYY-MM-DD`, UTC. */
   from: string;
   to: string;
+  /** How many days of the window the rollup has done. A smaller number than `days` says so. */
+  rolledDays: number;
   /** Searches by the type of title searched, the most searched first. */
   searches: ContentSearch[];
   /** Every title a person wrote by hand (`custom`), and the ones made in the window. */
@@ -92,8 +94,13 @@ export async function getAdminContent(
          FROM analytics_daily
          WHERE dimension = 'search_type'
            AND day >= ${from}::date AND day <= ${day(to)}::date
+           -- The rest of a day past the cap of the rollup is not a type of title.
+           AND value NOT IN ('(other)', '(other) ')
          GROUP BY value
        ) s) AS searches,
+      (SELECT count(DISTINCT day)::int FROM analytics_daily
+       WHERE dimension = 'kind'
+         AND day >= ${from}::date AND day <= ${day(to)}::date) AS rolled,
       (SELECT custom_total FROM written_by_hand) AS custom_total,
       (SELECT custom_new FROM written_by_hand) AS custom_new,
       (SELECT count(*)::int FROM sagas WHERE status = 'published') AS sagas_published,
@@ -113,6 +120,7 @@ export async function getAdminContent(
     days,
     from,
     to: day(to),
+    rolledDays: count(row.rolled),
     searches: readSearches(row.searches),
     customTotal: count(row.custom_total),
     customNew: count(row.custom_new),

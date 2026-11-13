@@ -53,11 +53,20 @@ export function ContentPanel({
         path="/admin/stats/content"
       />
       <p className="text-fg-muted mt-3 text-sm">
-        {t("admin.stats.traffic.range", {
+        {t("admin.stats.common.range", {
           from: dateOf(content.from),
           to: dateOf(content.to),
         })}
       </p>
+
+      {content.rolledDays < content.days ? (
+        <p className="text-fg-muted mt-1 text-sm">
+          {t("admin.stats.common.rolled", {
+            rolled: content.rolledDays,
+            days: content.days,
+          })}
+        </p>
+      ) : null}
 
       <dl
         aria-label={t("admin.stats.tiles.label")}
@@ -81,9 +90,7 @@ export function ContentPanel({
       <h3 className={heading}>{t("admin.stats.content.searches.heading")}</h3>
       <p className={lead}>{t("admin.stats.content.searches.description")}</p>
       {content.searches.length === 0 ? (
-        <p className="text-fg-muted text-sm">
-          {t("admin.stats.traffic.empty")}
-        </p>
+        <p className="text-fg-muted text-sm">{t("admin.stats.common.empty")}</p>
       ) : (
         <RowBars
           rows={content.searches.map((row) => ({

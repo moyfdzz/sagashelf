@@ -17,6 +17,7 @@ describe("getAdminContent (SAG-26)", () => {
           { type: "anime", searches: "9" },
           { type: "movie", searches: 7 },
         ],
+        rolled: "28",
         custom_total: "3",
         custom_new: 1,
         sagas_published: "10",
@@ -33,6 +34,7 @@ describe("getAdminContent (SAG-26)", () => {
       days: 30,
       from: "2026-10-13",
       to: "2026-11-11",
+      rolledDays: 28,
       searches: [
         { type: "anime", searches: 9 },
         { type: "movie", searches: 7 },

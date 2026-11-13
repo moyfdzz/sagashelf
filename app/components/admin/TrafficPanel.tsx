@@ -94,7 +94,7 @@ export function TrafficPanel({
     }));
   // The rest of a day past the cap of the rollup arrives as `(other)`.
   const otherLabel = (value: string) =>
-    value === "(other)" ? t("admin.stats.traffic.other") : value;
+    value === "(other)" ? t("admin.stats.common.other") : value;
   const sourceLabel = (value: string) =>
     value === "(other)"
       ? otherLabel(value)
@@ -123,7 +123,7 @@ export function TrafficPanel({
       ? (signups / traffic.visits) * 100
       : null;
   const empty = (
-    <p className="text-fg-muted text-sm">{t("admin.stats.traffic.empty")}</p>
+    <p className="text-fg-muted text-sm">{t("admin.stats.common.empty")}</p>
   );
 
   return (
@@ -138,14 +138,14 @@ export function TrafficPanel({
         path="/admin/stats/traffic"
       />
       <p className="text-fg-muted mt-3 text-sm">
-        {t("admin.stats.traffic.range", {
+        {t("admin.stats.common.range", {
           from: dateOf(traffic.from),
           to: dateOf(traffic.to),
         })}
       </p>
       {traffic.rolledDays < traffic.days ? (
         <p className="text-fg-muted mt-1 text-sm">
-          {t("admin.stats.traffic.rolled", {
+          {t("admin.stats.common.rolled", {
             rolled: traffic.rolledDays,
             days: traffic.days,
           })}

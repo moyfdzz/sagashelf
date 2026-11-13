@@ -1585,13 +1585,6 @@
         "content": "Content"
       },
       "traffic": {
-        "period": {
-          "label": "Period",
-          "days_one": "{{count}} day",
-          "days_other": "{{count}} days"
-        },
-        "range": "From {{from}} to {{to}}, in UTC. Today is not counted.",
-        "rolled": "Only {{rolled}} of {{days}} days have data. The others had no visits, or the nightly count has not run yet.",
         "tiles": {
           "pageviews": "Page views",
           "visits": "Visits",
@@ -1600,8 +1593,6 @@
         },
         "visitsNote": "A visit is one person on one day: there is no way to tell whether it is the same person as on another day, because who they are is not kept (ADR-050). Page views also count the moves between pages inside the site. The time per visit counts only what the browser managed to measure, so it is a guide.",
         "showNumbers": "Show the numbers",
-        "other": "Other",
-        "empty": "There is no data in this period yet.",
         "perDay": {
           "heading": "Page views per day",
           "description": "One number for each day of the period. The numbers on the axis are page views.",
@@ -1666,6 +1657,17 @@
           "described": "Works with details from Wikidata",
           "filled": "Works with details: {{share}}."
         }
+      },
+      "common": {
+        "period": {
+          "label": "Period",
+          "days_one": "{{count}} day",
+          "days_other": "{{count}} days"
+        },
+        "range": "From {{from}} to {{to}}, in UTC. Today is not counted.",
+        "rolled": "Only {{rolled}} of {{days}} days have data. The others had no visits, or the nightly count has not run yet.",
+        "empty": "There is no data in this period yet.",
+        "other": "Other"
       }
     }
   },

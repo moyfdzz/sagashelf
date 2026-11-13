@@ -44,6 +44,7 @@ describe("getAdminContent (SAG-26)", () => {
       days: 7,
       from: "2026-11-05",
       to: "2026-11-11",
+      rolledDays: 0,
       searches: [],
       customTotal: 0,
       customNew: 0,
@@ -78,6 +79,43 @@ describe("getAdminContent (SAG-26)", () => {
       { type: "anime", searches: 9 },
       { type: "movie", searches: 7 },
     ]);
+  });
+
+  it("leaves the rest of the rollup out of the searches and counts the days that have data", async () => {
+    await db.insert(analyticsDaily).values([
+      search("2026-11-10", "movie", 2),
+      search("2026-11-10", "(other)", 50),
+      search("2026-11-10", "(other) ", 50),
+      {
+        day: "2026-11-10",
+        dimension: "kind",
+        value: "pageview",
+        events: 1,
+        visitors: 1,
+        engagedMs: 0,
+      },
+      {
+        day: "2026-11-11",
+        dimension: "kind",
+        value: "pageview",
+        events: 1,
+        visitors: 1,
+        engagedMs: 0,
+      },
+      {
+        day: "2026-11-12",
+        dimension: "kind",
+        value: "pageview",
+        events: 1,
+        visitors: 1,
+        engagedMs: 0,
+      },
+    ]);
+
+    const content = await getAdminContent(db, now, 7);
+
+    expect(content.searches).toEqual([{ type: "movie", searches: 2 }]);
+    expect(content.rolledDays).toBe(2);
   });
 
   it("counts the titles written by hand, and the ones made inside the window", async () => {
