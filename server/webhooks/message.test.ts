@@ -232,6 +232,26 @@ describe("episodeLabel and episodeNotice (SAG-102)", () => {
     ).toEqual({ title: "A", which: null, mediaId: null });
   });
 
+  it("shows the title of the language of now, and falls back to the one written at creation", () => {
+    const payload = {
+      title: "Los Simpson",
+      titles: { es: "Los Simpson", en: "The Simpsons" },
+      season: 1,
+      number: 1,
+    };
+    expect(episodeNotice(payload, "en")?.title).toBe("The Simpsons");
+    expect(episodeNotice(payload, "es")?.title).toBe("Los Simpson");
+    // A row from before `titles`, or a damaged one, keeps the old title.
+    expect(episodeNotice({ title: "Old" }, "en")?.title).toBe("Old");
+    expect(episodeNotice({ title: "Old", titles: null }, "en")?.title).toBe(
+      "Old",
+    );
+    expect(
+      episodeNotice({ title: "Old", titles: { en: " " } }, "en")?.title,
+    ).toBe("Old");
+    expect(episodeNotice({ titles: { en: "Only" } }, "en")?.title).toBe("Only");
+  });
+
   it.each([{}, { title: 3 }, { title: "   " }])(
     "have nothing to say for %j",
     (payload) => {

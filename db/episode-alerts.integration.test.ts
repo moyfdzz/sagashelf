@@ -642,6 +642,7 @@ describe("the inbox of notifications (SAG-102)", () => {
       locale: "es",
       mediaId: show.id,
       title: "Severance",
+      titles: { es: "Severance", en: "Severance" },
       season: 2,
       number: 5,
     });
@@ -672,7 +673,12 @@ describe("the inbox of notifications (SAG-102)", () => {
     await announceNewEpisodes(db, now);
 
     const [row] = await inbox();
-    expect(row?.payload).toMatchObject({ locale: "en", title: "The Simpsons" });
+    expect(row?.payload).toMatchObject({
+      locale: "en",
+      title: "The Simpsons",
+      // Both languages are kept, so a later change of language still shows the right title (SAG-262).
+      titles: { es: "Los Simpson", en: "The Simpsons" },
+    });
   });
 
   it("writes one per episode and per person, so two titles are two rows", async () => {
