@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { z } from "zod";
 
-import { createHttpClient, ProviderError, providerUserAgent } from "./http";
+import { takeProviderCalls, type ProviderCall } from "./call-log";
+import {
+  createHttpClient,
+  outcomeOf,
+  ProviderError,
+  providerUserAgent,
+} from "./http";
 
 const ok = (body: unknown = { ok: true }) =>
   new Response(JSON.stringify(body), { status: 200 });
@@ -476,5 +482,185 @@ describe("stopOnStatus (a provider that bans an address that keeps asking)", () 
     await client.getJson("https://x.test/a");
 
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the count of the calls (SAG-26)", () => {
+  const schema = z.object({ id: z.number() });
+  const breaker = { retries: 0, failureThreshold: 3, openMs: 30_000 };
+
+  /** A client whose counts are kept in a list, so each test reads what was reported. */
+  function counted(
+    fetchImpl: typeof fetch,
+    options: Partial<Parameters<typeof createHttpClient>[0]> = {},
+  ) {
+    const calls: ProviderCall[] = [];
+    const made = setup(fetchImpl, {
+      onCall: (call) => calls.push(call),
+      ...options,
+    });
+    return { ...made, calls };
+  }
+
+  it("reports an answer that was read as ok, with the request that was sent and the time", async () => {
+    const fetchMock = vi.fn(async () => ok());
+    const { client, calls } = counted(fetchMock as unknown as typeof fetch);
+
+    await client.getJson("https://api.test/x");
+
+    expect(calls).toEqual([
+      { provider: "demo", outcome: "ok", requests: 1, ms: 0 },
+    ]);
+  });
+
+  it("counts one call for a call that was retried, with every request it sent", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(status(503))
+      .mockResolvedValueOnce(status(503))
+      .mockResolvedValueOnce(ok());
+    const { client, calls } = counted(fetchMock as unknown as typeof fetch);
+
+    await client.getJson("https://api.test/x");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ outcome: "ok", requests: 3 });
+    // The pauses between the tries are part of the time of the call.
+    expect(calls[0]?.ms).toBeGreaterThan(0);
+  });
+
+  it("sorts a failure by the status the provider answered with", async () => {
+    const cases: [number, string, number][] = [
+      [404, "http_4xx", 1],
+      [401, "http_4xx", 1],
+      [429, "http_429", 3],
+      [503, "http_5xx", 3],
+      [302, "http_other", 1],
+    ];
+    for (const [code, outcome, requests] of cases) {
+      const fetchMock = vi.fn(async () => status(code));
+      const { client, calls } = counted(fetchMock as unknown as typeof fetch);
+
+      await failureOf(client.getJson("https://api.test/x"));
+
+      expect(calls, String(code)).toHaveLength(1);
+      expect(calls[0], String(code)).toMatchObject({ outcome, requests });
+    }
+  });
+
+  it("reports a timeout, an answer that is not valid and a broken connection", async () => {
+    const hang = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
+        }),
+    );
+    const timeout = counted(hang as unknown as typeof fetch, {
+      timeoutMs: 15,
+      retries: 0,
+    });
+    await failureOf(timeout.client.getJson("https://api.test/x"));
+
+    const invalid = counted(
+      vi.fn(async () => ok({ name: "no id" })) as unknown as typeof fetch,
+    );
+    await failureOf(invalid.client.getJson("https://api.test/x", { schema }));
+
+    const broken = counted(
+      vi.fn(async () => {
+        throw new TypeError("failed");
+      }) as unknown as typeof fetch,
+      { retries: 0 },
+    );
+    await failureOf(broken.client.getJson("https://api.test/x"));
+
+    expect(timeout.calls[0]).toMatchObject({ outcome: "timeout", requests: 1 });
+    expect(invalid.calls[0]).toMatchObject({ outcome: "invalid", requests: 1 });
+    expect(broken.calls[0]).toMatchObject({ outcome: "network", requests: 1 });
+  });
+
+  it("reports a call that was never sent with no request", async () => {
+    const fetchMock = vi.fn(async () => ok());
+    const limited = counted(fetchMock as unknown as typeof fetch, {
+      ratePerSecond: 1,
+      burst: 1,
+      maxWaitMs: 100,
+    });
+    await limited.client.getJson("https://api.test/1");
+    await failureOf(limited.client.getJson("https://api.test/2"));
+
+    const failing = vi.fn(async () => status(503));
+    const open = counted(failing as unknown as typeof fetch, breaker);
+    for (let i = 0; i < 3; i += 1) {
+      await failureOf(open.client.getJson("https://api.test/x"));
+    }
+    await failureOf(open.client.getJson("https://api.test/x"));
+
+    expect(limited.calls.map((c) => [c.outcome, c.requests])).toEqual([
+      ["ok", 1],
+      ["rate_limited", 0],
+    ]);
+    expect(open.calls.at(-1)).toMatchObject({
+      outcome: "circuit_open",
+      requests: 0,
+    });
+  });
+
+  it("does not count a call that the caller cancelled", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn(async () => {
+      controller.abort();
+      throw new DOMException("aborted", "AbortError");
+    });
+    const { client, calls } = counted(fetchMock as unknown as typeof fetch);
+
+    await failureOf(
+      client.getJson("https://api.test/x", { signal: controller.signal }),
+    );
+
+    expect(calls).toEqual([]);
+  });
+
+  it("is not affected when the count itself fails", async () => {
+    const { client } = setup(
+      vi.fn(async () => ok({ a: 1 })) as unknown as typeof fetch,
+      {
+        onCall: () => {
+          throw new Error("the count broke");
+        },
+      },
+    );
+
+    expect(await client.getJson("https://api.test/x")).toEqual({ a: 1 });
+  });
+
+  it("goes to the count of the administration when no other is given", async () => {
+    takeProviderCalls();
+    const { client } = setup(
+      vi.fn(async () => ok()) as unknown as typeof fetch,
+    );
+
+    await client.getJson("https://api.test/x");
+
+    expect(takeProviderCalls()).toMatchObject([
+      { provider: "demo", outcome: "ok", calls: 1, requests: 1 },
+    ]);
+  });
+});
+
+describe("outcomeOf (SAG-26)", () => {
+  it("names how a failure ended", () => {
+    expect(outcomeOf(new ProviderError("x", "http", 404))).toBe("http_4xx");
+    expect(outcomeOf(new ProviderError("x", "http", 429))).toBe("http_429");
+    expect(outcomeOf(new ProviderError("x", "http", 500))).toBe("http_5xx");
+    expect(outcomeOf(new ProviderError("x", "http", 301))).toBe("http_other");
+    expect(outcomeOf(new ProviderError("x", "http"))).toBe("http_other");
+    expect(outcomeOf(new ProviderError("x", "timeout"))).toBe("timeout");
+    expect(outcomeOf(new ProviderError("x", "circuit_open"))).toBe(
+      "circuit_open",
+    );
+    expect(outcomeOf(new Error("anything else"))).toBe("network");
   });
 });

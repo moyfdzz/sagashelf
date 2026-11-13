@@ -1,6 +1,8 @@
 import type { z } from "zod";
 
+import type { ProviderOutcome } from "../db/schema/providers";
 import { readBoundedBody } from "./bounded-body";
+import { recordProviderCall, type ProviderCall } from "./call-log";
 
 /**
  * Why a call to a provider did not give an answer. `circuit_open` and `rate_limited` mean the
@@ -61,6 +63,11 @@ export type HttpClientOptions = {
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
   random?: () => number;
+  /**
+   * Told how each call ended (SAG-26, ADR-052). It defaults to the count that the administration
+   * reads; a test can pass its own. It must never throw, and if it does the call is not affected.
+   */
+  onCall?: (call: ProviderCall) => void;
 };
 
 export type HttpClient = {
@@ -90,6 +97,20 @@ function isTransient(error: ProviderError): boolean {
     error.kind === "http" &&
     (error.status === 429 || (error.status ?? 0) >= 500)
   );
+}
+
+/**
+ * How a failed call is counted: the status class for an answer that was not good, and the kind of
+ * the error for the rest. A failure that is not a `ProviderError` was a broken connection.
+ */
+export function outcomeOf(error: unknown): ProviderOutcome {
+  if (!(error instanceof ProviderError)) return "network";
+  if (error.kind !== "http") return error.kind;
+  const status = error.status ?? 0;
+  if (status === 429) return "http_429";
+  if (status >= 400 && status < 500) return "http_4xx";
+  if (status >= 500) return "http_5xx";
+  return "http_other";
 }
 
 let outgoingCalls = 0;
@@ -126,6 +147,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     now = Date.now,
     sleep = defaultSleep,
     random = Math.random,
+    onCall = recordProviderCall,
   } = options;
 
   let tokens = burst;
@@ -231,59 +253,90 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     return checked.data;
   }
 
+  async function getWithRetries<T>(
+    url: string,
+    callOptions: { signal?: AbortSignal; schema?: z.ZodType<T> },
+    counter: { sent: number },
+  ): Promise<T> {
+    checkCircuit();
+    let lastError: ProviderError | undefined;
+    for (let tryNumber = 0; tryNumber <= retries; tryNumber += 1) {
+      if (tryNumber > 0) {
+        // 200 ms, 400 ms, ... each between half and the full value, so clients do not retry
+        // in step.
+        const base = 200 * 2 ** (tryNumber - 1);
+        await sleep(base * (0.5 + random() / 2));
+      }
+      try {
+        await acquire();
+        counter.sent += 1;
+        const result = await attempt<T>(
+          url,
+          callOptions.signal,
+          callOptions.schema,
+        );
+        recordSuccess();
+        return result;
+      } catch (error) {
+        lastError =
+          error instanceof ProviderError
+            ? error
+            : new ProviderError(provider, "network");
+        if (callOptions.signal?.aborted) break;
+        if (
+          lastError.kind === "http" &&
+          stopOnStatus.includes(lastError.status ?? 0)
+        ) {
+          // Asking again could get the address banned: open the circuit and say no more.
+          failures = failureThreshold;
+          openUntil = now() + stopMs;
+          probing = false;
+          throw lastError;
+        }
+        if (!isTransient(lastError)) break;
+      }
+    }
+    const error = lastError ?? new ProviderError(provider, "network");
+    // The caller cancelled: nothing is learned about the provider.
+    if (callOptions.signal?.aborted) throw error;
+    if (isTransient(error)) recordFailure();
+    // An answer such as 404 means the provider is up, and so does one that is too big or not the
+    // shape that is read: it answered. This also frees the call that tests a provider (SAG-185).
+    else if (error.kind === "http" || error.kind === "invalid") recordSuccess();
+    // A call that was never sent says nothing, but it must not keep the testing call taken.
+    else probing = false;
+    throw error;
+  }
+
   return {
     async getJson<T>(
       url: string,
       callOptions: { signal?: AbortSignal; schema?: z.ZodType<T> } = {},
     ) {
-      checkCircuit();
-      let lastError: ProviderError | undefined;
-      for (let tryNumber = 0; tryNumber <= retries; tryNumber += 1) {
-        if (tryNumber > 0) {
-          // 200 ms, 400 ms, ... each between half and the full value, so clients do not retry
-          // in step.
-          const base = 200 * 2 ** (tryNumber - 1);
-          await sleep(base * (0.5 + random() / 2));
-        }
+      const startedAt = now();
+      const counter = { sent: 0 };
+      // Counting never changes what the call does: a count that fails is lost, nothing more.
+      const count = (outcome: ProviderOutcome) => {
         try {
-          await acquire();
-          const result = await attempt<T>(
-            url,
-            callOptions.signal,
-            callOptions.schema,
-          );
-          recordSuccess();
-          return result;
-        } catch (error) {
-          lastError =
-            error instanceof ProviderError
-              ? error
-              : new ProviderError(provider, "network");
-          if (callOptions.signal?.aborted) break;
-          if (
-            lastError.kind === "http" &&
-            stopOnStatus.includes(lastError.status ?? 0)
-          ) {
-            // Asking again could get the address banned: open the circuit and say no more.
-            failures = failureThreshold;
-            openUntil = now() + stopMs;
-            probing = false;
-            throw lastError;
-          }
-          if (!isTransient(lastError)) break;
+          onCall({
+            provider,
+            outcome,
+            requests: counter.sent,
+            ms: now() - startedAt,
+          });
+        } catch {
+          // Nothing to do.
         }
+      };
+      try {
+        const result = await getWithRetries<T>(url, callOptions, counter);
+        count("ok");
+        return result;
+      } catch (error) {
+        // The caller cancelled: nothing is learned about the provider.
+        if (!callOptions.signal?.aborted) count(outcomeOf(error));
+        throw error;
       }
-      const error = lastError ?? new ProviderError(provider, "network");
-      // The caller cancelled: nothing is learned about the provider.
-      if (callOptions.signal?.aborted) throw error;
-      if (isTransient(error)) recordFailure();
-      // An answer such as 404 means the provider is up, and so does one that is too big or not the
-      // shape that is read: it answered. This also frees the call that tests a provider (SAG-185).
-      else if (error.kind === "http" || error.kind === "invalid")
-        recordSuccess();
-      // A call that was never sent says nothing, but it must not keep the testing call taken.
-      else probing = false;
-      throw error;
     },
   };
 }

@@ -1583,7 +1583,8 @@
         "traffic": "Traffic",
         "favorites": "Favorites",
         "content": "Content",
-        "webhooks": "Webhooks"
+        "webhooks": "Webhooks",
+        "providers": "Providers"
       },
       "traffic": {
         "tiles": {
@@ -1668,10 +1669,10 @@
         "range": "From {{from}} to {{to}}, in UTC. Today is not counted.",
         "rolled": "Only {{rolled}} of {{days}} days have data. The others had no visits, or the nightly count has not run yet.",
         "empty": "There is no data in this period yet.",
-        "other": "Other"
+        "other": "Other",
+        "rangeToday": "From {{from}} to {{to}}, in UTC. Today is included, partly."
       },
       "webhooks": {
-        "range": "From {{from}} to {{to}}, in UTC. Today is included, partly.",
         "tiles": {
           "clerkProcessed": "Clerk events",
           "clerkRejected": "Accounts refused",
@@ -1728,6 +1729,47 @@
             "not_found": "Off: does not exist (404 or 410)",
             "too_many_failures": "Off: too many failures"
           }
+        }
+      },
+      "providers": {
+        "none": "No data",
+        "notStarted": "No call has been counted yet.",
+        "startedOn": "The counts start on {{date}}: there is no data before that day.",
+        "note": "The numbers are approximate: an instance that shuts down before it writes loses what it held. A call is what the app asked for; the requests are the ones really sent, retries included. A failed call is one that gave no answer, including one that was never sent. What a provider keeps in a cache is not measured, and no provider gives a quota to compare with: that is why the busiest day is shown.",
+        "tiles": {
+          "calls": "Calls",
+          "failed": "Failed calls",
+          "latency": "Average time",
+          "requests": "Requests sent"
+        },
+        "table": {
+          "heading": "By provider",
+          "description": "The average time is of the calls that were sent.",
+          "provider": "Provider",
+          "calls": "Calls",
+          "failed": "Failed",
+          "latency": "Average time",
+          "requests": "Requests",
+          "peak": "Busiest day (requests)"
+        },
+        "outcomes": {
+          "heading": "How the calls ended",
+          "description": "Every call to every provider in the period.",
+          "ok": "Fine",
+          "http_4xx": "Refused (4xx)",
+          "http_429": "Asked to wait (429)",
+          "http_5xx": "Failed on their side (5xx)",
+          "http_other": "Other answer",
+          "timeout": "No answer in time",
+          "network": "Network failure",
+          "invalid": "Answer not valid",
+          "rate_limited": "Not sent: our own limit",
+          "circuit_open": "Not sent: provider paused"
+        },
+        "perDay": {
+          "heading": "Failed calls per day",
+          "description": "One number for each day of the period. The numbers on the axis are calls.",
+          "columnTitle": "{{date}}: {{count}}"
         }
       }
     }

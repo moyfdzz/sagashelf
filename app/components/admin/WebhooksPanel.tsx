@@ -103,7 +103,7 @@ export function WebhooksPanel({
         path="/admin/stats/webhooks"
       />
       <p className="text-fg-muted mt-3 text-sm">
-        {t("admin.stats.webhooks.range", {
+        {t("admin.stats.common.rangeToday", {
           from: dateOf(webhooks.from),
           to: dateOf(webhooks.to),
         })}

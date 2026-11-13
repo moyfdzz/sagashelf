@@ -1583,7 +1583,8 @@
         "traffic": "Tráfico",
         "favorites": "Favoritos",
         "content": "Contenido",
-        "webhooks": "Webhooks"
+        "webhooks": "Webhooks",
+        "providers": "Proveedores"
       },
       "traffic": {
         "tiles": {
@@ -1668,10 +1669,10 @@
         "range": "Del {{from}} al {{to}}, en UTC. El día de hoy no se cuenta.",
         "rolled": "Solo {{rolled}} de {{days}} días tienen datos. En los demás no hubo visitas, o el cálculo de la noche todavía no corre.",
         "empty": "Todavía no hay datos en este periodo.",
-        "other": "Otros"
+        "other": "Otros",
+        "rangeToday": "Del {{from}} al {{to}}, en UTC. El día de hoy está incluido, a medias."
       },
       "webhooks": {
-        "range": "Del {{from}} al {{to}}, en UTC. El día de hoy está incluido, a medias.",
         "tiles": {
           "clerkProcessed": "Eventos de Clerk",
           "clerkRejected": "Cuentas rechazadas",
@@ -1728,6 +1729,47 @@
             "not_found": "Apagado: no existe (404 o 410)",
             "too_many_failures": "Apagado: demasiadas fallas"
           }
+        }
+      },
+      "providers": {
+        "none": "Sin datos",
+        "notStarted": "Todavía no se ha contado ninguna llamada.",
+        "startedOn": "Los conteos empiezan el {{date}}: antes de ese día no hay datos.",
+        "note": "Los números son aproximados: una instancia que se apaga antes de escribir pierde lo que llevaba. Una llamada es lo que pidió la app; las peticiones son las que de verdad se enviaron, con los reintentos. Fallida es una llamada que no dio respuesta, también la que ni se envió. Lo que un proveedor guarda en caché no se mide, y ningún proveedor da una cuota para comparar: por eso se muestra el día con más peticiones.",
+        "tiles": {
+          "calls": "Llamadas",
+          "failed": "Llamadas fallidas",
+          "latency": "Tiempo promedio",
+          "requests": "Peticiones enviadas"
+        },
+        "table": {
+          "heading": "Por proveedor",
+          "description": "El tiempo promedio es de las llamadas que sí se enviaron.",
+          "provider": "Proveedor",
+          "calls": "Llamadas",
+          "failed": "Fallidas",
+          "latency": "Tiempo promedio",
+          "requests": "Peticiones",
+          "peak": "Día con más peticiones"
+        },
+        "outcomes": {
+          "heading": "Cómo terminaron las llamadas",
+          "description": "Todas las llamadas de todos los proveedores en el periodo.",
+          "ok": "Bien",
+          "http_4xx": "Rechazo (4xx)",
+          "http_429": "Pidió esperar (429)",
+          "http_5xx": "Falla del proveedor (5xx)",
+          "http_other": "Otra respuesta",
+          "timeout": "Sin respuesta a tiempo",
+          "network": "Falla de red",
+          "invalid": "Respuesta no válida",
+          "rate_limited": "No se envió: nuestro límite",
+          "circuit_open": "No se envió: proveedor en pausa"
+        },
+        "perDay": {
+          "heading": "Llamadas fallidas por día",
+          "description": "Un número por cada día del periodo. Los números del eje son llamadas.",
+          "columnTitle": "{{date}}: {{count}}"
         }
       }
     }
