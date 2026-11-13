@@ -100,6 +100,15 @@ describe("the statistics page of the administration (SAG-26)", () => {
     expect(html).toMatch(/<dt [^>]*>Personas con cuenta<\/dt><dd/);
   });
 
+  it("has the sections of the statistics, with the overview as the current one", async () => {
+    const html = await render(<AdminStats {...props()} />);
+
+    expect(html).toMatch(
+      /<a [^>]*href="\/admin\/stats"[^>]*aria-current="page"[^>]*>Resumen/,
+    );
+    expect(html).toMatch(/<a [^>]*href="\/admin\/stats\/traffic"[^>]*>Tráfico/);
+  });
+
   it("marks the statistics tab as the current page of the administration", async () => {
     const html = await render(<AdminStats {...props()} />);
 

@@ -1576,6 +1576,66 @@
         "showNumbers": "Mostrar los números",
         "day": "Día",
         "count": "Cuentas nuevas"
+      },
+      "nav": {
+        "label": "Secciones de las estadísticas",
+        "overview": "Resumen",
+        "traffic": "Tráfico"
+      },
+      "traffic": {
+        "period": {
+          "label": "Periodo",
+          "days_one": "{{count}} día",
+          "days_other": "{{count}} días"
+        },
+        "range": "Del {{from}} al {{to}}, en UTC. El día de hoy no se cuenta.",
+        "rolled": "El cálculo de la noche ya hizo {{rolled}} de {{days}} días; los demás aparecen cuando corre.",
+        "tiles": {
+          "pageviews": "Páginas vistas",
+          "visits": "Visitas",
+          "pagesPerVisit": "Páginas por visita",
+          "timePerVisit": "Tiempo por visita"
+        },
+        "visitsNote": "Una visita es una persona en un día: no se puede saber si es la misma de otro día, porque no se guarda quién es (ADR-050). Las páginas vistas cuentan también los cambios de página dentro del sitio.",
+        "showNumbers": "Mostrar los números",
+        "other": "Otros",
+        "empty": "Todavía no hay datos en este periodo.",
+        "perDay": {
+          "heading": "Páginas vistas por día",
+          "description": "Un número por cada día del periodo. Los números del eje son páginas vistas.",
+          "day": "Día",
+          "columnTitle": "{{date}}: {{count}}"
+        },
+        "funnel": {
+          "heading": "De la visita al registro",
+          "description": "Cuántas personas dieron cada paso, sumando los días del periodo.",
+          "steps": {
+            "pageview": "Visitas",
+            "signup": "Cuentas creadas",
+            "add_to_library": "Títulos agregados a una biblioteca",
+            "follow": "Personas seguidas"
+          },
+          "rate": "Cuentas creadas por cada 100 visitas: {{rate}}."
+        },
+        "sources": {
+          "heading": "De dónde llegan",
+          "description": "Cómo llegó la persona a la página, sin contar los cambios de página dentro del sitio.",
+          "direct": "Directo",
+          "search": "Buscadores",
+          "social": "Redes sociales",
+          "other": "Otros sitios",
+          "hosts": "Sitios que más envían"
+        },
+        "devices": {
+          "heading": "Dispositivos",
+          "description": "Desde qué tipo de aparato se vieron las páginas.",
+          "mobile": "Móvil",
+          "desktop": "Computadora"
+        },
+        "pages": {
+          "heading": "Páginas más vistas",
+          "description": "Las 10 con más páginas vistas."
+        }
       }
     }
   },

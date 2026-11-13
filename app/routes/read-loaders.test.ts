@@ -77,6 +77,7 @@ const rows: Row[] = [
   row("settings.profile.tsx", "session", "/settings/profile"),
 
   row("admin.stats.tsx", "admin", "/admin/stats"),
+  row("admin.stats.traffic.tsx", "admin", "/admin/stats/traffic"),
   row("admin.moderation.tsx", "admin", "/admin/moderation"),
   row("admin.messages.tsx", "admin", "/admin/messages"),
   row("admin.sagas.tsx", "admin", "/admin/sagas"),

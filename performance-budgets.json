@@ -7,6 +7,7 @@
     "routes/admin.sagas": 242,
     "routes/admin.sagas.$id": 242,
     "routes/admin.stats": 250,
+    "routes/admin.stats.traffic": 254,
     "routes/community": 210,
     "routes/contact": 232,
     "routes/credits": 210,

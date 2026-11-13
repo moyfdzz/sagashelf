@@ -1576,6 +1576,66 @@
         "showNumbers": "Show the numbers",
         "day": "Day",
         "count": "New accounts"
+      },
+      "nav": {
+        "label": "Sections of the statistics",
+        "overview": "Overview",
+        "traffic": "Traffic"
+      },
+      "traffic": {
+        "period": {
+          "label": "Period",
+          "days_one": "{{count}} day",
+          "days_other": "{{count}} days"
+        },
+        "range": "From {{from}} to {{to}}, in UTC. Today is not counted.",
+        "rolled": "The nightly count has done {{rolled}} of {{days}} days; the rest appear when it runs.",
+        "tiles": {
+          "pageviews": "Page views",
+          "visits": "Visits",
+          "pagesPerVisit": "Pages per visit",
+          "timePerVisit": "Time per visit"
+        },
+        "visitsNote": "A visit is one person on one day: there is no way to tell whether it is the same person as on another day, because who they are is not kept (ADR-050). Page views also count the moves between pages inside the site.",
+        "showNumbers": "Show the numbers",
+        "other": "Other",
+        "empty": "There is no data in this period yet.",
+        "perDay": {
+          "heading": "Page views per day",
+          "description": "One number for each day of the period. The numbers on the axis are page views.",
+          "day": "Day",
+          "columnTitle": "{{date}}: {{count}}"
+        },
+        "funnel": {
+          "heading": "From visit to sign-up",
+          "description": "How many people took each step, adding up the days of the period.",
+          "steps": {
+            "pageview": "Visits",
+            "signup": "Accounts created",
+            "add_to_library": "Titles added to a library",
+            "follow": "People followed"
+          },
+          "rate": "Accounts created for every 100 visits: {{rate}}."
+        },
+        "sources": {
+          "heading": "Where they come from",
+          "description": "How the person reached the page, not counting moves between pages inside the site.",
+          "direct": "Direct",
+          "search": "Search engines",
+          "social": "Social networks",
+          "other": "Other sites",
+          "hosts": "Sites that send the most"
+        },
+        "devices": {
+          "heading": "Devices",
+          "description": "What kind of device the pages were seen on.",
+          "mobile": "Mobile",
+          "desktop": "Computer"
+        },
+        "pages": {
+          "heading": "Most viewed pages",
+          "description": "The 10 with the most page views."
+        }
       }
     }
   },
