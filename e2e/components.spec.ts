@@ -233,6 +233,79 @@ test.describe("the account menu", () => {
   });
 });
 
+test.describe("the header of a signed-in person (SAG-263)", () => {
+  // Free room of the row between the name of the app and the links, with the widest count ("99+")
+  // in Spanish. The window of the test has no scrollbar strip (Chromium hides it), which a real
+  // browser takes 15 px for, so the floor is well above that: a row that was measured at 96 px
+  // with the strip must not fall under 60 here.
+  const room = (page: Page) =>
+    page.evaluate(() => {
+      const logo = document.querySelector("header a")?.getBoundingClientRect();
+      const nav = document.querySelector("header nav")?.getBoundingClientRect();
+      const row = document
+        .querySelector("header > div")
+        ?.getBoundingClientRect();
+      if (!logo || !nav || !row) throw new Error("The header is not drawn");
+      return {
+        room: Math.round(nav.left - logo.right - 16),
+        height: row.height,
+      };
+    });
+
+  for (const width of [1280, 1535, 1536, 1920]) {
+    test(`keeps one row with the bell and "99+" at ${width} px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await mountComponent(page, "header");
+
+      const { room: free, height } = await room(page);
+
+      // One row is 66 or 68 px high; two would be about 114.
+      expect(height).toBeLessThan(80);
+      expect(free).toBeGreaterThanOrEqual(60);
+      // The links of the row are words (and icons from 1536 px); the bell says the word only to a
+      // screen reader and a tooltip.
+      await expect(
+        page.locator("header nav").getByText("Notificaciones"),
+      ).toBeHidden();
+      const bell = page.getByRole("link", {
+        name: "Notificaciones, 99+ pendientes",
+      });
+      await expect(bell).toBeVisible();
+      await expect(bell).toHaveAttribute("title", "Notificaciones");
+    });
+  }
+
+  test("puts the bell right before the account button, at the end of the row", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await mountComponent(page, "header");
+
+    const bell = await page
+      .getByRole("link", { name: /^Notificaciones, 99\+/ })
+      .boundingBox();
+    const account = await page
+      .getByRole("button", { name: "Cuenta" })
+      .boundingBox();
+    const theme = await page
+      .getByRole("switch", { name: "Modo oscuro" })
+      .boundingBox();
+
+    expect(bell && account && theme).toBeTruthy();
+    expect((theme?.x ?? 0) + (theme?.width ?? 0)).toBeLessThanOrEqual(
+      bell?.x ?? 0,
+    );
+    expect((bell?.x ?? 0) + (bell?.width ?? 0)).toBeLessThanOrEqual(
+      account?.x ?? 0,
+    );
+    // A target of at least 40 px, like every control.
+    expect(bell?.width).toBeGreaterThanOrEqual(40);
+    expect(bell?.height).toBeGreaterThanOrEqual(40);
+  });
+});
+
 test.describe("the toast", () => {
   test.beforeEach(async ({ page }) => {
     await mountComponent(page, "toast");

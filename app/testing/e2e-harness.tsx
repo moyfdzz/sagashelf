@@ -16,6 +16,7 @@ import {
 
 import { AccountMenu } from "~/components/AccountMenu";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
+import { Navbar } from "~/components/Navbar";
 import { NotesPreview } from "~/components/NotesPreview";
 import { SearchBox } from "~/components/SearchBox";
 import { StatusRegion } from "~/components/StatusRegion";
@@ -48,6 +49,14 @@ function searchLoader({ request }: LoaderFunctionArgs) {
 
 function Page({ name }: { name: HarnessName }) {
   const location = useLocation();
+  // The header is drawn alone and at the full width of the window: inside the padding of the page
+  // below it would be narrower than the real one, and a measure of its row would lie (SAG-263). It has
+  // the widest count ("99+"), which is the case the width was measured for.
+  if (name === "header") {
+    return (
+      <Navbar savedTheme={null} signedIn username="ana_reads" unread={150} />
+    );
+  }
   const confirmOpen = new URLSearchParams(location.search).has("confirm");
   return (
     <main className="space-y-4 p-6">
