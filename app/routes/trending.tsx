@@ -67,7 +67,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       worldwide.status === "ok"
         ? {
             status: worldwide.status,
-            source: worldwide.source,
+            // Only the name: the logo and the notice TMDB requires are on /credits.
+            source: { name: worldwide.source.name },
             titles: worldwide.titles.map((item) => ({
               // A title we hold opens its own page; one we do not is saved by a person with a
               // session, and a visitor is sent to sign in first (ADR-035).
@@ -196,25 +197,6 @@ export default function TrendingPage({ loaderData }: Route.ComponentProps) {
                 }))}
               />
             )}
-            <div className="mt-6 space-y-2">
-              <a
-                href={worldwide.source.url}
-                rel="noreferrer"
-                className="inline-flex min-h-10 items-center"
-              >
-                <img
-                  src={worldwide.source.logo}
-                  alt={t("credits.tmdb.logoAlt")}
-                  width={245}
-                  height={18}
-                  className="h-auto max-w-full"
-                />
-              </a>
-              {/* TMDB requires this exact wording, so it stays in English in both languages. */}
-              <p lang="en" className="text-fg-muted text-sm">
-                {worldwide.source.notice}
-              </p>
-            </div>
           </>
         ) : (
           <p className="mt-4">

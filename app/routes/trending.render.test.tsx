@@ -42,13 +42,7 @@ const card = (title: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const tmdb = {
-  name: "TMDB",
-  url: "https://www.themoviedb.org",
-  notice:
-    "This product uses the TMDB API but is not endorsed or certified by TMDB.",
-  logo: "/tmdb-logo.svg",
-};
+const tmdb = { name: "TMDB" };
 
 const props = (extra: Record<string, unknown> = {}) =>
   ({
@@ -176,7 +170,7 @@ describe("the trending page (SAG-23)", () => {
     expect(html).toContain("Ningún título llega todavía a 3 personas");
   });
 
-  it("shows the worldwide list with its source, the logo and the notice TMDB requires", async () => {
+  it("shows the worldwide list and names its source, with no logo and no notice (they are on the credits page)", async () => {
     const html = await render("es", <TrendingPage {...props()} />);
 
     expect(html).toContain("En el mundo");
@@ -185,11 +179,9 @@ describe("the trending page (SAG-23)", () => {
       'href="/media/open?provider=tmdb&amp;id=movie%2F603"',
     );
     expect(html).toContain("1999");
-    expect(html).toContain('src="/tmdb-logo.svg"');
-    expect(html).toContain('href="https://www.themoviedb.org"');
-    expect(html).toContain(
-      `lang="en" class="text-fg-muted text-sm">${tmdb.notice}`,
-    );
+    expect(html).not.toContain("tmdb-logo");
+    expect(html).not.toContain("This product uses the TMDB API");
+    expect(html).not.toContain("themoviedb.org");
   });
 
   it("loads the whole page for a worldwide title, since the address that opens it only redirects", async () => {
@@ -205,12 +197,6 @@ describe("the trending page (SAG-23)", () => {
     );
   });
 
-  it("keeps the notice in English also on the Spanish page", async () => {
-    const html = await render("es", <TrendingPage {...props()} />);
-
-    expect(html).toContain("This product uses the TMDB API");
-  });
-
   it("says the worldwide list is empty, with no poster to draw", async () => {
     const html = await render(
       "es",
@@ -221,7 +207,7 @@ describe("the trending page (SAG-23)", () => {
 
     expect(html).toContain("La lista del mundo está vacía por ahora.");
     expect(html.match(/<ol /g)?.length).toBe(3);
-    expect(html).toContain('src="/tmdb-logo.svg"');
+    expect(html).not.toContain("tmdb-logo");
   });
 
   it("says the worldwide list could not load, and the site lists are still there", async () => {

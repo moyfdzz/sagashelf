@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { data, Form } from "react-router";
 
 import type { Route } from "./+types/lists";
+import { BackLink } from "~/components/BackLink";
 import { ClerkSession } from "~/components/ClerkSession";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { ListCard } from "~/components/lists/ListCard";
@@ -67,7 +68,11 @@ export default function Lists({ loaderData }: Route.ComponentProps) {
       publishableKey={loaderData.publishableKey}
     >
       <main className="container mx-auto max-w-3xl px-4 py-10">
-        <h1 className="text-3xl font-bold">{t("lists.title")}</h1>
+        <p>
+          {/* A page of the session: a plain anchor (ADR-018). */}
+          <BackLink to="/library">{t("lists.back")}</BackLink>
+        </p>
+        <h1 className="mt-4 text-3xl font-bold">{t("lists.title")}</h1>
         <p className="text-fg-muted mt-2">{t("lists.intro")}</p>
         {atLimit ? (
           <p className="text-fg-muted mt-4">

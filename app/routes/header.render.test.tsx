@@ -61,9 +61,15 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
     const without = hrefs(await render(<AccountMenu />));
     const withAdmin = hrefs(await render(<AccountMenu isAdmin />));
 
-    expect(without).toEqual(["/lists", "/settings/profile", "/sign-out"]);
+    expect(without).toEqual([
+      "/lists",
+      "/stats",
+      "/settings/profile",
+      "/sign-out",
+    ]);
     expect(withAdmin).toEqual([
       "/lists",
+      "/stats",
       "/settings/profile",
       "/admin/sagas",
       "/sign-out",
@@ -91,25 +97,25 @@ describe("the navigation of the header (SAG-96)", () => {
   const navHrefs = (html: string) =>
     hrefs(html.match(/<nav [\s\S]*?<\/nav>/)?.[0] ?? "");
 
-  it("lists home, search, sagas, library, social, alerts, statistics and recommendations for a signed-in person", async () => {
+  it("lists home, search, sagas, trending, library, social, alerts and recommendations for a signed-in person", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn />);
 
     expect(navHrefs(html)).toEqual([
       "/",
       "/search",
       "/sagas",
+      "/trending",
       "/library",
       "/social",
       "/notifications",
-      "/stats",
       "/recommendations",
     ]);
   });
 
-  it("lists only home, search and sagas for a visitor, who has no session links anywhere", async () => {
+  it("lists only home, search, sagas and trending for a visitor, who has no session links anywhere", async () => {
     const html = await render(<Navbar savedTheme={null} signedIn={false} />);
 
-    expect(navHrefs(html)).toEqual(["/", "/search", "/sagas"]);
+    expect(navHrefs(html)).toEqual(["/", "/search", "/sagas", "/trending"]);
     for (const path of [
       "/library",
       "/notifications",
@@ -127,7 +133,7 @@ describe("the navigation of the header (SAG-96)", () => {
 
     expect(anchor("/library")).not.toContain("data-discover");
     expect(anchor("/notifications")).not.toContain("data-discover");
-    expect(anchor("/stats")).toContain("data-discover");
+    expect(anchor("/trending")).toContain("data-discover");
     expect(anchor("/recommendations")).toContain("data-discover");
   });
 
@@ -149,8 +155,22 @@ describe("the navigation of the header (SAG-96)", () => {
     const html = await render(<Navbar savedTheme={null} signedIn isAdmin />);
     const count = (path: string) => html.split(`href="${path}"`).length - 1;
 
-    for (const path of ["/settings/profile", "/admin/sagas", "/sign-out"])
+    for (const path of [
+      "/stats",
+      "/settings/profile",
+      "/admin/sagas",
+      "/sign-out",
+    ])
       expect(count(path)).toBe(2);
+  });
+
+  it("has the statistics in the account links and not in the row of the header (SAG-261)", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+
+    expect(navHrefs(html)).not.toContain("/stats");
+    expect(html.match(/<a [^>]*href="\/stats"[^>]*>/g)).toHaveLength(2);
+    for (const anchor of html.match(/<a [^>]*href="\/stats"[^>]*>/g) ?? [])
+      expect(anchor).not.toContain("data-discover");
   });
 
   it("puts sign in and sign up in the panel of a phone too, for a visitor", async () => {
