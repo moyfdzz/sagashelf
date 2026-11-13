@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
-- **Implementation:** Partial (SAG-24: everything is built and the privacy text is written, but it is not switched on: the owner turns off Cloudflare Web Analytics and sets `ANALYTICS_ENABLED`, edge setup section 16. This becomes Done when it is on and checked)
+- **Implementation:** Done (SAG-24, SAG-254: on in production and checked on 2026-11-12: Cloudflare Web Analytics is off, the events are written and the first daily rollups of the pages and of the speed exist. The weeks of watching the compute hours of Neon go on, edge setup section 16)
 - **Tickets:** SAG-24
 
 ## Context
