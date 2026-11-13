@@ -440,7 +440,8 @@
     "terms": "Terms of use",
     "community": "Community rules",
     "credits": "Credits",
-    "contact": "Contact"
+    "contact": "Contact",
+    "trending": "Trending"
   },
   "legal": {
     "updated": "Last updated: {{date}}",
@@ -542,6 +543,7 @@
       "google": "Google sign-in: if you choose it, Google shares your email, name and profile photo with Clerk. We do not access anything else in your Google account.",
       "profile": "Profile: your display name, bio, language, privacy level and the photo you choose. Before a photo is sent, your browser crops and shrinks it, which also removes data the file may carry, such as the place where it was taken.",
       "library": "Library: for each title you save, its status, your progress, your score, the dates you started and finished it, how many times you watched it again, your notes and a visibility level (private by default). If you change the level of an entry, the people that level allows will see it (see \"Who sees your profile\"). Nobody else sees your notes.",
+      "favorites": "Site favorites: entries with public visibility from people with a public profile count, without a name, in the Trending lists, and a title only appears when at least 3 people share it. If you change an entry's visibility, your profile level or delete your account, you stop counting within an hour.",
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "contact": "Contact messages: what you write on the contact page (the kind of message, the text and, if you were not signed in and want a reply, the email you leave) is kept to handle it, is seen only by whoever runs the site and is deleted after 90 days. If you sent it with your account, it is also deleted when you delete your account and is in your data export.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
@@ -1174,6 +1176,37 @@
     "entry": "{{status}} · {{percent}}%",
     "notHeld": "Works with no link are not in the SagaShelf catalog yet: open them from the search to track them.",
     "signIn": "Sign in to see your progress in this saga"
+  },
+  "trending": {
+    "title": "Trending",
+    "description": "What people add, complete and rate most on SagaShelf, and what is trending around the world.",
+    "intro": "What the people of SagaShelf add, complete and rate, and what the world is watching this week.",
+    "period": {
+      "label": "Period",
+      "week": "Last week",
+      "month": "Last month",
+      "year": "Last year"
+    },
+    "site": {
+      "title": "On SagaShelf",
+      "intro": "Only public entries of public profiles count. A title appears when at least {{count}} people share it, and privacy changes show within an hour.",
+      "empty": "There is not enough data yet for this type and period: a title needs at least {{count}} people.",
+      "listEmpty": "No title reaches {{count}} people yet in this period.",
+      "mostAdded": "Most added",
+      "mostCompleted": "Most completed",
+      "bestRated": "Best rated"
+    },
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "ratedNote_one": "{{average}} out of 10 · {{count}} person",
+    "ratedNote_other": "{{average}} out of 10 · {{count}} people",
+    "worldwide": {
+      "title": "Worldwide",
+      "intro": "What the world is watching this week, according to {{source}}.",
+      "empty": "The worldwide list is empty for now.",
+      "unavailable": "We could not load the worldwide list. Try again in a while.",
+      "unsupported": "There is no worldwide list for this type of title."
+    }
   },
   "sagas": {
     "title": "Sagas",

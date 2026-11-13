@@ -6,16 +6,31 @@ export type PosterGridEntry = {
   title: string;
   score: number | null;
   poster: string | null;
+  /** A line under the title, when the list has something to say about each one (SAG-23). */
+  note?: string;
+  /**
+   * The address has no page of its own, it redirects (`/media/open`): a move inside the page asks
+   * for the data of a page and cannot follow it, so it is a plain link that loads the whole page.
+   */
+  wholePage?: boolean;
 };
 
 /** The titles of a profile as a grid of posters, with the title and the score under each one. */
-export function PosterGrid({ entries }: { entries: PosterGridEntry[] }) {
+export function PosterGrid({
+  entries,
+  ordered = false,
+}: {
+  entries: PosterGridEntry[];
+  /** A ranking: drawn as an ordered list, so a screen reader says the place of each title. */
+  ordered?: boolean;
+}) {
   const { t } = useTranslation();
+  const List = ordered ? "ol" : "ul";
   return (
-    <ul className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-      {entries.map((entry) => (
-        <li key={entry.href}>
-          <Link to={entry.href} className="block">
+    <List className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+      {entries.map((entry) => {
+        const link = (
+          <>
             {entry.poster ? (
               // The title is written under it, so a screen reader skips the picture.
               <span aria-hidden="true" className="block">
@@ -37,14 +52,30 @@ export function PosterGrid({ entries }: { entries: PosterGridEntry[] }) {
             <span className="mt-1 block text-sm font-semibold break-words">
               {entry.title}
             </span>
-          </Link>
-          {entry.score ? (
-            <span className="text-fg-muted text-sm">
-              {t("library.card.scoreShort", { score: entry.score })}
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+          </>
+        );
+        return (
+          <li key={entry.href}>
+            {entry.wholePage ? (
+              <a href={entry.href} className="block">
+                {link}
+              </a>
+            ) : (
+              <Link to={entry.href} className="block">
+                {link}
+              </Link>
+            )}
+            {entry.note ? (
+              <span className="text-fg-muted block text-sm">{entry.note}</span>
+            ) : null}
+            {entry.score ? (
+              <span className="text-fg-muted text-sm">
+                {t("library.card.scoreShort", { score: entry.score })}
+              </span>
+            ) : null}
+          </li>
+        );
+      })}
+    </List>
   );
 }

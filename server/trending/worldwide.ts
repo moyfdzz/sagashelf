@@ -7,6 +7,7 @@ import type {
   ProviderId,
   TrendingWindow,
 } from "../providers/types";
+import { edgeKey, withEdgeCopy } from "./edge-copy";
 
 /**
  * What the world is watching now (SAG-23, ADR-051): the trending list of TMDB for movies, series
@@ -58,61 +59,10 @@ const toTitle = (item: NormalizedMedia): WorldwideTitle => ({
   imageUrl: item.imageUrl,
 });
 
-// The cache is keyed by a made-up address on a host that never exists, like the search cache. The
-// version changes when the shape of an answer does, so a copy in the old shape is not read.
-const keyFor = (
-  provider: ProviderId,
-  type: MediaKind,
-  window: TrendingWindow,
-  locale: Locale,
-): Request =>
-  new Request(
-    `https://trending-cache.sagashelf.internal/v1?${new URLSearchParams({ provider, type, window, locale })}`,
-  );
-
-async function readCopy(
-  cache: Cache | null,
-  key: Request,
-): Promise<WorldwideTitle[] | null> {
-  if (!cache) return null;
-  try {
-    const hit = await cache.match(key);
-    if (!hit) return null;
-    const body = (await hit.json()) as { titles?: unknown };
-    return Array.isArray(body?.titles)
-      ? (body.titles as WorldwideTitle[])
-      : null;
-  } catch {
-    // A broken copy is a miss.
-    return null;
-  }
-}
-
-async function keepCopy(
-  cache: Cache | null,
-  key: Request,
-  titles: WorldwideTitle[],
-): Promise<void> {
-  if (!cache) return;
-  try {
-    await cache.put(
-      key,
-      new Response(JSON.stringify({ titles }), {
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": `public, max-age=${trendingTtlSeconds}`,
-        },
-      }),
-    );
-  } catch {
-    // Not being able to keep a copy costs one more call to the source, nothing more.
-  }
-}
-
 /**
  * The trending list of the first source that has one for the type. A copy kept at the edge is
- * used first; an empty list is kept too, so an empty answer is not asked again for an hour. A
- * failure of the source is not kept. It never throws.
+ * used first (`withEdgeCopy`); an empty list is kept too, so an empty answer is not asked again
+ * for an hour. A failure of the source is not kept. It never throws.
  */
 export async function getWorldwideTrending(options: {
   providers: readonly MediaProvider[];
@@ -136,15 +86,24 @@ export async function getWorldwideTrending(options: {
   if (!provider || !logo || !ask) return { status: "unsupported" };
 
   const source: WorldwideSource = { ...provider.attribution, logo };
-  const key = keyFor(provider.id, type, window, locale);
-
-  const copy = await readCopy(cache, key);
-  if (copy) return { status: "ok", titles: copy, source };
 
   try {
-    const items = await ask(window, { type, locale, signal });
-    const titles = items.slice(0, worldwideSize).map(toTitle);
-    await keepCopy(cache, key, titles);
+    const titles = await withEdgeCopy<WorldwideTitle[]>({
+      cache,
+      key: edgeKey("trending", "v1", {
+        provider: provider.id,
+        type,
+        window,
+        locale,
+      }),
+      seconds: trendingTtlSeconds,
+      parse: (body) =>
+        Array.isArray(body) ? (body as WorldwideTitle[]) : null,
+      load: async () =>
+        (await ask(window, { type, locale, signal }))
+          .slice(0, worldwideSize)
+          .map(toTitle),
+    });
     return { status: "ok", titles, source };
   } catch {
     return { status: "unavailable" };

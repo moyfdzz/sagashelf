@@ -33,6 +33,7 @@
     "routes/social": 205,
     "routes/stats": 210,
     "routes/terms": 210,
+    "routes/trending": 212,
     "routes/u.$username": 208,
     "routes/u.$username.$kind": 205,
     "routes/u.$username.library.$status": 205,
