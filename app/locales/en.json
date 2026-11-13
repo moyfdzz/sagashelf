@@ -24,7 +24,8 @@
     "recommendations": "Recommendations",
     "menu": "Menu",
     "notifications": "Notifications",
-    "pending": ", {{shown}} pending"
+    "pending": ", {{shown}} pending",
+    "notificationsPending": "Notifications, {{shown}} pending"
   },
   "language": {
     "label": "Language"

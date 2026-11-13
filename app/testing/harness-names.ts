@@ -5,6 +5,7 @@ export const harnessNames = [
   "account",
   "search",
   "toast",
+  "header",
 ] as const;
 
 export type HarnessName = (typeof harnessNames)[number];

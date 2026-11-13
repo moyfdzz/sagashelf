@@ -16,17 +16,20 @@ import { useTranslation } from "react-i18next";
 import { Link, NavLink, useLocation } from "react-router";
 
 import { AccountItemLabel, AccountLinks } from "~/components/AccountLinks";
+import { CountBubble } from "~/components/CountBubble";
+import { NotificationBell } from "~/components/NotificationBell";
 import { AccountMenu } from "~/components/AccountMenu";
 import { LanguageSwitcher } from "~/components/LanguageSwitcher";
 import { LogoMark } from "~/components/LogoMark";
 import { ThemeSwitch } from "~/components/ThemeSwitch";
+import { cappedCount } from "~/lib/badge";
 import type { Theme } from "~/lib/theme";
 
 const focusClass =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:-outline-offset-2";
 
 const linkClass = (active: boolean) =>
-  `flex items-center gap-2 rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 xl:text-base 2xl:gap-1 2xl:px-1.5 2xl:text-lg ${focusClass} ${
+  `flex items-center gap-2 rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 xl:text-base 2xl:gap-1.5 2xl:text-lg ${focusClass} ${
     active ? "text-accent" : "text-fg-muted hover:text-accent"
   }`;
 
@@ -85,23 +88,25 @@ function NavIcon({ icon: Icon }: { icon: LucideIcon }) {
  * between 1280 and 1535 px (before this change too), which the numbers above do not say.
  *
  * Icons (SAG-157): each link has one in front of the word in the panel of a phone, and in the wide row
- * only from 1536 px; from 1280 to 1535 px the links are words only, as measured above. Measured on
- * 2026-11-13 with the real scrollbar strip (15 px, Chromium without `--hide-scrollbars`) and a
- * signed-in person, free room in the row at 1536 px (a count above 99 draws "99+"): in Spanish, 197 px
- * before the icons and 69 after with no unread, 151 and 23 with "99+" (the count keeps its 8 px from the word
- * with `2xl:ml-1` on top of the 4 px gap, which costs 4 px; the 27 px were measured before that); in English, 239 and 111 with no
- * unread, 193 and 65 with "99+". A 16 px icon with 18 px text did not fit with "99+" in Spanish, so
- * from 1536 px the links have 4 px between the icon and the word and 6 px of padding on each side
- * instead of 8. The row has no more room above 1536 px (the container stops there). From 1280 to
- * 1535 px nothing changed: the same room as before, and the Spanish row with "99+" still wraps there.
- * A new link, or a larger icon, needs those measures again. The icons of the account links are in
- * `AccountLinks`; they are in a menu, so their width does not matter.
+ * only from 1536 px; from 1280 to 1535 px the links are words only.
+ *
+ * The bell (SAG-263): on the wide row the link to the notifications is not a word but a bell, with the
+ * count in a small circle over its corner (`NotificationBell`), at the end of the row next to the account.
+ * The word stays in the panel of a phone. Measured on 2026-11-13 with the real scrollbar strip (15 px,
+ * Chromium without `--hide-scrollbars`) and a signed-in person, free room in the row (the same with no
+ * unread and with "99+", since the circle hangs over the corner): at 1280 px 96 px in Spanish and 124 in
+ * English; at 1535 px 111 and 139; at 1536 px, with the icons, 139 and 169. Before the bell the room was
+ * 13, 28 and 69 in Spanish with no unread, and the Spanish row with "99+" wrapped to two rows from 1280 to
+ * 1535 px (from 1536 px it had room). The row has no more
+ * room above 1536 px (the container stops there). A new link, or a larger icon, needs those measures
+ * again. The icons of the account links are in `AccountLinks`; they are in a menu, so their width does
+ * not matter.
  *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
- * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
- * phone that link is inside the panel, so the "Menu" button carries that number (a bubble over its
- * corner, which adds no width to the row measured above, SAG-106) and its name says how many are
- * pending.
+ * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On the
+ * wide row it is the bell (SAG-263, above); on a phone it is inside the panel with its word and a
+ * pill with the number, so the "Menu" button carries that number too (a bubble over its corner, which
+ * adds no width to the row, SAG-106) and its name says how many are pending.
  *
  * The panel closes with Escape (which gives the focus back to the button), with a click outside and
  * when the route changes, since the links to the router's pages do not load a new document.
@@ -161,7 +166,7 @@ export function Navbar({
   // A visitor has none, whatever the page was given.
   const unread = signedIn ? unreadCount : 0;
   // 99 is the most the header counts to; one more says "99+".
-  const shown = unread > 99 ? "99+" : String(unread);
+  const shown = cappedCount(unread);
   // The library and the notifications are session pages, so they are plain anchors (ADR-018) and
   // their highlight is read from the route. The other pages are the router's.
   const navItems: {
@@ -170,6 +175,8 @@ export function Navbar({
     to: string;
     session: boolean;
     badge: number;
+    /** On the wide row it is a bell next to the account (SAG-263): the link is only in the panel. */
+    phoneOnly?: boolean;
   }[] = [
     { icon: House, label: t("nav.home"), to: "/", session: false, badge: 0 },
     {
@@ -215,6 +222,7 @@ export function Navbar({
             to: "/notifications",
             session: true,
             badge: unread,
+            phoneOnly: true,
           },
           {
             icon: Sparkles,
@@ -266,12 +274,7 @@ export function Navbar({
                 so it adds no width to the row. */}
             {unread > 0 ? (
               <>
-                <span
-                  aria-hidden="true"
-                  className="bg-accent text-accent-fg border-surface-raised absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 px-1 text-xs leading-none font-bold xl:hidden"
-                >
-                  {shown}
-                </span>
+                <CountBubble shown={shown} className="xl:hidden" />
                 <span className="sr-only">{t("nav.pending", { shown })}</span>
               </>
             ) : null}
@@ -290,7 +293,10 @@ export function Navbar({
                     pathname === item.to ||
                     (item.to !== "/" && pathname.startsWith(`${item.to}/`));
                   return (
-                    <li key={item.to}>
+                    <li
+                      key={item.to}
+                      className={item.phoneOnly ? "xl:hidden" : undefined}
+                    >
                       {item.session ? (
                         <a
                           href={item.to}
@@ -303,7 +309,7 @@ export function Navbar({
                             <>
                               <span
                                 aria-hidden="true"
-                                className="bg-accent text-accent-fg inline-block min-w-6 rounded-full 2xl:ml-1 px-1.5 text-center text-sm font-bold"
+                                className="bg-accent text-accent-fg inline-block min-w-6 rounded-full px-1.5 text-center text-sm font-bold"
                               >
                                 {shown}
                               </span>
@@ -360,13 +366,16 @@ export function Navbar({
           </div>
         </div>
         {/* Wide screens: the account is at the end of the row, as before. */}
-        <div className="hidden xl:order-4 xl:block">
+        <div className="hidden xl:order-4 xl:flex xl:items-center xl:gap-2">
           {signedIn ? (
-            <AccountMenu
-              isAdmin={isAdmin}
-              username={username}
-              avatarUrl={avatarUrl}
-            />
+            <>
+              <NotificationBell unread={unread} />
+              <AccountMenu
+                isAdmin={isAdmin}
+                username={username}
+                avatarUrl={avatarUrl}
+              />
+            </>
           ) : (
             // Plain anchors: the sign-in and sign-up pages have their own, wider security policy,
             // which only a new document gets.

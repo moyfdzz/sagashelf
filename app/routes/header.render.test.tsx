@@ -327,7 +327,7 @@ describe("the header on a phone (SAG-104)", () => {
       tag(html, /<div class="[^"]*">(?=<form [^>]*\/api\/locale)/),
     );
     const account = classesOf(
-      tag(html, /<div class="hidden[^"]*xl:block[^"]*">/),
+      tag(html, /<div class="hidden[^"]*xl:(?:block|flex)[^"]*">/),
     );
 
     expect(box).toContain("xl:contents");
@@ -479,5 +479,55 @@ describe("the icons of the header (SAG-157)", () => {
       expect(svg).toContain('aria-hidden="true"');
       expect(svg).toContain("xl:hidden");
     }
+  });
+});
+
+describe("the bell of the notifications on the wide row (SAG-263)", () => {
+  const bell = (html: string) =>
+    html.match(/<a [^>]*href="\/notifications"[^>]*title=[\s\S]*?<\/a>/)?.[0] ??
+    "";
+
+  it("is a link with the word as its name and its tooltip, and an icon that no screen reader reads", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn unread={0} />);
+
+    expect(bell(html)).toContain('title="Notificaciones"');
+    expect(bell(html)).toContain('<span class="sr-only">Notificaciones</span>');
+    expect(bell(html)).toMatch(/<svg [^>]*aria-hidden="true"/);
+    expect(bell(html)).not.toContain("rounded-full");
+  });
+
+  it("hangs the count from its corner, and says it in the name too", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn unread={3} />);
+
+    expect(bell(html)).toMatch(
+      /<span aria-hidden="true" class="[^"]*absolute[^"]*">3<\/span>/,
+    );
+    expect(bell(html)).toContain("Notificaciones, 3 pendientes</span>");
+  });
+
+  it("caps the count at 99+, in English too", async () => {
+    const html = await render(
+      <Navbar savedTheme={null} signedIn unread={150} />,
+      "en",
+    );
+
+    expect(bell(html)).toMatch(/aria-hidden="true"[^>]*>99\+<\/span>/);
+    expect(bell(html)).toContain("Notifications, 99+ pending");
+  });
+
+  it("is only on the wide row: the link of the panel keeps its word and hides on a wide screen", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn unread={1} />);
+    const panelLink = html.match(
+      /<li class="xl:hidden"><a [^>]*href="\/notifications"[\s\S]*?<\/a>/,
+    )?.[0];
+
+    expect(panelLink).toContain("Notificaciones");
+    expect(html.match(/href="\/notifications"/g)).toHaveLength(2);
+  });
+
+  it("is not drawn for a visitor", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn={false} />);
+
+    expect(html).not.toContain("/notifications");
   });
 });
