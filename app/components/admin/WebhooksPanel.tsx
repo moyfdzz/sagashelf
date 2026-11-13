@@ -8,21 +8,14 @@ import { RowBars } from "~/components/charts/RowBars";
 import { useFormatters } from "~/lib/format";
 import type { AdminWebhooks } from "~/routes/admin.stats.webhooks";
 
-const resultOrder = [
-  "ok",
-  "client_error",
-  "server_error",
-  "no_response",
-  "other",
-] as const;
-const resultTones: Record<(typeof resultOrder)[number], Segment["tone"]> = {
-  ok: "chart-1",
-  client_error: "chart-2",
-  server_error: "chart-3",
-  no_response: "chart-4",
-  other: "chart-5",
-};
-const eventOrder = ["pending", "delivered", "failed"] as const;
+// The order of the results and of the statuses is the one the server gives, and the colors follow it.
+const tones: Segment["tone"][] = [
+  "chart-1",
+  "chart-2",
+  "chart-3",
+  "chart-4",
+  "chart-5",
+];
 const rejectReasons = [
   "taken",
   "reserved_username",
@@ -68,8 +61,14 @@ export function WebhooksPanel({
   const percent = (share: number) =>
     formatNumber(share, { style: "percent", maximumFractionDigits: 0 });
 
+  const results = Object.keys(
+    webhooks.attempts,
+  ) as (keyof AdminWebhooks["attempts"])[];
+  const statuses = Object.keys(
+    webhooks.events,
+  ) as (keyof AdminWebhooks["events"])[];
   const rejected = webhooks.clerk.rejected.reduce((sum, r) => sum + r.count, 0);
-  const attempts = resultOrder.reduce(
+  const attempts = results.reduce(
     (sum, key) => sum + webhooks.attempts[key],
     0,
   );
@@ -166,11 +165,11 @@ export function WebhooksPanel({
         <p className="text-fg-muted text-sm">{t("admin.stats.common.empty")}</p>
       ) : (
         <ProportionBar
-          segments={resultOrder.map((key) => ({
+          segments={results.map((key, index) => ({
             key,
             label: t(`admin.stats.webhooks.deliveries.results.${key}`),
             value: webhooks.attempts[key],
-            tone: resultTones[key],
+            tone: tones[index] ?? "chart-other",
           }))}
           format={number}
           formatShare={percent}
@@ -189,7 +188,7 @@ export function WebhooksPanel({
         {t("admin.stats.webhooks.deliveries.events")}
       </h4>
       <RowBars
-        rows={eventOrder.map((key) => ({
+        rows={statuses.map((key) => ({
           key,
           label: t(`admin.stats.webhooks.deliveries.status.${key}`),
           value: webhooks.events[key],

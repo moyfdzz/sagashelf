@@ -1695,7 +1695,7 @@
         },
         "deliveries": {
           "heading": "Lo que entregamos",
-          "description": "Los intentos de avisar a los webhooks de las personas, por lo que contestó cada uno. Se guardan 30 días.",
+          "description": "Los intentos de avisar a los webhooks de las personas, por lo que contestó cada uno. Se guardan 30 días. Si una persona borra su webhook o su cuenta, sus intentos y avisos salen de estas cuentas.",
           "results": {
             "ok": "Bien (2xx)",
             "client_error": "Rechazo (4xx)",

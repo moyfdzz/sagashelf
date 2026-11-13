@@ -1,6 +1,12 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import {
+  addDays,
+  readDay,
+  toCount as count,
+  utcDay as day,
+} from "./stats-window";
 
 /**
  * The webhook numbers of the admin dashboard (SAG-26): what Clerk sent us and what we sent to the
@@ -27,7 +33,7 @@ export const defaultWebhookDays: WebhookDays = 30;
  * even `7 ` with a space (`Number` reads it as 7), is the default.
  */
 export function parseWebhookDays(raw: string | null): WebhookDays {
-  if (raw === null || !/^\d{1,3}$/.test(raw)) return defaultWebhookDays;
+  if (raw === null || !/^[1-9]\d{0,2}$/.test(raw)) return defaultWebhookDays;
   return webhookDays.find((days) => days === Number(raw)) ?? defaultWebhookDays;
 }
 
@@ -77,16 +83,6 @@ export type AdminWebhooks = {
   perDay: WebhookDay[];
 };
 
-const day = (date: Date) => date.toISOString().slice(0, 10);
-
-const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 86_400_000);
-
-const count = (value: unknown): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 /** A `json` column as the client hands it over: already parsed, or as text. */
 function readJson(value: unknown): unknown {
   if (typeof value !== "string") return value;
@@ -125,12 +121,19 @@ function readList(value: unknown): { reason: string; count: number }[] {
 function readDays(value: unknown): WebhookDay[] {
   const list = readJson(value);
   if (!Array.isArray(list)) return [];
-  return list.map(
-    (row: { day?: unknown; attempts?: unknown; failed?: unknown }) => ({
-      day: String(row.day).slice(0, 10),
-      attempts: count(row.attempts),
-      failed: count(row.failed),
-    }),
+  return list.flatMap(
+    (row: { day?: unknown; attempts?: unknown; failed?: unknown }) => {
+      const date = readDay(row.day);
+      return date
+        ? [
+            {
+              day: date,
+              attempts: count(row.attempts),
+              failed: count(row.failed),
+            },
+          ]
+        : [];
+    },
   );
 }
 

@@ -15,6 +15,7 @@
     "server/account/contact-schema.ts",
     "server/db/contact-messages.ts",
     "server/db/admin-overview.ts",
+    "server/db/stats-window.ts",
     "server/db/admin-traffic.ts",
     "server/db/admin-content.ts",
     "server/db/admin-webhooks.ts",

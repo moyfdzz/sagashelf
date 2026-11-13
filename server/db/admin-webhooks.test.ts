@@ -22,7 +22,18 @@ describe("the window of the webhooks (SAG-26)", () => {
   it("accepts only the windows the page offers, and falls back to 30 days for the rest", () => {
     expect(parseWebhookDays("7")).toBe(7);
     expect(parseWebhookDays("30")).toBe(30);
-    for (const raw of [null, "", "90", "14", "7 ", " 7", "7.0", "abc"]) {
+    for (const raw of [
+      null,
+      "",
+      "90",
+      "14",
+      "7 ",
+      " 7",
+      "07",
+      "007",
+      "7.0",
+      "abc",
+    ]) {
       expect(parseWebhookDays(raw)).toBe(30);
     }
   });

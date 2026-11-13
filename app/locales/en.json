@@ -1695,7 +1695,7 @@
         },
         "deliveries": {
           "heading": "What we deliver",
-          "description": "The attempts to notify the webhooks of the people, by what each one answered. They are kept 30 days.",
+          "description": "The attempts to notify the webhooks of the people, by what each one answered. They are kept 30 days. If a person deletes their webhook or their account, its attempts and notices leave these numbers.",
           "results": {
             "ok": "Fine (2xx)",
             "client_error": "Refused (4xx)",

@@ -1,6 +1,12 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import {
+  addDays,
+  readDay,
+  toCount as count,
+  utcDay as day,
+} from "./stats-window";
 
 /**
  * The traffic numbers of the admin dashboard (SAG-26): page views, visits, where they came from,
@@ -29,7 +35,7 @@ export const topSize = 10;
  * even `30 ` with a space (`Number` reads it as 30), is the default.
  */
 export function parseTrafficDays(raw: string | null): TrafficDays {
-  if (raw === null || !/^\d{1,3}$/.test(raw)) return defaultTrafficDays;
+  if (raw === null || !/^[1-9]\d{0,2}$/.test(raw)) return defaultTrafficDays;
   return trafficDays.find((days) => days === Number(raw)) ?? defaultTrafficDays;
 }
 
@@ -68,21 +74,7 @@ export const funnelKinds = [
   "follow",
 ] as const;
 
-const day = (date: Date) => date.toISOString().slice(0, 10);
-
-const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 86_400_000);
-
-const count = (value: unknown): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 type Raw = Record<string, unknown>;
-
-/** A `date` column as the client hands it over: a text, or a `Date` at midnight UTC. */
-const dayOf = (value: unknown): string =>
-  value instanceof Date ? day(value) : String(value).slice(0, 10);
 
 const rowOf = (raw: Raw): TrafficRow => ({
   value: String(raw.value),
@@ -142,7 +134,10 @@ export async function getAdminTraffic(
   const seen = new Map(
     rows
       .filter((row) => row.part === "day")
-      .map((row) => [dayOf(row.day), row] as const),
+      .flatMap((row) => {
+        const date = readDay(row.day);
+        return date ? [[date, row] as const] : [];
+      }),
   );
   const perDay = Array.from({ length: days }, (_, index) => {
     const date = day(addDays(to, index + 1 - days));
