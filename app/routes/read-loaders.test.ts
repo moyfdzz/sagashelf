@@ -80,6 +80,7 @@ const rows: Row[] = [
   row("admin.stats.traffic.tsx", "admin", "/admin/stats/traffic"),
   row("admin.stats.favorites.tsx", "admin", "/admin/stats/favorites"),
   row("admin.stats.content.tsx", "admin", "/admin/stats/content"),
+  row("admin.stats.webhooks.tsx", "admin", "/admin/stats/webhooks"),
   row("admin.moderation.tsx", "admin", "/admin/moderation"),
   row("admin.messages.tsx", "admin", "/admin/messages"),
   row("admin.sagas.tsx", "admin", "/admin/sagas"),

@@ -1582,7 +1582,8 @@
         "overview": "Resumen",
         "traffic": "Tráfico",
         "favorites": "Favoritos",
-        "content": "Contenido"
+        "content": "Contenido",
+        "webhooks": "Webhooks"
       },
       "traffic": {
         "tiles": {
@@ -1668,6 +1669,66 @@
         "rolled": "Solo {{rolled}} de {{days}} días tienen datos. En los demás no hubo visitas, o el cálculo de la noche todavía no corre.",
         "empty": "Todavía no hay datos en este periodo.",
         "other": "Otros"
+      },
+      "webhooks": {
+        "range": "Del {{from}} al {{to}}, en UTC. El día de hoy está incluido, a medias.",
+        "tiles": {
+          "clerkProcessed": "Eventos de Clerk",
+          "clerkRejected": "Cuentas rechazadas",
+          "attempts": "Intentos de entrega",
+          "failed": "Intentos fallidos"
+        },
+        "clerk": {
+          "heading": "Lo que manda Clerk",
+          "description_one": "{{count}} evento procesado en el periodo.",
+          "description_other": "{{count}} eventos procesados en el periodo.",
+          "rejected": "Cuentas rechazadas, por motivo",
+          "none": "Ninguna cuenta rechazada en el periodo.",
+          "note": "Los eventos repetidos y los más viejos de lo que ya se guarda no se cuentan: nada los registra todavía.",
+          "reasons": {
+            "taken": "Nombre o correo ya usado",
+            "reserved_username": "Nombre de usuario reservado",
+            "invalid_username": "Nombre de usuario no válido",
+            "no_verified_email": "Sin correo verificado",
+            "invalid_email": "Correo no válido"
+          }
+        },
+        "deliveries": {
+          "heading": "Lo que entregamos",
+          "description": "Los intentos de avisar a los webhooks de las personas, por lo que contestó cada uno. Se guardan 30 días.",
+          "results": {
+            "ok": "Bien (2xx)",
+            "client_error": "Rechazo (4xx)",
+            "server_error": "Falla del otro lado (5xx)",
+            "no_response": "Sin respuesta",
+            "other": "Otra respuesta"
+          },
+          "latency": "Tiempo de respuesta: {{average}} en promedio, y el 95 % de los intentos tardó {{slowest}} o menos.",
+          "events": "Avisos del periodo, según cómo van",
+          "status": {
+            "pending": "Esperando",
+            "delivered": "Entregado",
+            "failed": "Se rindió"
+          },
+          "pendingNow_one": "Ahora esperan {{count}} aviso, de cualquier día.",
+          "pendingNow_other": "Ahora esperan {{count}} avisos, de cualquier día."
+        },
+        "perDay": {
+          "heading": "Intentos fallidos por día",
+          "description": "Un número por cada día del periodo. Los números del eje son intentos.",
+          "columnTitle": "{{date}}: {{count}}"
+        },
+        "endpoints": {
+          "heading": "Webhooks de las personas",
+          "description": "Cuántos hay y por qué se apagaron los que están apagados.",
+          "total": "En total",
+          "enabled": "Encendidos",
+          "reasons": {
+            "unauthorized": "Apagado: sin permiso (401 o 403)",
+            "not_found": "Apagado: no existe (404 o 410)",
+            "too_many_failures": "Apagado: demasiadas fallas"
+          }
+        }
       }
     }
   },

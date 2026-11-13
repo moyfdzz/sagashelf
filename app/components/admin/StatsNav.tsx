@@ -9,7 +9,7 @@ import { tabClass } from "~/lib/ui";
 export function StatsNav({
   current,
 }: {
-  current: "overview" | "traffic" | "favorites" | "content";
+  current: "overview" | "traffic" | "favorites" | "content" | "webhooks";
 }) {
   const { t } = useTranslation();
   const items = [
@@ -32,6 +32,11 @@ export function StatsNav({
       key: "content",
       href: "/admin/stats/content",
       label: t("admin.stats.nav.content"),
+    },
+    {
+      key: "webhooks",
+      href: "/admin/stats/webhooks",
+      label: t("admin.stats.nav.webhooks"),
     },
   ] as const;
 
