@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { TrafficDays } from "./admin-traffic";
 import type { SqlExecutor } from "./clerk-sync";
+import { addDays, toCount as count, utcDay as day } from "./stats-window";
 import { sharedTitleSql } from "./titles";
 
 /**
@@ -35,16 +36,6 @@ export type AdminContent = {
   /** The works of the published sagas, and how many of them Wikidata has described. */
   works: number;
   worksDescribed: number;
-};
-
-const day = (date: Date) => date.toISOString().slice(0, 10);
-
-const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 86_400_000);
-
-const count = (value: unknown): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 /** The `json` column as the client hands it over: already parsed, or as text. */

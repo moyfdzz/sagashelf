@@ -32,6 +32,7 @@ export default [
   route("admin/stats/traffic", "routes/admin.stats.traffic.tsx"),
   route("admin/stats/favorites", "routes/admin.stats.favorites.tsx"),
   route("admin/stats/content", "routes/admin.stats.content.tsx"),
+  route("admin/stats/webhooks", "routes/admin.stats.webhooks.tsx"),
   route("admin/moderation", "routes/admin.moderation.tsx"),
   route("admin/messages", "routes/admin.messages.tsx"),
   route("admin/sagas", "routes/admin.sagas.tsx"),

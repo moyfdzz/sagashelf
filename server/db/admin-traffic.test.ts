@@ -28,6 +28,7 @@ describe("the window of the traffic (SAG-26)", () => {
       "30 ",
       " 30",
       "030",
+      "07",
       "3e1",
       "-7",
       "7.0",

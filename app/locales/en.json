@@ -1582,7 +1582,8 @@
         "overview": "Overview",
         "traffic": "Traffic",
         "favorites": "Favorites",
-        "content": "Content"
+        "content": "Content",
+        "webhooks": "Webhooks"
       },
       "traffic": {
         "tiles": {
@@ -1668,6 +1669,66 @@
         "rolled": "Only {{rolled}} of {{days}} days have data. The others had no visits, or the nightly count has not run yet.",
         "empty": "There is no data in this period yet.",
         "other": "Other"
+      },
+      "webhooks": {
+        "range": "From {{from}} to {{to}}, in UTC. Today is included, partly.",
+        "tiles": {
+          "clerkProcessed": "Clerk events",
+          "clerkRejected": "Accounts refused",
+          "attempts": "Delivery attempts",
+          "failed": "Failed attempts"
+        },
+        "clerk": {
+          "heading": "What Clerk sends",
+          "description_one": "{{count}} event handled in the period.",
+          "description_other": "{{count}} events handled in the period.",
+          "rejected": "Accounts refused, by reason",
+          "none": "No account was refused in the period.",
+          "note": "Repeated events and events older than what is already held are not counted: nothing records them yet.",
+          "reasons": {
+            "taken": "Name or email already used",
+            "reserved_username": "Reserved username",
+            "invalid_username": "Invalid username",
+            "no_verified_email": "No verified email",
+            "invalid_email": "Invalid email"
+          }
+        },
+        "deliveries": {
+          "heading": "What we deliver",
+          "description": "The attempts to notify the webhooks of the people, by what each one answered. They are kept 30 days. If a person deletes their webhook or their account, its attempts and notices leave these numbers.",
+          "results": {
+            "ok": "Fine (2xx)",
+            "client_error": "Refused (4xx)",
+            "server_error": "Failed on their side (5xx)",
+            "no_response": "No answer",
+            "other": "Other answer"
+          },
+          "latency": "Response time: {{average}} on average, and 95% of the attempts took {{slowest}} or less.",
+          "events": "Notices of the period, by where they stand",
+          "status": {
+            "pending": "Waiting",
+            "delivered": "Delivered",
+            "failed": "Given up"
+          },
+          "pendingNow_one": "{{count}} notice is waiting now, from any day.",
+          "pendingNow_other": "{{count}} notices are waiting now, from any day."
+        },
+        "perDay": {
+          "heading": "Failed attempts per day",
+          "description": "One number for each day of the period. The numbers on the axis are attempts.",
+          "columnTitle": "{{date}}: {{count}}"
+        },
+        "endpoints": {
+          "heading": "Webhooks of the people",
+          "description": "How many there are and why the ones that are off were turned off.",
+          "total": "In total",
+          "enabled": "On",
+          "reasons": {
+            "unauthorized": "Off: not allowed (401 or 403)",
+            "not_found": "Off: does not exist (404 or 410)",
+            "too_many_failures": "Off: too many failures"
+          }
+        }
       }
     }
   },

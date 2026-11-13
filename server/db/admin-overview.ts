@@ -1,6 +1,12 @@
 import { sql } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import {
+  addDays,
+  readDay,
+  toCount as count,
+  utcDay as day,
+} from "./stats-window";
 
 /**
  * The numbers of the first screen of the admin dashboard (SAG-26): how many people use the app, how
@@ -34,18 +40,8 @@ export type AdminOverview = {
   signups: DailySignups[];
 };
 
-const day = (date: Date) => date.toISOString().slice(0, 10);
-
-const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 86_400_000);
-
 /** The start of a UTC day, as the text the database reads as a moment. */
 const startOf = (date: Date) => `${day(date)}T00:00:00Z`;
-
-const count = (value: unknown): number => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 
 /** The `json` column as the client hands it over: already parsed, or as text. */
 function readSignups(value: unknown): DailySignups[] {
@@ -58,10 +54,10 @@ function readSignups(value: unknown): DailySignups[] {
     }
   }
   if (!Array.isArray(list)) return [];
-  return list.map((row: { day?: unknown; count?: unknown }) => ({
-    day: String(row.day).slice(0, 10),
-    count: count(row.count),
-  }));
+  return list.flatMap((row: { day?: unknown; count?: unknown }) => {
+    const date = readDay(row.day);
+    return date ? [{ day: date, count: count(row.count) }] : [];
+  });
 }
 
 export async function getAdminOverview(
