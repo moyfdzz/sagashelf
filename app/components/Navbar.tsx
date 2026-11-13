@@ -88,13 +88,14 @@ function NavIcon({ icon: Icon }: { icon: LucideIcon }) {
  * only from 1536 px; from 1280 to 1535 px the links are words only, as measured above. Measured on
  * 2026-11-13 with the real scrollbar strip (15 px, Chromium without `--hide-scrollbars`) and a
  * signed-in person, free room in the row at 1536 px (a count above 99 draws "99+"): in Spanish, 197 px
- * before the icons and 69 after with no unread, 151 and 27 with "99+"; in English, 239 and 111 with no
- * unread, 193 and 69 with "99+". A 16 px icon with 18 px text did not fit with "99+" in Spanish, so
+ * before the icons and 69 after with no unread, 151 and 23 with "99+" (the count keeps its 8 px from the word
+ * with `2xl:ml-1` on top of the 4 px gap, which costs 4 px; the 27 px were measured before that); in English, 239 and 111 with no
+ * unread, 193 and 65 with "99+". A 16 px icon with 18 px text did not fit with "99+" in Spanish, so
  * from 1536 px the links have 4 px between the icon and the word and 6 px of padding on each side
  * instead of 8. The row has no more room above 1536 px (the container stops there). From 1280 to
  * 1535 px nothing changed: the same room as before, and the Spanish row with "99+" still wraps there.
  * A new link, or a larger icon, needs those measures again. The icons of the account links are in
- * \`AccountLinks\`; they are in a menu, so their width does not matter.
+ * `AccountLinks`; they are in a menu, so their width does not matter.
  *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
  * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
@@ -302,7 +303,7 @@ export function Navbar({
                             <>
                               <span
                                 aria-hidden="true"
-                                className="bg-accent text-accent-fg inline-block min-w-6 rounded-full px-1.5 text-center text-sm font-bold"
+                                className="bg-accent text-accent-fg inline-block min-w-6 rounded-full 2xl:ml-1 px-1.5 text-center text-sm font-bold"
                               >
                                 {shown}
                               </span>
