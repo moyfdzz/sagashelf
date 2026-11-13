@@ -39,7 +39,7 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
     const html = await render(<AccountMenu isAdmin />);
 
     expect(html).toMatch(
-      /<a [^>]*href="\/admin\/sagas"[^>]*>Administración<\/a>/,
+      /<a [^>]*href="\/admin\/sagas"[^>]*>.*Administración<\/span><\/a>/,
     );
     // A plain anchor: the administration has a security policy of its own, which only a new
     // document gets, and a link of the router carries `data-discover`.
@@ -80,7 +80,7 @@ describe("the link to the administration in the account menu (SAG-95)", () => {
     const html = await render(<AccountMenu isAdmin />, "en");
 
     expect(html).toMatch(
-      /<a [^>]*href="\/admin\/sagas"[^>]*>Administration<\/a>/,
+      /<a [^>]*href="\/admin\/sagas"[^>]*>.*Administration<\/span><\/a>/,
     );
   });
 
@@ -447,5 +447,37 @@ describe("the unread alerts in the header (SAG-102)", () => {
 
     expect(html).not.toContain("/notifications");
     expect(html).not.toContain("pendientes");
+  });
+});
+
+describe("the icons of the header (SAG-157)", () => {
+  const icons = (html: string) =>
+    [...html.matchAll(/<svg [^>]*>/g)].map((match) => match[0]);
+
+  it("puts one icon in front of every link of the account, hidden from a screen reader", async () => {
+    const html = await render(<AccountMenu isAdmin username="ana_reads" />);
+    const links = html.match(/<a [^>]*href=/g) ?? [];
+    // The icons of the links plus the arrow of the button.
+    const linkIcons = icons(html).filter((svg) => svg.includes("lucide"));
+
+    expect(links).toHaveLength(6);
+    expect(linkIcons).toHaveLength(links.length);
+    // Each icon sits in a box hidden from a screen reader (the button's own picture is the +1).
+    expect(html.match(/<span aria-hidden="true"/g)).toHaveLength(
+      links.length + 1,
+    );
+  });
+
+  it("draws an icon of the row only in the panel of a phone and from 1536 px, never from 1280 to 1535 px", async () => {
+    const html = await render(<Navbar savedTheme={null} signedIn />);
+    const rowIcons = icons(html).filter((svg) => svg.includes("lucide"));
+
+    // Eight links in the row; the others are the ones of the account in the panel.
+    const forRow = rowIcons.filter((svg) => svg.includes("2xl:block"));
+    expect(forRow).toHaveLength(8);
+    for (const svg of forRow) {
+      expect(svg).toContain('aria-hidden="true"');
+      expect(svg).toContain("xl:hidden");
+    }
   });
 });

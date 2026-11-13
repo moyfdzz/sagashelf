@@ -44,8 +44,12 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
       "/settings/profile",
       "/sign-out",
     ]);
-    expect(html).toMatch(/<a [^>]*href="\/u\/ana_reads"[^>]*>Perfil<\/a>/);
-    expect(html).toMatch(/<a [^>]*href="\/lists"[^>]*>Mis listas<\/a>/);
+    expect(html).toMatch(
+      /<a [^>]*href="\/u\/ana_reads"[^>]*>.*Perfil<\/span><\/a>/,
+    );
+    expect(html).toMatch(
+      /<a [^>]*href="\/lists"[^>]*>.*Mis listas<\/span><\/a>/,
+    );
   });
 
   it("goes before the administration for an administrator, which stays above sign out", async () => {
@@ -92,7 +96,9 @@ describe("the link Perfil of the account menu (SAG-114)", () => {
   it("says it in English", async () => {
     const html = await render(<AccountMenu username="ana_reads" />, "en");
 
-    expect(html).toMatch(/<a [^>]*href="\/u\/ana_reads"[^>]*>Profile<\/a>/);
+    expect(html).toMatch(
+      /<a [^>]*href="\/u\/ana_reads"[^>]*>.*Profile<\/span><\/a>/,
+    );
   });
 
   it("is in the panel of the menu of a phone too, after nothing but the divider", async () => {

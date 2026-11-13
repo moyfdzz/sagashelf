@@ -1,8 +1,21 @@
+import {
+  Bell,
+  House,
+  Layers,
+  Library,
+  LogIn,
+  Search,
+  Sparkles,
+  TrendingUp,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, useLocation } from "react-router";
 
-import { AccountLinks } from "~/components/AccountLinks";
+import { AccountItemLabel, AccountLinks } from "~/components/AccountLinks";
 import { AccountMenu } from "~/components/AccountMenu";
 import { LanguageSwitcher } from "~/components/LanguageSwitcher";
 import { LogoMark } from "~/components/LogoMark";
@@ -13,7 +26,7 @@ const focusClass =
   "focus-visible:outline-accent focus-visible:outline-2 focus-visible:-outline-offset-2";
 
 const linkClass = (active: boolean) =>
-  `block rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 xl:text-base 2xl:text-lg ${focusClass} ${
+  `flex items-center gap-2 rounded-md px-3 py-2 text-lg font-semibold transition-colors xl:px-2 xl:text-base 2xl:gap-1 2xl:px-1.5 2xl:text-lg ${focusClass} ${
     active ? "text-accent" : "text-fg-muted hover:text-accent"
   }`;
 
@@ -22,6 +35,20 @@ const authLinkClass = `text-fg-muted hover:text-accent rounded-md px-3 py-2 font
 const signUpClass = `bg-accent text-accent-fg rounded-md px-3 py-2 font-semibold transition hover:brightness-95 ${focusClass}`;
 
 const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font-semibold ${focusClass}`;
+
+/**
+ * The icon in front of a link of the row (SAG-157): drawn in the panel of a phone and from 1536 px,
+ * where the row has room; from 1280 to 1535 px the links are words only. Hidden from a screen
+ * reader, because the word names the link.
+ */
+function NavIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <Icon
+      aria-hidden="true"
+      className="size-5 shrink-0 xl:hidden 2xl:block 2xl:size-4"
+    />
+  );
+}
 
 /**
  * The header. From 1280 px up it is one row: the logo, the navigation links, the language and theme
@@ -56,6 +83,18 @@ const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font
  * and in English, with 0, 5 and 150 notifications. The same measure found that on that machine the
  * Spanish row of a signed-in person with at least one unread notification already wraps to two rows
  * between 1280 and 1535 px (before this change too), which the numbers above do not say.
+ *
+ * Icons (SAG-157): each link has one in front of the word in the panel of a phone, and in the wide row
+ * only from 1536 px; from 1280 to 1535 px the links are words only, as measured above. Measured on
+ * 2026-11-13 with the real scrollbar strip (15 px, Chromium without `--hide-scrollbars`) and a
+ * signed-in person, free room in the row at 1536 px (a count above 99 draws "99+"): in Spanish, 197 px
+ * before the icons and 69 after with no unread, 151 and 27 with "99+"; in English, 239 and 111 with no
+ * unread, 193 and 69 with "99+". A 16 px icon with 18 px text did not fit with "99+" in Spanish, so
+ * from 1536 px the links have 4 px between the icon and the word and 6 px of padding on each side
+ * instead of 8. The row has no more room above 1536 px (the container stops there). From 1280 to
+ * 1535 px nothing changed: the same room as before, and the Spanish row with "99+" still wraps there.
+ * A new link, or a larger icon, needs those measures again. The icons of the account links are in
+ * \`AccountLinks\`; they are in a menu, so their width does not matter.
  *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
  * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
@@ -124,22 +163,60 @@ export function Navbar({
   const shown = unread > 99 ? "99+" : String(unread);
   // The library and the notifications are session pages, so they are plain anchors (ADR-018) and
   // their highlight is read from the route. The other pages are the router's.
-  const navItems = [
-    { label: t("nav.home"), to: "/", session: false, badge: 0 },
-    { label: t("nav.search"), to: "/search", session: false, badge: 0 },
-    { label: t("nav.sagas"), to: "/sagas", session: false, badge: 0 },
-    { label: t("nav.trending"), to: "/trending", session: false, badge: 0 },
+  const navItems: {
+    icon: LucideIcon;
+    label: string;
+    to: string;
+    session: boolean;
+    badge: number;
+  }[] = [
+    { icon: House, label: t("nav.home"), to: "/", session: false, badge: 0 },
+    {
+      icon: Search,
+      label: t("nav.search"),
+      to: "/search",
+      session: false,
+      badge: 0,
+    },
+    {
+      icon: Layers,
+      label: t("nav.sagas"),
+      to: "/sagas",
+      session: false,
+      badge: 0,
+    },
+    {
+      icon: TrendingUp,
+      label: t("nav.trending"),
+      to: "/trending",
+      session: false,
+      badge: 0,
+    },
     ...(signedIn
       ? [
-          { label: t("nav.library"), to: "/library", session: true, badge: 0 },
-          { label: t("nav.social"), to: "/social", session: false, badge: 0 },
           {
+            icon: Library,
+            label: t("nav.library"),
+            to: "/library",
+            session: true,
+            badge: 0,
+          },
+          {
+            icon: Users,
+            label: t("nav.social"),
+            to: "/social",
+            session: false,
+            badge: 0,
+          },
+          {
+            icon: Bell,
             label: t("nav.notifications"),
             to: "/notifications",
             session: true,
             badge: unread,
           },
           {
+            icon: Sparkles,
             label: t("nav.recommendations"),
             to: "/recommendations",
             session: false,
@@ -219,12 +296,13 @@ export function Navbar({
                           aria-current={active ? "page" : undefined}
                           className={linkClass(active)}
                         >
+                          <NavIcon icon={item.icon} />
                           {item.label}
                           {item.badge > 0 ? (
                             <>
                               <span
                                 aria-hidden="true"
-                                className="bg-accent text-accent-fg ml-2 inline-block min-w-6 rounded-full px-1.5 text-center text-sm font-bold"
+                                className="bg-accent text-accent-fg inline-block min-w-6 rounded-full px-1.5 text-center text-sm font-bold"
                               >
                                 {shown}
                               </span>
@@ -240,6 +318,7 @@ export function Navbar({
                           end
                           className={({ isActive }) => linkClass(isActive)}
                         >
+                          <NavIcon icon={item.icon} />
                           {item.label}
                         </NavLink>
                       )}
@@ -262,12 +341,16 @@ export function Navbar({
                 <>
                   <li>
                     <a href="/sign-in" className={accountItemClass}>
-                      {t("nav.signIn")}
+                      <AccountItemLabel icon={LogIn}>
+                        {t("nav.signIn")}
+                      </AccountItemLabel>
                     </a>
                   </li>
                   <li>
                     <a href="/sign-up" className={accountItemClass}>
-                      {t("nav.signUp")}
+                      <AccountItemLabel icon={UserPlus}>
+                        {t("nav.signUp")}
+                      </AccountItemLabel>
                     </a>
                   </li>
                 </>
