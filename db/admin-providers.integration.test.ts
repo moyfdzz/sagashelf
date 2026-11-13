@@ -70,7 +70,7 @@ describe("getAdminProviders (SAG-26)", () => {
     expect(tmdb).toMatchObject({
       calls: 15,
       failed: 5,
-      notSent: 4,
+      stopped: 4,
       requests: 14,
       // 900 + 100 + 600 ms over the 11 calls that sent something.
       peakDayRequests: 9,
@@ -109,6 +109,32 @@ describe("getAdminProviders (SAG-26)", () => {
     expect(result.startedOn).toBe("2026-09-01");
   });
 
+  it("does not count an answer of 4xx or a call the app cancelled as failed, in the totals or in the day", async () => {
+    await db
+      .insert(providerCallsDaily)
+      .values([
+        row("2026-11-12", "tmdb", "ok", 4, 4, 400),
+        row("2026-11-12", "tmdb", "http_4xx", 3, 3, 300),
+        row("2026-11-12", "tmdb", "cancelled", 2, 2, 2000),
+        row("2026-11-12", "tmdb", "timeout", 1, 3, 3000),
+      ]);
+
+    const result = await getAdminProviders(db, now, 7);
+
+    expect(result.providers[0]).toMatchObject({
+      calls: 10,
+      failed: 1,
+      stopped: 0,
+    });
+    expect(result.perDay.at(-1)).toEqual({
+      day: "2026-11-12",
+      calls: 10,
+      failed: 1,
+    });
+    // The cancelled and the 4xx calls count for the average time: 5700 ms over 10 calls.
+    expect(result.providers[0]?.latencyAvgMs).toBeCloseTo(570, 5);
+  });
+
   it("has no average time for a provider whose calls were all never sent", async () => {
     await db
       .insert(providerCallsDaily)
@@ -120,7 +146,7 @@ describe("getAdminProviders (SAG-26)", () => {
       provider: "wikidata",
       calls: 3,
       failed: 3,
-      notSent: 3,
+      stopped: 3,
       requests: 0,
       latencyAvgMs: null,
     });

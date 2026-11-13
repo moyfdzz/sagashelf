@@ -333,8 +333,9 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         count("ok");
         return result;
       } catch (error) {
-        // The caller cancelled: nothing is learned about the provider.
-        if (!callOptions.signal?.aborted) count(outcomeOf(error));
+        // The caller gave up (the search does it with a slow provider): the requests that were sent
+        // and the time they waited are real, and a slow provider is what the count is for.
+        count(callOptions.signal?.aborted ? "cancelled" : outcomeOf(error));
         throw error;
       }
     },

@@ -608,7 +608,7 @@ describe("the count of the calls (SAG-26)", () => {
     });
   });
 
-  it("does not count a call that the caller cancelled", async () => {
+  it("counts a call the caller gave up on as cancelled, with the request that was sent", async () => {
     const controller = new AbortController();
     const fetchMock = vi.fn(async () => {
       controller.abort();
@@ -620,7 +620,9 @@ describe("the count of the calls (SAG-26)", () => {
       client.getJson("https://api.test/x", { signal: controller.signal }),
     );
 
-    expect(calls).toEqual([]);
+    expect(calls).toEqual([
+      { provider: "demo", outcome: "cancelled", requests: 1, ms: 0 },
+    ]);
   });
 
   it("is not affected when the count itself fails", async () => {

@@ -6,9 +6,13 @@ import { flushProviderCalls } from "./flush";
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   saveProviderCalls: vi.fn(),
+  clearDatabaseUsed: vi.fn(),
 }));
 
-vi.mock("../runtime-env", () => ({ getDb: mocks.getDb }));
+vi.mock("../runtime-env", () => ({
+  getDb: mocks.getDb,
+  clearDatabaseUsed: mocks.clearDatabaseUsed,
+}));
 vi.mock("../db/provider-calls", () => ({
   saveProviderCalls: mocks.saveProviderCalls,
 }));
@@ -17,6 +21,7 @@ beforeEach(() => {
   takeProviderCalls();
   mocks.getDb.mockReset().mockResolvedValue({ fake: "database" });
   mocks.saveProviderCalls.mockReset().mockResolvedValue(undefined);
+  mocks.clearDatabaseUsed.mockReset();
 });
 
 const count = () =>
@@ -54,7 +59,7 @@ describe("flushProviderCalls (SAG-26)", () => {
     expect(mocks.saveProviderCalls).toHaveBeenCalledTimes(1);
   });
 
-  it("never throws, logs only the name of the error, and drops what it could not write", async () => {
+  it("never throws, logs only the name of the error, and keeps what it could not write for the next flush", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     mocks.saveProviderCalls.mockRejectedValue(
       new Error("the message holds a private detail"),
@@ -69,9 +74,41 @@ describe("flushProviderCalls (SAG-26)", () => {
       error: "Error",
     });
     expect(written).not.toContain("private detail");
-    // The counts of that moment are gone, so the memory does not grow while the database is down.
+    // The counts went back to the memory: the next flush writes them, with what came after.
+    mocks.saveProviderCalls.mockResolvedValue(undefined);
+    count();
     await flushProviderCalls();
-    expect(mocks.saveProviderCalls).toHaveBeenCalledTimes(1);
+    expect(mocks.saveProviderCalls).toHaveBeenCalledTimes(2);
+    expect(mocks.saveProviderCalls.mock.calls[1]?.[1]).toEqual([
+      expect.objectContaining({ provider: "tmdb", calls: 2, requests: 2 }),
+    ]);
+    log.mockRestore();
+  });
+
+  it("forgets that the database was used only after the write, so the write itself does not count as a use", async () => {
+    const order: string[] = [];
+    mocks.saveProviderCalls.mockImplementation(async () => {
+      order.push("write");
+    });
+    mocks.clearDatabaseUsed.mockImplementation(() => {
+      order.push("clear");
+    });
+    count();
+
+    await flushProviderCalls();
+
+    expect(order).toEqual(["write", "clear"]);
+  });
+
+  it("forgets it too when there is nothing to write, and when the write fails", async () => {
+    await flushProviderCalls();
+    expect(mocks.clearDatabaseUsed).toHaveBeenCalledTimes(1);
+
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    mocks.saveProviderCalls.mockRejectedValue(new Error("down"));
+    count();
+    await flushProviderCalls();
+    expect(mocks.clearDatabaseUsed).toHaveBeenCalledTimes(2);
     log.mockRestore();
   });
 

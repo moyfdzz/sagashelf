@@ -49,7 +49,7 @@ describe("getAdminProviders (SAG-26)", () => {
     expect(result.providers[0]).toMatchObject({
       calls: 13,
       failed: 5,
-      notSent: 4,
+      stopped: 4,
       requests: 12,
       peakDayRequests: 9,
     });
@@ -58,6 +58,28 @@ describe("getAdminProviders (SAG-26)", () => {
     expect(result.totals).toMatchObject({ calls: 16, failed: 5, requests: 15 });
     expect(result.totals.latencyAvgMs).toBeCloseTo(1800 / 12, 5);
     expect(result.startedOn).toBe("2026-09-01");
+  });
+
+  it("does not count as a failure an answer of 4xx or a call the app cancelled", async () => {
+    const result = await getAdminProviders(
+      answering([
+        total("tmdb", "ok", 5),
+        total("tmdb", "http_4xx", 3),
+        total("tmdb", "cancelled", 2),
+        total("tmdb", "http_429", 1),
+        total("tmdb", "timeout", 1),
+      ]),
+      now,
+      7,
+    );
+
+    expect(result.providers[0]).toMatchObject({
+      calls: 12,
+      failed: 2,
+      stopped: 0,
+    });
+    expect(result.totals.failed).toBe(2);
+    expect(result.providers[0]?.outcomes.cancelled).toBe(2);
   });
 
   it("has every outcome the code counts in the totals, with zero for the ones with no calls", async () => {
@@ -85,15 +107,15 @@ describe("getAdminProviders (SAG-26)", () => {
   });
 
   it("has no average time when no call was sent, and none when nothing comes back", async () => {
-    const notSent = await getAdminProviders(
+    const stopped = await getAdminProviders(
       answering([total("tmdb", "rate_limited", 3, 0, 0)]),
       now,
       7,
     );
     const empty = await getAdminProviders(answering([]), now, 30);
 
-    expect(notSent.providers[0]?.latencyAvgMs).toBeNull();
-    expect(notSent.totals.latencyAvgMs).toBeNull();
+    expect(stopped.providers[0]?.latencyAvgMs).toBeNull();
+    expect(stopped.totals.latencyAvgMs).toBeNull();
     expect(empty).toMatchObject({
       from: "2026-10-14",
       to: "2026-11-12",
@@ -106,14 +128,14 @@ describe("getAdminProviders (SAG-26)", () => {
   it("gives a row for every day, reading the days as text or as a Date, and skipping one that is not a day", async () => {
     const result = await getAdminProviders(
       answering([
-        { part: "day", day: "2026-11-12", calls: "5", requests: "2" },
+        { part: "day", day: "2026-11-12", calls: "5", failed: "2" },
         {
           part: "day",
           day: new Date("2026-11-10T00:00:00Z"),
           calls: 3,
-          requests: 1,
+          failed: 1,
         },
-        { part: "day", day: "undefined", calls: 99, requests: 99 },
+        { part: "day", day: "undefined", calls: 99, failed: 99 },
       ]),
       now,
       7,

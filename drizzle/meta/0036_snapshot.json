@@ -3010,7 +3010,7 @@
       "checkConstraints": {
         "provider_calls_daily_outcome_check": {
           "name": "provider_calls_daily_outcome_check",
-          "value": "\"provider_calls_daily\".\"outcome\" in ('ok', 'http_4xx', 'http_429', 'http_5xx', 'http_other', 'timeout', 'network', 'invalid', 'rate_limited', 'circuit_open')"
+          "value": "\"provider_calls_daily\".\"outcome\" in ('ok', 'http_4xx', 'http_429', 'http_5xx', 'http_other', 'timeout', 'network', 'invalid', 'rate_limited', 'circuit_open', 'cancelled')"
         },
         "provider_calls_daily_provider_check": {
           "name": "provider_calls_daily_provider_check",

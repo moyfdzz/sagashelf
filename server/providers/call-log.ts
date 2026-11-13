@@ -1,4 +1,8 @@
-import type { ProviderOutcome } from "../db/schema/providers";
+import {
+  providerNamePattern,
+  stoppedByUsOutcomes,
+  type ProviderOutcome,
+} from "../db/schema/providers";
 
 /**
  * The count of the calls to the providers that this Worker instance has made and not written yet
@@ -40,6 +44,8 @@ export function recordProviderCall(
   call: ProviderCall,
   now: Date = new Date(),
 ): void {
+  // A name the table would refuse is not counted: one bad row would make every write fail.
+  if (!providerNamePattern.test(call.provider)) return;
   const day = now.toISOString().slice(0, 10);
   const key = [day, call.provider, call.outcome].join(separator);
   const row = pending.get(key) ?? {
@@ -52,9 +58,31 @@ export function recordProviderCall(
   };
   row.calls += 1;
   row.requests += call.requests;
-  // The time of a call that sent nothing says nothing about the provider.
-  if (call.requests > 0) row.latencyMs += Math.max(0, Math.round(call.ms));
+  // The time of a call that our own limit or circuit stopped (it may have waited for a place, or
+  // sent a try before) says nothing about the provider, and neither does one that sent nothing.
+  if (call.requests > 0 && !stoppedByUsOutcomes.includes(call.outcome)) {
+    row.latencyMs += Math.max(0, Math.round(call.ms));
+  }
   pending.set(key, row);
+}
+
+/**
+ * Gives back what `takeProviderCalls` handed over and could not be written, adding it to what was
+ * counted since. The number of rows cannot grow beyond days x providers x outcomes, so keeping them
+ * for the next write costs nothing.
+ */
+export function restoreProviderCalls(rows: readonly ProviderCallRow[]): void {
+  for (const back of rows) {
+    const key = [back.day, back.provider, back.outcome].join(separator);
+    const row = pending.get(key);
+    if (row) {
+      row.calls += back.calls;
+      row.requests += back.requests;
+      row.latencyMs += back.latencyMs;
+    } else {
+      pending.set(key, { ...back });
+    }
+  }
 }
 
 /** Hands over everything counted so far and starts from zero. */

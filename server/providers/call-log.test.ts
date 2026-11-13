@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   hasProviderCalls,
   recordProviderCall,
+  restoreProviderCalls,
   takeProviderCalls,
 } from "./call-log";
 
@@ -76,6 +77,66 @@ describe("the count of the calls to the providers (SAG-26)", () => {
       requests: 0,
       latencyMs: 0,
     });
+  });
+
+  it("does not add the time of a call that our own limit stopped, even when it sent a try first", async () => {
+    recordProviderCall(
+      { provider: "tmdb", outcome: "rate_limited", requests: 1, ms: 900 },
+      noon,
+    );
+    recordProviderCall(
+      { provider: "tmdb", outcome: "cancelled", requests: 1, ms: 700 },
+      noon,
+    );
+
+    const rows = takeProviderCalls();
+    expect(rows.find((r) => r.outcome === "rate_limited")).toMatchObject({
+      requests: 1,
+      latencyMs: 0,
+    });
+    expect(rows.find((r) => r.outcome === "cancelled")?.latencyMs).toBe(700);
+  });
+
+  it("does not count a provider whose name the table would refuse", () => {
+    for (const provider of [
+      "",
+      "TMDB",
+      "a",
+      "has space",
+      "x".repeat(31),
+      "tmdb; drop",
+    ]) {
+      recordProviderCall({ provider, outcome: "ok", requests: 1, ms: 1 }, noon);
+    }
+
+    expect(hasProviderCalls()).toBe(false);
+  });
+
+  it("takes back what could not be written, adding it to what was counted since", () => {
+    recordProviderCall(
+      { provider: "tmdb", outcome: "ok", requests: 1, ms: 100 },
+      noon,
+    );
+    const taken = takeProviderCalls();
+    recordProviderCall(
+      { provider: "tmdb", outcome: "ok", requests: 2, ms: 50 },
+      noon,
+    );
+    recordProviderCall(
+      { provider: "tmdb", outcome: "timeout", requests: 1, ms: 5 },
+      noon,
+    );
+
+    restoreProviderCalls(taken);
+
+    const rows = takeProviderCalls();
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.outcome === "ok")).toMatchObject({
+      calls: 2,
+      requests: 3,
+      latencyMs: 150,
+    });
+    expect(takeProviderCalls()).toEqual([]);
   });
 
   it("never adds a negative or fractional time", () => {

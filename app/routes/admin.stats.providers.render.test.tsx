@@ -51,6 +51,7 @@ const outcomes = (fields: Record<string, number> = {}) => ({
   invalid: 0,
   rate_limited: 0,
   circuit_open: 0,
+  cancelled: 0,
   ...fields,
 });
 
@@ -77,7 +78,7 @@ const providers = (fields: Record<string, unknown> = {}) => ({
       provider: "tmdb",
       calls: 15,
       failed: 4,
-      notSent: 2,
+      stopped: 2,
       requests: 18,
       peakDayRequests: 9,
       latencyAvgMs: 250,
@@ -87,7 +88,7 @@ const providers = (fields: Record<string, unknown> = {}) => ({
       provider: "newcomer",
       calls: 5,
       failed: 1,
-      notSent: 0,
+      stopped: 0,
       requests: 6,
       peakDayRequests: 4,
       latencyAvgMs: null,
@@ -146,7 +147,7 @@ describe("the providers page of the administration (SAG-26)", () => {
     expect(html).toContain("Cómo terminaron las llamadas");
     expect(html).toContain("Bien");
     expect(html).toContain("Falla del proveedor (5xx)");
-    expect(html).toContain("No se envió: proveedor en pausa");
+    expect(html).toContain("Detenida: proveedor en pausa");
   });
 
   it("says that the numbers are approximate and that a cache and a quota are not measured", async () => {
@@ -215,6 +216,6 @@ describe("the providers page of the administration (SAG-26)", () => {
     expect(html).toContain("How the calls ended");
     expect(html).toContain("Failed calls per day");
     expect(html).toContain("The numbers are approximate");
-    expect(html).toContain("Not sent: provider paused");
+    expect(html).toContain("Stopped: provider paused");
   });
 });
