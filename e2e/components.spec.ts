@@ -240,13 +240,16 @@ test.describe("the header of a signed-in person (SAG-263)", () => {
   // with the strip must not fall under 60 here.
   const room = (page: Page) =>
     page.evaluate(() => {
-      const logo = document.querySelector("header a")?.getBoundingClientRect();
+      const logo = document
+        .querySelector('header a[href="/"]')
+        ?.getBoundingClientRect();
       const nav = document.querySelector("header nav")?.getBoundingClientRect();
       const row = document
         .querySelector("header > div")
         ?.getBoundingClientRect();
       if (!logo || !nav || !row) throw new Error("The header is not drawn");
       return {
+        // 16 px is the gap between the pieces of the row (`xl:gap-x-4`).
         room: Math.round(nav.left - logo.right - 16),
         height: row.height,
       };

@@ -22,6 +22,7 @@ import { AccountMenu } from "~/components/AccountMenu";
 import { LanguageSwitcher } from "~/components/LanguageSwitcher";
 import { LogoMark } from "~/components/LogoMark";
 import { ThemeSwitch } from "~/components/ThemeSwitch";
+import { cappedCount } from "~/lib/badge";
 import type { Theme } from "~/lib/theme";
 
 const focusClass =
@@ -102,10 +103,10 @@ function NavIcon({ icon: Icon }: { icon: LucideIcon }) {
  * not matter.
  *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
- * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
- * phone that link is inside the panel, so the "Menu" button carries that number (a bubble over its
- * corner, which adds no width to the row measured above, SAG-106) and its name says how many are
- * pending.
+ * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On the
+ * wide row it is the bell (SAG-263, above); on a phone it is inside the panel with its word and a
+ * pill with the number, so the "Menu" button carries that number too (a bubble over its corner, which
+ * adds no width to the row, SAG-106) and its name says how many are pending.
  *
  * The panel closes with Escape (which gives the focus back to the button), with a click outside and
  * when the route changes, since the links to the router's pages do not load a new document.
@@ -165,7 +166,7 @@ export function Navbar({
   // A visitor has none, whatever the page was given.
   const unread = signedIn ? unreadCount : 0;
   // 99 is the most the header counts to; one more says "99+".
-  const shown = unread > 99 ? "99+" : String(unread);
+  const shown = cappedCount(unread);
   // The library and the notifications are session pages, so they are plain anchors (ADR-018) and
   // their highlight is read from the route. The other pages are the router's.
   const navItems: {
@@ -365,7 +366,7 @@ export function Navbar({
           </div>
         </div>
         {/* Wide screens: the account is at the end of the row, as before. */}
-        <div className="hidden xl:order-4 xl:flex xl:items-center xl:gap-1">
+        <div className="hidden xl:order-4 xl:flex xl:items-center xl:gap-2">
           {signedIn ? (
             <>
               <NotificationBell unread={unread} />

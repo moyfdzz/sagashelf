@@ -14,7 +14,7 @@ export function CountBubble({
   return (
     <span
       aria-hidden="true"
-      className={`bg-accent text-accent-fg border-surface-raised absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 px-1 text-xs leading-none font-bold${className ? ` ${className}` : ""}`}
+      className={`bg-accent text-accent-fg border-surface-raised pointer-events-none absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 px-1 text-xs leading-none font-bold${className ? ` ${className}` : ""}`}
     >
       {shown}
     </span>

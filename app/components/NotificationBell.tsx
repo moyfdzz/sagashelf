@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
 import { CountBubble } from "~/components/CountBubble";
+import { cappedCount } from "~/lib/badge";
 
 /**
  * The link to the notifications of a signed-in person on the wide row (SAG-263): a bell, with the
@@ -16,9 +17,12 @@ export function NotificationBell({ unread }: { unread: number }) {
   const { pathname } = useLocation();
   const active =
     pathname === "/notifications" || pathname.startsWith("/notifications/");
-  // 99 is the most the header counts to; one more says "99+".
-  const shown = unread > 99 ? "99+" : String(unread);
-  const name = `${t("nav.notifications")}${unread > 0 ? t("nav.pending", { shown }) : ""}`;
+  const shown = cappedCount(unread);
+  // One whole sentence per language, not two pieces put together: word order is the translator's.
+  const name =
+    unread > 0
+      ? t("nav.notificationsPending", { shown })
+      : t("nav.notifications");
 
   return (
     <a
