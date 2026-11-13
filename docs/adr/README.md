@@ -54,7 +54,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [048](048-simkl-backup-import.md)                | A Simkl JSON backup is imported through its TMDB ids, not its API                         | Accepted | Done (SAG-242)                        |
 | [049](049-match-anime-by-name-and-year.md)       | An anime with no TMDB id is looked up by name and year, in the queue                      | Accepted | Done (SAG-243)                        |
 | [050](050-analytics-collector.md)                | The analytics collector writes straight to Postgres, with a daily salt                    | Accepted | Partial (SAG-24)                      |
-| [051](051-site-favorites-on-request.md)          | The favorites of SagaShelf are computed on request, from public things only               | Accepted | Partial (SAG-23)                      |
+| [051](051-site-favorites-on-request.md)          | The favorites of SagaShelf are computed on request, from public things only               | Accepted | Done (SAG-23)                         |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

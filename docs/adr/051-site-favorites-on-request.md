@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
-- **Implementation:** Partial (SAG-23: this ADR covers the server function of the site's favorites, PR 1. The worldwide list from TMDB and the public `/trending` page are the next two pull requests)
+- **Implementation:** Done (SAG-23: the function of the site's favorites, the worldwide list from TMDB and the public `/trending` page)
 - **Tickets:** SAG-23, SAG-26
 
 ## Context
@@ -48,6 +48,14 @@ This changes the ticket on purpose: "computed from library activity in daily rol
 - **One function**, `getWorldwideTrending` in `server/trending/worldwide.ts`. It takes the providers, the cache, the type, the window and the language, and answers `ok` (up to 20 titles, plus the source: name, address, the notice TMDB requires and the logo), `unavailable` (the source failed) or `unsupported` (no source has a list: books and manga, because Open Library needs its own look at its terms and MangaDex has no popularity; and also a deployment without the TMDB token, where that provider is not built). It never throws and touches no database and no data of a person.
 - **A copy of 1 hour at the edge**, in the Workers Cache API (`getTrendingCache` in `server/runtime-env.ts`), under a made-up address with a version, one copy for each source, type, window and language. TMDB allows a copy for 6 months (ADR-016). An empty answer is kept for the same hour; a failure is never kept, so the next call asks again. A runtime without the Cache API, or a broken copy, only means one more call to TMDB.
 - **The link of each title** (`/media/open` for a title we do not hold, its own page for one we do) and the logo and notice on the page come with the page, in the next pull request.
+
+## Update: the page `/trending` (SAG-23, PR 3, 2026-11-12)
+
+- **The page** `/trending` is public, indexable and in the sitemap, with a link in the footer (the header is tight at 320 px). It is drawn on the server and answered `private, no-store`, like `/sagas`, because the header shows who is signed in; the lists are what is kept at the edge.
+- **The view** is read from the address: `?type=` (movie, series, anime, book, manga) and `?period=` (`week`, `month`, `year` or a closed calendar year since 2026). Anything else shows the usual view, the movies of the last week, and the canonical address points at it.
+- **A copy of one hour at the edge for the favorites of the site too**, one for each type, period and language (`getCachedSiteFavorites`), written with the same helper as the worldwide list (`withEdgeCopy`). **Consequence:** a person who makes an entry private, changes the level of their profile or deletes the account stops counting within an hour, not at once, because the copy holds the counted public answer. `/privacy` says so in one sentence.
+- **The worldwide list** is always "this week", whatever period is chosen, since TMDB offers only the day and the week. Books and manga say there is no worldwide list. Its titles open through `/media/open`, which opens a title we hold for anybody and sends a visitor to sign in before saving a new one (ADR-035). Its logo and the notice TMDB requires are shown with the list.
+- **Nothing is shown for fewer than 3 people**, so at the start most lists are empty and the page says so.
 
 ## References
 

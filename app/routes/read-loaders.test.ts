@@ -110,6 +110,7 @@ const rows: Row[] = [
   row("account-restricted.tsx", "public", "/account-restricted"),
   row("credits.tsx", "public", "/credits"),
   row("sagas.tsx", "public", "/sagas"),
+  row("trending.tsx", "public", "/trending"),
   row("sitemap.xml.ts", "public", "/sitemap.xml"),
   row("privacy.tsx", "public", "/privacy"),
   row("terms.tsx", "public", "/terms"),

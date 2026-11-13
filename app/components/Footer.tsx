@@ -17,6 +17,9 @@ export function Footer() {
         <Link to="/terms" className={linkClass}>
           {t("footer.terms")}
         </Link>
+        <Link to="/trending" className={linkClass}>
+          {t("footer.trending")}
+        </Link>
         <Link to="/community" className={linkClass}>
           {t("footer.community")}
         </Link>

@@ -32,6 +32,7 @@ export default [
   route("admin/messages", "routes/admin.messages.tsx"),
   route("admin/sagas", "routes/admin.sagas.tsx"),
   route("admin/sagas/:id", "routes/admin.sagas.$id.tsx"),
+  route("trending", "routes/trending.tsx"),
   route("sagas", "routes/sagas.tsx"),
   route("sagas/:slug", "routes/sagas.$slug.tsx"),
   route("sitemap.xml", "routes/sitemap.xml.ts"),
