@@ -57,7 +57,7 @@ describe("flushProviderCalls (SAG-26)", () => {
   it("never throws, logs only the name of the error, and drops what it could not write", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     mocks.saveProviderCalls.mockRejectedValue(
-      new Error("connection string postgres://secret"),
+      new Error("the message holds a private detail"),
     );
     count();
 
@@ -68,7 +68,7 @@ describe("flushProviderCalls (SAG-26)", () => {
       event: "provider_calls.flush_failed",
       error: "Error",
     });
-    expect(written).not.toContain("secret");
+    expect(written).not.toContain("private detail");
     // The counts of that moment are gone, so the memory does not grow while the database is down.
     await flushProviderCalls();
     expect(mocks.saveProviderCalls).toHaveBeenCalledTimes(1);
