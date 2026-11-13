@@ -69,6 +69,8 @@ export async function announceNewEpisodes(
     listeners AS (
       SELECT u.id AS user_id, u.locale, due.media_id, due.season, due.number, due.air_stamp,
              coalesce(nullif(m.titles ->> u.locale, ''), m.title) AS title,
+             -- Both languages, written here on purpose: the app has two (localeSchema) and the message to an
+             -- endpoint keeps ONE language, the one of the moment, since it is sent once (SAG-262).
              coalesce(nullif(m.titles ->> 'es', ''), m.title) AS title_es,
              coalesce(nullif(m.titles ->> 'en', ''), m.title) AS title_en
       FROM due

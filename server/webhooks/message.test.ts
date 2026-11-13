@@ -249,6 +249,9 @@ describe("episodeLabel and episodeNotice (SAG-102)", () => {
     expect(
       episodeNotice({ title: "Old", titles: { en: " " } }, "en")?.title,
     ).toBe("Old");
+    expect(episodeNotice({ title: "Old", titles: ["x"] }, "en")?.title).toBe(
+      "Old",
+    );
     expect(episodeNotice({ titles: { en: "Only" } }, "en")?.title).toBe("Only");
   });
 

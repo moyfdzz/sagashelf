@@ -118,7 +118,7 @@ export function episodeNotice(
   // The title of the language the person has NOW; the one written at creation is the fallback, so a
   // row made before `titles` existed still shows (SAG-262).
   const current =
-    typeof titles === "object" && titles !== null
+    typeof titles === "object" && titles !== null && !Array.isArray(titles)
       ? (titles as Record<string, unknown>)[locale]
       : undefined;
   const shown =
