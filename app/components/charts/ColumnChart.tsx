@@ -51,10 +51,17 @@ export function ColumnChart({
   const plotHeight = height - top - bottom;
   const base = top + plotHeight;
   const slot = plotWidth / Math.max(columns.length, 1);
-  const barWidth = Math.min(maxBar, slot - 4);
+  // The gap between columns shrinks with the slot, so a chart of 90 days still has bars.
+  const barWidth = Math.min(maxBar, slot - Math.min(4, slot * 0.3));
   // Many labels as long as a year do not fit side by side, so they keep their last two digits.
   const crowded =
     columns.length > 8 && columns.some((column) => column.label.length > 3);
+  // Past 12 columns the numbers under them touch each other (30 days of a month), so only every
+  // few are written, counted from the last one: the newest column always has its label. Every
+  // column still has its value in the hover, in the description and in the table beside the chart.
+  const labelStep = columns.length > 12 ? Math.ceil(columns.length / 8) : 1;
+  const labelled = (index: number) =>
+    (columns.length - 1 - index) % labelStep === 0;
   const y = (value: number) => base - (value / max) * plotHeight;
   // A picture cannot hold links, so a chart with links is a group of them, and the others are
   // one image whose description has every value.
@@ -128,15 +135,17 @@ export function ColumnChart({
             ) : (
               <g className="group">{mark}</g>
             )}
-            <text
-              x={left + index * slot + slot / 2}
-              y={height - 8}
-              textAnchor="middle"
-              className="fill-fg-muted text-[11px]"
-              aria-hidden="true"
-            >
-              {crowded ? `’${column.label.slice(-2)}` : column.label}
-            </text>
+            {labelled(index) && (
+              <text
+                x={left + index * slot + slot / 2}
+                y={height - 8}
+                textAnchor="middle"
+                className="fill-fg-muted text-[11px]"
+                aria-hidden="true"
+              >
+                {crowded ? `’${column.label.slice(-2)}` : column.label}
+              </text>
+            )}
           </g>
         );
       })}

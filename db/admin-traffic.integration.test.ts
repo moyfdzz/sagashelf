@@ -144,6 +144,24 @@ describe("getAdminTraffic (SAG-26)", () => {
     expect(traffic.pages[0]?.value).toBe("/p00");
   });
 
+  it("leaves the rest of the rollup out of the top pages and sites, so it takes no place", async () => {
+    await db
+      .insert(analyticsDaily)
+      .values([
+        row("2026-11-11", "page", "(other)", 900),
+        row("2026-11-11", "page", "/library", 3),
+        row("2026-11-11", "referrer_host", "(other)", 900),
+        row("2026-11-11", "referrer_host", "google.com", 2),
+        row("2026-11-11", "device", "(other)", 1),
+      ]);
+
+    const traffic = await getAdminTraffic(db, now, 7);
+
+    expect(traffic.pages.map((r) => r.value)).toEqual(["/library"]);
+    expect(traffic.hosts.map((r) => r.value)).toEqual(["google.com"]);
+    expect(traffic.devices.map((r) => r.value)).toEqual(["(other)"]);
+  });
+
   it("widens the window with the number of days", async () => {
     await db
       .insert(analyticsDaily)

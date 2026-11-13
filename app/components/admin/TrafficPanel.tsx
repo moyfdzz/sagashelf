@@ -92,12 +92,21 @@ export function TrafficPanel({
       value: row.events,
       tone: tones[index] ?? "chart-other",
     }));
-  const sourceLabel = (value: string) =>
-    pick(value, knownSources, (key) => t(`admin.stats.traffic.sources.${key}`));
-  const deviceLabel = (value: string) =>
-    pick(value, knownDevices, (key) => t(`admin.stats.traffic.devices.${key}`));
+  // The rest of a day past the cap of the rollup arrives as `(other)`.
   const otherLabel = (value: string) =>
     value === "(other)" ? t("admin.stats.traffic.other") : value;
+  const sourceLabel = (value: string) =>
+    value === "(other)"
+      ? otherLabel(value)
+      : pick(value, knownSources, (key) =>
+          t(`admin.stats.traffic.sources.${key}`),
+        );
+  const deviceLabel = (value: string) =>
+    value === "(other)"
+      ? otherLabel(value)
+      : pick(value, knownDevices, (key) =>
+          t(`admin.stats.traffic.devices.${key}`),
+        );
   const bars = (
     rows: AdminTraffic["sources"],
     label: (value: string) => string,

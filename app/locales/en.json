@@ -1589,14 +1589,14 @@
           "days_other": "{{count}} days"
         },
         "range": "From {{from}} to {{to}}, in UTC. Today is not counted.",
-        "rolled": "The nightly count has done {{rolled}} of {{days}} days; the rest appear when it runs.",
+        "rolled": "Only {{rolled}} of {{days}} days have data. The others had no visits, or the nightly count has not run yet.",
         "tiles": {
           "pageviews": "Page views",
           "visits": "Visits",
           "pagesPerVisit": "Pages per visit",
           "timePerVisit": "Time per visit"
         },
-        "visitsNote": "A visit is one person on one day: there is no way to tell whether it is the same person as on another day, because who they are is not kept (ADR-050). Page views also count the moves between pages inside the site.",
+        "visitsNote": "A visit is one person on one day: there is no way to tell whether it is the same person as on another day, because who they are is not kept (ADR-050). Page views also count the moves between pages inside the site. The time per visit counts only what the browser managed to measure, so it is a guide.",
         "showNumbers": "Show the numbers",
         "other": "Other",
         "empty": "There is no data in this period yet.",
@@ -1615,7 +1615,7 @@
             "add_to_library": "Titles added to a library",
             "follow": "People followed"
           },
-          "rate": "Accounts created for every 100 visits: {{rate}}."
+          "rate": "Accounts created for every 100 visits (approximate, because one person can count on several days): {{rate}}."
         },
         "sources": {
           "heading": "Where they come from",

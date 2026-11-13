@@ -105,12 +105,28 @@ describe("the traffic page of the administration (SAG-26)", () => {
     expect(html).toContain("Otros");
   });
 
+  it("gives the rest of the rollup a name in the sources and the devices", async () => {
+    const html = await render(
+      <AdminStatsTraffic
+        {...props({
+          sources: [row("search", 30), row("(other)", 4)],
+          devices: [row("mobile", 40), row("(other)", 2)],
+        })}
+      />,
+    );
+
+    expect(html).not.toContain("(other)");
+    expect(html).toContain("Otros");
+  });
+
   it("draws the funnel with the rate of accounts for every 100 visits", async () => {
     const html = await render(<AdminStatsTraffic {...props()} />);
 
     expect(html).toContain("De la visita al registro");
     expect(html).toContain("Cuentas creadas");
-    expect(html).toContain("Cuentas creadas por cada 100 visitas: 10.");
+    expect(html).toContain(
+      "por cada 100 visitas (aproximado, porque una persona puede contar en varios días): 10.",
+    );
   });
 
   it("offers the three windows as links and marks the current one", async () => {
@@ -129,8 +145,8 @@ describe("the traffic page of the administration (SAG-26)", () => {
       <AdminStatsTraffic {...props({ rolledDays: 5 })} />,
     );
 
-    expect(full).not.toContain("El cálculo de la noche");
-    expect(partial).toContain("ya hizo 5 de 7 días");
+    expect(full).not.toContain("tienen datos");
+    expect(partial).toContain("Solo 5 de 7 días tienen datos");
   });
 
   it("says there is no data, with no division by zero, for an empty period", async () => {
@@ -158,6 +174,24 @@ describe("the traffic page of the administration (SAG-26)", () => {
     expect(html).not.toContain("NaN");
     expect(html).not.toContain("Infinity");
     expect(html).not.toContain("por cada 100 visitas");
+  });
+
+  it("keeps real bars and a few readable labels for 90 days", async () => {
+    const ninety = Array.from({ length: 90 }, (_, index) => ({
+      day: new Date(Date.UTC(2026, 7, 14 + index)).toISOString().slice(0, 10),
+      pageviews: index % 7,
+      visits: 1,
+    }));
+    const html = await render(
+      <AdminStatsTraffic {...props({ days: 90, perDay: ninety })} />,
+    );
+    const labels = [...html.matchAll(/y="182"[^>]*>(\d+)</g)];
+    const widths = [...html.matchAll(/ a([\d.]+),/g)].map((m) => Number(m[1]));
+
+    expect(labels.length).toBeLessThanOrEqual(9);
+    expect(html).not.toContain("NaN");
+    expect(html).not.toMatch(/ a-\d/);
+    expect(widths.length).toBeGreaterThan(0);
   });
 
   it("draws the chart of each day with a table of the numbers", async () => {

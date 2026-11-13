@@ -104,11 +104,15 @@ export async function getAdminTraffic(
       FROM analytics_daily
       WHERE day >= ${from}::date AND day <= ${day(to)}::date
         AND dimension IN ('kind', 'page', 'referrer_class', 'referrer_host', 'device')
+        -- The rest of a day past the cap of the rollup is not a page or a site: summed over many
+        -- days it could be the largest row and take a place of the top.
+        AND NOT (dimension IN ('page', 'referrer_host') AND value = '(other)')
     ),
     totals AS (
       SELECT dimension, value,
-             sum(events)::int AS events,
-             sum(visitors)::int AS visitors,
+             -- Left as bigint: a sum over 90 days of a big site could pass the range of an int.
+             sum(events) AS events,
+             sum(visitors) AS visitors,
              sum(engaged_ms)::float8 AS engaged_ms,
              row_number() OVER (
                PARTITION BY dimension ORDER BY sum(events) DESC, value
