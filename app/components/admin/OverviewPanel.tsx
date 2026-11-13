@@ -29,6 +29,7 @@ export function OverviewPanel({ overview }: { overview: AdminOverview }) {
     // The day of the month is enough under a column; the table has the whole date.
     label: String(Number(row.day.slice(8, 10))),
     value: row.count,
+    describedAs: `${dateOf(row.day)}: ${formatNumber(row.count)}`,
     title: t("admin.stats.signups.columnTitle", {
       date: dateOf(row.day),
       count: row.count,
@@ -47,14 +48,14 @@ export function OverviewPanel({ overview }: { overview: AdminOverview }) {
         {tileKeys.map((key) => (
           <div
             key={key}
-            className="border-border bg-surface-raised rounded-md border p-4"
+            className="border-border bg-surface-raised flex flex-col-reverse rounded-md border p-4"
           >
-            <dd className="text-3xl font-semibold tabular-nums">
-              {formatNumber(overview[key])}
-            </dd>
-            <dt className="text-fg-muted mt-1 text-sm">
+            <dt className="text-fg-muted text-sm">
               {t(`admin.stats.tiles.${key}`)}
             </dt>
+            <dd className="mt-1 text-3xl font-semibold tabular-nums">
+              {formatNumber(overview[key])}
+            </dd>
           </div>
         ))}
       </dl>

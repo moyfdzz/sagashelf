@@ -60,11 +60,16 @@ describe("getAdminOverview (SAG-26)", () => {
       answering({ total_users: "abc", signups: "{}" }),
       now,
     );
+    const broken = await getAdminOverview(
+      answering({ signups: "not json" }),
+      now,
+    );
 
     expect(empty.totalUsers).toBe(0);
     expect(empty.signups).toEqual([]);
     expect(odd.totalUsers).toBe(0);
     expect(odd.signups).toEqual([]);
+    expect(broken.signups).toEqual([]);
   });
 
   it("asks for whole days of UTC, so the windows do not move with the zone of the server", async () => {

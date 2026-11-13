@@ -1572,7 +1572,6 @@
       "signups": {
         "heading": "Cuentas nuevas por día",
         "description": "Los últimos 30 días. Los números del eje son personas.",
-        "chartLabel": "Cuentas nuevas por día",
         "columnTitle": "{{date}}: {{count}}",
         "showNumbers": "Mostrar los números",
         "day": "Día",

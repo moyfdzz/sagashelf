@@ -1572,7 +1572,6 @@
       "signups": {
         "heading": "New accounts per day",
         "description": "The last 30 days. The numbers on the axis are people.",
-        "chartLabel": "New accounts per day",
         "columnTitle": "{{date}}: {{count}}",
         "showNumbers": "Show the numbers",
         "day": "Day",

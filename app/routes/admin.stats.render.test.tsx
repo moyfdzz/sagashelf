@@ -93,6 +93,13 @@ describe("the statistics page of the administration (SAG-26)", () => {
     );
   });
 
+  it("tells a screen reader the whole date of each column, so a month change is clear", async () => {
+    const html = await render(<AdminStats {...props()} />);
+
+    expect(html).toMatch(/<svg[^>]*aria-label="14 oct 2026: 0, 15 oct 2026: 1/);
+    expect(html).toMatch(/<dt [^>]*>Personas con cuenta<\/dt><dd/);
+  });
+
   it("marks the statistics tab as the current page of the administration", async () => {
     const html = await render(<AdminStats {...props()} />);
 

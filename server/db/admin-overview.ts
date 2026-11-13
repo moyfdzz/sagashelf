@@ -49,7 +49,14 @@ const count = (value: unknown): number => {
 
 /** The `json` column as the client hands it over: already parsed, or as text. */
 function readSignups(value: unknown): DailySignups[] {
-  const list: unknown = typeof value === "string" ? JSON.parse(value) : value;
+  let list: unknown = value;
+  if (typeof value === "string") {
+    try {
+      list = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
   if (!Array.isArray(list)) return [];
   return list.map((row: { day?: unknown; count?: unknown }) => ({
     day: String(row.day).slice(0, 10),
@@ -77,9 +84,10 @@ export async function getAdminOverview(
       JOIN people p ON p.id = le.user_id
     ),
     days AS (
-      SELECT (series.moment AT TIME ZONE 'UTC')::date AS day
+      -- Whole dates, so a change of time zone or of daylight saving cannot add or drop a row.
+      SELECT series.moment::date AS day
       FROM generate_series(
-        ${start30}::timestamptz, ${today}::timestamptz, interval '1 day'
+        ${start30.slice(0, 10)}::date, ${today.slice(0, 10)}::date, interval '1 day'
       ) AS series(moment)
     ),
     per_day AS (
