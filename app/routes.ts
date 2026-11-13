@@ -29,6 +29,7 @@ export default [
   route("stats", "routes/stats.tsx"),
   route("recommendations", "routes/recommendations.tsx"),
   route("admin/stats", "routes/admin.stats.tsx"),
+  route("admin/stats/traffic", "routes/admin.stats.traffic.tsx"),
   route("admin/moderation", "routes/admin.moderation.tsx"),
   route("admin/messages", "routes/admin.messages.tsx"),
   route("admin/sagas", "routes/admin.sagas.tsx"),

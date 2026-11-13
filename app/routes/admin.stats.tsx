@@ -5,6 +5,7 @@ import { data } from "react-router";
 import type { Route } from "./+types/admin.stats";
 import { AdminNav } from "~/components/AdminNav";
 import { ClerkSession } from "~/components/ClerkSession";
+import { StatsNav } from "~/components/admin/StatsNav";
 import { OverviewPanel } from "~/components/admin/OverviewPanel";
 import { getInstance } from "~/middleware/i18next";
 import { requireRole } from "~server/auth/require";
@@ -55,6 +56,7 @@ export default function AdminStats({ loaderData }: Route.ComponentProps) {
         <AdminNav current="stats" />
         <h1 className="text-3xl font-bold">{t("admin.stats.title")}</h1>
         <p className="text-fg-muted mt-2">{t("admin.stats.description")}</p>
+        <StatsNav current="overview" />
         <OverviewPanel overview={loaderData.overview} />
       </main>
     </ClerkSession>

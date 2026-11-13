@@ -100,6 +100,29 @@ describe("the statistics page of the administration (SAG-26)", () => {
     expect(html).toMatch(/<dt [^>]*>Personas con cuenta<\/dt><dd/);
   });
 
+  it("writes only some of the 30 day numbers under the chart, so they do not touch, and always the last", async () => {
+    const html = await render(<AdminStats {...props()} />);
+    const labels = [...html.matchAll(/y="182"[^>]*>(\d+)</g)].map(
+      (match) => match[1],
+    );
+
+    expect(labels).toHaveLength(8);
+    expect(labels.at(-1)).toBe("12");
+    // Every day is still in the table, with its whole date.
+    expect(html.match(/<tbody>.*<\/tbody>/s)?.[0].match(/<tr/g)).toHaveLength(
+      30,
+    );
+  });
+
+  it("has the sections of the statistics, with the overview as the current one", async () => {
+    const html = await render(<AdminStats {...props()} />);
+
+    expect(html).toMatch(
+      /<a [^>]*href="\/admin\/stats"[^>]*aria-current="page"[^>]*>Resumen/,
+    );
+    expect(html).toMatch(/<a [^>]*href="\/admin\/stats\/traffic"[^>]*>Tráfico/);
+  });
+
   it("marks the statistics tab as the current page of the administration", async () => {
     const html = await render(<AdminStats {...props()} />);
 
