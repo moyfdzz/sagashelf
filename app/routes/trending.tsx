@@ -190,6 +190,8 @@ export default function TrendingPage({ loaderData }: Route.ComponentProps) {
                   title: item.title,
                   score: null,
                   poster: item.poster,
+                  // `/media/open` saves the title and redirects, so it needs a full page load.
+                  wholePage: true,
                   ...(item.year ? { note: String(item.year) } : {}),
                 }))}
               />

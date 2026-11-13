@@ -192,6 +192,19 @@ describe("the trending page (SAG-23)", () => {
     );
   });
 
+  it("loads the whole page for a worldwide title, since the address that opens it only redirects", async () => {
+    const html = await render("es", <TrendingPage {...props()} />);
+
+    // A router link carries `data-discover`; a plain link, which the browser follows by itself, does not.
+    const open = html.match(/<a [^>]*href="\/media\/open[^>]*>/g) ?? [];
+    expect(open).toHaveLength(2);
+    for (const anchor of open) expect(anchor).not.toContain("data-discover");
+    // The titles of the site have a page of their own, so the router can move to it.
+    expect(html).toMatch(
+      /<a [^>]*href="\/media\/movie\/dune-id"[^>]*data-discover/,
+    );
+  });
+
   it("keeps the notice in English also on the Spanish page", async () => {
     const html = await render("es", <TrendingPage {...props()} />);
 
