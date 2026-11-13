@@ -253,6 +253,13 @@
       "when": 1794512431996,
       "tag": "0035_web_vitals",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794543360147,
+      "tag": "0036_provider_calls_daily",
+      "breakpoints": true
     }
   ]
 }

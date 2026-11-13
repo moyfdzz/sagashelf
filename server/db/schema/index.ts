@@ -6,6 +6,7 @@ export * from "./lists";
 export * from "./media";
 export * from "./moderation";
 export * from "./operations";
+export * from "./providers";
 export * from "./sagas";
 export * from "./shared";
 export * from "./social";

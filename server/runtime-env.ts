@@ -87,11 +87,27 @@ export function getEnv(): AppEnv {
   return parseEnv(env as unknown as Record<string, unknown>);
 }
 
+let databaseUsed = false;
+
+/**
+ * Whether this Worker instance has opened the database since the calls to the providers were last
+ * written. The count of those calls is written only after a request that used the database, so it
+ * never wakes the paused compute of Neon on its own (ADR-012, ADR-052); a request that only called a
+ * provider leaves its count in memory for the next one.
+ */
+export const wasDatabaseUsed = (): boolean => databaseUsed;
+
+/** Starts again from "not used", when the count of the calls is written. */
+export function clearDatabaseUsed(): void {
+  databaseUsed = false;
+}
+
 /**
  * The database for this request. Fails by name, never by value, when the secret is not set.
  * The client loads on first use, so pages that do not read data do not pay for it at startup.
  */
 export async function getDb() {
+  databaseUsed = true;
   const { DATABASE_URL } = getEnv();
   if (!DATABASE_URL) {
     throw new Error(

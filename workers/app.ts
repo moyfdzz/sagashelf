@@ -3,6 +3,9 @@ import { createRequestHandler } from "react-router";
 import { answerAndDrain } from "~server/http/drain-after";
 import { apexRedirectUrl } from "~server/host";
 import { jobsForCron } from "~server/jobs/scheduled";
+import { hasProviderCalls } from "~server/providers/call-log";
+import { flushProviderCalls } from "~server/providers/flush";
+import { wasDatabaseUsed } from "~server/runtime-env";
 import { applySecurityHeaders } from "~server/security-headers";
 
 const requestHandler = createRequestHandler(
@@ -11,14 +14,24 @@ const requestHandler = createRequestHandler(
 );
 
 export default {
-  async fetch(request) {
-    // A refusal given before the body was read must not leave it half sent on the connection.
-    const response = await answerAndDrain(request, async () => {
-      const apexUrl = apexRedirectUrl(request.url);
-      return apexUrl
-        ? new Response(null, { status: 301, headers: { Location: apexUrl } })
-        : requestHandler(request);
-    });
+  async fetch(request, _env, ctx) {
+    let response: Response;
+    try {
+      // A refusal given before the body was read must not leave it half sent on the connection.
+      response = await answerAndDrain(request, async () => {
+        const apexUrl = apexRedirectUrl(request.url);
+        return apexUrl
+          ? new Response(null, { status: 301, headers: { Location: apexUrl } })
+          : requestHandler(request);
+      });
+    } finally {
+      // The calls to the providers that this request made are written after the answer is sent, so
+      // they add no time to it, and only when the request used the database: the write must never
+      // be what wakes it (SAG-26, ADR-052). A call made after this point waits for a later write.
+      if (hasProviderCalls() && wasDatabaseUsed()) {
+        ctx.waitUntil(flushProviderCalls());
+      }
+    }
 
     // Every response the Worker produces carries the security headers.
     return applySecurityHeaders(response);
@@ -26,6 +39,16 @@ export default {
   // The trigger lives in wrangler.jsonc. Each job is a small function in server/jobs (ADR-007).
   async scheduled(controller, _env, ctx) {
     // Each Cron Trigger is an invocation with its own subrequests (ADR-027, ADR-029).
-    ctx.waitUntil(jobsForCron(controller.cron)());
+    // The calls to the providers that the job made are written once it is done (one subrequest, which
+    // the budgets in docs/agent-notes.md leave room for).
+    ctx.waitUntil(
+      (async () => {
+        try {
+          await jobsForCron(controller.cron)();
+        } finally {
+          await flushProviderCalls();
+        }
+      })(),
+    );
   },
 } satisfies ExportedHandler<Env>;

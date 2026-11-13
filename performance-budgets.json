@@ -11,6 +11,7 @@
     "routes/admin.stats.favorites": 253,
     "routes/admin.stats.content": 253,
     "routes/admin.stats.webhooks": 257,
+    "routes/admin.stats.providers": 257,
     "routes/community": 210,
     "routes/contact": 232,
     "routes/credits": 210,
