@@ -114,10 +114,18 @@ export function episodeNotice(
   payload: Record<string, unknown>,
   locale: "es" | "en",
 ): { title: string; which: string | null; mediaId: string | null } | null {
-  const { title, season, number, mediaId } = payload;
-  if (typeof title !== "string" || title.trim() === "") return null;
+  const { title, titles, season, number, mediaId } = payload;
+  // The title of the language the person has NOW; the one written at creation is the fallback, so a
+  // row made before `titles` existed still shows (SAG-262).
+  const current =
+    typeof titles === "object" && titles !== null && !Array.isArray(titles)
+      ? (titles as Record<string, unknown>)[locale]
+      : undefined;
+  const shown =
+    typeof current === "string" && current.trim() !== "" ? current : title;
+  if (typeof shown !== "string" || shown.trim() === "") return null;
   return {
-    title,
+    title: shown,
     which: episodeLabel(locale, {
       season: asCount(season),
       number: asCount(number),

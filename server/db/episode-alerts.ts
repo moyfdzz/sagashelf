@@ -68,7 +68,11 @@ export async function announceNewEpisodes(
     ),
     listeners AS (
       SELECT u.id AS user_id, u.locale, due.media_id, due.season, due.number, due.air_stamp,
-             coalesce(nullif(m.titles ->> u.locale, ''), m.title) AS title
+             coalesce(nullif(m.titles ->> u.locale, ''), m.title) AS title,
+             -- Both languages, written here on purpose: the app has two (localeSchema) and the message to an
+             -- endpoint keeps ONE language, the one of the moment, since it is sent once (SAG-262).
+             coalesce(nullif(m.titles ->> 'es', ''), m.title) AS title_es,
+             coalesce(nullif(m.titles ->> 'en', ''), m.title) AS title_en
       FROM due
       JOIN media_items m ON m.id = due.media_id
       JOIN library_entries le
@@ -81,6 +85,7 @@ export async function announceNewEpisodes(
              ${episodeAiredEvent}::text,
              jsonb_build_object(
                'locale', locale, 'mediaId', media_id, 'title', title,
+               'titles', jsonb_build_object('es', title_es, 'en', title_en),
                'season', season, 'number', number
              ),
              'episode:' || media_id::text || ':' || air_stamp::text
