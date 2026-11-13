@@ -29,6 +29,8 @@ test("a visitor sees no links that need a session in the header", async ({
 
   const header = page.locator("header");
   await expect(header.getByRole("link", { name: "Buscar" })).toBeVisible();
+  // The page of the trending lists is public, so a visitor finds it in the header (SAG-261).
+  await expect(header.getByRole("link", { name: "Tendencias" })).toBeVisible();
   for (const name of ["Mi biblioteca", "Estadísticas", "Recomendaciones"]) {
     await expect(header.getByRole("link", { name })).toHaveCount(0);
   }

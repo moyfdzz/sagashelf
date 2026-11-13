@@ -160,6 +160,25 @@ describe("the page of the lists of a person (SAG-113)", () => {
     expect(html).toContain("Slow ones");
   });
 
+  it("has a link with an arrow back to the library, above the title, as a plain anchor (SAG-261)", async () => {
+    const html = await render(<Lists {...listsProps()} />);
+
+    const back =
+      html.match(/<a [^>]*href="\/library"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
+    expect(back).toContain("Volver a mi biblioteca");
+    expect(back).toContain("<svg");
+    expect(back).not.toContain("data-discover");
+    expect(html.indexOf('href="/library"')).toBeLessThan(
+      html.indexOf("Mis listas</h1>"),
+    );
+  });
+
+  it("says the way back in English too (SAG-261)", async () => {
+    const html = await render(<Lists {...listsProps()} />, "en");
+
+    expect(html).toContain("Back to my library");
+  });
+
   it("has a button that goes to the page of a new list, under the introduction, as a plain anchor", async () => {
     const html = await render(<Lists {...listsProps()} />);
 
@@ -199,8 +218,9 @@ describe("the page of the lists of a person (SAG-113)", () => {
     expect(edit).toContain("size-10");
     expect(remove).toContain("size-10");
     expect(html).not.toContain("size-8");
-    // The icons are drawn, hidden from a screen reader, and nothing else is written in the buttons.
-    expect(html.match(/<svg [^>]*aria-hidden="true"/g)?.length).toBe(4);
+    // The icons are drawn, hidden from a screen reader, and nothing else is written in the buttons:
+    // the arrow of the link back to the library and the two icons of each of the two lists.
+    expect(html.match(/<svg [^>]*aria-hidden="true"/g)?.length).toBe(5);
     expect(html).toContain("lucide-pencil");
     expect(html).toContain("lucide-trash-2");
     expect(html).not.toContain("<dialog");

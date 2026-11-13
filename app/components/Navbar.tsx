@@ -50,6 +50,13 @@ const accountItemClass = `text-fg hover:bg-fg/10 block rounded-md px-3 py-2 font
  * on 2026-11-05. A picture in place of the word "Cuenta" (SAG-109) makes the account button 31 px
  * narrower in Spanish and 40 in English. A new link needs those measures again.
  *
+ * "Trending" (SAG-261) took the place of "Statistics", which moved to the account links, because the
+ * wide row has no room for one more link. Measured on 2026-11-12 by drawing the header and finding the
+ * narrowest window where it stays on one row: the same width before and after the change, in Spanish
+ * and in English, with 0, 5 and 150 notifications. The same measure found that on that machine the
+ * Spanish row of a signed-in person with at least one unread notification already wraps to two rows
+ * between 1280 and 1535 px (before this change too), which the numbers above do not say.
+ *
  * A signed-in person also has the link to their notifications (SAG-102) with the number of things
  * that wait for them: the unread notifications and the follow requests to answer (SAG-108). On a
  * phone that link is inside the panel, so the "Menu" button carries that number (a bubble over its
@@ -121,6 +128,7 @@ export function Navbar({
     { label: t("nav.home"), to: "/", session: false, badge: 0 },
     { label: t("nav.search"), to: "/search", session: false, badge: 0 },
     { label: t("nav.sagas"), to: "/sagas", session: false, badge: 0 },
+    { label: t("nav.trending"), to: "/trending", session: false, badge: 0 },
     ...(signedIn
       ? [
           { label: t("nav.library"), to: "/library", session: true, badge: 0 },
@@ -131,7 +139,6 @@ export function Navbar({
             session: true,
             badge: unread,
           },
-          { label: t("nav.stats"), to: "/stats", session: false, badge: 0 },
           {
             label: t("nav.recommendations"),
             to: "/recommendations",

@@ -162,6 +162,17 @@ describe("the loader of the trending page (SAG-23)", () => {
     expect(JSON.stringify(data)).not.toContain("image.tmdb.org");
   });
 
+  it("sends only the name of the source: the logo and the notice are on the credits page", async () => {
+    const data = await call();
+
+    expect(data.worldwide).toMatchObject({
+      status: "ok",
+      source: { name: "TMDB" },
+    });
+    expect(JSON.stringify(data.worldwide)).not.toContain("tmdb-logo");
+    expect(JSON.stringify(data.worldwide)).not.toContain("This product uses");
+  });
+
   it("passes on that the worldwide list is not available or not supported", async () => {
     mocks.loadTrendingPage.mockResolvedValue(
       page({ worldwide: { status: "unavailable" } }),
