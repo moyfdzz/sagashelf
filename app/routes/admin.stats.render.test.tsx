@@ -114,6 +114,14 @@ describe("the statistics page of the administration (SAG-26)", () => {
     );
   });
 
+  it("has the same width as the other pages of the administration, so the tabs do not move", async () => {
+    const html = await render(<AdminStats {...props()} />);
+
+    expect(html).toContain(
+      '<main class="container mx-auto max-w-3xl px-4 py-10">',
+    );
+  });
+
   it("has the sections of the statistics, with the overview as the current one", async () => {
     const html = await render(<AdminStats {...props()} />);
 

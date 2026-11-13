@@ -16,6 +16,7 @@
     "server/db/contact-messages.ts",
     "server/db/admin-overview.ts",
     "server/db/admin-traffic.ts",
+    "server/db/admin-content.ts",
     "server/db/analytics.ts",
     "server/db/analytics-rollup.ts",
     "server/analytics/vitals.ts",

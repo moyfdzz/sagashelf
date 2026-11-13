@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 
+import { DaysNav } from "~/components/admin/DaysNav";
 import { ChartTable } from "~/components/charts/ChartTable";
 import { ColumnChart, type Column } from "~/components/charts/ColumnChart";
 import { ProportionBar, type Segment } from "~/components/charts/ProportionBar";
 import { RowBars, type RowBar } from "~/components/charts/RowBars";
 import { useFormatters } from "~/lib/format";
-import { tabClass } from "~/lib/ui";
 import type { AdminTraffic } from "~/routes/admin.stats.traffic";
 
 const tones: Segment["tone"][] = [
@@ -132,24 +132,11 @@ export function TrafficPanel({
         {t("admin.stats.nav.traffic")}
       </h2>
 
-      <nav aria-label={t("admin.stats.traffic.period.label")}>
-        <ul className="flex flex-wrap gap-2">
-          {options.map((days) => {
-            const active = days === traffic.days;
-            return (
-              <li key={days}>
-                <a
-                  href={`/admin/stats/traffic?days=${days}`}
-                  aria-current={active ? "page" : undefined}
-                  className={tabClass(active)}
-                >
-                  {t("admin.stats.traffic.period.days", { count: days })}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <DaysNav
+        days={traffic.days}
+        options={options}
+        path="/admin/stats/traffic"
+      />
       <p className="text-fg-muted mt-3 text-sm">
         {t("admin.stats.traffic.range", {
           from: dateOf(traffic.from),

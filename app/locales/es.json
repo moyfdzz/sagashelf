@@ -1580,7 +1580,9 @@
       "nav": {
         "label": "Secciones de las estadísticas",
         "overview": "Resumen",
-        "traffic": "Tráfico"
+        "traffic": "Tráfico",
+        "favorites": "Favoritos",
+        "content": "Contenido"
       },
       "traffic": {
         "period": {
@@ -1635,6 +1637,34 @@
         "pages": {
           "heading": "Páginas más vistas",
           "description": "Las 10 con más páginas vistas."
+        }
+      },
+      "content": {
+        "tiles": {
+          "searches": "Búsquedas",
+          "customTotal": "Títulos escritos a mano",
+          "sagasPublished": "Sagas publicadas",
+          "sagasDraft": "Sagas en borrador"
+        },
+        "searches": {
+          "heading": "Qué busca la gente",
+          "description": "Búsquedas por tipo de título en el periodo. Nunca se guarda el texto que escribió la persona, solo el tipo.",
+          "noResult": "Las búsquedas sin resultado todavía no se miden: hoy nada las registra."
+        },
+        "custom": {
+          "heading": "Títulos escritos a mano",
+          "description": "Los que la gente crea cuando no encuentra un título en el catálogo.",
+          "summary": "{{total}} en total, {{recent}} creados en el periodo."
+        },
+        "sagas": {
+          "heading": "Cobertura de las sagas",
+          "description": "Cuánto de las sagas está lleno. Solo cuentan las publicadas, que son las que ve un visitante.",
+          "published": "Sagas publicadas",
+          "draft": "Sagas en borrador",
+          "empty": "Publicadas sin ninguna obra",
+          "works": "Obras en sagas publicadas",
+          "described": "Obras con detalles de Wikidata",
+          "filled": "Obras con detalles: {{share}}."
         }
       }
     }

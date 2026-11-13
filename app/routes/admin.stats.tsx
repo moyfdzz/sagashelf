@@ -52,7 +52,7 @@ export default function AdminStats({ loaderData }: Route.ComponentProps) {
       clerkState={loaderData}
       publishableKey={loaderData.publishableKey}
     >
-      <main className="container mx-auto max-w-4xl px-4 py-10">
+      <main className="container mx-auto max-w-3xl px-4 py-10">
         <AdminNav current="stats" />
         <h1 className="text-3xl font-bold">{t("admin.stats.title")}</h1>
         <p className="text-fg-muted mt-2">{t("admin.stats.description")}</p>
