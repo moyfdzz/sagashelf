@@ -6,7 +6,11 @@ import { tabClass } from "~/lib/ui";
  * The sections of the statistics of the administration (SAG-26), one page each. Plain anchors, like
  * `AdminNav`: each page is a session page with a security policy of its own (ADR-018).
  */
-export function StatsNav({ current }: { current: "overview" | "traffic" }) {
+export function StatsNav({
+  current,
+}: {
+  current: "overview" | "traffic" | "favorites" | "content";
+}) {
   const { t } = useTranslation();
   const items = [
     {
@@ -18,6 +22,16 @@ export function StatsNav({ current }: { current: "overview" | "traffic" }) {
       key: "traffic",
       href: "/admin/stats/traffic",
       label: t("admin.stats.nav.traffic"),
+    },
+    {
+      key: "favorites",
+      href: "/admin/stats/favorites",
+      label: t("admin.stats.nav.favorites"),
+    },
+    {
+      key: "content",
+      href: "/admin/stats/content",
+      label: t("admin.stats.nav.content"),
     },
   ] as const;
 

@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 
+import { DaysNav } from "~/components/admin/DaysNav";
 import { ChartTable } from "~/components/charts/ChartTable";
 import { ColumnChart, type Column } from "~/components/charts/ColumnChart";
 import { ProportionBar, type Segment } from "~/components/charts/ProportionBar";
 import { RowBars, type RowBar } from "~/components/charts/RowBars";
 import { useFormatters } from "~/lib/format";
-import { tabClass } from "~/lib/ui";
 import type { AdminTraffic } from "~/routes/admin.stats.traffic";
 
 const tones: Segment["tone"][] = [
@@ -94,7 +94,7 @@ export function TrafficPanel({
     }));
   // The rest of a day past the cap of the rollup arrives as `(other)`.
   const otherLabel = (value: string) =>
-    value === "(other)" ? t("admin.stats.traffic.other") : value;
+    value === "(other)" ? t("admin.stats.common.other") : value;
   const sourceLabel = (value: string) =>
     value === "(other)"
       ? otherLabel(value)
@@ -123,7 +123,7 @@ export function TrafficPanel({
       ? (signups / traffic.visits) * 100
       : null;
   const empty = (
-    <p className="text-fg-muted text-sm">{t("admin.stats.traffic.empty")}</p>
+    <p className="text-fg-muted text-sm">{t("admin.stats.common.empty")}</p>
   );
 
   return (
@@ -132,33 +132,20 @@ export function TrafficPanel({
         {t("admin.stats.nav.traffic")}
       </h2>
 
-      <nav aria-label={t("admin.stats.traffic.period.label")}>
-        <ul className="flex flex-wrap gap-2">
-          {options.map((days) => {
-            const active = days === traffic.days;
-            return (
-              <li key={days}>
-                <a
-                  href={`/admin/stats/traffic?days=${days}`}
-                  aria-current={active ? "page" : undefined}
-                  className={tabClass(active)}
-                >
-                  {t("admin.stats.traffic.period.days", { count: days })}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <DaysNav
+        days={traffic.days}
+        options={options}
+        path="/admin/stats/traffic"
+      />
       <p className="text-fg-muted mt-3 text-sm">
-        {t("admin.stats.traffic.range", {
+        {t("admin.stats.common.range", {
           from: dateOf(traffic.from),
           to: dateOf(traffic.to),
         })}
       </p>
       {traffic.rolledDays < traffic.days ? (
         <p className="text-fg-muted mt-1 text-sm">
-          {t("admin.stats.traffic.rolled", {
+          {t("admin.stats.common.rolled", {
             rolled: traffic.rolledDays,
             days: traffic.days,
           })}

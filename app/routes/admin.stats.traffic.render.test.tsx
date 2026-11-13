@@ -90,7 +90,7 @@ describe("the traffic page of the administration (SAG-26)", () => {
     expect(html).toMatch(/<dt [^>]*>Páginas vistas<\/dt><dd [^>]*>210</);
     expect(html).toMatch(/<dt [^>]*>Visitas<\/dt><dd [^>]*>70</);
     expect(html).toMatch(/<dt [^>]*>Páginas por visita<\/dt><dd [^>]*>3</);
-    expect(html).toContain("1.5");
+    expect(html).toMatch(/<dt [^>]*>Tiempo por visita<\/dt><dd [^>]*>1,5\smin/);
   });
 
   it("names the sources and devices, and shows a value with no name of its own as it is", async () => {
