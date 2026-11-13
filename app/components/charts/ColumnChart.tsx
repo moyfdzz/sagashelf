@@ -5,6 +5,8 @@ export type Column = {
   /** What goes under the column. */
   label: string;
   value: number;
+  /** What a screen reader says for the column, when the label under it is not enough ("14 oct: 3"). */
+  describedAs?: string;
   /**
    * Where pressing the column goes. A plain link: the library has its own security policy, which
    * only a new document gets (ADR-018, SAG-89).
@@ -64,7 +66,10 @@ export function ColumnChart({
       className="w-full max-w-md"
       role={linked ? "group" : "img"}
       aria-label={columns
-        .map((column) => `${column.label}: ${format(column.value)}`)
+        .map(
+          (column) =>
+            column.describedAs ?? `${column.label}: ${format(column.value)}`,
+        )
         .join(", ")}
     >
       {axisTicks(max).map((tick) => (

@@ -1357,6 +1357,7 @@
   "admin": {
     "nav": {
       "label": "Administration",
+      "stats": "Statistics",
       "sagas": "Sagas",
       "moderation": "Moderation",
       "messages": "Messages"
@@ -1549,6 +1550,33 @@
       "not_found": "What you wanted to change was not found.",
       "already_there": "That work is already in the saga.",
       "nothing_to_move": "That work cannot move any further that way."
+    },
+    "stats": {
+      "title": "Statistics",
+      "description": "How many people use SagaShelf and how much. The numbers are worked out when the page opens and leave out deleted accounts.",
+      "sections": {
+        "overview": "Overview"
+      },
+      "tiles": {
+        "label": "Main numbers",
+        "totalUsers": "People with an account",
+        "newToday": "New today",
+        "newLast30Days": "New in 30 days",
+        "newLast365Days": "New in 365 days",
+        "activeLast7Days": "Active in 7 days",
+        "activeLast30Days": "Active in 30 days",
+        "entriesTracked": "Titles tracked",
+        "titlesTracked": "Different titles"
+      },
+      "activeNote": "An active person is one who changed something in their library in that time. Days are in UTC.",
+      "signups": {
+        "heading": "New accounts per day",
+        "description": "The last 30 days. The numbers on the axis are people.",
+        "columnTitle": "{{date}}: {{count}}",
+        "showNumbers": "Show the numbers",
+        "day": "Day",
+        "count": "New accounts"
+      }
     }
   },
   "recommendations": {

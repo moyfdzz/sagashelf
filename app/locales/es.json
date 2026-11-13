@@ -1357,6 +1357,7 @@
   "admin": {
     "nav": {
       "label": "Administración",
+      "stats": "Estadísticas",
       "sagas": "Sagas",
       "moderation": "Moderación",
       "messages": "Mensajes"
@@ -1549,6 +1550,33 @@
       "not_found": "No se encontró lo que querías cambiar.",
       "already_there": "Esa obra ya está en la saga.",
       "nothing_to_move": "Esa obra ya no se puede mover en esa dirección."
+    },
+    "stats": {
+      "title": "Estadísticas",
+      "description": "Cuánta gente usa SagaShelf y qué tanto. Los números se calculan al abrir la página y no incluyen cuentas borradas.",
+      "sections": {
+        "overview": "Resumen"
+      },
+      "tiles": {
+        "label": "Números principales",
+        "totalUsers": "Personas con cuenta",
+        "newToday": "Nuevas hoy",
+        "newLast30Days": "Nuevas en 30 días",
+        "newLast365Days": "Nuevas en 365 días",
+        "activeLast7Days": "Activas en 7 días",
+        "activeLast30Days": "Activas en 30 días",
+        "entriesTracked": "Títulos en seguimiento",
+        "titlesTracked": "Títulos distintos"
+      },
+      "activeNote": "Una persona activa es la que cambió algo en su biblioteca en ese tiempo. Los días van en UTC.",
+      "signups": {
+        "heading": "Cuentas nuevas por día",
+        "description": "Los últimos 30 días. Los números del eje son personas.",
+        "columnTitle": "{{date}}: {{count}}",
+        "showNumbers": "Mostrar los números",
+        "day": "Día",
+        "count": "Cuentas nuevas"
+      }
     }
   },
   "recommendations": {
