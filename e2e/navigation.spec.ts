@@ -87,6 +87,53 @@ test.describe("the menu of a phone", () => {
     expect(await overflow()).toBeLessThanOrEqual(0);
   });
 
+  test("draws an icon in front of each link only from 1536 px, in one row at every width (SAG-157)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "Measured on wide windows");
+    await page.goto("/");
+    const links = page.locator("header nav li");
+
+    for (const [width, icons] of [
+      [1280, false],
+      [1535, false],
+      [1536, true],
+      [1920, true],
+    ] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      const tops = await links.evaluateAll((items) =>
+        items.map((item) => Math.round(item.getBoundingClientRect().top)),
+      );
+      expect(new Set(tops).size, `one row at ${width} px`).toBe(1);
+      const first = links.first().locator("svg");
+      if (icons) await expect(first).toBeVisible();
+      else await expect(first).toBeHidden();
+      // The icon never speaks: the word names the link.
+      await expect(first).toHaveAttribute("aria-hidden", "true");
+    }
+  });
+
+  test("shows an icon and the word of each link in the panel of a phone (SAG-157)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Only phones have the panel");
+    await page.goto("/");
+    await openMenuIfCollapsed(page);
+
+    const items = page.locator("header nav li");
+    const count = await items.count();
+
+    expect(count).toBeGreaterThan(0);
+    for (let index = 0; index < count; index += 1) {
+      await expect(items.nth(index).locator("svg")).toBeVisible();
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+
   test("keeps the footer at the bottom of the screen on a short page (SAG-139)", async ({
     page,
   }) => {
