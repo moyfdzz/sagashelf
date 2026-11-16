@@ -64,5 +64,23 @@ describe("GET /api/health/database", () => {
     const response = await pending;
 
     expect(response.status).toBe(503);
+    expect(String(vi.mocked(console.error).mock.calls[0]?.[0])).toContain(
+      "HealthCheckTimeout",
+    );
+  });
+
+  it("logs the name of the failure and never its message", async () => {
+    mocks.execute.mockRejectedValue(
+      new Error("connection to db.example.test refused"),
+    );
+
+    await loader({ request: call() });
+
+    const logged = vi
+      .mocked(console.error)
+      .mock.calls.map((args) => args.join(" "))
+      .join("\n");
+    expect(logged).toContain("request.failed");
+    expect(logged).not.toContain("example.test");
   });
 });
