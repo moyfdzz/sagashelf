@@ -56,7 +56,7 @@ How each variable is changed: Cloudflare dashboard, the Worker `sagashelf`, Sett
 ### D. A bad deployment or a broken site
 
 1. Roll back (table above). Do not fix forward while people see errors.
-2. Open `https://sagashelf.app/api/health`: it must answer `{"status":"ok"}`.
+2. Open `https://sagashelf.app/api/health`: it must answer `{"status":"ok"}`. Then open `https://sagashelf.app/api/health/database`: it must answer the same; a `503` with `{"status":"unavailable"}` means the Worker is up and the database is not (look at Neon first, then at the log line `request.failed` of that path).
 3. Look at the Workers log for `job.failed` and for errors at the time of the deployment.
 4. Make a ticket with the pull request that caused it.
 
