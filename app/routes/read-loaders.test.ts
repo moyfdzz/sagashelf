@@ -125,6 +125,7 @@ const rows: Row[] = [
   row("sign-out.tsx", "public", "/sign-out"),
   row("not-found.tsx", "public", "/nowhere"),
   row("api.health.ts", "public", "/api/health"),
+  row("api.health.database.ts", "public", "/api/health/database"),
   row("img.ts", "public", "/img/tmdb/w185/poster.jpg", {
     provider: "tmdb",
     size: "w185",

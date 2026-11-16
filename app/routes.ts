@@ -61,6 +61,7 @@ export default [
   route("settings/avatar", "routes/settings.avatar.ts"),
   route("api/collect", "routes/api.collect.ts"),
   route("api/health", "routes/api.health.ts"),
+  route("api/health/database", "routes/api.health.database.ts"),
   route("api/locale", "routes/api.locale.ts"),
   route("webhooks/clerk", "routes/webhooks.clerk.ts"),
   route("*", "routes/not-found.tsx"),
