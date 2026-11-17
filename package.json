@@ -44,7 +44,7 @@
     "@clerk/react-router": "^3.6.41",
     "@neondatabase/serverless": "^1.2.0",
     "drizzle-orm": "^0.45.4",
-    "i18next": "^26.5.12",
+    "i18next": "^27.1.1",
     "isbot": "^5.1.36",
     "lucide-react": "^1.66.0",
     "react": "^19.2.8",
