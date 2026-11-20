@@ -47,6 +47,7 @@ Read before touching a query, the schema, a migration or an integration test. A 
 - They run on the local Docker Postgres 18 and refuse any database not local and named `*_test`. A second run while one is going is refused by an advisory lock (`db/global-setup.ts`). The integration config has no `~` aliases: test a loader with mocks in `app/routes/*.test.ts` and the data layer against the real Postgres.
 - **Write the expected table by hand**; do not ask the function under test.
 - Docker Postgres's clock is about 0.15 s ahead of Node's: do not mix `now()` with `Date.now()`.
+- **A test that drops or changes a shared object (an index, a constraint) restores it from the database, not from a copy**: read `pg_get_indexdef(...)` before dropping. The old-index test of `db/reports.integration.test.ts` put back a stale copy without `review_id`, and only CI's file order showed it (SAG-22). A test that passes alone and fails in CI: run the files of CI's order together against a fresh `postgres:18`.
 - **A race test with `Promise.all` proves little** (two statements through one local pool rarely overlap). Interleave on purpose: let the function run a write of its own between its read and its write (`db/library-concurrency.integration.test.ts`).
 - With `noUncheckedIndexedAccess` a destructured item may be undefined and the lint forbids `!`: use a helper that throws (`pick` in `db/list-items.integration.test.ts`).
 - `db/seed.ts` refuses a database that is not local and starts with a `TRUNCATE`: never work around it.

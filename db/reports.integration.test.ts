@@ -536,6 +536,13 @@ describe("reporting again after an answer (SAG-147, ADR-043)", () => {
     const columns = sql.raw(
       `"reporter_id","target_type","target_id",coalesce("picture_url", '')`,
     );
+    // The index is put back exactly as the migrations left it, read before it is dropped: a copy of
+    // its text here went stale when 0038 added the review, and broke the tests of another file that
+    // ran later (SAG-22).
+    const { rows } = await db.execute(
+      sql`SELECT pg_get_indexdef('reports_reporter_target_active_unique'::regclass) AS def`,
+    );
+    const current = String(rows[0]?.def);
     await db.execute(sql`DROP INDEX ${name}`);
     await db.execute(
       sql`CREATE UNIQUE INDEX ${name} ON "reports" USING btree (${columns}) WHERE "cancelled_at" is null`,
@@ -557,9 +564,7 @@ describe("reporting again after an answer (SAG-147, ADR-043)", () => {
       );
     } finally {
       await db.execute(sql`DROP INDEX ${name}`);
-      await db.execute(
-        sql`CREATE UNIQUE INDEX ${name} ON "reports" USING btree (${columns}) WHERE "cancelled_at" is null and "status" in ('open', 'reviewing')`,
-      );
+      await db.execute(sql.raw(current));
     }
   });
 });
