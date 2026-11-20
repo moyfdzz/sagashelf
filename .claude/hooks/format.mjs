@@ -17,7 +17,9 @@ try {
     if (inside && !inside.startsWith("..") && !isAbsolute(inside)) {
       const prettier = await import("prettier");
       const info = await prettier.getFileInfo(file, {
-        ignorePath: join(root, ".prettierignore"),
+        // Both files, as `prettier --check .` reads them: the owner's ignored local notes
+        // (`*.local.md`) and build output must never be rewritten.
+        ignorePath: [join(root, ".gitignore"), join(root, ".prettierignore")],
         resolveConfig: true,
       });
       if (!info.ignored && info.inferredParser) {

@@ -29,13 +29,18 @@ if (existsSync(aside)) {
   console.log("Put back .dev.vars from an earlier run that did not finish.");
 }
 
-function run(command, commandArgs, env) {
+// Playwright's CLI is started with this same Node, not through `npx` and a shell: an argument
+// with spaces (`-g "Escape, a click outside"`) stays one argument, and Ctrl+C does not stop at
+// the "Terminate batch job (Y/N)?" prompt of cmd.exe.
+const playwrightCli = join(root, "node_modules", "playwright", "cli.js");
+
+function run(command, commandArgs, env, shell = false) {
   return new Promise((done) => {
     const child = spawn(command, commandArgs, {
       cwd: root,
       env: { ...process.env, ...env },
       stdio: "inherit",
-      shell: process.platform === "win32",
+      shell,
     });
     child.on("close", (code) => done(code ?? 1));
   });
@@ -55,11 +60,13 @@ try {
   // With CI set, Playwright starts `npm run preview`, which builds first: the run always tests
   // the code as it is now, never an older build.
   code = await run(
-    "npx",
-    ["playwright", "test", "--workers=2", ...playwrightArgs],
+    process.execPath,
+    [playwrightCli, "test", "--workers=2", ...playwrightArgs],
     { CI: "1" },
   );
-  if (code === 0 && withA11y) code = await run("npm", ["run", "test:a11y"], {});
+  if (code === 0 && withA11y) {
+    code = await run("npm run test:a11y", [], {}, true);
+  }
 } finally {
   if (movedAside) renameSync(aside, devVars);
 }

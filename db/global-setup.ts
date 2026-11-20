@@ -14,6 +14,11 @@ const runLockKey = 269_001;
  */
 async function holdRunLock() {
   const client = new pg.Client({ connectionString: testDatabaseUrl });
+  // The connection stays open for the whole run; if the database restarts, an `error` with no
+  // listener would crash Vitest with an unrelated stack. The tests then fail on their own.
+  client.on("error", () => {
+    console.error("\nThe connection that holds the run lock was lost.\n");
+  });
   await client.connect();
   const { rows } = await client.query<{ locked: boolean }>(
     "SELECT pg_try_advisory_lock($1) AS locked",

@@ -34,7 +34,9 @@ function portOpen() {
 const run = (command, args, options = {}) =>
   spawnSync(command, args, { encoding: "utf8", stdio: "pipe", ...options });
 
-const dockerAnswers = () => run("docker", ["info"]).status === 0;
+// A Docker Desktop that is still starting can leave `docker info` waiting: give each try 10 s.
+const dockerAnswers = () =>
+  run("docker", ["info"], { timeout: 10_000 }).status === 0;
 
 function fail(message) {
   console.error(`\n${message}\n`);

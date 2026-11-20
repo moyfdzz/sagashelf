@@ -13,6 +13,7 @@ import {
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
+import ts from "typescript";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configPath = join(root, "tsconfig.node.json");
@@ -38,18 +39,26 @@ function sourceFiles(dir) {
   });
 }
 
-// `import ... from "x"`, `export ... from "x"`, `import "x"` and `import("x")`.
-const importPattern =
-  /(?:\b(?:import|export)\s[^;]*?\bfrom\s*|\bimport\s*\(?\s*)["']([^"']+)["']/g;
+// TypeScript's own scanner finds every import, export-from and dynamic import, and skips
+// the word "import" inside comments and strings.
+function specifiers(file) {
+  return ts
+    .preProcessFile(readFileSync(file, "utf8"), true, true)
+    .importedFiles.map((entry) => entry.fileName);
+}
 
 function resolveImport(fromFile, specifier) {
   if (!specifier.startsWith(".")) return null;
   const base = resolve(dirname(fromFile), specifier.replace(/\?.*$/, ""));
+  const withoutJs = base.replace(/\.js$/, "");
   const candidates = [
     base,
     `${base}.ts`,
     `${base}.tsx`,
+    `${withoutJs}.ts`,
+    `${withoutJs}.tsx`,
     join(base, "index.ts"),
+    join(base, "index.tsx"),
   ];
   return (
     candidates.find((path) => existsSync(path) && statSync(path).isFile()) ??
@@ -68,8 +77,8 @@ export function reachedFiles() {
   while (queue.length > 0) {
     const file = queue.pop();
     if (!/\.tsx?$/.test(file)) continue;
-    for (const match of readFileSync(file, "utf8").matchAll(importPattern)) {
-      const target = resolveImport(file, match[1]);
+    for (const specifier of specifiers(file)) {
+      const target = resolveImport(file, specifier);
       if (target && !seen.has(target)) {
         seen.add(target);
         queue.push(target);
@@ -87,7 +96,16 @@ export function reachedFiles() {
 
 async function main() {
   const current = readFileSync(configPath, "utf8");
-  const config = JSON.parse(current);
+  let config;
+  try {
+    config = JSON.parse(current);
+  } catch {
+    console.error(
+      "tsconfig.node.json must stay plain JSON (no comments, no trailing commas): " +
+        "scripts/sync-tsconfig-node.mjs rewrites it. Put the explanation in that script.",
+    );
+    process.exit(1);
+  }
   config.include = [
     ...rootFiles,
     ...rootFolders.map((folder) => `${folder}/**/*`),
