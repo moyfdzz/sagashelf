@@ -20,6 +20,12 @@ updates:
       # Type definitions follow the minimum supported Node (`engines`), not the latest.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # remix-i18next 8 accepts i18next up to 26, and react-i18next 18 needs
+      # i18next 27. Revisit when a remix-i18next release supports i18next 27.
+      - dependency-name: i18next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-i18next
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
