@@ -31,6 +31,7 @@ const base: AccountExport = {
   pictureUploads: [],
   contactMessages: [],
   activity: [],
+  likes: [],
 };
 
 const lines = (csv: string) => csv.split("\r\n");

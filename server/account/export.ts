@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
+import { likesForExport, type ExportedLike } from "../db/feed";
 import { readableByOwner } from "../db/notifications";
 import { requesterCardShown } from "../db/person-visibility";
 import type { ProfileDb } from "../db/profile";
@@ -141,6 +142,12 @@ export type AccountExport = {
     visibility: string;
     createdAt: string;
   }[];
+  /**
+   * The events the person liked (SAG-22): the kind of event, when they liked it, and its title
+   * while the event is still shown to them. Never who wrote the event (that is what someone else
+   * did). A file from before SAG-22 has no `likes`; they are never imported (ADR-055).
+   */
+  likes: ExportedLike[];
 };
 
 /**
@@ -197,6 +204,7 @@ export async function exportAccount(
     uploads,
     sentMessages,
     events,
+    liked,
   ] = await Promise.all([
     db
       .select({
@@ -390,6 +398,7 @@ export async function exportAccount(
       .leftJoin(mediaItems, eq(activity.mediaId, mediaItems.id))
       .where(eq(activity.actorId, userId))
       .orderBy(activity.createdAt, activity.id),
+    likesForExport(db, userId),
   ]);
 
   const [earlier, items] = await Promise.all([
@@ -524,5 +533,6 @@ export async function exportAccount(
       visibility: event.visibility,
       createdAt: event.createdAt.toISOString(),
     })),
+    likes: liked,
   };
 }

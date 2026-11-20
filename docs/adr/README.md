@@ -58,6 +58,7 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [052](052-provider-call-counts.md)               | The calls to the providers are counted by day, in memory first and written once           | Accepted | Done (SAG-26)                         |
 | [053](053-review-anti-abuse.md)                  | Reviews: length, visibility and the anti-abuse numbers                                    | Accepted | Planned (SAG-22)                      |
 | [054](054-library-activity-events.md)            | The library writes its activity in the same statement, one event per kind, title and day  | Accepted | Done (SAG-44)                         |
+| [055](055-feed-and-likes.md)                     | The feed reads every event through one rule, and a like is only a count                   | Accepted | Done (SAG-22)                         |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

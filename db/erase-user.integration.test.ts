@@ -54,6 +54,8 @@ const exportedColumns: Readonly<
   "follow_requests.requester_id": (data) => data.social.requestsSent,
   "follow_requests.target_id": (data) => data.social.requestsReceived,
   "contact_messages.user_id": (data) => data.contactMessages,
+  "activity.actor_id": (data) => data.activity,
+  "likes.user_id": (data) => data.likes,
 };
 
 /** The erased columns that the export leaves out, with the reason. */
@@ -61,9 +63,6 @@ const notExportedColumns: Readonly<Record<string, string>> = {
   "follows.followee_id": "who follows the person is what someone else did",
   "blocks.blocked_id": "who blocked the person is what someone else did",
   "mutes.muted_id": "who muted the person is what someone else did",
-  "activity.actor_id":
-    "no code writes it yet; SAG-22 must export it when it does",
-  "likes.user_id": "no code writes it yet; SAG-22 must export it when it does",
   "import_jobs.user_id":
     "a copy of the titles of a file the person uploaded and still has, kept 30 days (SAG-241)",
 };
@@ -160,7 +159,16 @@ async function personWithEverything() {
     .values({ actorId: ana.id, type: "completed", mediaId: movie.id })
     .returning();
   if (!post) throw new Error("The post was not created");
-  await db.insert(likes).values({ userId: bob.id, activityId: post.id });
+  // A like of each one on the event of the other (SAG-22): both are erased with the account.
+  const [bobsPost] = await db
+    .insert(activity)
+    .values({ actorId: bob.id, type: "rated", mediaId: movie.id })
+    .returning();
+  if (!bobsPost) throw new Error("The post was not created");
+  await db.insert(likes).values([
+    { userId: bob.id, activityId: post.id },
+    { userId: ana.id, activityId: bobsPost.id },
+  ]);
   // What the inbox told them (SAG-102): one read and one unread, and one of the other person.
   await db.insert(notifications).values([
     {
@@ -208,11 +216,13 @@ describe("eraseAccount", () => {
       blocks,
       mutes,
       followRequests,
-      activity,
       likes,
     ]) {
       expect(await db.select().from(table), String(table)).toHaveLength(0);
     }
+    // Their events are gone and the other person's stays.
+    const events = await db.select().from(activity);
+    expect(events.map((row) => row.actorId)).toEqual([bob.id]);
     // Their notifications are gone and the other person's stays.
     const left = await db.select().from(notifications);
     expect(left.map((row) => row.userId)).toEqual([bob.id]);
