@@ -78,7 +78,7 @@ describe("the quick step of a library entry", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ progress: 3, status: "in_progress" }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({
       init: { headers: { "Cache-Control": "private, no-store" } },
@@ -96,7 +96,7 @@ describe("the quick step of a library entry", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ progress: 4, status: "completed" }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({
       data: { ok: true, progress: 4, status: "completed" },
@@ -132,7 +132,7 @@ describe("the quick step of a library entry", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ progress: 320, status: "completed" }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
   });
 
@@ -169,7 +169,7 @@ describe("the quick step of a library entry", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ progress: 4 }),
-      "2026-11-01 10:00:01.000000",
+      expect.objectContaining({ version: "2026-11-01 10:00:01.000000" }),
     );
     expect(result).toMatchObject({ data: { ok: true, progress: 4 } });
   });

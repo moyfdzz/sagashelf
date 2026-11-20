@@ -1,9 +1,11 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
+import { likesForExport, type ExportedLike } from "../db/feed";
 import { readableByOwner } from "../db/notifications";
 import { requesterCardShown } from "../db/person-visibility";
 import type { ProfileDb } from "../db/profile";
 import {
+  activity,
   contactMessages,
   customEntries,
   blocks,
@@ -127,6 +129,25 @@ export type AccountExport = {
     status: string;
     createdAt: string;
   }[];
+  /**
+   * What the person did, as the people who follow them may see it (SAG-44): the kind of event, its
+   * title, its small details (the progress, the score), who may see it and when. Never the id of a
+   * row. A file from before SAG-44 has no `activity`; `schemaVersion` stays 1 because a field was
+   * only added, and the import never reads it.
+   */
+  activity: {
+    type: string;
+    title: string | null;
+    payload: Record<string, unknown>;
+    visibility: string;
+    createdAt: string;
+  }[];
+  /**
+   * The events the person liked (SAG-22): the kind of event, when they liked it, and its title
+   * while the event is still shown to them. Never who wrote the event (that is what someone else
+   * did). A file from before SAG-22 has no `likes`; they are never imported (ADR-055).
+   */
+  likes: ExportedLike[];
 };
 
 /**
@@ -182,6 +203,8 @@ export async function exportAccount(
     madeReports,
     uploads,
     sentMessages,
+    events,
+    liked,
   ] = await Promise.all([
     db
       .select({
@@ -363,6 +386,19 @@ export async function exportAccount(
       .from(contactMessages)
       .where(eq(contactMessages.userId, userId))
       .orderBy(contactMessages.createdAt, contactMessages.id),
+    db
+      .select({
+        type: activity.type,
+        title: mediaItems.title,
+        payload: activity.payload,
+        visibility: activity.visibility,
+        createdAt: activity.createdAt,
+      })
+      .from(activity)
+      .leftJoin(mediaItems, eq(activity.mediaId, mediaItems.id))
+      .where(eq(activity.actorId, userId))
+      .orderBy(activity.createdAt, activity.id),
+    likesForExport(db, userId),
   ]);
 
   const [earlier, items] = await Promise.all([
@@ -490,105 +526,13 @@ export async function exportAccount(
       status: message.status,
       createdAt: message.createdAt.toISOString(),
     })),
+    activity: events.map((event) => ({
+      type: event.type,
+      title: event.title,
+      payload: event.payload,
+      visibility: event.visibility,
+      createdAt: event.createdAt.toISOString(),
+    })),
+    likes: liked,
   };
-}
-
-/**
- * A cell that starts with `=`, `+`, `-` or `@` is run as a formula by spreadsheet programs, and
- * the bio is text anyone can write. A quote in front keeps it as text.
- */
-function csvCell(value: unknown): string {
-  let text = value === null || value === undefined ? "" : String(value);
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-const libraryColumns = [
-  "title",
-  "status",
-  "progress",
-  "progress_unit",
-  "progress_total",
-  "score",
-  "started_at",
-  "finished_at",
-  "times_watched",
-  "notes",
-  "visibility",
-  "added_at",
-  "provider",
-  "external_id",
-] as const;
-
-const viewingColumns = ["title", "started_on", "finished_on", "notes"] as const;
-
-type EntrySource = { provider: string; id: string };
-
-type EarlierViewing = {
-  startedOn: string | null;
-  finishedOn: string | null;
-  notes: string | null;
-};
-
-const day = (value: unknown) =>
-  value instanceof Date ? value.toISOString().slice(0, 10) : value;
-
-/**
- * The profile as a table of `field,value`, the library below it as a second table and the earlier
- * times each title was watched as a third, each with its own header after an empty line. Lists
- * and custom entries are in the JSON file.
- */
-export function profileCsv(data: AccountExport): string {
-  const rows: [string, unknown][] = [
-    ["username", data.profile.username],
-    ["display_name", data.profile.displayName],
-    ["avatar_url", data.profile.avatarUrl],
-    ["bio", data.profile.bio],
-    ["language", data.profile.locale],
-    ["privacy", data.profile.privacy],
-    ["created_at", data.profile.createdAt],
-  ];
-  const lines = [
-    "field,value",
-    ...rows.map(([k, v]) => `${csvCell(k)},${csvCell(v)}`),
-  ];
-
-  if (data.libraryEntries.length > 0) {
-    lines.push("", libraryColumns.join(","));
-    for (const entry of data.libraryEntries) {
-      lines.push(
-        [
-          entry.title,
-          entry.status,
-          entry.progress,
-          entry.progressUnit,
-          entry.progressTotal,
-          entry.score,
-          entry.startedAt,
-          entry.finishedAt,
-          entry.timesWatched,
-          entry.notes,
-          entry.visibility,
-          day(entry.createdAt),
-          (entry.source as EntrySource | null)?.provider,
-          (entry.source as EntrySource | null)?.id,
-        ]
-          .map(csvCell)
-          .join(","),
-      );
-    }
-
-    // The earlier times of each title, as a third table. Left out when there are none.
-    const viewingLines = data.libraryEntries.flatMap((entry) =>
-      (entry.viewings as EarlierViewing[]).map((viewing) =>
-        [entry.title, viewing.startedOn, viewing.finishedOn, viewing.notes]
-          .map(csvCell)
-          .join(","),
-      ),
-    );
-    if (viewingLines.length > 0) {
-      lines.push("", viewingColumns.join(","), ...viewingLines);
-    }
-  }
-  return lines.join("\r\n") + "\r\n";
 }

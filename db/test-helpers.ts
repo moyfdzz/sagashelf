@@ -37,7 +37,7 @@ export async function setEntry(
 ) {
   const current = await getEntry(db, userId, mediaId, "es");
   if (!current) return "missing" as const;
-  return saveEntry(db, userId, mediaId, next, current.version);
+  return saveEntry(db, userId, mediaId, next, current);
 }
 
 /** The same for a rewatch: restarts the entry on the version it has now. */
@@ -49,7 +49,7 @@ export async function restartEntry(
 ) {
   const current = await getEntry(db, userId, mediaId, "es");
   if (!current) return "refused" as const;
-  return rewatchEntry(db, userId, mediaId, next, current.version);
+  return rewatchEntry(db, userId, mediaId, next, current);
 }
 
 let counter = 0;

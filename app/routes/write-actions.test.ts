@@ -223,6 +223,13 @@ const rows: Row[] = [
     limitKey: "username:user-1",
   },
   {
+    file: "social.tsx",
+    path: "/social",
+    params: {},
+    who: "user",
+    limitKey: "like:user-1",
+  },
+  {
     file: "u.$username.report.tsx",
     path: "/u/ana/report",
     params: { username: "ana" },
