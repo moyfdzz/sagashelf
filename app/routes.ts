@@ -45,6 +45,7 @@ export default [
   route("library/add", "routes/library.add.ts"),
   route("library/add-external", "routes/library.add-external.ts"),
   route("library/:mediaId", "routes/library.$mediaId.tsx"),
+  route("library/:mediaId/review", "routes/library.$mediaId.review.tsx"),
   route("library/:mediaId/step", "routes/library.$mediaId.step.ts"),
   route("library/:mediaId/status", "routes/library.$mediaId.status.ts"),
   route("lists", "routes/lists.tsx"),

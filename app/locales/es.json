@@ -548,12 +548,13 @@
       "favorites": "Favoritos del sitio: las entradas con visibilidad pública de personas con perfil público cuentan, sin nombre, en las listas de Tendencias, y un título solo aparece cuando al menos 3 personas coinciden. Si cambias la visibilidad de una entrada, el nivel de tu perfil o borras tu cuenta, dejas de contar en un máximo de una hora.",
       "viewings": "Historial de visualizaciones: las fechas y las notas de cada vez que viste un título, si decides anotarlas.",
       "activity": "Actividad: cuando empiezas, avanzas, terminas, abandonas o calificas un título, guardamos ese evento (qué pasó, el título, tu progreso o la calificación y la fecha) para el feed de quienes te siguen. Lo puede ver quien permita el nivel más estricto entre la entrada y tu perfil, y si después haces más privado alguno de los dos, deja de verse. Tus notas nunca van en él, y lo que importas desde un archivo no genera actividad. Se borra al quitar el título de tu biblioteca o al eliminar tu cuenta, y va en tu exportación de datos.",
-      "likes": "Me gusta: cuando le das me gusta a la actividad de alguien que sigues, guardamos que lo hiciste y cuándo. Los demás solo ven cuántos me gusta tiene un evento, nunca quién los dio. Puedes quitarlo cuando quieras; se borra si esa persona quita el título o elimina su cuenta, y al eliminar la tuya. Va en tu exportación de datos (el tipo de evento, el título y la fecha, sin el nombre de la otra persona) y nunca se importa.",
+      "likes": "Me gusta: cuando le das me gusta a la actividad de alguien que sigues o a una reseña, guardamos que lo hiciste y cuándo. Los demás solo ven cuántos me gusta tiene, nunca quién los dio. Puedes quitarlo cuando quieras; se borra si esa persona quita el título, borra la reseña o elimina su cuenta, y al eliminar la tuya. Va en tu exportación de datos (el tipo de evento, el título y la fecha, sin el nombre de la otra persona) y nunca se importa.",
       "contact": "Mensajes de contacto: lo que escribes en la página de contacto (el tipo de mensaje, el texto y, si no iniciaste sesión y quieres que te respondamos, el correo que dejes) se guarda para atenderlo, lo ve solo quien administra el sitio y se borra a los 90 días. Si lo enviaste con tu cuenta, también se borra cuando eliminas la cuenta y va en tu exportación de datos.",
       "technical": "Datos técnicos: cuando visitas el sitio, el proveedor de alojamiento registra datos de la petición (como la dirección IP, la página solicitada y el navegador) para operar y proteger el servicio.",
       "analytics": "Estadísticas de uso: medimos cómo se usa el sitio con un sistema propio, sin cookies y sin guardar tu dirección IP ni tu cuenta. El detalle está en <stats>«Estadísticas de uso»</stats>.",
       "social": "Relaciones: a quién sigues, a quién has bloqueado y a quién has silenciado, y las solicitudes para seguir que envías y recibes. La persona a la que silencias no lo sabe.",
-      "reports": "Reportes y fotos: los reportes que envías, y por cada foto que intentas subir, la fecha, una huella del archivo (no la imagen), el resultado de la revisión y tu dirección IP. A quien reportas no le decimos que fuiste tú."
+      "reports": "Reportes y fotos: los reportes que envías, y por cada foto que intentas subir, la fecha, una huella del archivo (no la imagen), el resultado de la revisión y tu dirección IP. A quien reportas no le decimos que fuiste tú.",
+      "reviews": "Reseñas: cuando escribes una reseña de un título, guardamos el texto, si marcaste que tiene spoilers, quién puede verla y las fechas en que la escribiste y la editaste. Cada reseña tiene su propio nivel (todas las personas, solo amistades o solo tú); si tu perfil tiene Privacidad total, solo tú la ves. Las reseñas de una cuenta con menos de 24 horas solo las ve quien las escribió hasta que la cuenta cumple un día. Para detectar textos repetidos guardamos una huella del texto (un resumen que no permite leerlo). Se borra cuando la borras, al quitar el título de tu biblioteca o al eliminar tu cuenta, y va en tu exportación de datos."
     },
     "stats": {
       "title": "Estadísticas de uso",
@@ -854,7 +855,7 @@
       },
       "remove": {
         "summary": "Quitar de mi biblioteca",
-        "warning": "Se borran tu estado, tu progreso, tu puntuación, tus notas y tu actividad de este título. No se puede deshacer.",
+        "warning": "Se borran tu estado, tu progreso, tu puntuación, tus notas, tu reseña (con sus me gusta) y tu actividad de este título. No se puede deshacer.",
         "confirm": "Quitar definitivamente"
       },
       "finishedAtHint": "Solo se puede poner cuando el estado es Completado.",
@@ -872,7 +873,8 @@
       },
       "rewatched_read": "Empezaste de nuevo desde el principio.",
       "rewatch_read": "Volver a leerlo",
-      "rewatchHint_read": "Guarda esta vez en tu historial y empieza de nuevo desde el principio."
+      "rewatchHint_read": "Guarda esta vez en tu historial y empieza de nuevo desde el principio.",
+      "review": "Tu reseña de este título"
     },
     "errors": {
       "summary": "Revisa los campos marcados.",
@@ -1919,7 +1921,8 @@
       "progressed_chapters_one": "Va en el capítulo {{count}} de",
       "progressed_chapters_other": "Va en el capítulo {{count}} de",
       "progressed_volumes_one": "Va en el tomo {{count}} de",
-      "progressed_volumes_other": "Va en el tomo {{count}} de"
+      "progressed_volumes_other": "Va en el tomo {{count}} de",
+      "reviewed": "reseñó"
     },
     "level": {
       "friends": "Solo amigos",
@@ -1934,6 +1937,71 @@
     "errors": {
       "likeFailed": "No se pudo guardar tu me gusta. Inténtalo de nuevo.",
       "rateLimited": "Diste muchos me gusta seguidos. Espera un minuto y vuelve a intentarlo."
+    },
+    "readReview": "Leer la reseña completa"
+  },
+  "reviews": {
+    "title": "Reseñas",
+    "write": "Escribir una reseña",
+    "edit": "Editar tu reseña",
+    "startFirst": "Para escribir una reseña, primero marca este título como en progreso, en pausa, completado o abandonado en tu biblioteca.",
+    "orderLabel": "Orden de las reseñas",
+    "relevant": "Más relevantes",
+    "recent": "Más recientes",
+    "empty": "Todavía no hay reseñas que puedas ver.",
+    "noMore": "No hay más reseñas.",
+    "pagesLabel": "Páginas de reseñas",
+    "previous": "Reseñas anteriores",
+    "more": "Ver más reseñas",
+    "byLabel": "Reseña de {{name}}",
+    "yours": "Tu reseña",
+    "edited": "(editada)",
+    "score": "Puntuación: {{score}}/10",
+    "seeMore": "Ver más",
+    "ellipsis": "…",
+    "spoilerWarning": "Esta reseña contiene spoilers.",
+    "showSpoiler": "Mostrarla de todos modos",
+    "form": {
+      "pageTitle": "Reseña de {{title}}",
+      "back": "Volver al título",
+      "heading": "Escribe tu reseña de {{title}}",
+      "editHeading": "Edita tu reseña de {{title}}",
+      "toEntry": "Ir a este título en tu biblioteca",
+      "privateProfile": "Tu perfil tiene Privacidad total: mientras siga así, solo tú verás esta reseña.",
+      "held": "Tu cuenta es nueva: las demás personas verán tu reseña cuando tu cuenta cumpla 24 horas.",
+      "body": "Tu reseña",
+      "bodyHint": "Entre {{min}} y {{max}} caracteres, solo texto y sin enlaces.",
+      "count_one": "{{count}} de {{max}} caracteres",
+      "count_other": "{{count}} de {{max}} caracteres",
+      "spoiler": "Contiene spoilers",
+      "visibility": "Quién puede verla",
+      "levels": {
+        "public": "Todas las personas",
+        "friends": "Solo amistades",
+        "private": "Solo yo"
+      },
+      "entryStricter": "En tu biblioteca este título es más privado: una reseña más abierta deja ver que lo tienes.",
+      "score": "Puntuación",
+      "scoreHint": "Es la misma puntuación de tu biblioteca.",
+      "noScore": "Sin puntuación",
+      "publish": "Publicar reseña",
+      "saveEdit": "Guardar cambios",
+      "delete": {
+        "summary": "Borrar mi reseña",
+        "warning": "Se borran tu reseña y sus me gusta. No se puede deshacer.",
+        "confirm": "Borrar definitivamente"
+      }
+    },
+    "errors": {
+      "invalid": "No pudimos leer el formulario. Recarga la página e inténtalo otra vez.",
+      "too_short": "La reseña es muy corta: necesita al menos {{min}} caracteres.",
+      "too_long": "La reseña es muy larga: el máximo es {{max}} caracteres.",
+      "link": "Quita los enlaces y las direcciones web: una reseña no puede tenerlos.",
+      "duplicate": "Ya publicaste este mismo texto en la reseña de otro título. Escribe una reseña propia para este.",
+      "rate_limited": "Escribiste muchas reseñas en poco tiempo. Espera un rato e inténtalo otra vez.",
+      "not_started": "Para escribir una reseña, primero marca el título como en progreso, en pausa, completado o abandonado.",
+      "conflict": "Tu reseña cambió en otra pestaña. Recarga la página e inténtalo otra vez.",
+      "score_conflict": "Tu reseña se guardó, pero la puntuación no, porque el título cambió en otra pestaña. Revísala en tu biblioteca."
     }
   }
 }

@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/media.$type.$slug";
-import { headers, loader, meta } from "./media.$type.$slug";
+import { headers, loader, meta, shouldRevalidate } from "./media.$type.$slug";
 import type { MediaDetail } from "~server/db/media-detail";
 
 const mocks = vi.hoisted(() => ({
   getOptionalUser: vi.fn(),
   getEntry: vi.fn(),
   listsForTitle: vi.fn(),
+  readReviews: vi.fn(),
+  getOwnReview: vi.fn(),
   getMediaDetail: vi.fn(),
   getRelatedFormats: vi.fn(),
   getSagasOfMedia: vi.fn(),
@@ -21,6 +23,11 @@ vi.mock("~server/auth/require", () => ({
   getOptionalUser: mocks.getOptionalUser,
 }));
 vi.mock("~server/db/library", () => ({ getEntry: mocks.getEntry }));
+vi.mock("~server/db/reviews", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  readReviews: mocks.readReviews,
+  getOwnReview: mocks.getOwnReview,
+}));
 vi.mock("~server/db/list-items", () => ({
   listsForTitle: mocks.listsForTitle,
 }));
@@ -81,6 +88,8 @@ beforeEach(() => {
   mocks.getOptionalUser.mockReset().mockResolvedValue(null);
   mocks.getEntry.mockReset().mockResolvedValue(null);
   mocks.listsForTitle.mockReset().mockResolvedValue([]);
+  mocks.readReviews.mockReset().mockResolvedValue({ reviews: [], more: false });
+  mocks.getOwnReview.mockReset().mockResolvedValue(null);
   mocks.getMediaDetail.mockReset().mockResolvedValue(detail());
   mocks.getRelatedFormats.mockReset().mockResolvedValue([]);
   mocks.getSagasOfMedia.mockReset().mockResolvedValue([]);
@@ -811,5 +820,84 @@ describe("the next episode of a series (SAG-90)", () => {
         error: "TypeError",
       }),
     );
+  });
+});
+
+describe("the reviews of the title (SAG-22)", () => {
+  type Reviews = { reviews: { order: string; page: number; write: string } };
+  const reviewsOf = async (suffix = "") =>
+    (
+      (await load(
+        "movie",
+        `matrix-${id}`,
+        "https://sagashelf.app",
+        suffix,
+      )) as Reviews
+    ).reviews;
+
+  it("reads the most relevant first page for a visitor, who is asked to sign in", async () => {
+    expect(await reviewsOf()).toMatchObject({
+      order: "relevant",
+      page: 1,
+      write: "sign_in",
+    });
+    expect(mocks.readReviews).toHaveBeenCalledWith(
+      expect.anything(),
+      null,
+      id,
+      "relevant",
+      1,
+    );
+    expect(mocks.getOwnReview).not.toHaveBeenCalled();
+  });
+
+  it("reads the order and the page of the address, and falls back on a made-up one", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    expect(await reviewsOf("?reviews=recent&reviewsPage=3")).toMatchObject({
+      order: "recent",
+      page: 3,
+    });
+    expect(mocks.readReviews).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "user-1",
+      id,
+      "recent",
+      3,
+    );
+    expect(await reviewsOf("?reviews=best&reviewsPage=999")).toMatchObject({
+      order: "relevant",
+      page: 1,
+    });
+  });
+
+  it("lets a person write once the title is started, and edit the review they have", async () => {
+    mocks.getOptionalUser.mockResolvedValue({ id: "user-1" });
+    expect((await reviewsOf()).write).toBe("start_first");
+    mocks.getEntry.mockResolvedValue({ status: "planned", progress: 0 });
+    expect((await reviewsOf()).write).toBe("start_first");
+    mocks.getEntry.mockResolvedValue({ status: "dropped", progress: 0 });
+    expect((await reviewsOf()).write).toBe("write");
+    mocks.getEntry.mockResolvedValue({ status: "planned", progress: 0 });
+    mocks.getOwnReview.mockResolvedValue({ body: "x" });
+    expect((await reviewsOf()).write).toBe("edit");
+  });
+});
+
+describe("reading the page again after a form (SAG-22)", () => {
+  const after = (fields: Record<string, string> | null) =>
+    shouldRevalidate({
+      formMethod: fields ? "POST" : undefined,
+      formData: fields ? new URLSearchParams(fields) : undefined,
+      defaultShouldRevalidate: true,
+    } as unknown as Parameters<typeof shouldRevalidate>[0]);
+
+  it("skips it only for the like of a review", () => {
+    expect(after({ activityId: "x", liked: "true" })).toBe(false);
+  });
+
+  it("reads it again after the library and list buttons, which change the page", () => {
+    expect(after({ mediaId: "x" })).toBe(true);
+    expect(after({ status: "completed" })).toBe(true);
+    expect(after(null)).toBe(true);
   });
 });

@@ -21,6 +21,13 @@ export const blockedBetween = (a: SQL, b: SQL): SQL => sql`
        OR (blk.blocker_id = ${b} AND blk.blocked_id = ${a})
   )`;
 
+/**
+ * `follower` follows `followee`. Two people are friends when it holds both ways (ADR-031). The same
+ * kind of SQL pieces as `blockedBetween`.
+ */
+export const followsSql = (follower: SQL, followee: SQL): SQL => sql`
+  EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${follower} AND f.followee_id = ${followee})`;
+
 /** The viewer and `u` have a block between them, in either direction. */
 const blockedEitherWay = (viewerId: string | null): SQL =>
   blockedBetween(sql`${viewerId}::uuid`, sql`u.id`);

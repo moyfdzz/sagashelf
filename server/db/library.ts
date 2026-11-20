@@ -295,8 +295,8 @@ export async function rewatchEntry(
 
 /**
  * Removes the entry of this person for this title, and in the same statement their activity of the
- * title (SAG-44): the page warns that removing it deletes it, so it is deleted, not only hidden.
- * False when they had none.
+ * title (SAG-44) and their review of it with its likes (ADR-053): the page warns that removing it
+ * deletes them, so they are deleted, not only hidden. False when they had none.
  */
 export async function removeEntry(
   db: ProfileDb,
@@ -311,6 +311,9 @@ export async function removeEntry(
     ),
     events AS (
       DELETE FROM activity WHERE actor_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
+    ),
+    review AS (
+      DELETE FROM reviews WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
     )
     SELECT count(*)::int AS removed FROM removed
   `)) as RawRows;

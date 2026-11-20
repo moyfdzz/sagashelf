@@ -111,6 +111,20 @@ const rows: Row[] = [
     limitKey: "library:user-1",
   },
   {
+    file: "library.$mediaId.review.tsx",
+    path: `/library/${uuid}/review`,
+    params: { mediaId: uuid },
+    who: "user",
+    limitKey: "review:user-1",
+  },
+  {
+    file: "media.$type.$slug.tsx",
+    path: "/media/movie/some-title",
+    params: { type: "movie", slug: "some-title" },
+    who: "user",
+    limitKey: "like:user-1",
+  },
+  {
     file: "library.$mediaId.status.ts",
     path: `/library/${uuid}/status`,
     params: { mediaId: uuid },

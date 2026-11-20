@@ -6,6 +6,7 @@ import type { ZodError } from "zod";
 
 import type { Route } from "./+types/library.$mediaId";
 import { ClerkSession } from "~/components/ClerkSession";
+import { linkClass } from "~/lib/ui";
 import { AddToList } from "~/components/lists/AddToList";
 import { AlertsSection } from "~/components/library-entry/AlertsSection";
 import { EntryForm } from "~/components/library-entry/EntryForm";
@@ -428,6 +429,13 @@ export default function LibraryEntry({
         />
 
         <AddToList mediaId={entry.mediaId} lists={loaderData.lists} />
+
+        {/* The review of the title (SAG-22): its page says what to do when it is only planned. */}
+        <p className="mt-6">
+          <a href={`/library/${entry.mediaId}/review`} className={linkClass}>
+            {t("library.editor.review")}
+          </a>
+        </p>
 
         {/* Only a series or an anime has episodes to be told about (SAG-101). */}
         {media.type === "series" || media.type === "anime" ? (

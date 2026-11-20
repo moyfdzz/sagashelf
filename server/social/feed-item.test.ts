@@ -20,6 +20,7 @@ const base: FeedEvent = {
   media: { id: mediaId, type: "anime", title: "Frieren", imageUrl: null },
   likes: 2,
   liked: true,
+  review: null,
 };
 
 const one = (event: Partial<FeedEvent>) => feedItems([{ ...base, ...event }]);
@@ -47,6 +48,7 @@ describe("feedItems (SAG-22)", () => {
         },
         likes: 2,
         liked: true,
+        review: null,
       },
     ]);
   });
@@ -78,8 +80,34 @@ describe("feedItems (SAG-22)", () => {
     { type: "rated", payload: { score: "8" } },
     { type: "started", payload: { rewatch: "yes" } },
     { media: { ...base.media, type: "custom" } },
+    { type: "reviewed", review: null },
   ])("leaves out an event it cannot draw: %j", (event) => {
     expect(one(event)).toEqual([]);
+  });
+
+  it("draws a review with an excerpt cut at a word and its spoiler mark", () => {
+    const start = `${"word ".repeat(70)}tail`;
+    const [item] = one({
+      type: "reviewed",
+      review: { start, more: false, spoiler: true },
+    });
+    expect(item?.kind).toBe("reviewed");
+    expect(item?.review?.spoiler).toBe(true);
+    expect(item?.review?.more).toBe(true);
+    expect(item?.review?.excerpt.endsWith("word")).toBe(true);
+    expect(start.startsWith(item?.review?.excerpt ?? "-")).toBe(true);
+  });
+
+  it("says a short review has nothing more", () => {
+    const [item] = one({
+      type: "reviewed",
+      review: { start: "Short and complete.", more: false, spoiler: false },
+    });
+    expect(item?.review).toEqual({
+      excerpt: "Short and complete.",
+      more: false,
+      spoiler: false,
+    });
   });
 
   it("keeps only a picture from an HTTPS address", () => {

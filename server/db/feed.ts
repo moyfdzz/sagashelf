@@ -3,10 +3,17 @@ import { sql, type SQL } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import type { ProfileDb } from "./profile";
 import { text } from "./person";
-import { blockedBetween, levelAllowed } from "./person-visibility";
+import { blockedBetween, followsSql, levelAllowed } from "./person-visibility";
+import {
+  reviewHeldSql,
+  reviewLevelSql,
+  reviewShown,
+  reviewsFrom,
+} from "./reviews";
 import { localizedTitleSql, sharedTitleSql } from "./titles";
 import type { ActivityKind } from "../library/activity";
 import type { Locale } from "../providers/types";
+import { reviewExcerptLength } from "../reviews/rules";
 import { canView, type Level } from "../social/can-view";
 
 /**
@@ -21,14 +28,18 @@ import { canView, type Level } from "../social/can-view";
  * was removed) has nothing to join and never shows.
  */
 
-/** The kinds of event the feed shows; `list_created` has no writer yet (ADR-054). */
+/**
+ * The kinds of event the feed shows; `list_created` has no writer yet (ADR-054). `reviewed` is
+ * written with a review (ADR-053) and read through it.
+ */
 export const feedKinds = [
   "started",
   "progressed",
   "completed",
   "dropped",
   "rated",
-] as const satisfies readonly ActivityKind[];
+  "reviewed",
+] as const satisfies readonly (ActivityKind | "reviewed")[];
 
 /** How many events one page of the feed shows. */
 export const feedPageSize = 20;
@@ -69,23 +80,29 @@ export type FeedEvent = {
   media: { id: string; type: string; title: string; imageUrl: string | null };
   likes: number;
   liked: boolean;
+  /**
+   * The review of a `reviewed` event: the start of its text (a little more than the excerpt, so
+   * the page can cut it at a word), whether there is more, and its spoiler mark.
+   */
+  review: { start: string; more: boolean; spoiler: boolean } | null;
 };
 
 export type FeedPage = { events: FeedEvent[]; next: FeedCursor | null };
 
 // The level that decides: the strictest of the event, the entry and the profile. `privacy_level`
-// is declared public, friends, private, so GREATEST is the strictest (ADR-054).
-const levelNow = sql`GREATEST(a.visibility, le.visibility, u.privacy)`;
-
-const follows = (follower: SQL, followee: SQL) => sql`
-  EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${follower} AND f.followee_id = ${followee})`;
+// is declared public, friends, private, so GREATEST is the strictest (ADR-054). A review has a
+// level of its own, independent of the entry (ADR-053), so its event shows at the review's level.
+const levelNow = sql`(CASE WHEN a.type = 'reviewed' THEN ${reviewLevelSql}
+  ELSE GREATEST(a.visibility, le.visibility, u.privacy) END)`;
 
 /**
  * The events the viewer may see, as `FROM ... WHERE ...` over the aliases `a` (the event), `u` (its
  * author), `le` (the current entry of its title) and `m` (the title). Their own, whatever the
  * level; or of somebody they follow, not muted, with no block either way, that `canView` allows for
  * a follower, or for a friend when the author follows them back. Erased authors, titles a person
- * made for themselves and kinds the feed does not show are left out.
+ * made for themselves and kinds the feed does not show are left out. A `reviewed` event is read
+ * through its review (`r`): with no review it never shows, and to others only while the review was
+ * not removed and the author's account is a day old (ADR-053).
  */
 const shownEvents = (viewerId: string): SQL => {
   const viewer = sql`${viewerId}::uuid`;
@@ -94,7 +111,15 @@ const shownEvents = (viewerId: string): SQL => {
     JOIN users u ON u.id = a.actor_id
     JOIN library_entries le ON le.user_id = a.actor_id AND le.media_id = a.media_id
     JOIN media_items m ON m.id = a.media_id
+    LEFT JOIN reviews r ON r.activity_id = a.id
     WHERE u.deleted_at IS NULL
+      AND (
+        a.type <> 'reviewed'
+        OR (
+          r.id IS NOT NULL
+          AND (a.actor_id = ${viewer} OR (r.removed_at IS NULL AND NOT ${reviewHeldSql}))
+        )
+      )
       -- Only the viewer and the people they follow: written as a list of authors, so the index of
       -- each author's events is used instead of reading the activity of the whole site.
       AND a.actor_id IN (
@@ -115,7 +140,7 @@ const shownEvents = (viewerId: string): SQL => {
           AND (
             ${levelAllowed(levelNow, (level) => canView("follower", level))}
             OR (
-              ${follows(sql`a.actor_id`, viewer)}
+              ${followsSql(sql`a.actor_id`, viewer)}
               AND ${levelAllowed(levelNow, (level) => canView("friend", level))}
             )
           )
@@ -125,6 +150,21 @@ const shownEvents = (viewerId: string): SQL => {
 
 const isFeedKind = (value: string): value is FeedEvent["type"] =>
   (feedKinds as readonly string[]).includes(value);
+
+// The feed reads only the start of a review: a little more than the excerpt, so it can be cut at a
+// word, and never the whole text of ten reviews on one page.
+const reviewStartLength = reviewExcerptLength + 40;
+
+/**
+ * The events the viewer may like, as `SELECT id, title`: every event the feed shows them, and the
+ * event of every review the title page shows them (ADR-056), so the like of a review is one count
+ * wherever it is given. The viewer's own are in it; a writer leaves them out.
+ */
+const likeableEvents = (viewerId: string): SQL => sql`
+  SELECT a.id, m.title, a.actor_id ${shownEvents(viewerId)}
+  UNION
+  SELECT r.activity_id, m.title, r.user_id ${reviewsFrom}
+  WHERE r.activity_id IS NOT NULL AND ${reviewShown(viewerId)}`;
 
 /**
  * One page of the feed of the viewer, newest first. `before` is the cursor of the page before, or
@@ -150,7 +190,9 @@ export async function readFeed(
            (SELECT count(*) FROM likes l WHERE l.activity_id = a.id)::int AS likes,
            EXISTS (
              SELECT 1 FROM likes l WHERE l.activity_id = a.id AND l.user_id = ${viewerId}::uuid
-           ) AS liked
+           ) AS liked,
+           left(r.body, ${reviewStartLength}) AS review_start,
+           char_length(r.body) > ${reviewStartLength} AS review_more, r.spoiler
     ${shownEvents(viewerId)}
     ${after}
     ORDER BY a.created_at DESC, a.id DESC
@@ -181,6 +223,14 @@ export async function readFeed(
         },
         likes: Number(row.likes),
         liked: row.liked === true,
+        review:
+          row.review_start === null || row.review_start === undefined
+            ? null
+            : {
+                start: String(row.review_start),
+                more: row.review_more === true,
+                spoiler: row.spoiler === true,
+              },
       },
     ];
   });
@@ -196,7 +246,8 @@ export async function readFeed(
 /**
  * Likes an event (`liked` true) or takes the like back, as the person of the session, and answers
  * how many likes the event has now. Both are idempotent. A like is only written on an event the
- * feed shows to that person and not on their own; the answer is null when they may not see the
+ * feed or a title page shows to that person (`likeableEvents`) and not on their own; the answer is
+ * null when they may not see the
  * event (it is gone, hidden or never theirs to see), the same whatever the reason. Taking a like
  * back always deletes it and always answers, even when the event can no longer be seen; then the
  * count is null, so a hidden event never tells how many likes it has.
@@ -213,8 +264,8 @@ export async function setLike(
   const statement = liked
     ? sql`
       WITH shown AS (
-        SELECT a.id ${shownEvents(viewerId)}
-          AND a.id = ${activityId}::uuid AND a.actor_id <> ${viewer}
+        SELECT e.id FROM (${likeableEvents(viewerId)}) e
+        WHERE e.id = ${activityId}::uuid AND e.actor_id <> ${viewer}
       ),
       added AS (
         INSERT INTO likes (user_id, activity_id)
@@ -230,7 +281,7 @@ export async function setLike(
         DELETE FROM likes WHERE user_id = ${viewer} AND activity_id = ${activityId}::uuid
       ),
       shown AS (
-        SELECT a.id ${shownEvents(viewerId)} AND a.id = ${activityId}::uuid
+        SELECT e.id FROM (${likeableEvents(viewerId)}) e WHERE e.id = ${activityId}::uuid
       )
       SELECT (
         SELECT count(*) FROM likes l JOIN shown ON l.activity_id = shown.id
@@ -262,7 +313,7 @@ export async function likesForExport(
     SELECT a.type::text AS type, still.title, l.created_at
     FROM likes l
     JOIN activity a ON a.id = l.activity_id
-    LEFT JOIN (SELECT a.id, m.title ${shownEvents(userId)}) still ON still.id = l.activity_id
+    LEFT JOIN (${likeableEvents(userId)}) still ON still.id = l.activity_id
     WHERE l.user_id = ${userId}::uuid
     ORDER BY l.created_at, l.activity_id
   `)) as { rows: Record<string, unknown>[] };

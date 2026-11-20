@@ -25,6 +25,7 @@ export const erasedColumns: readonly (readonly [string, string])[] = [
   ["follow_requests", "target_id"],
   ["activity", "actor_id"],
   ["likes", "user_id"],
+  ["reviews", "user_id"],
   ["contact_messages", "user_id"],
   ["import_jobs", "user_id"],
 ];
@@ -87,6 +88,8 @@ export function erasureCtes(clerkUpdatedAt: SQL): SQL {
         avatar_uploads_count = 0,
         title_fetches_day = NULL,
         title_fetches_count = 0,
+        reviews_hour_start = NULL,
+        reviews_hour_count = 0,
         display_name = NULL,
         avatar_url = NULL,
         hidden_avatar_url = NULL,

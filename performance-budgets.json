@@ -18,6 +18,7 @@
     "routes/home": 203,
     "routes/library": 239,
     "routes/library.$mediaId": 277,
+    "routes/library.$mediaId.review": 259,
     "routes/lists": 243,
     "routes/lists.$id": 274,
     "routes/lists.new": 243,

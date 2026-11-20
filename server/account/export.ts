@@ -4,6 +4,7 @@ import { likesForExport, type ExportedLike } from "../db/feed";
 import { readableByOwner } from "../db/notifications";
 import { requesterCardShown } from "../db/person-visibility";
 import type { ProfileDb } from "../db/profile";
+import { reviewsForExport, type ExportedReview } from "../db/reviews";
 import {
   activity,
   contactMessages,
@@ -148,6 +149,12 @@ export type AccountExport = {
    * did). A file from before SAG-22 has no `likes`; they are never imported (ADR-055).
    */
   likes: ExportedLike[];
+  /**
+   * The reviews the person wrote (SAG-22, ADR-053), all of them, as they wrote them: the title, the
+   * text, the spoiler mark, who may see it, whether a moderator removed it, and when. A file from
+   * before SAG-22 has no `reviews`; their own import is SAG-270.
+   */
+  reviews: ExportedReview[];
 };
 
 /**
@@ -205,6 +212,7 @@ export async function exportAccount(
     sentMessages,
     events,
     liked,
+    written,
   ] = await Promise.all([
     db
       .select({
@@ -399,6 +407,7 @@ export async function exportAccount(
       .where(eq(activity.actorId, userId))
       .orderBy(activity.createdAt, activity.id),
     likesForExport(db, userId),
+    reviewsForExport(db, userId),
   ]);
 
   const [earlier, items] = await Promise.all([
@@ -534,5 +543,6 @@ export async function exportAccount(
       createdAt: event.createdAt.toISOString(),
     })),
     likes: liked,
+    reviews: written,
   };
 }

@@ -71,6 +71,11 @@ export const users = pgTable(
     // ADR-035). Counted here, by person only, so changing address does not give a new budget.
     titleFetchesDay: date("title_fetches_day", { mode: "string" }),
     titleFetchesCount: smallint("title_fetches_count").notNull().default(0),
+    // How many new reviews the person wrote in the hour that started at `reviews_hour_start`
+    // (SAG-22, ADR-053). Kept here and not counted from `reviews`, so deleting a review and writing
+    // it again still counts.
+    reviewsHourStart: timestamp("reviews_hour_start", { withTimezone: true }),
+    reviewsHourCount: smallint("reviews_hour_count").notNull().default(0),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },

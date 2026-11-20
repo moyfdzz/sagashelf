@@ -171,7 +171,9 @@ describe("the design rules of ADR-033", () => {
       (path) =>
         path.startsWith("app/routes/") &&
         /export (async )?function action\b/.test(read(path)) &&
-        !/\b(checkWrite|readAdminWrite)\(/.test(read(path)),
+        // `likeAction` (server/social/like-action.ts) runs `checkWrite` first: the feed and a title
+        // page share it.
+        !/\b(checkWrite|readAdminWrite|likeAction)\(/.test(read(path)),
       signedInstead,
     );
     const byHand = checkRule(
