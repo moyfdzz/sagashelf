@@ -258,7 +258,7 @@ describe("saving an entry", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ status: "completed", progress: 4 }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({
       init: { headers: { "Cache-Control": "private, no-store" } },
@@ -297,7 +297,7 @@ describe("saving an entry", () => {
         progressUnit: "pages",
         progressTotal: 320,
       }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
   });
 
@@ -429,7 +429,7 @@ describe("watching a title again", () => {
         progress: 0,
         finishedAt: null,
       }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({ data: { ok: true, saved: "rewatch" } });
   });
@@ -457,7 +457,7 @@ describe("watching a title again", () => {
       "user-1",
       mediaId,
       expect.anything(),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({
       init: { status: 409 },

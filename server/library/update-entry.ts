@@ -88,13 +88,7 @@ export async function updateEntry(
     const result = await rule(current);
     if (!result.ok) return { outcome: "refused", error: result.error };
 
-    const saved = await saveEntry(
-      db,
-      userId,
-      mediaId,
-      result.next,
-      current.version,
-    );
+    const saved = await saveEntry(db, userId, mediaId, result.next, current);
     if (saved === "saved") return { outcome: "saved", next: result.next };
     if (saved === "missing") return { outcome: "missing" };
   }

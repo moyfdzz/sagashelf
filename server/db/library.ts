@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
+import { activityCtes } from "./activity";
 import { escapeLike } from "./escape-like";
+import { activityOf, rewatchActivity } from "../library/activity";
 import type { ProfileDb } from "./profile";
 import { libraryEntries, mediaItems } from "./schema";
 import { localizedTitleSql, sharedTitleSql } from "./titles";
@@ -166,44 +168,50 @@ const ownedBy = (userId: string, mediaId: string) =>
   and(eq(libraryEntries.userId, userId), eq(libraryEntries.mediaId, mediaId));
 
 /**
+ * The entry as the caller read it: its state and its `version`. A write takes the whole of it, not
+ * only the version, because the activity of the change (SAG-44) is worked out from what it was.
+ */
+export type ReadEntry = EntryState & { version: string };
+
+/**
  * Writes the entry of this person for this title, only if it still has the `version` it had when
  * it was read, in the same statement: a "+1" that read a public entry cannot bring it back after
  * the person made it private, and two "+1" never both write the same number. The version is not
- * optional on purpose: a caller that forgets it must not get an unconditional overwrite.
+ * optional on purpose: a caller that forgets it must not get an unconditional overwrite. The same
+ * statement writes the activity of the change (`activityOf`, ADR-054), so there is an event if and
+ * only if the entry was written.
  */
 export async function saveEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-  version: string,
+  read: ReadEntry,
 ): Promise<SaveResult> {
-  const isMine = ownedBy(userId, mediaId);
-  const updated = await db
-    .update(libraryEntries)
-    .set({
-      status: next.status,
-      progress: next.progress,
-      progressUnit: next.progressUnit,
-      progressTotal: next.progressTotal,
-      score: next.score,
-      startedAt: next.startedAt,
-      finishedAt: next.finishedAt,
-      notes: next.notes,
-      visibility: next.visibility,
-      // The clock of the database, to the microsecond, and never the same twice in a row: a
-      // JavaScript date has milliseconds only, so two writes in one could carry the same version.
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(and(isMine, sql`${versionSql} = ${version}`))
-    .returning({ id: libraryEntries.id });
-  if (updated.length > 0) return "saved";
+  const { rows } = (await db.execute(sql`
+    WITH written AS (
+      UPDATE library_entries
+      SET status = ${next.status}::library_status, progress = ${next.progress}::int,
+          progress_unit = ${next.progressUnit}::text, progress_total = ${next.progressTotal}::int,
+          score = ${next.score}::smallint, started_at = ${next.startedAt}::date,
+          finished_at = ${next.finishedAt}::date, notes = ${next.notes}::text,
+          visibility = ${next.visibility}::privacy_level,
+          -- The clock of the database, to the microsecond, and never the same twice in a row: a
+          -- JavaScript date has milliseconds only, so two writes in one could carry the same version.
+          updated_at = clock_timestamp()
+      WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
+        AND ${versionSql} = ${read.version}
+      RETURNING id, user_id, visibility
+    )${activityCtes(userId, mediaId, activityOf(read, next))}
+    SELECT count(*)::int AS written FROM written
+  `)) as RawRows;
+  if (Number(rows[0]?.written) > 0) return "saved";
   // Nothing matched: either the entry is gone or it changed. Only the answer depends on this
   // second read, never the write.
   const [still] = await db
     .select({ id: libraryEntries.id })
     .from(libraryEntries)
-    .where(isMine)
+    .where(ownedBy(userId, mediaId))
     .limit(1);
   return still ? "conflict" : "missing";
 }
@@ -241,15 +249,17 @@ export async function setEntryNotifyNewEpisodes(
  * dates, and writes the entry as the rules decided. One statement, so the run is saved if and only
  * if the entry restarts, and only if the entry still has the `version` it had when it was read
  * (`conflict` otherwise, nothing written). `missing`: the person has no entry for the title.
- * `refused`: the entry is not completed, or it already holds the most viewings it can.
+ * `refused`: the entry is not completed, or it already holds the most viewings it can. The same
+ * statement writes the `started` event of the rewatch (ADR-054).
  */
 export async function rewatchEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
   next: EntryState,
-  version: string,
+  read: ReadEntry,
 ): Promise<RewatchResult> {
+  const { version } = read;
   const { rows } = (await db.execute(sql`
     WITH archived AS (
       INSERT INTO library_viewings (entry_id, started_on, finished_on)
@@ -258,13 +268,16 @@ export async function rewatchEntry(
         AND ${versionSql} = ${version}
         AND (SELECT count(*) FROM library_viewings WHERE entry_id = library_entries.id) < ${maxViewings}
       RETURNING entry_id
-    )
-    UPDATE library_entries
-    SET status = ${next.status}::library_status, progress = ${next.progress},
-        started_at = ${next.startedAt}::date, finished_at = ${next.finishedAt}::date,
-        updated_at = clock_timestamp()
-    WHERE id IN (SELECT entry_id FROM archived)
-    RETURNING id
+    ),
+    written AS (
+      UPDATE library_entries
+      SET status = ${next.status}::library_status, progress = ${next.progress},
+          started_at = ${next.startedAt}::date, finished_at = ${next.finishedAt}::date,
+          updated_at = clock_timestamp()
+      WHERE id IN (SELECT entry_id FROM archived)
+      RETURNING id, user_id, visibility
+    )${activityCtes(userId, mediaId, [rewatchActivity])}
+    SELECT id FROM written
   `)) as RawRows;
   if (rows.length > 0) return "saved";
   // Nothing restarted: the entry changed since it was read, or the rules refuse it. Only the
@@ -280,22 +293,28 @@ export async function rewatchEntry(
   return now.version === version ? "refused" : "conflict";
 }
 
-/** Removes the entry of this person for this title. False when they had none. */
+/**
+ * Removes the entry of this person for this title, and in the same statement their activity of the
+ * title (SAG-44): the page warns that removing it deletes it, so it is deleted, not only hidden.
+ * False when they had none.
+ */
 export async function removeEntry(
   db: ProfileDb,
   userId: string,
   mediaId: string,
 ): Promise<boolean> {
-  const removed = await db
-    .delete(libraryEntries)
-    .where(
-      and(
-        eq(libraryEntries.userId, userId),
-        eq(libraryEntries.mediaId, mediaId),
-      ),
+  const { rows } = (await db.execute(sql`
+    WITH removed AS (
+      DELETE FROM library_entries
+      WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
+      RETURNING id
+    ),
+    events AS (
+      DELETE FROM activity WHERE actor_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
     )
-    .returning({ id: libraryEntries.id });
-  return removed.length > 0;
+    SELECT count(*)::int AS removed FROM removed
+  `)) as RawRows;
+  return Number(rows[0]?.removed) > 0;
 }
 
 export type LibraryRow = {

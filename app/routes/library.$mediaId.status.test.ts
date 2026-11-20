@@ -78,7 +78,7 @@ describe("changing the status of a library entry from the title page", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ status: "paused", progress: 2 }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({
       init: { headers: { "Cache-Control": "private, no-store" } },
@@ -94,7 +94,7 @@ describe("changing the status of a library entry from the title page", () => {
       "user-1",
       mediaId,
       expect.objectContaining({ status: "completed", progress: 4 }),
-      "2026-11-01 10:00:00.123456",
+      expect.objectContaining({ version: "2026-11-01 10:00:00.123456" }),
     );
     expect(result).toMatchObject({
       data: { ok: true, status: "completed", progress: 4 },

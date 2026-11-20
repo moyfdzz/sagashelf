@@ -125,7 +125,11 @@ export const activityType = pgEnum("activity_type", [
   "list_created",
 ]);
 
-/** What a person did, for the activity feed. Rows are never edited, so there is no `updated_at`. */
+/**
+ * What a person did, for the activity feed. An event is one per person, title, kind and day (SAG-44,
+ * ADR-054): a later change the same day edits that row and moves its `created_at`, so `created_at` is
+ * the last time it happened that day, not the first.
+ */
 export const activity = pgTable(
   "activity",
   {
