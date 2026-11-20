@@ -738,6 +738,8 @@ describe("a report of a review (ADR-057)", () => {
     body: "La reseña completa,\ncon su salto de línea y el final revelado.",
     spoiler: false,
     spoilerRequestedAt: null,
+    removed: false,
+    spoilerReport: true,
     media: { title: "Frieren", href: `/media/anime/frieren-${id}` },
     ...fields,
   });
@@ -863,6 +865,41 @@ describe("a report of a review (ADR-057)", () => {
       ),
     );
     expect(en).toContain("Remove bob&#x27;s review");
+  });
+
+  it("offers no ask for a spoiler mark on a report for another reason", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({
+          reports: [
+            reviewReport({
+              reason: "hate",
+              reasonKey: "hate",
+              review: review({ spoilerReport: false }),
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(intents(html)).not.toContain("ask_spoiler");
+    expect(html).toContain("Quitar la reseña");
+  });
+
+  it("says a review was already removed and offers nothing on it", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({
+          reports: [reviewReport({ review: review({ removed: true }) })],
+          confirm: { id, action: "remove_review" },
+        })}
+      />,
+    );
+
+    expect(html).toContain("Esta reseña ya se quitó por otro reporte.");
+    expect(html).not.toContain("Quitar la reseña");
+    expect(intents(html)).not.toContain("ask_spoiler");
+    expect(dialogOf(html)).toBe("");
   });
 
   it("does not open the modal for a review that is gone", async () => {

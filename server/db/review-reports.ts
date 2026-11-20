@@ -2,7 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
 import { text } from "./person";
-import { reviewShown, reviewsFrom } from "./reviews";
+import { reviewShown, reviewsFrom, spoilerAskWaitingSql } from "./reviews";
 import { sharedTitleSql } from "./titles";
 import type { MyReport } from "./reports";
 
@@ -110,6 +110,12 @@ const openReportsOfReview = sql`
   r.target_type = 'review' AND r.review_id IN (SELECT review_id FROM rep)
   AND r.status IN ('open', 'reviewing') AND r.cancelled_at IS NULL`;
 
+/**
+ * Only the open reports of that review for an unmarked spoiler: asking for the mark, or closing
+ * once it is there, never answers a report for another reason, such as hate (ADR-057).
+ */
+const openSpoilerReportsOfReview = sql`${openReportsOfReview} AND r.reason = 'spoiler'`;
+
 /** The payload of a notification to the author: the title and the reason, never who reported. */
 const authorPayload = sql`jsonb_build_object(
   'mediaId', media_id::text, 'title', title, 'reason', reason)`;
@@ -158,10 +164,11 @@ export async function removeReview(
 }
 
 /**
- * Asks the author of a review with no spoiler mark to add it, instead of removing it (ADR-057). The
- * review records when it was asked, every open report of it waits (`reviewing`) so the panel can
- * see later whether the author did, and the author gets a notification. Only once per review: a
- * second ask while it waits changes nothing.
+ * Asks the author of a review with no spoiler mark to add it, instead of removing it (ADR-057). Only
+ * from a report for an unmarked spoiler. The review records when it was asked, the open reports of
+ * it for a spoiler wait (`reviewing`) so the panel can see later whether the author did, and the
+ * author gets a notification. A second ask while one waits changes nothing; once that report is
+ * answered, a new report can be asked again.
  */
 export async function askSpoilerMark(
   db: SqlExecutor,
@@ -172,7 +179,7 @@ export async function askSpoilerMark(
     WITH rep AS (${reviewReport(
       actorId,
       reportId,
-      sql`NOT rv.spoiler AND rv.spoiler_requested_at IS NULL`,
+      sql`r.reason = 'spoiler' AND NOT rv.spoiler AND NOT ${spoilerAskWaitingSql("rv")}`,
     )}),
     asked AS (
       UPDATE reviews SET spoiler_requested_at = now(), updated_at = updated_at
@@ -181,12 +188,12 @@ export async function askSpoilerMark(
     ),
     waiting AS (
       UPDATE reports r SET status = 'reviewing', updated_at = now()
-      WHERE ${openReportsOfReview}
+      WHERE ${openSpoilerReportsOfReview}
       RETURNING r.id
     ),
     told AS (
       INSERT INTO notifications (user_id, type, payload, dedupe_key)
-      SELECT user_id, ${reviewSpoilerType}, ${authorPayload}, 'review_spoiler:' || review_id::text
+      SELECT user_id, ${reviewSpoilerType}, ${authorPayload}, 'review_spoiler:' || report_id::text
       FROM rep
       ON CONFLICT DO NOTHING
       RETURNING 1
@@ -204,8 +211,9 @@ export async function askSpoilerMark(
 }
 
 /**
- * Closes the reports of a review whose author marked it as a spoiler after being asked: every open
- * report of it is resolved and the audit log says so. Refused while the review still has no mark.
+ * Closes the reports for a spoiler of a review whose author marked it after being asked: those are
+ * resolved and the audit log says so; a report for another reason stays open. Refused while the
+ * review still has no mark, and when nobody asked.
  */
 export async function closeFixedReview(
   db: SqlExecutor,
@@ -213,11 +221,15 @@ export async function closeFixedReview(
   reportId: string,
 ): Promise<boolean> {
   const { rows } = await db.execute(sql`
-    WITH rep AS (${reviewReport(actorId, reportId, sql`rv.spoiler`)}),
+    WITH rep AS (${reviewReport(
+      actorId,
+      reportId,
+      sql`r.reason = 'spoiler' AND rv.spoiler AND ${spoilerAskWaitingSql("rv")}`,
+    )}),
     closed AS (
       UPDATE reports r SET status = 'resolved', resolved_by = ${actorId}::uuid,
                            resolved_at = now(), updated_at = now()
-      WHERE ${openReportsOfReview}
+      WHERE ${openSpoilerReportsOfReview}
       RETURNING r.id
     ),
     logged AS (

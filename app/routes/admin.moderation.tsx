@@ -131,6 +131,9 @@ export async function loader(args: Route.LoaderArgs) {
                 spoiler: report.review.spoiler,
                 spoilerRequestedAt:
                   report.review.spoilerRequestedAt?.getTime() ?? null,
+                removed: report.review.removed,
+                // Only a report for an unmarked spoiler can ask for the mark (ADR-057).
+                spoilerReport: report.reason === "spoiler",
                 media: {
                   title: report.review.media.title,
                   href: mediaPath(

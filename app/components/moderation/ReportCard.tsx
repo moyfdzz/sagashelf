@@ -89,7 +89,7 @@ export function ReportCard({
     confirm === "remove"
       ? actionable
       : confirm === "remove_review"
-        ? Boolean(report.review) && !report.protected
+        ? Boolean(report.review) && !report.review?.removed && !report.protected
         : confirm !== null && !report.protected && report.account !== "banned";
 
   return (

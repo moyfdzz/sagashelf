@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import { hidingReason } from "../account/report-schema";
 import type { SqlExecutor } from "./clerk-sync";
+import { spoilerAskWaitingSql } from "./reviews";
 import { sharedTitleSql } from "./titles";
 
 /** How many rows each list of the panel shows. The oldest report comes first, minors before all. */
@@ -17,8 +18,10 @@ export const nearLimitFromScore = 0.3;
 export type QueueReview = {
   body: string;
   spoiler: boolean;
-  /** When the author was asked to mark it as a spoiler, or null. */
+  /** When the author was asked to mark it as a spoiler, while that ask waits; null otherwise. */
   spoilerRequestedAt: Date | null;
+  /** Already removed: a report that arrived while it was being removed (ADR-057). */
+  removed: boolean;
   media: { id: string; type: string; title: string };
 };
 
@@ -65,11 +68,12 @@ export async function listOpenReports(
            u.moderation_status AS account,
            (u.role = 'admin' OR u.id = ${actorId}::uuid) AS protected,
            rv.id AS review_id, rv.body AS review_body, rv.spoiler AS review_spoiler,
-           rv.spoiler_requested_at, m.id AS media_id, m.type::text AS media_type,
+           CASE WHEN ${spoilerAskWaitingSql("rv")} THEN rv.spoiler_requested_at END
+             AS spoiler_requested_at,
+           rv.removed_at IS NOT NULL AS review_removed, m.id AS media_id, m.type::text AS media_type,
            m.title AS media_title
     FROM reports r
     JOIN users u ON u.id = r.target_id
-    -- A review that was removed has no open report: removing it closes them all.
     LEFT JOIN reviews rv ON rv.id = r.review_id AND rv.user_id = r.target_id
     -- A title a person made for themselves is never reviewed in public, so it is never here.
     LEFT JOIN media_items m ON m.id = rv.media_id AND ${sharedTitleSql("m")}
@@ -108,6 +112,7 @@ function queueReview(row: Record<string, unknown>): QueueReview | null {
       row.spoiler_requested_at === null
         ? null
         : new Date(String(row.spoiler_requested_at)),
+    removed: row.review_removed === true,
     media: {
       id: String(row.media_id),
       type: String(row.media_type),

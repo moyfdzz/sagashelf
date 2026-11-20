@@ -257,6 +257,7 @@ describe("the export", () => {
         spoiler: true,
         visibility: "friends",
         removed: false,
+        spoilerRequestedAt: null,
         body: expect.stringContaining("sustancia") as unknown,
       }),
     ]);

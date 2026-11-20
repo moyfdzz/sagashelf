@@ -12,8 +12,12 @@ import { dangerButtonClass, linkClass, secondaryButtonClass } from "~/lib/ui";
 export type PanelReview = {
   body: string;
   spoiler: boolean;
-  /** When the author was asked to mark it as a spoiler, or null. */
+  /** When the author was asked to mark it as a spoiler, while that ask waits; null otherwise. */
   spoilerRequestedAt: number | null;
+  /** Already removed: a report that arrived while it was being removed. */
+  removed: boolean;
+  /** The report is for an unmarked spoiler, the only one that can ask for the mark. */
+  spoilerReport: boolean;
   media: { title: string; href: string };
 };
 
@@ -75,7 +79,12 @@ export function ReviewReport({
         {review.body}
       </blockquote>
 
-      {isProtected ? null : (
+      {review.removed ? (
+        <p className="text-sm font-semibold">
+          {t("admin.moderation.reviews.alreadyRemoved")}
+        </p>
+      ) : null}
+      {isProtected || review.removed ? null : (
         <div className="flex flex-wrap gap-3">
           <Link
             to={`${moderationPage}?confirm=${reportId}&do=remove_review`}
@@ -84,7 +93,7 @@ export function ReviewReport({
           >
             {t("admin.moderation.reviews.remove")}
           </Link>
-          {!review.spoiler && !asked ? (
+          {review.spoilerReport && !review.spoiler && !asked ? (
             <ActionButton
               intent="ask_spoiler"
               fields={{ id: reportId }}
@@ -93,7 +102,7 @@ export function ReviewReport({
               {t("admin.moderation.reviews.askSpoiler")}
             </ActionButton>
           ) : null}
-          {review.spoiler && asked ? (
+          {review.spoilerReport && review.spoiler && asked ? (
             <ActionButton
               intent="close_fixed"
               fields={{ id: reportId }}

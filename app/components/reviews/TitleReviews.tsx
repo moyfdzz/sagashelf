@@ -121,11 +121,17 @@ export function TitleReviews({
         {t("reviews.title")}
       </h2>
 
-      {reviews.write === "write" || reviews.write === "edit" ? (
+      {reviews.write === "write" ||
+      reviews.write === "edit" ||
+      reviews.write === "removed" ? (
         <p className="mt-2">
           {/* A plain link: the form is a session page with its own security policy (ADR-018). */}
           <a href={`/library/${mediaId}/review`} className={linkClass}>
-            {reviews.write === "write" ? t("reviews.write") : t("reviews.edit")}
+            {reviews.write === "write"
+              ? t("reviews.write")
+              : reviews.write === "edit"
+                ? t("reviews.edit")
+                : t("reviews.removed.manage")}
           </a>
         </p>
       ) : null}

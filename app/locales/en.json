@@ -1524,7 +1524,8 @@
         "askedDone": "Asked to mark it as a spoiler on {{time}}; done.",
         "remove": "Remove the review",
         "askSpoiler": "Ask to mark it as a spoiler",
-        "closeFixed": "Marked now: close"
+        "closeFixed": "Marked now: close",
+        "alreadyRemoved": "This review was already removed for another report. Dismiss this one."
       }
     },
     "sagas": {
@@ -2042,7 +2043,8 @@
     "report": "Report",
     "removed": {
       "note": "A moderator removed this review: only you can see it.",
-      "form": "A moderator removed this review because it breaks the community rules. Only you can see it and it can no longer be edited; you can delete it."
+      "form": "A moderator removed this review because it breaks the community rules. Only you can see it and it can no longer be edited; you can delete it.",
+      "manage": "See or delete your removed review"
     },
     "moderation": {
       "removed": "A moderator removed your review of {{title}}",

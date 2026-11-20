@@ -293,6 +293,8 @@ describe("removing a review", () => {
     );
     expect(after.rows).toEqual(before.rows);
     expect(await auditActions()).toEqual(["review.removed review"]);
+    const [listed] = await listOpenReports(db, admin.id);
+    expect(listed?.review?.removed).toBe(true);
   });
 
   it("refuses a report that is not of a review", async () => {
@@ -357,6 +359,67 @@ describe("asking the author to mark a spoiler", () => {
       "review.spoiler_requested review",
       "review.spoiler_fixed review",
     ]);
+  });
+
+  it("leaves a report for another reason alone, and is refused from one", async () => {
+    const { ana, bea, admin, media, reviewId } = await scene();
+    const carl = await person();
+    await reportReview(bea, ana, reviewId);
+    await reportReview(carl, ana, reviewId, "harassment");
+    const carlReport = await reportIdOf(carl, reviewId);
+
+    expect(await askSpoilerMark(db, admin.id, carlReport)).toBe(false);
+    expect(
+      await askSpoilerMark(db, admin.id, await reportIdOf(bea, reviewId)),
+    ).toBe(true);
+    expect(await statusesOf(reviewId)).toEqual(["reviewing", "open"]);
+
+    await saveReview(
+      db,
+      ana.id,
+      media,
+      await input(`${ana.username} ${media}`, { spoiler: true }),
+      randomUUID(),
+    );
+    expect(await closeFixedReview(db, admin.id, carlReport)).toBe(false);
+    expect(
+      await closeFixedReview(db, admin.id, await reportIdOf(bea, reviewId)),
+    ).toBe(true);
+    expect(await statusesOf(reviewId)).toEqual(["resolved", "open"]);
+  });
+
+  it("ends when the waiting report is answered, and a new report can ask again", async () => {
+    const { ana, bea, admin, media, reviewId } = await scene();
+    const carl = await person();
+    await reportReview(bea, ana, reviewId);
+    const first = await reportIdOf(bea, reviewId);
+    await askSpoilerMark(db, admin.id, first);
+    await dismissReport(db, admin.id, first);
+
+    expect((await getOwnReview(db, ana.id, media))?.spoilerAsked).toBe(false);
+    await reportReview(carl, ana, reviewId);
+    const second = await reportIdOf(carl, reviewId);
+    const [listed] = await listOpenReports(db, admin.id);
+    expect(listed?.review?.spoilerRequestedAt).toBeNull();
+
+    expect(await askSpoilerMark(db, admin.id, second)).toBe(true);
+    expect((await getOwnReview(db, ana.id, media))?.spoilerAsked).toBe(true);
+    expect((await notificationsOf(ana)).map((one) => one.type)).toEqual([
+      "moderation.review_spoiler",
+      "moderation.review_spoiler",
+    ]);
+  });
+
+  it("closes nothing when nobody asked, even with the mark", async () => {
+    const { ana, bea, admin } = await scene();
+    const media = await titleOf(ana);
+    await review(ana, media, { spoiler: true });
+    const reviewId = await reviewIdOf(ana, media);
+    await reportReview(bea, ana, reviewId);
+
+    expect(
+      await closeFixedReview(db, admin.id, await reportIdOf(bea, reviewId)),
+    ).toBe(false);
   });
 
   it("is refused for a review already marked as a spoiler", async () => {

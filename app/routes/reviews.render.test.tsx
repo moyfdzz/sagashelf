@@ -336,10 +336,17 @@ describe("reporting a review and a review removed by a moderator (ADR-057)", () 
     expect(own).not.toContain(reportHref);
   });
 
-  it("tells the author on the title page that a moderator removed it", async () => {
+  it("tells the author on the title page that a moderator removed it, and offers to see or delete it", async () => {
     const html = await render(
-      titleReviews(block({ items: [item({ mine: true, removed: true })] })),
+      titleReviews(
+        block({
+          write: "removed",
+          items: [item({ mine: true, removed: true })],
+        }),
+      ),
     );
+    expect(html).toContain("Ver o borrar tu reseña quitada");
+    expect(html).not.toContain("Editar tu reseña");
     expect(html).toContain("Un moderador quitó esta reseña: solo tú la ves.");
     expect(await render(titleReviews(block()))).not.toContain(
       "Un moderador quitó",

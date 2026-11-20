@@ -1524,7 +1524,8 @@
         "askedDone": "Se pidió marcarla como spoiler el {{time}} y ya lo hizo.",
         "remove": "Quitar la reseña",
         "askSpoiler": "Pedir que la marque como spoiler",
-        "closeFixed": "Ya la marcó: cerrar"
+        "closeFixed": "Ya la marcó: cerrar",
+        "alreadyRemoved": "Esta reseña ya se quitó por otro reporte. Descarta este."
       }
     },
     "sagas": {
@@ -2042,7 +2043,8 @@
     "report": "Reportar",
     "removed": {
       "note": "Un moderador quitó esta reseña: solo tú la ves.",
-      "form": "Un moderador quitó esta reseña porque no cumple las reglas de la comunidad. Solo tú la ves y ya no se puede editar; puedes borrarla."
+      "form": "Un moderador quitó esta reseña porque no cumple las reglas de la comunidad. Solo tú la ves y ya no se puede editar; puedes borrarla.",
+      "manage": "Ver o borrar tu reseña quitada"
     },
     "moderation": {
       "removed": "Un moderador quitó tu reseña de {{title}}",

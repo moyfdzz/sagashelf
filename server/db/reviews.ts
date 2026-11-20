@@ -37,6 +37,18 @@ export const isReviewable = (status: string) =>
  */
 export const reviewLevelSql = sql`(CASE WHEN u.privacy = 'private' THEN 'private'::privacy_level ELSE r.visibility END)`;
 
+/**
+ * A moderator asked the author of the review `review` (an alias) to mark it as a spoiler and the ask
+ * still waits: a report of it for an unmarked spoiler is `reviewing` (ADR-057). Written once, so the
+ * form of the author, the moderation panel and the actions agree; an ask ends when that report is
+ * answered in any way, so the author is never left with a stale notice.
+ */
+export const spoilerAskWaitingSql = (review: string): SQL => sql`EXISTS (
+  SELECT 1 FROM reports sa
+  WHERE sa.target_type = 'review' AND sa.target_id = ${sql.raw(review)}.user_id
+    AND sa.review_id = ${sql.raw(review)}.id
+    AND sa.reason = 'spoiler' AND sa.status = 'reviewing' AND sa.cancelled_at IS NULL)`;
+
 /** The account of `u` is too new for others to see its reviews yet (ADR-053). */
 export const reviewHeldSql = sql`(u.created_at > now() - make_interval(hours => ${newAccountHours}))`;
 
@@ -200,9 +212,10 @@ export async function getOwnReview(
   mediaId: string,
 ): Promise<OwnReview | null> {
   const { rows } = await db.execute(sql`
-    SELECT body, spoiler, visibility::text AS visibility, removed_at IS NOT NULL AS removed,
-           (spoiler_requested_at IS NOT NULL AND NOT spoiler) AS spoiler_asked
-    FROM reviews WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
+    SELECT rv.body, rv.spoiler, rv.visibility::text AS visibility,
+           rv.removed_at IS NOT NULL AS removed,
+           (NOT rv.spoiler AND rv.removed_at IS NULL AND ${spoilerAskWaitingSql("rv")}) AS spoiler_asked
+    FROM reviews rv WHERE rv.user_id = ${userId}::uuid AND rv.media_id = ${mediaId}::uuid
   `);
   const [row] = rows;
   if (!row) return null;
@@ -388,6 +401,8 @@ export type ExportedReview = {
   spoiler: boolean;
   visibility: string;
   removed: boolean;
+  /** When a moderator last asked to mark it as a spoiler (ADR-057), or null. */
+  spoilerRequestedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -399,7 +414,8 @@ export async function reviewsForExport(
 ): Promise<ExportedReview[]> {
   const { rows } = (await db.execute(sql`
     SELECT m.title, r.body, r.spoiler, r.visibility::text AS visibility,
-           r.removed_at IS NOT NULL AS removed, r.created_at, r.updated_at
+           r.removed_at IS NOT NULL AS removed, r.spoiler_requested_at,
+           r.created_at, r.updated_at
     FROM reviews r JOIN media_items m ON m.id = r.media_id
     WHERE r.user_id = ${userId}::uuid
     ORDER BY r.created_at, r.id
@@ -410,6 +426,10 @@ export async function reviewsForExport(
     spoiler: row.spoiler === true,
     visibility: String(row.visibility),
     removed: row.removed === true,
+    spoilerRequestedAt:
+      row.spoiler_requested_at === null
+        ? null
+        : new Date(row.spoiler_requested_at as string | Date).toISOString(),
     createdAt: new Date(row.created_at as string | Date).toISOString(),
     updatedAt: new Date(row.updated_at as string | Date).toISOString(),
   }));
