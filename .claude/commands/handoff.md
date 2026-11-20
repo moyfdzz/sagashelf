@@ -14,4 +14,5 @@ Rewrite `CLAUDE.local.md` (ignored by git) with the state of the project right n
 3. Leave out whatever is in `docs/agent-notes.md`, in `CLAUDE.md` or in the tickets. Point to a ticket instead of copying it.
 4. **Never write a secret**: no connection string, key, token, passphrase, webhook address or email. Names only.
 5. If this session taught a lesson that will still be true in a month, do **not** put it in `CLAUDE.local.md`: tell me, and propose the line for `docs/agent-notes.md` or the rule of its area in `.claude/rules/` (a change to that file goes in a PR with a ticket).
-6. Tell me, in Spanish and in two or three lines, what the next session will find, and remind me that I can start it with "continúa".
+6. If the file `GUIA-DEL-PROYECTO.local.md` exists (the owner's study guide, in Spanish, ignored by git), update the sections this session changed: a new decision or ADR, the architecture, the stack, a new piece of technical debt, or the numbers of section 2 (count them, do not guess). Change the date at the top. Skip it when nothing of that changed, and say which sections you touched.
+7. Tell me, in Spanish and in two or three lines, what the next session will find, and remind me that I can start it with "continúa".
