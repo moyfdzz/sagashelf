@@ -548,12 +548,13 @@
       "favorites": "Site favorites: entries with public visibility from people with a public profile count, without a name, in the Trending lists, and a title only appears when at least 3 people share it. If you change an entry's visibility, your profile level or delete your account, you stop counting within an hour.",
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "activity": "Activity: when you start, progress in, finish, drop or score a title, we keep that event (what happened, the title, your progress or the score, and the date) for the feed of the people who follow you. It can be seen by whoever the stricter of the entry's level and your profile's level allows, and if you later make either one more private, it stops showing. Your notes are never part of it, and what you import from a file creates no activity. It is deleted when you remove the title from your library or delete your account, and it is in your data export.",
-      "likes": "Likes: when you like the activity of someone you follow, we keep that you did and when. Others only see how many likes an event has, never who gave them. You can take a like back at any time; it is deleted if that person removes the title or deletes their account, and when you delete yours. It is in your data export (the kind of event, the title and the date, without the other person's name) and is never imported.",
+      "likes": "Likes: when you like the activity of someone you follow or a review, we keep that you did and when. Others only see how many likes it has, never who gave them. You can take a like back at any time; it is deleted if that person removes the title, deletes the review or deletes their account, and when you delete yours. It is in your data export (the kind of event, the title and the date, without the other person's name) and is never imported.",
       "contact": "Contact messages: what you write on the contact page (the kind of message, the text and, if you were not signed in and want a reply, the email you leave) is kept to handle it, is seen only by whoever runs the site and is deleted after 90 days. If you sent it with your account, it is also deleted when you delete your account and is in your data export.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
       "analytics": "Usage statistics: we measure how the site is used with our own system, with no cookies and without storing your IP address or your account. The details are in <stats>“Usage statistics”</stats>.",
       "social": "Relationships: whom you follow, whom you blocked and whom you muted, and the follow requests you send and receive. The person you mute does not know.",
-      "reports": "Reports and pictures: the reports you send, and for each picture you try to upload, the date, a fingerprint of the file (not the image), the result of the check and your IP address. We do not tell the person you report that it was you."
+      "reports": "Reports and pictures: the reports you send, and for each picture you try to upload, the date, a fingerprint of the file (not the image), the result of the check and your IP address. We do not tell the person you report that it was you.",
+      "reviews": "Reviews: when you write a review of a title, we keep the text, whether you marked it as having spoilers, who may see it and when you wrote and edited it. Each review has its own level (everyone, friends only or only you); if your profile has Total privacy, only you see it. The reviews of an account less than 24 hours old are seen only by their author until the account is a day old. To detect repeated texts we keep a fingerprint of the text (a summary that cannot be read back). It is deleted when you delete it, when you remove the title from your library or when you delete your account, and it is in your data export."
     },
     "stats": {
       "title": "Usage statistics",
@@ -854,7 +855,7 @@
       },
       "remove": {
         "summary": "Remove from my library",
-        "warning": "Your status, progress, score, notes and activity for this title are deleted. This cannot be undone.",
+        "warning": "Your status, progress, score, notes, review (with its likes) and activity for this title are deleted. This cannot be undone.",
         "confirm": "Remove for good"
       },
       "finishedAtHint": "It can only be set when the status is Completed.",
@@ -872,7 +873,8 @@
       },
       "rewatched_read": "You started again from the beginning.",
       "rewatch_read": "Read it again",
-      "rewatchHint_read": "Save this run in your history and start again from the beginning."
+      "rewatchHint_read": "Save this run in your history and start again from the beginning.",
+      "review": "Your review of this title"
     },
     "errors": {
       "summary": "Check the marked fields.",
@@ -1919,7 +1921,8 @@
       "progressed_chapters_one": "On chapter {{count}} of",
       "progressed_chapters_other": "On chapter {{count}} of",
       "progressed_volumes_one": "On volume {{count}} of",
-      "progressed_volumes_other": "On volume {{count}} of"
+      "progressed_volumes_other": "On volume {{count}} of",
+      "reviewed": "reviewed"
     },
     "level": {
       "friends": "Friends only",
@@ -1934,6 +1937,71 @@
     "errors": {
       "likeFailed": "Your like could not be saved. Try again.",
       "rateLimited": "You liked a lot in a row. Wait a minute and try again."
+    },
+    "readReview": "Read the whole review"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "write": "Write a review",
+    "edit": "Edit your review",
+    "startFirst": "To write a review, first mark this title as in progress, paused, completed or dropped in your library.",
+    "orderLabel": "Order of the reviews",
+    "relevant": "Most relevant",
+    "recent": "Newest",
+    "empty": "There are no reviews you can see yet.",
+    "noMore": "There are no more reviews.",
+    "pagesLabel": "Pages of reviews",
+    "previous": "Previous reviews",
+    "more": "See more reviews",
+    "byLabel": "Review by {{name}}",
+    "yours": "Your review",
+    "edited": "(edited)",
+    "score": "Score: {{score}}/10",
+    "seeMore": "See more",
+    "ellipsis": "…",
+    "spoilerWarning": "This review contains spoilers.",
+    "showSpoiler": "Show it anyway",
+    "form": {
+      "pageTitle": "Review of {{title}}",
+      "back": "Back to the title",
+      "heading": "Write your review of {{title}}",
+      "editHeading": "Edit your review of {{title}}",
+      "toEntry": "Go to this title in your library",
+      "privateProfile": "Your profile has Total privacy: while it stays that way, only you will see this review.",
+      "held": "Your account is new: other people will see your review once your account is 24 hours old.",
+      "body": "Your review",
+      "bodyHint": "Between {{min}} and {{max}} characters, plain text and no links.",
+      "count_one": "{{count}} of {{max}} characters",
+      "count_other": "{{count}} of {{max}} characters",
+      "spoiler": "Contains spoilers",
+      "visibility": "Who can see it",
+      "levels": {
+        "public": "Everyone",
+        "friends": "Friends only",
+        "private": "Only me"
+      },
+      "entryStricter": "This title is more private in your library: a more open review shows that you have it.",
+      "score": "Score",
+      "scoreHint": "It is the same score as in your library.",
+      "noScore": "No score",
+      "publish": "Publish review",
+      "saveEdit": "Save changes",
+      "delete": {
+        "summary": "Delete my review",
+        "warning": "Your review and its likes are deleted. This cannot be undone.",
+        "confirm": "Delete for good"
+      }
+    },
+    "errors": {
+      "invalid": "We could not read the form. Reload the page and try again.",
+      "too_short": "The review is too short: it needs at least {{min}} characters.",
+      "too_long": "The review is too long: the most is {{max}} characters.",
+      "link": "Remove the links and web addresses: a review cannot have them.",
+      "duplicate": "You already published this same text in the review of another title. Write a review of its own for this one.",
+      "rate_limited": "You wrote many reviews in a short time. Wait a while and try again.",
+      "not_started": "To write a review, first mark the title as in progress, paused, completed or dropped.",
+      "conflict": "Your review changed in another tab. Reload the page and try again.",
+      "score_conflict": "Your review was saved, but the score was not, because the title changed in another tab. Check it in your library."
     }
   }
 }

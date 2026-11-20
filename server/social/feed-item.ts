@@ -5,6 +5,7 @@ import { personCard } from "../db/person";
 import { imageSrc } from "../images/sources";
 import { progressUnits } from "../library/schema";
 import { isMediaKind, mediaPath } from "../media/slug";
+import { splitExcerpt } from "../reviews/rules";
 
 /**
  * One event of the feed as the page draws it (SAG-22): what happened, who did it, the title and its
@@ -26,7 +27,13 @@ export type FeedItem = {
   id: string;
   /** `restarted` is a rewatch: a `started` event with `rewatch` set (ADR-054). */
   kind:
-    "started" | "restarted" | "progressed" | "completed" | "dropped" | "rated";
+    | "started"
+    | "restarted"
+    | "progressed"
+    | "completed"
+    | "dropped"
+    | "rated"
+    | "reviewed";
   progress: { count: number; unit: (typeof eventUnits)[number] } | null;
   score: number | null;
   createdAt: string;
@@ -36,9 +43,14 @@ export type FeedItem = {
   media: { href: string; title: string; poster: string | null };
   likes: number;
   liked: boolean;
+  /**
+   * A review: its start, cut at a word, whether it goes on, and its spoiler mark. The page hides
+   * the start of a review with spoilers behind a warning.
+   */
+  review: { excerpt: string; more: boolean; spoiler: boolean } | null;
 };
 
-type Details = Pick<FeedItem, "kind" | "progress" | "score">;
+type Details = Pick<FeedItem, "kind" | "progress" | "score" | "review">;
 
 function detailsOf(event: FeedEvent): Details | null {
   switch (event.type) {
@@ -49,6 +61,7 @@ function detailsOf(event: FeedEvent): Details | null {
         kind: parsed.data.rewatch ? "restarted" : "started",
         progress: null,
         score: null,
+        review: null,
       };
     }
     case "progressed": {
@@ -58,16 +71,36 @@ function detailsOf(event: FeedEvent): Details | null {
         kind: "progressed",
         progress: { count: parsed.data.progress, unit: parsed.data.unit },
         score: null,
+        review: null,
       };
     }
     case "rated": {
       const parsed = rated.safeParse(event.payload);
       if (!parsed.success) return null;
-      return { kind: "rated", progress: null, score: parsed.data.score };
+      return {
+        kind: "rated",
+        progress: null,
+        score: parsed.data.score,
+        review: null,
+      };
     }
     case "completed":
     case "dropped":
-      return { kind: event.type, progress: null, score: null };
+      return { kind: event.type, progress: null, score: null, review: null };
+    case "reviewed": {
+      if (!event.review) return null;
+      const { excerpt, rest } = splitExcerpt(event.review.start);
+      return {
+        kind: "reviewed",
+        progress: null,
+        score: null,
+        review: {
+          excerpt,
+          more: event.review.more || rest !== "",
+          spoiler: event.review.spoiler,
+        },
+      };
+    }
   }
 }
 

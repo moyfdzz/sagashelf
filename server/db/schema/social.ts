@@ -123,6 +123,8 @@ export const activityType = pgEnum("activity_type", [
   "dropped",
   "rated",
   "list_created",
+  // A new review of a title (SAG-22, ADR-053). Its text is read from the review, never copied here.
+  "reviewed",
 ]);
 
 /**

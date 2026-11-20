@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Link, useFetcher } from "react-router";
+import { Link } from "react-router";
 
 import { Avatar } from "~/components/Avatar";
+import { LikeButton } from "~/components/LikeButton";
+import { SpoilerGuard } from "~/components/reviews/SpoilerGuard";
 import { useFormatters } from "~/lib/format";
-import { linkClass, smallButtonClass } from "~/lib/ui";
-import type { action, FeedItem } from "~/routes/social";
+import { linkClass } from "~/lib/ui";
+import type { FeedItem } from "~/routes/social";
 
 /** What the event says happened, in the language of the page. */
 function useWhat(item: FeedItem): string {
@@ -41,37 +43,21 @@ function useWhat(item: FeedItem): string {
       return t("feed.kinds.completed");
     case "dropped":
       return t("feed.kinds.dropped");
+    case "reviewed":
+      return t("feed.kinds.reviewed");
   }
 }
 
 /**
- * One event of the feed (SAG-22): who, what and when, the title, and its likes. The like is a form
- * that works without JavaScript; with it, the count changes at once and the answer corrects it.
+ * One event of the feed (SAG-22): who, what and when, the title, the start of a review, and its
+ * likes.
  */
 export function FeedEntry({ item }: { item: FeedItem }) {
   const { t } = useTranslation();
   const { formatRelativeTime } = useFormatters();
-  const fetcher = useFetcher<typeof action>();
   const what = useWhat(item);
   const own = item.actor.displayName ?? item.actor.username;
   const name = item.mine ? t("feed.you") : own;
-
-  // What the server last said, then what is on its way. Taking a like back from an event that is
-  // hidden now answers no count (null): the page then counts the others it already knew.
-  const answered = fetcher.data?.ok ? fetcher.data : null;
-  const known = answered
-    ? {
-        liked: answered.liked,
-        likes: answered.likes ?? Math.max(0, item.likes - (item.liked ? 1 : 0)),
-      }
-    : { liked: item.liked, likes: item.likes };
-  const sending = fetcher.formData?.get("liked");
-  const liked = sending ? sending === "true" : known.liked;
-  const likes = known.likes + (liked ? 1 : 0) - (known.liked ? 1 : 0);
-  const refused =
-    fetcher.state === "idle" && fetcher.data && !fetcher.data.ok
-      ? fetcher.data.error
-      : null;
 
   return (
     <li className="border-border bg-surface-raised rounded-md border p-3">
@@ -106,45 +92,30 @@ export function FeedEntry({ item }: { item: FeedItem }) {
               {item.media.title}
             </Link>
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            {item.mine ? null : (
-              <fetcher.Form
-                method="post"
-                action="/social"
-                // A second press while the first is on its way would send the opposite, and the
-                // server could apply the two in either order.
-                onSubmit={(event) => {
-                  if (fetcher.state !== "idle") event.preventDefault();
-                }}
-              >
-                <input type="hidden" name="activityId" value={item.id} />
-                <input
-                  type="hidden"
-                  name="liked"
-                  value={liked ? "false" : "true"}
-                />
-                <button
-                  type="submit"
-                  aria-pressed={liked}
-                  className={`${smallButtonClass} aria-pressed:bg-accent aria-pressed:text-accent-fg`}
-                >
-                  {t("feed.like")}
-                </button>
-              </fetcher.Form>
-            )}
-            {likes > 0 || !item.mine ? (
-              <span className="text-fg-muted text-sm">
-                {t("feed.likes", { count: likes })}
-              </span>
-            ) : null}
-          </div>
-          {refused ? (
-            <p role="status" className="text-danger-fg mt-2 text-sm">
-              {refused === "rate_limited"
-                ? t("feed.errors.rateLimited")
-                : t("feed.errors.likeFailed")}
+          {item.review ? (
+            <SpoilerGuard spoiler={item.review.spoiler}>
+              <p className="mt-2 break-words whitespace-pre-line">
+                {item.review.excerpt}
+                {item.review.more ? t("reviews.ellipsis") : null}
+              </p>
+            </SpoilerGuard>
+          ) : null}
+          {item.review?.more ? (
+            <p className="mt-1">
+              <Link to={`${item.media.href}#reviews`} className={linkClass}>
+                {t("feed.readReview")}
+              </Link>
             </p>
           ) : null}
+          <div className="mt-2">
+            <LikeButton
+              activityId={item.id}
+              likes={item.likes}
+              liked={item.liked}
+              mine={item.mine}
+              action="/social"
+            />
+          </div>
         </div>
         {item.media.poster ? (
           // The title is written next to it, so a screen reader skips the picture.

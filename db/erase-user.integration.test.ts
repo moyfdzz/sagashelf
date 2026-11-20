@@ -13,6 +13,7 @@ import {
   libraryEntries,
   libraryViewings,
   likes,
+  reviews,
   listItems,
   lists,
   mediaItems,
@@ -56,6 +57,7 @@ const exportedColumns: Readonly<
   "contact_messages.user_id": (data) => data.contactMessages,
   "activity.actor_id": (data) => data.activity,
   "likes.user_id": (data) => data.likes,
+  "reviews.user_id": (data) => data.reviews,
 };
 
 /** The erased columns that the export leaves out, with the reason. */
@@ -165,9 +167,24 @@ async function personWithEverything() {
     .values({ actorId: bob.id, type: "rated", mediaId: movie.id })
     .returning();
   if (!bobsPost) throw new Error("The post was not created");
+  // A review with its event and a like of Bob on it (ADR-053, ADR-056): all go with the account.
+  const [reviewed] = await db
+    .insert(activity)
+    .values({ actorId: ana.id, type: "reviewed", mediaId: movie.id })
+    .returning();
+  if (!reviewed) throw new Error("The review event was not created");
+  await db.insert(reviews).values({
+    userId: ana.id,
+    mediaId: movie.id,
+    body: "An honest review of the movie. ".repeat(20),
+    fingerprint: "a".repeat(64),
+    visibility: "public",
+    activityId: reviewed.id,
+  });
   await db.insert(likes).values([
     { userId: bob.id, activityId: post.id },
     { userId: ana.id, activityId: bobsPost.id },
+    { userId: bob.id, activityId: reviewed.id },
   ]);
   // What the inbox told them (SAG-102): one read and one unread, and one of the other person.
   await db.insert(notifications).values([
@@ -217,6 +234,7 @@ describe("eraseAccount", () => {
       mutes,
       followRequests,
       likes,
+      reviews,
     ]) {
       expect(await db.select().from(table), String(table)).toHaveLength(0);
     }

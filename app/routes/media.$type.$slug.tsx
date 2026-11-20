@@ -1,13 +1,18 @@
-import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { data, Link, redirect } from "react-router";
+import {
+  data,
+  Link,
+  redirect,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { externalLinkClass, linkClass, textLinkClass } from "~/lib/ui";
 import type { Route } from "./+types/media.$type.$slug";
-import { BackLink } from "~/components/BackLink";
 import { AddToList } from "~/components/lists/AddToList";
+import { TitleReviews } from "~/components/reviews/TitleReviews";
 import { TitleLibrary } from "~/components/TitleLibrary";
 import { TvmazeLink } from "~/components/TvmazeLink";
+import { WayBack } from "~/components/WayBack";
 import { WikidataLink } from "~/components/WikidataLink";
 import { useFormatters } from "~/lib/format";
 import { getInstance, getLocale } from "~/middleware/i18next";
@@ -29,6 +34,13 @@ import { searchBackPath } from "~server/search/path";
 import { getDb, getMediaProviders, runInBackground } from "~server/runtime-env";
 import { pickTitle } from "~server/db/titles";
 import { privateRouteHeaders } from "~server/http/cache";
+import { titleReviews } from "~server/reviews/title-reviews";
+import { likeAction } from "~server/social/like-action";
+
+export type {
+  ReviewItem,
+  TitleReviews as TitleReviewsData,
+} from "~server/reviews/title-reviews";
 
 /** How long a first visit in a new language waits for the provider before showing what it holds. */
 const firstVisitWaitMs = 2500;
@@ -200,6 +212,15 @@ export async function loader(args: Route.LoaderArgs) {
         })
       : null;
 
+  // The reviews the viewer may see, and whether they may write one (SAG-22).
+  const reviews = await titleReviews(
+    db,
+    user,
+    entry?.status ?? null,
+    detail.id,
+    url.searchParams,
+  );
+
   const { t } = getInstance(context);
   const description = shortDescription(synopsis);
   const poster = imageSrc(detail.imageUrl, "w342");
@@ -214,8 +235,10 @@ export async function loader(args: Route.LoaderArgs) {
     backToSearch: searchBackPath(request.headers.get("Referer"), url.origin),
     // The entry the person came from (its "View the title page" link), when they came from one.
     backToEntry: entryBackPath(request.headers.get("Referer"), url.origin),
+    path,
     library,
     lists,
+    reviews,
     type: detail.type,
     title,
     pageTitle: t("app.pageTitle", { title }),
@@ -253,6 +276,23 @@ export async function loader(args: Route.LoaderArgs) {
 // The block of the library shows what this person has done, so no shared cache keeps the page.
 export const headers = privateRouteHeaders;
 
+/** The like of a review (ADR-056). A form sent without JavaScript comes back to the reviews. */
+export function action(args: Route.ActionArgs) {
+  return likeAction(args, (request) => {
+    const url = new URL(request.url);
+    return `${url.pathname}${url.search}#reviews`;
+  });
+}
+
+// The like button keeps its own count from the answer: reading the page again would ask the
+// providers and every block of the page for one like.
+export function shouldRevalidate({
+  formMethod,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  return formMethod === "POST" ? false : defaultShouldRevalidate;
+}
+
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [];
   return [
@@ -280,43 +320,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 function utcDayStart(value: string): number {
   return Date.parse(`${value}T00:00:00Z`);
-}
-
-/**
- * The link back to where the person came from: the search, or the entry of the library. It is read
- * from the `Referer` of the first load. After a button of the library the loader runs again with
- * this very page as the `Referer`, and then the loader has none, so the link is kept here from
- * the first load. A new title (another `key`) starts again.
- */
-function WayBack({
-  toSearch,
-  toEntry,
-}: {
-  toSearch: string | null;
-  toEntry: string | null;
-}) {
-  const { t } = useTranslation();
-  const [first] = useState({ toSearch, toEntry });
-
-  if (first.toSearch) {
-    return (
-      <p className="mb-6">
-        <BackLink to={first.toSearch} router>
-          {t("media.backToSearch")}
-        </BackLink>
-      </p>
-    );
-  }
-  if (first.toEntry) {
-    return (
-      <p className="mb-6">
-        {/* A plain link: the entry page has its own security policy, which only a new document
-            gets. */}
-        <BackLink to={first.toEntry}>{t("media.backToEntry")}</BackLink>
-      </p>
-    );
-  }
-  return null;
 }
 
 export default function MediaDetail({ loaderData }: Route.ComponentProps) {
@@ -571,6 +574,8 @@ export default function MediaDetail({ loaderData }: Route.ComponentProps) {
           </p>
         </section>
       ) : null}
+
+      <TitleReviews reviews={item.reviews} mediaId={item.id} path={item.path} />
 
       <p className="text-fg-muted mt-10 text-sm">
         <Trans

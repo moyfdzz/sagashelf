@@ -1,12 +1,5 @@
 import { useTranslation } from "react-i18next";
-import {
-  data,
-  Form,
-  Link,
-  redirect,
-  type ShouldRevalidateFunctionArgs,
-} from "react-router";
-import { z } from "zod";
+import { Form, Link, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import type { Route } from "./+types/social";
 import { FeedEntry } from "~/components/FeedEntry";
@@ -14,12 +7,8 @@ import { PersonRow } from "~/components/PersonRow";
 import { inputClass, linkClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance, getLocale } from "~/middleware/i18next";
 import { requireUser } from "~server/auth/require";
-import {
-  formatFeedCursor,
-  parseFeedCursor,
-  readFeed,
-  setLike,
-} from "~server/db/feed";
+import { formatFeedCursor, parseFeedCursor, readFeed } from "~server/db/feed";
+
 import {
   normalizePeopleQuery,
   peopleQueryMaxLength,
@@ -27,13 +16,12 @@ import {
   searchPeople,
 } from "~server/db/people-search";
 import { personCard } from "~server/db/person";
-import { readForm } from "~server/http/body";
-import { mergePrivateHeaders, privateHeaders } from "~server/http/cache";
-import { checkWrite } from "~server/http/write-guard";
+import { mergePrivateHeaders } from "~server/http/cache";
 import { rateLimit } from "~server/rate-limit";
-import { getDb, getSearchLimiter, getWriteLimiter } from "~server/runtime-env";
+import { getDb, getSearchLimiter } from "~server/runtime-env";
 import { socialBackPath } from "~server/social/back";
 import { feedItems, type FeedItem } from "~server/social/feed-item";
+import { likeAction } from "~server/social/like-action";
 
 export type { FeedItem };
 
@@ -110,69 +98,13 @@ export function shouldRevalidate({
   return formMethod === "POST" ? false : defaultShouldRevalidate;
 }
 
-// The form has an id and a yes or no. Anything bigger is not from this page.
-const maxFormBytes = 256;
-
-const likeSchema = z.strictObject({
-  activityId: z.uuid(),
-  liked: z.enum(["true", "false"]),
-});
-
-// Each code has its text in app/locales, under feed.errors.
-type ErrorCode = "invalid_request" | "not_found" | "rate_limited";
-
-const fail = (error: ErrorCode, status: number) =>
-  data({ ok: false as const, error }, { status, headers: privateHeaders });
-
 /**
  * Likes an event of the feed or takes the like back (SAG-22), as the person of the session. A form
  * sent without JavaScript goes back to the page of the feed it came from.
  */
-export async function action(args: Route.ActionArgs) {
-  const { request } = args;
-
-  // A page on another site must not be able to like for someone.
-  const unsafe = checkWrite(request, maxFormBytes);
-  if (unsafe) {
-    return fail("invalid_request", unsafe === "too_large" ? 413 : 403);
-  }
-
-  const user = await requireUser(args);
-
-  const limited = await rateLimit(
-    getWriteLimiter(),
-    request,
-    `like:${user.id}`,
-  );
-  // The page says why the like did not stay, so the refusal is an answer like the others.
-  if (limited) return fail("rate_limited", 429);
-
-  const parsed = likeSchema.safeParse(await readForm(request, maxFormBytes));
-  if (!parsed.success) return fail("invalid_request", 400);
-
-  const liked = parsed.data.liked === "true";
-  const result = await setLike(
-    await getDb(),
-    user.id,
-    parsed.data.activityId,
-    liked,
-  );
-
-  if (request.headers.get("Sec-Fetch-Dest") === "document") {
-    return redirect(
-      socialBackPath(
-        request.headers.get("Referer"),
-        new URL(request.url).origin,
-      ),
-      { status: 303, headers: privateHeaders },
-    );
-  }
-  // An event that is gone, hidden or the person's own all answer the same. Taking a like back
-  // always answers: the like is gone, and the count of a hidden event stays unknown (null).
-  if (!result) return fail("not_found", 404);
-  return data(
-    { ok: true as const, liked, likes: result.likes },
-    { headers: privateHeaders },
+export function action(args: Route.ActionArgs) {
+  return likeAction(args, (request) =>
+    socialBackPath(request.headers.get("Referer"), new URL(request.url).origin),
   );
 }
 

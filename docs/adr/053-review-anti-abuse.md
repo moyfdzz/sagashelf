@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-20
-- **Implementation:** Planned (SAG-22, the pull request of reviews)
+- **Implementation:** Partly done (SAG-22): reviews, their rules and the feed event are built; reports on a review come in the next pull request
 - **Tickets:** SAG-22, SAG-270
 
 ## Context
@@ -54,7 +54,14 @@ Decided with the owner on 2026-11-20.
 
 ## Open questions
 
-- Whether a review shows the episode or chapter the person was at when they wrote it (useful for a review of a title in progress). Not decided; ask when the form is built.
+- Whether a review shows the episode or chapter the person was at when they wrote it (useful for a review of a title in progress). Not for now (owner, 2026-11-20): it can be added later without a risky change to the table.
+
+## Notes from the implementation (2026-11-20)
+
+- The likes of a review, the order of the title page and who may like a review are in [ADR-056](056-review-likes-and-order.md).
+- The hourly limit counts the reviews that still exist: deleting a review and writing it again within the hour does not count twice. The duplicate check stops the same text on two titles, so this only matters for a person who deletes their own reviews.
+- An edit of a review needs no started entry: a review stays, editable, when the title goes back to planned.
+- A link is something that looks like an address: a scheme (`https://`), `www.`, or a name followed by a common ending (`.com`, `.net`, `.mx` and others, `hasLink` in `server/reviews/rules.ts`). "Dr. Stone" or "3.5" are not links.
 
 ## References
 
