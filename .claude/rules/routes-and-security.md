@@ -41,7 +41,7 @@ paths:
 
 - The profile page `/u/:username` is public, `private, no-store`, `noindex`, not a session page; its buttons are plain forms with `reloadDocument` posting to its own `action` and ending in a redirect with `?notice=<a known word>`. Lists of people: 50 a page, `?page=` up to 100.
 - **A new route with a view needs a line in `performance-budgets.json`** (its size plus 15%), or `check:budgets` fails. Raise a limit only in the PR that adds the weight, and say why.
-- **A new admin statistics page also needs:** a row in `read-loaders.test.ts`, the new `server/db` file in `tsconfig.node.json` when a test of `db/` imports it, its table in `db/constraints.integration.test.ts`, and `max-w-3xl` like the other admin pages (a wider one makes the tabs jump).
+- **A new admin statistics page also needs:** a row in `read-loaders.test.ts`, its table in `db/constraints.integration.test.ts`, and `max-w-3xl` like the other admin pages (a wider one makes the tabs jump).
 
 ## Headers and the CSP
 

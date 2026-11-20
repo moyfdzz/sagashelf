@@ -16,16 +16,17 @@ TypeScript (strict), React Router v8 (framework mode, SSR) on Cloudflare Workers
 | `npm run dev`                        | Local dev server at http://localhost:5173                                                                                 |
 | `npm run lint`                       | ESLint                                                                                                                    |
 | `npm run format`                     | Prettier (write); `format:check` only checks                                                                              |
-| `npm run typecheck`                  | `wrangler types`, route typegen and `tsc -b`                                                                              |
+| `npm run typecheck`                  | `wrangler types`, route typegen, the file list of `tsconfig.node.json` and `tsc -b`                                       |
 | `npm run test`                       | Vitest unit tests                                                                                                         |
 | `npm run test:coverage`              | Vitest with coverage; `server/` must stay at 80% or more                                                                  |
 | `npm run test:a11y`                  | axe on the HTML that the render tests draw, at 320 px light and dark (run `npm run build` first; about 2 minutes)         |
 | `npm run test:e2e`                   | Playwright on desktop and Pixel 7, with axe and a no-sideways-scroll check (needs `npx playwright install chromium` once) |
+| `npm run test:e2e:local`             | The e2e suite like CI (production build, 2 workers, `.dev.vars` moved aside); `-- --a11y` adds `test:a11y`                |
 | `npm run build`                      | Builds the Worker                                                                                                         |
 | `npm run db:up`                      | Starts the local Postgres 18 (Docker); `db:down` stops it                                                                 |
 | `npm run db:generate` / `db:migrate` | Creates a migration from the schema / applies migrations (local unless `DATABASE_URL` is set in your terminal)            |
 | `npm run db:seed`                    | Loads synthetic data into the local database only                                                                         |
-| `npm run test:integration`           | Constraint tests on a real Postgres (needs `db:up`); the tests refuse any database not local and named `*_test`           |
+| `npm run test:integration`           | Constraint tests on a real Postgres (starts Docker and `db:up` when needed); refuses any database not local and `*_test`  |
 | `npm run check:full`                 | `check` plus the integration tests                                                                                        |
 | `npm run check:budgets`              | Size budgets of the build (`performance-budgets.json`): gzipped JS per page and CSS; run after a build                    |
 | `npm run check`                      | lint, format check, typecheck, test with coverage, build and budgets in order (pre-commit)                                |

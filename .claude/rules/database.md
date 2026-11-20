@@ -36,13 +36,13 @@ Read before touching a query, the schema, a migration or an integration test. A 
 
 - A table or column with a person's data is in the erasure (`server/db/erase-user.ts`) and in the export (`server/account/export.ts`); the integration test of the erasure reads every foreign key to `users` and fails otherwise.
 - The list of tables in `db/constraints.integration.test.ts` grows with each new table.
-- **A file under `server/` that a test of `db/` imports (even through another module) goes in the `include` of `tsconfig.node.json`**, or `npm run typecheck` fails with TS6307.
+- A file under `server/` that a test of `db/` imports must be in the `include` of `tsconfig.node.json`; `npm run typecheck` writes it there (`scripts/sync-tsconfig-node.mjs`), so commit the change. That project cannot type Worker-only code (`cloudflare:workers`), so a `db/` test must not import it, even through another module.
 - Schema change: edit `server/db/schema`, `npm run db:generate`, read the SQL, rename the generated file and its `tag` in `drizzle/meta/_journal.json`, add a test for each new constraint in `db/`. Extensions and indexes Drizzle cannot express go in a custom migration.
 - **A migration can be edited until the owner applies it** (the test database is rebuilt from the files on every run), but then the local development database and the snapshot in `drizzle/meta` must be aligned by hand. Ask whether it was applied before editing. After it is applied, any change is a new migration.
 
 ## Integration tests
 
-- They run on the local Docker Postgres 18 and refuse any database not local and named `*_test`. Never two runs at once. The integration config has no `~` aliases: test a loader with mocks in `app/routes/*.test.ts` and the data layer against the real Postgres.
+- They run on the local Docker Postgres 18 and refuse any database not local and named `*_test`. A second run while one is going is refused by an advisory lock (`db/global-setup.ts`). The integration config has no `~` aliases: test a loader with mocks in `app/routes/*.test.ts` and the data layer against the real Postgres.
 - **Write the expected table by hand**; do not ask the function under test.
 - Docker Postgres's clock is about 0.15 s ahead of Node's: do not mix `now()` with `Date.now()`.
 - **A race test with `Promise.all` proves little** (two statements through one local pool rarely overlap). Interleave on purpose: let the function run a write of its own between its read and its write (`db/library-concurrency.integration.test.ts`).
