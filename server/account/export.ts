@@ -1,8 +1,8 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
+import { likesForExport, type ExportedLike } from "../db/feed";
 import { readableByOwner } from "../db/notifications";
 import { requesterCardShown } from "../db/person-visibility";
-import { sharedTitleSql } from "../db/titles";
 import type { ProfileDb } from "../db/profile";
 import {
   activity,
@@ -14,7 +14,6 @@ import {
   libraryEntries,
   libraryViewings,
   listItems,
-  likes,
   lists,
   mediaItems,
   mutes,
@@ -144,15 +143,11 @@ export type AccountExport = {
     createdAt: string;
   }[];
   /**
-   * The events the person liked (SAG-22): the kind of event, its title and when they liked it.
-   * Never who wrote the event (that is what someone else did) nor a title a person made for
-   * themselves. A file from before SAG-22 has no `likes`; they are never imported (ADR-055).
+   * The events the person liked (SAG-22): the kind of event, when they liked it, and its title
+   * while the event is still shown to them. Never who wrote the event (that is what someone else
+   * did). A file from before SAG-22 has no `likes`; they are never imported (ADR-055).
    */
-  likes: {
-    type: string;
-    title: string | null;
-    createdAt: string;
-  }[];
+  likes: ExportedLike[];
 };
 
 /**
@@ -403,20 +398,7 @@ export async function exportAccount(
       .leftJoin(mediaItems, eq(activity.mediaId, mediaItems.id))
       .where(eq(activity.actorId, userId))
       .orderBy(activity.createdAt, activity.id),
-    db
-      .select({
-        type: activity.type,
-        title: mediaItems.title,
-        createdAt: likes.createdAt,
-      })
-      .from(likes)
-      .innerJoin(activity, eq(likes.activityId, activity.id))
-      .leftJoin(
-        mediaItems,
-        and(eq(activity.mediaId, mediaItems.id), sharedTitleSql("media_items")),
-      )
-      .where(eq(likes.userId, userId))
-      .orderBy(likes.createdAt, likes.activityId),
+    likesForExport(db, userId),
   ]);
 
   const [earlier, items] = await Promise.all([
@@ -551,10 +533,6 @@ export async function exportAccount(
       visibility: event.visibility,
       createdAt: event.createdAt.toISOString(),
     })),
-    likes: liked.map((like) => ({
-      type: like.type,
-      title: like.title,
-      createdAt: like.createdAt.toISOString(),
-    })),
+    likes: liked,
   };
 }

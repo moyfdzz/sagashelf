@@ -1896,6 +1896,7 @@
     "prompt_other": "Escribe el inicio de un nombre de usuario, de al menos {{count}} caracteres.",
     "tooShort_one": "Escribe al menos {{count}} carácter.",
     "tooShort_other": "Escribe al menos {{count}} caracteres.",
+    "rateLimited": "Hiciste muchas búsquedas seguidas. Espera un minuto y vuelve a intentarlo.",
     "empty": "No encontramos a nadie que empiece con «{{query}}».",
     "resultsLabel": "Personas encontradas"
   },
@@ -1931,7 +1932,8 @@
     "older": "Ver actividad anterior",
     "newest": "Volver a lo más reciente",
     "errors": {
-      "likeFailed": "No se pudo guardar tu me gusta. Inténtalo de nuevo."
+      "likeFailed": "No se pudo guardar tu me gusta. Inténtalo de nuevo.",
+      "rateLimited": "Diste muchos me gusta seguidos. Espera un minuto y vuelve a intentarlo."
     }
   }
 }

@@ -132,15 +132,15 @@ describe("the search of people (SAG-115)", () => {
     });
   });
 
-  it("answers 429 over the limit, and does not search", async () => {
+  it("says so over the limit, does not search, and still shows the feed", async () => {
     mocks.limit.mockResolvedValue({ success: false });
 
-    const thrown = (await load("?q=ana").catch(
-      (error: unknown) => error,
-    )) as Response;
+    const result = await load("?q=ana");
 
-    expect(thrown.status).toBe(429);
+    expect(result.status).toBe("rate_limited");
+    expect(result.people).toEqual([]);
     expect(mocks.searchPeople).not.toHaveBeenCalled();
+    expect(mocks.readFeed).toHaveBeenCalledTimes(1);
   });
 
   it("is never kept by a shared cache, nor by a search engine", () => {
@@ -253,6 +253,31 @@ describe("a like (SAG-22)", () => {
       true,
     );
     expect(answer.data).toEqual({ ok: true, liked: true, likes: 3 });
+  });
+
+  it("takes a like back from an event that is hidden now, without a count and without an error", async () => {
+    mocks.setLike.mockResolvedValue({ likes: null });
+
+    const answer = (await like({
+      activityId: eventId,
+      liked: "false",
+    })) as unknown as Answer;
+
+    expect(answer.init?.status ?? 200).toBe(200);
+    expect(answer.data).toEqual({ ok: true, liked: false, likes: null });
+  });
+
+  it("says why over the limit, before the form or the database", async () => {
+    mocks.writeLimit.mockResolvedValue({ success: false });
+
+    const answer = (await like({
+      activityId: eventId,
+      liked: "true",
+    })) as unknown as Answer;
+
+    expect(answer.init?.status).toBe(429);
+    expect(answer.data).toEqual({ ok: false, error: "rate_limited" });
+    expect(mocks.setLike).not.toHaveBeenCalled();
   });
 
   it("takes a like back", async () => {

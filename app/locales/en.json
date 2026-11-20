@@ -1896,6 +1896,7 @@
     "prompt_other": "Type the start of a username, at least {{count}} characters.",
     "tooShort_one": "Type at least {{count}} character.",
     "tooShort_other": "Type at least {{count}} characters.",
+    "rateLimited": "You searched a lot in a row. Wait a minute and try again.",
     "empty": "We found nobody starting with “{{query}}”.",
     "resultsLabel": "People found"
   },
@@ -1931,7 +1932,8 @@
     "older": "See older activity",
     "newest": "Back to the newest",
     "errors": {
-      "likeFailed": "Your like could not be saved. Try again."
+      "likeFailed": "Your like could not be saved. Try again.",
+      "rateLimited": "You liked a lot in a row. Wait a minute and try again."
     }
   }
 }

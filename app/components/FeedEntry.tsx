@@ -53,22 +53,30 @@ export function FeedEntry({ item }: { item: FeedItem }) {
   const { formatRelativeTime } = useFormatters();
   const fetcher = useFetcher<typeof action>();
   const what = useWhat(item);
-  const name = item.mine
-    ? t("feed.you")
-    : (item.actor.displayName ?? item.actor.username);
+  const own = item.actor.displayName ?? item.actor.username;
+  const name = item.mine ? t("feed.you") : own;
 
-  // What the server last said, then what is on its way.
+  // What the server last said, then what is on its way. Taking a like back from an event that is
+  // hidden now answers no count (null): the page then counts the others it already knew.
   const answered = fetcher.data?.ok ? fetcher.data : null;
-  const known = answered ?? { liked: item.liked, likes: item.likes };
+  const known = answered
+    ? {
+        liked: answered.liked,
+        likes: answered.likes ?? Math.max(0, item.likes - (item.liked ? 1 : 0)),
+      }
+    : { liked: item.liked, likes: item.likes };
   const sending = fetcher.formData?.get("liked");
   const liked = sending ? sending === "true" : known.liked;
   const likes = known.likes + (liked ? 1 : 0) - (known.liked ? 1 : 0);
-  const failed = fetcher.state === "idle" && fetcher.data?.ok === false;
+  const refused =
+    fetcher.state === "idle" && fetcher.data && !fetcher.data.ok
+      ? fetcher.data.error
+      : null;
 
   return (
     <li className="border-border bg-surface-raised rounded-md border p-3">
       <article className="flex gap-3">
-        <Avatar name={name} url={item.actor.avatarUrl} size="sm" />
+        <Avatar name={own} url={item.actor.avatarUrl} size="sm" />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-2">
             {item.mine ? (
@@ -100,7 +108,15 @@ export function FeedEntry({ item }: { item: FeedItem }) {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             {item.mine ? null : (
-              <fetcher.Form method="post" action="/social">
+              <fetcher.Form
+                method="post"
+                action="/social"
+                // A second press while the first is on its way would send the opposite, and the
+                // server could apply the two in either order.
+                onSubmit={(event) => {
+                  if (fetcher.state !== "idle") event.preventDefault();
+                }}
+              >
                 <input type="hidden" name="activityId" value={item.id} />
                 <input
                   type="hidden"
@@ -122,9 +138,11 @@ export function FeedEntry({ item }: { item: FeedItem }) {
               </span>
             ) : null}
           </div>
-          {failed ? (
+          {refused ? (
             <p role="status" className="text-danger-fg mt-2 text-sm">
-              {t("feed.errors.likeFailed")}
+              {refused === "rate_limited"
+                ? t("feed.errors.rateLimited")
+                : t("feed.errors.likeFailed")}
             </p>
           ) : null}
         </div>

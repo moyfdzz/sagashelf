@@ -38,10 +38,13 @@ import { feedItems, type FeedItem } from "~server/social/feed-item";
 export type { FeedItem };
 
 type Search =
-  | { status: "idle" | "too_short"; people: [] }
+  | { status: "idle" | "too_short" | "rate_limited"; people: [] }
   | { status: "results"; people: ReturnType<typeof personCard>[] };
 
-/** The search of people (SAG-115): only a real search reads the database and counts against the limit. */
+/**
+ * The search of people (SAG-115): only a real search reads the database and counts against the
+ * limit. Over the limit the search says so and the feed below still shows.
+ */
 async function searchOf(
   request: Request,
   userId: string,
@@ -58,7 +61,7 @@ async function searchOf(
     request,
     `people-search:${userId}`,
   );
-  if (limited) throw limited;
+  if (limited) return { status: "rate_limited", people: [] };
 
   const people = await searchPeople(await getDb(), userId, query);
   return { status: "results", people: people.map(personCard) };
@@ -116,7 +119,7 @@ const likeSchema = z.strictObject({
 });
 
 // Each code has its text in app/locales, under feed.errors.
-type ErrorCode = "invalid_request" | "not_found";
+type ErrorCode = "invalid_request" | "not_found" | "rate_limited";
 
 const fail = (error: ErrorCode, status: number) =>
   data({ ok: false as const, error }, { status, headers: privateHeaders });
@@ -141,7 +144,8 @@ export async function action(args: Route.ActionArgs) {
     request,
     `like:${user.id}`,
   );
-  if (limited) return limited;
+  // The page says why the like did not stay, so the refusal is an answer like the others.
+  if (limited) return fail("rate_limited", 429);
 
   const parsed = likeSchema.safeParse(await readForm(request, maxFormBytes));
   if (!parsed.success) return fail("invalid_request", 400);
@@ -163,7 +167,8 @@ export async function action(args: Route.ActionArgs) {
       { status: 303, headers: privateHeaders },
     );
   }
-  // An event that is gone, hidden or the person's own all answer the same.
+  // An event that is gone, hidden or the person's own all answer the same. Taking a like back
+  // always answers: the like is gone, and the count of a hidden event stays unknown (null).
   if (!result) return fail("not_found", 404);
   return data(
     { ok: true as const, liked, likes: result.likes },
@@ -215,6 +220,11 @@ export default function Social({ loaderData }: Route.ComponentProps) {
       {status === "too_short" ? (
         <p role="status" className="text-fg-muted mt-6">
           {t("social.tooShort", { count: peopleQueryMinLength })}
+        </p>
+      ) : null}
+      {status === "rate_limited" ? (
+        <p role="status" className="text-fg-muted mt-6">
+          {t("social.rateLimited")}
         </p>
       ) : null}
       {status === "results" && people.length === 0 ? (

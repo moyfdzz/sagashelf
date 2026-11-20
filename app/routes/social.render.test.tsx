@@ -71,6 +71,13 @@ describe("the page of people search (SAG-115)", () => {
     expect(html).toContain("Escribe al menos 2 caracteres.");
   });
 
+  it("says so when there were too many searches", async () => {
+    const html = await render(page({ q: "ana", status: "rate_limited" }));
+
+    expect(html).toContain("Hiciste muchas búsquedas seguidas.");
+    expect(html).not.toContain("No encontramos a nadie");
+  });
+
   it("says so when it finds nobody, escaping what was typed", async () => {
     const html = await render(
       page({ q: "<script>", status: "results", people: [] }),
@@ -197,6 +204,8 @@ describe("the feed (SAG-22)", () => {
     );
 
     expect(html).toContain(">Tú</span>");
+    // The circle has the first letter of the person, not of "Tú".
+    expect(html).toMatch(/aria-hidden="true"[^>]*>A<\/div>/);
     expect(html).not.toContain('href="/u/ana_reads"');
     expect(html).not.toContain('name="liked"');
     expect(html).toContain("Solo amigos");

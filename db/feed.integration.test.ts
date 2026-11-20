@@ -326,7 +326,7 @@ describe("likes", () => {
     expect(await likesOf(open.id)).toEqual([]);
   });
 
-  it("takes a like back even when the event can no longer be seen", async () => {
+  it("takes a like back even when the event can no longer be seen, without telling its count", async () => {
     const [ana, bea] = [await person(), await person()];
     await follow(bea, ana);
     const event = await eventOf(ana);
@@ -334,7 +334,7 @@ describe("likes", () => {
     await db.execute(sql`
       INSERT INTO blocks (blocker_id, blocked_id) VALUES (${ana.id}::uuid, ${bea.id}::uuid)`);
 
-    expect(await setLike(db, bea.id, event.id, false)).toBeNull();
+    expect(await setLike(db, bea.id, event.id, false)).toEqual({ likes: null });
     expect(await likesOf(event.id)).toEqual([]);
   });
 
@@ -356,5 +356,20 @@ describe("likes", () => {
       { type: "completed", title: null, createdAt: expect.any(String) },
     ]);
     expect(JSON.stringify(data?.likes)).not.toContain(ana.username);
+  });
+
+  it("leaves the title out of the export once the author hides the event", async () => {
+    const [ana, bea] = [await person(), await person()];
+    await follow(bea, ana);
+    const event = await eventOf(ana);
+    await setLike(db, bea.id, event.id, true);
+
+    await db.execute(sql`
+      UPDATE library_entries SET visibility = 'private'
+      WHERE media_id = ${event.mediaId}::uuid`);
+
+    expect((await exportAccount(db, bea.id))?.likes).toEqual([
+      { type: "completed", title: null, createdAt: expect.any(String) },
+    ]);
   });
 });

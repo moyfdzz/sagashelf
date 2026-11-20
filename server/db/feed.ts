@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 
 import type { SqlExecutor } from "./clerk-sync";
+import type { ProfileDb } from "./profile";
 import { text } from "./person";
 import { blockedBetween, levelAllowed } from "./person-visibility";
 import { localizedTitleSql, sharedTitleSql } from "./titles";
@@ -94,6 +95,11 @@ const shownEvents = (viewerId: string): SQL => {
     JOIN library_entries le ON le.user_id = a.actor_id AND le.media_id = a.media_id
     JOIN media_items m ON m.id = a.media_id
     WHERE u.deleted_at IS NULL
+      -- Only the viewer and the people they follow: written as a list of authors, so the index of
+      -- each author's events is used instead of reading the activity of the whole site.
+      AND a.actor_id IN (
+        SELECT ${viewer} UNION ALL SELECT fl.followee_id FROM follows fl WHERE fl.follower_id = ${viewer}
+      )
       AND ${sharedTitleSql("m")}
       AND a.type::text IN (${sql.join(
         feedKinds.map((kind) => sql`${kind}`),
@@ -102,8 +108,7 @@ const shownEvents = (viewerId: string): SQL => {
       AND (
         a.actor_id = ${viewer}
         OR (
-          ${follows(viewer, sql`a.actor_id`)}
-          AND NOT EXISTS (
+          NOT EXISTS (
             SELECT 1 FROM mutes mu WHERE mu.muter_id = ${viewer} AND mu.muted_id = a.actor_id
           )
           AND NOT ${blockedBetween(viewer, sql`a.actor_id`)}
@@ -193,14 +198,15 @@ export async function readFeed(
  * how many likes the event has now. Both are idempotent. A like is only written on an event the
  * feed shows to that person and not on their own; the answer is null when they may not see the
  * event (it is gone, hidden or never theirs to see), the same whatever the reason. Taking a like
- * back always deletes it, even when the event can no longer be seen.
+ * back always deletes it and always answers, even when the event can no longer be seen; then the
+ * count is null, so a hidden event never tells how many likes it has.
  */
 export async function setLike(
   db: SqlExecutor,
   viewerId: string,
   activityId: string,
   liked: boolean,
-): Promise<{ likes: number } | null> {
+): Promise<{ likes: number | null } | null> {
   const viewer = sql`${viewerId}::uuid`;
   // This statement cannot see its own insert or delete, so the count is the likes of the others
   // plus the viewer's own as it is after the change.
@@ -227,10 +233,42 @@ export async function setLike(
         SELECT a.id ${shownEvents(viewerId)} AND a.id = ${activityId}::uuid
       )
       SELECT (
-        SELECT count(*) FROM likes l WHERE l.activity_id = shown.id AND l.user_id <> ${viewer}
-      )::int AS likes
-      FROM shown`;
+        SELECT count(*) FROM likes l JOIN shown ON l.activity_id = shown.id
+        WHERE l.user_id <> ${viewer}
+      )::int AS likes, EXISTS (SELECT 1 FROM shown) AS shown`;
   const { rows } = await db.execute(statement);
   const [row] = rows;
-  return row ? { likes: Number(row.likes) } : null;
+  if (!row) return null;
+  return { likes: row.shown === false ? null : Number(row.likes) };
+}
+
+export type ExportedLike = {
+  type: string;
+  title: string | null;
+  createdAt: string;
+};
+
+/**
+ * The likes of a person for the copy of "My data" (SAG-22, ADR-055): the kind of event, when they
+ * liked it, and the title only while the feed still shows that event to them. A title the author
+ * has since hidden (a stricter entry or profile, a block, a removed title) is left out, and so is
+ * the author's name, always: that is what someone else did.
+ */
+export async function likesForExport(
+  db: ProfileDb,
+  userId: string,
+): Promise<ExportedLike[]> {
+  const { rows } = (await db.execute(sql`
+    SELECT a.type::text AS type, still.title, l.created_at
+    FROM likes l
+    JOIN activity a ON a.id = l.activity_id
+    LEFT JOIN (SELECT a.id, m.title ${shownEvents(userId)}) still ON still.id = l.activity_id
+    WHERE l.user_id = ${userId}::uuid
+    ORDER BY l.created_at, l.activity_id
+  `)) as { rows: Record<string, unknown>[] };
+  return rows.map((row) => ({
+    type: String(row.type),
+    title: text(row.title),
+    createdAt: new Date(row.created_at as string | Date).toISOString(),
+  }));
 }
