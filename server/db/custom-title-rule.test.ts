@@ -58,6 +58,8 @@ const showTitlesToOthers: Record<string, number> = {
   "db/profile-library.ts": 2,
   // The favorites of the site: the titles counted, and the titles shown.
   "db/site-favorites.ts": 2,
+  // The events of the feed and the like, both read through one fragment (SAG-22).
+  "db/feed.ts": 1,
 };
 
 // SAG-247: reads of `media_items` that do not use the rule, per file, as they were checked when

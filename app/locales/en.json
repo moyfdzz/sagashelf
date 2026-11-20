@@ -548,6 +548,7 @@
       "favorites": "Site favorites: entries with public visibility from people with a public profile count, without a name, in the Trending lists, and a title only appears when at least 3 people share it. If you change an entry's visibility, your profile level or delete your account, you stop counting within an hour.",
       "viewings": "Viewing history: the dates and notes of each time you watched a title, if you choose to record them.",
       "activity": "Activity: when you start, progress in, finish, drop or score a title, we keep that event (what happened, the title, your progress or the score, and the date) for the feed of the people who follow you. It can be seen by whoever the stricter of the entry's level and your profile's level allows, and if you later make either one more private, it stops showing. Your notes are never part of it, and what you import from a file creates no activity. It is deleted when you remove the title from your library or delete your account, and it is in your data export.",
+      "likes": "Likes: when you like the activity of someone you follow, we keep that you did and when. Others only see how many likes an event has, never who gave them. You can take a like back at any time; it is deleted if that person removes the title or deletes their account, and when you delete yours. It is in your data export (the kind of event, the title and the date, without the other person's name) and is never imported.",
       "contact": "Contact messages: what you write on the contact page (the kind of message, the text and, if you were not signed in and want a reply, the email you leave) is kept to handle it, is seen only by whoever runs the site and is deleted after 90 days. If you sent it with your account, it is also deleted when you delete your account and is in your data export.",
       "technical": "Technical data: when you visit the site, the hosting provider records request data (such as the IP address, the requested page and the browser) to run and protect the service.",
       "analytics": "Usage statistics: we measure how the site is used with our own system, with no cookies and without storing your IP address or your account. The details are in <stats>“Usage statistics”</stats>.",
@@ -1897,5 +1898,40 @@
     "tooShort_other": "Type at least {{count}} characters.",
     "empty": "We found nobody starting with “{{query}}”.",
     "resultsLabel": "People found"
+  },
+  "feed": {
+    "title": "Activity",
+    "description": "What the people you follow are doing with their titles, and your own.",
+    "empty": "No activity yet. When the people you follow start, advance, finish or rate a title, it will show here.",
+    "noOlder": "There is no older activity.",
+    "you": "You",
+    "kinds": {
+      "started": "Started",
+      "restarted": "Started again",
+      "completed": "Finished",
+      "dropped": "Dropped",
+      "rated": "Rated {{score}}/10",
+      "progressed_episodes_one": "On episode {{count}} of",
+      "progressed_episodes_other": "On episode {{count}} of",
+      "progressed_pages_one": "On page {{count}} of",
+      "progressed_pages_other": "On page {{count}} of",
+      "progressed_chapters_one": "On chapter {{count}} of",
+      "progressed_chapters_other": "On chapter {{count}} of",
+      "progressed_volumes_one": "On volume {{count}} of",
+      "progressed_volumes_other": "On volume {{count}} of"
+    },
+    "level": {
+      "friends": "Friends only",
+      "private": "Only you"
+    },
+    "like": "Like",
+    "likes_one": "{{count}} like",
+    "likes_other": "{{count}} likes",
+    "pagesLabel": "Pages of the activity",
+    "older": "See older activity",
+    "newest": "Back to the newest",
+    "errors": {
+      "likeFailed": "Your like could not be saved. Try again."
+    }
   }
 }

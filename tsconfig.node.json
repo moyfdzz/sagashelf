@@ -37,6 +37,7 @@
     "server/db/episode-alerts.ts",
     "server/db/erase-user.ts",
     "server/db/escape-like.ts",
+    "server/db/feed.ts",
     "server/db/follow-requests.ts",
     "server/db/follows.ts",
     "server/db/header-facts.ts",
