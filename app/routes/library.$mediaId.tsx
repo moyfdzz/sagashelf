@@ -314,20 +314,8 @@ export async function action(args: Route.ActionArgs) {
   // puts the run that ends into the history in the same statement that restarts the entry.
   const written =
     parsed.data.intent === "rewatch"
-      ? await rewatchEntry(
-          db,
-          user.id,
-          mediaId.data,
-          result.next,
-          current.version,
-        )
-      : await saveEntry(
-          db,
-          user.id,
-          mediaId.data,
-          result.next,
-          current.version,
-        );
+      ? await rewatchEntry(db, user.id, mediaId.data, result.next, current)
+      : await saveEntry(db, user.id, mediaId.data, result.next, current);
   if (written === "missing") throw data(null, { status: 404 });
   if (written !== "saved") {
     const errors: FieldErrors =

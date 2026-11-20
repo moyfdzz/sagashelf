@@ -56,6 +56,8 @@ An ADR records one significant decision: what was decided, why, what else was co
 | [050](050-analytics-collector.md)                | The analytics collector writes straight to Postgres, with a daily salt                    | Accepted | Done (SAG-24, SAG-254)                |
 | [051](051-site-favorites-on-request.md)          | The favorites of SagaShelf are computed on request, from public things only               | Accepted | Done (SAG-23)                         |
 | [052](052-provider-call-counts.md)               | The calls to the providers are counted by day, in memory first and written once           | Accepted | Done (SAG-26)                         |
+| [053](053-review-anti-abuse.md)                  | Reviews: length, visibility and the anti-abuse numbers                                    | Accepted | Planned (SAG-22)                      |
+| [054](054-library-activity-events.md)            | The library writes its activity in the same statement, one daily event for progress       | Accepted | Done (SAG-44)                         |
 | [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
 | [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
 

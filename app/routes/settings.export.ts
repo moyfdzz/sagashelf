@@ -2,7 +2,8 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import type { Route } from "./+types/settings.export";
-import { exportAccount, profileCsv } from "~server/account/export";
+import { exportAccount } from "~server/account/export";
+import { profileCsv } from "~server/account/export-csv";
 import { requireUser } from "~server/auth/require";
 import { rateLimit } from "~server/rate-limit";
 import { getDb, getWriteLimiter } from "~server/runtime-env";

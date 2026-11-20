@@ -61,10 +61,15 @@ async function entryOf(state: EntryState = watching) {
   return { userId: ana.id, mediaId: media.id };
 }
 
-async function versionOf(userId: string, mediaId: string) {
+/** The entry as a caller reads it before a write: its state and its version. */
+async function readOf(userId: string, mediaId: string) {
   const entry = await getEntry(db, userId, mediaId, "es");
   if (!entry) throw new Error("The entry was not created");
-  return entry.version;
+  return entry;
+}
+
+async function versionOf(userId: string, mediaId: string) {
+  return (await readOf(userId, mediaId)).version;
 }
 
 const step = (current: { type: string } & EntryState) =>
@@ -73,16 +78,10 @@ const step = (current: { type: string } & EntryState) =>
 describe("saveEntry with the version it read", () => {
   it("writes when nothing changed, and refuses when the entry changed after the read", async () => {
     const { userId, mediaId } = await entryOf();
-    const version = await versionOf(userId, mediaId);
+    const read = await readOf(userId, mediaId);
 
     expect(
-      await saveEntry(
-        db,
-        userId,
-        mediaId,
-        { ...watching, progress: 6 },
-        version,
-      ),
+      await saveEntry(db, userId, mediaId, { ...watching, progress: 6 }, read),
     ).toBe("saved");
     // The same old version a second time: the row has moved on.
     expect(
@@ -91,7 +90,7 @@ describe("saveEntry with the version it read", () => {
         userId,
         mediaId,
         { ...watching, progress: 99, notes: "pisada" },
-        version,
+        read,
       ),
     ).toBe("conflict");
 
@@ -106,12 +105,10 @@ describe("saveEntry with the version it read", () => {
     await db.execute(
       sql`UPDATE library_entries SET updated_at = '2026-11-01 10:00:00.123456+00'`,
     );
-    const version = await versionOf(userId, mediaId);
+    const read = await readOf(userId, mediaId);
 
-    expect(version).toBe("2026-11-01 10:00:00.123456");
-    expect(await saveEntry(db, userId, mediaId, watching, version)).toBe(
-      "saved",
-    );
+    expect(read.version).toBe("2026-11-01 10:00:00.123456");
+    expect(await saveEntry(db, userId, mediaId, watching, read)).toBe("saved");
   });
 
   it("says missing, not conflict, for an entry the person does not have", async () => {
@@ -119,7 +116,10 @@ describe("saveEntry with the version it read", () => {
     const beto = await newUser();
 
     expect(
-      await saveEntry(db, beto.id, mediaId, watching, "2026-11-01 10:00:00"),
+      await saveEntry(db, beto.id, mediaId, watching, {
+        ...watching,
+        version: "2026-11-01 10:00:00",
+      }),
     ).toBe("missing");
   });
 });
@@ -243,7 +243,7 @@ describe("rewatchEntry with the version it read", () => {
 
   it("restarts nothing and saves no viewing when the entry changed after the read", async () => {
     const { userId, mediaId } = await entryOf(finished);
-    const stale = await versionOf(userId, mediaId);
+    const stale = await readOf(userId, mediaId);
     await setEntry(db, userId, mediaId, { ...finished, notes: "Nueva" });
 
     expect(await rewatchEntry(db, userId, mediaId, restarted, stale)).toBe(
@@ -262,7 +262,7 @@ describe("rewatchEntry with the version it read", () => {
 
   it("says missing, not conflict, for an entry that was deleted after the read", async () => {
     const { userId, mediaId } = await entryOf(finished);
-    const stale = await versionOf(userId, mediaId);
+    const stale = await readOf(userId, mediaId);
     await removeEntry(db, userId, mediaId);
 
     expect(await rewatchEntry(db, userId, mediaId, restarted, stale)).toBe(

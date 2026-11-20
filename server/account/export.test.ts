@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { profileCsv, type AccountExport } from "./export";
+import type { AccountExport } from "./export";
+import { profileCsv } from "./export-csv";
 
 const base: AccountExport = {
   schemaVersion: 1,
@@ -29,6 +30,7 @@ const base: AccountExport = {
   reportsMade: [],
   pictureUploads: [],
   contactMessages: [],
+  activity: [],
 };
 
 const lines = (csv: string) => csv.split("\r\n");
