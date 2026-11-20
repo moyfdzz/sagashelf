@@ -196,6 +196,52 @@ describe("the activity of a library change", () => {
     ]);
   });
 
+  it("keeps ONE completed event a day when the status goes back and forth", async () => {
+    const { userId, mediaId } = await entryOf(watching);
+
+    for (const status of ["completed", "in_progress", "completed"] as const) {
+      await updateEntry(db, userId, mediaId, (current) =>
+        applyStatus(current, status, context),
+      );
+    }
+
+    expect((await events(userId)).map((row) => row.type)).toEqual([
+      "completed",
+    ]);
+  });
+
+  it("deletes today's rated event when the score is taken away, and keeps an older one", async () => {
+    const { userId, mediaId } = await entryOf(watching);
+    await setEntry(db, userId, mediaId, { ...watching, score: 3 });
+    await db.execute(
+      sql`UPDATE activity SET created_at = created_at - interval '2 days'`,
+    );
+    await setEntry(db, userId, mediaId, { ...watching, score: 5 });
+
+    await setEntry(db, userId, mediaId, { ...watching, score: null });
+
+    expect(await events(userId)).toEqual([
+      expect.objectContaining({ type: "rated", payload: { score: 3 } }),
+    ]);
+  });
+
+  it("corrects today's progress when a step is undone, and adds nothing without one", async () => {
+    const { userId, mediaId } = await entryOf(watching);
+    await setEntry(db, userId, mediaId, { ...watching, progress: 2 });
+    expect(await events(userId)).toEqual([]);
+
+    await step(userId, mediaId);
+    await step(userId, mediaId);
+    await setEntry(db, userId, mediaId, { ...watching, progress: 3 });
+
+    expect(await events(userId)).toEqual([
+      expect.objectContaining({
+        type: "progressed",
+        payload: { progress: 3, unit: "episodes" },
+      }),
+    ]);
+  });
+
   it("writes completed and rated together when one save does both", async () => {
     const { userId, mediaId } = await entryOf(watching);
 
@@ -246,9 +292,10 @@ describe("the activity of a library change", () => {
     expect(await events(userId)).toEqual([]);
   });
 
-  it("does not update today's event either when the write loses the race", async () => {
+  it("does not update or delete today's events either when the write loses the race", async () => {
     const { userId, mediaId } = await entryOf(watching);
     await step(userId, mediaId);
+    await setEntry(db, userId, mediaId, { ...watching, progress: 4, score: 9 });
     const read = await getEntry(db, userId, mediaId, "es");
     if (!read) throw new Error("The entry was not created");
     await setEntry(db, userId, mediaId, { ...read, notes: "Otra pestaña" });
@@ -258,7 +305,7 @@ describe("the activity of a library change", () => {
         db,
         userId,
         mediaId,
-        { ...read, progress: 9, score: 6 },
+        { ...read, progress: 9, score: null },
         read,
       ),
     ).toBe("conflict");
@@ -267,6 +314,7 @@ describe("the activity of a library change", () => {
         type: "progressed",
         payload: { progress: 4, unit: "episodes" },
       }),
+      expect.objectContaining({ type: "rated", payload: { score: 9 } }),
     ]);
   });
 

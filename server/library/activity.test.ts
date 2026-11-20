@@ -27,7 +27,7 @@ const types = (before: EntryState, after: EntryState) =>
 describe("the activity of a library change (SAG-44)", () => {
   it("starts a planned title that is now in progress or paused, and nothing else", () => {
     expect(activityOf(planned, { ...planned, status: "in_progress" })).toEqual([
-      { type: "started", payload: {}, daily: false },
+      { write: "add", type: "started", payload: {} },
     ]);
     expect(types(planned, { ...watching, status: "paused" })).toEqual([
       "started",
@@ -36,20 +36,30 @@ describe("the activity of a library change (SAG-44)", () => {
     expect(types(planned, { ...watching, progress: 4 })).toEqual(["started"]);
   });
 
-  it("says progressed, daily, with the progress and its unit", () => {
+  it("says progressed with the progress and its unit", () => {
     expect(activityOf(watching, { ...watching, progress: 4 })).toEqual([
       {
+        write: "add",
         type: "progressed",
         payload: { progress: 4, unit: "episodes" },
-        daily: true,
       },
     ]);
     const book = { ...watching, progressUnit: "pages" as const };
     expect(activityOf(book, { ...book, progress: 120 })).toEqual([
       {
+        write: "add",
         type: "progressed",
         payload: { progress: 120, unit: "pages" },
-        daily: true,
+      },
+    ]);
+  });
+
+  it("only corrects today's progress when the progress goes down (an undone step)", () => {
+    expect(activityOf(watching, { ...watching, progress: 2 })).toEqual([
+      {
+        write: "correct",
+        type: "progressed",
+        payload: { progress: 2, unit: "episodes" },
       },
     ]);
   });
@@ -77,14 +87,17 @@ describe("the activity of a library change (SAG-44)", () => {
     expect(types(gone, { ...gone, progress: 4 })).toEqual(["progressed"]);
   });
 
-  it("says rated, daily, when the score is set or changes, and nothing when it is taken away", () => {
+  it("says rated when the score is set or changes, and retracts today's when it is taken away", () => {
     expect(activityOf(watching, { ...watching, score: 8 })).toEqual([
-      { type: "rated", payload: { score: 8 }, daily: true },
+      { write: "add", type: "rated", payload: { score: 8 } },
     ]);
     const rated = { ...watching, score: 8 };
     expect(types(rated, { ...rated, score: 7 })).toEqual(["rated"]);
     expect(types(rated, { ...rated, score: 8 })).toEqual([]);
-    expect(types(rated, { ...rated, score: null })).toEqual([]);
+    expect(activityOf(rated, { ...rated, score: null })).toEqual([
+      { write: "retract", type: "rated" },
+    ]);
+    expect(activityOf(watching, { ...watching, score: null })).toEqual([]);
   });
 
   it("writes two events when one change completes and rates", () => {
@@ -98,7 +111,7 @@ describe("the activity of a library change (SAG-44)", () => {
     ).toEqual(["completed", "rated"]);
   });
 
-  it("says nothing for a pause, planning again, notes, dates, visibility or less progress", () => {
+  it("says nothing for a pause, planning again, notes, dates or visibility", () => {
     expect(types(watching, { ...watching, status: "paused" })).toEqual([]);
     expect(types(watching, { ...watching, status: "planned" })).toEqual([]);
     expect(
@@ -109,7 +122,6 @@ describe("the activity of a library change (SAG-44)", () => {
         visibility: "private",
       }),
     ).toEqual([]);
-    expect(types(watching, { ...watching, progress: 2 })).toEqual([]);
     // Coming back to a paused or dropped title is not a start.
     const paused = { ...watching, status: "paused" as const };
     expect(types(paused, { ...paused, status: "in_progress" })).toEqual([]);
@@ -127,9 +139,9 @@ describe("the activity of a library change (SAG-44)", () => {
 
   it("marks the start of a rewatch", () => {
     expect(rewatchActivity).toEqual({
+      write: "add",
       type: "started",
       payload: { rewatch: true },
-      daily: false,
     });
   });
 });
