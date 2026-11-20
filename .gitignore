@@ -25,8 +25,9 @@ worker-configuration.d.ts
 .react-router/
 *.tsbuildinfo
 
-# Local agent configuration
+# Local agent configuration and the owner's local notes
 CLAUDE.local.md
+*.local.md
 .claude/settings.local.json
 
 # Build output and test reports

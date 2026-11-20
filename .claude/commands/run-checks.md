@@ -2,14 +2,12 @@
 description: Run every pre-commit check and report the result
 ---
 
-Run these in order from the repo root and stop at the first failure:
+Run the checks from the repo root, in this order, and stop at the first failure:
 
-1. `npm run lint`
-2. `npm run format:check`
-3. `npm run typecheck`
-4. `npm run test:coverage`
-5. `npm run build`
+1. `npm run check` (lint, format check, typecheck, unit tests with coverage, build and size budgets). It stops at the first failing test and then does not build.
+2. If the branch changes `server/db`, `db/` or `drizzle/`: `npm run test:integration` (Docker must be on; never two runs at once).
+3. If the branch changes UI or routes: the e2e suite like CI (`.claude/rules/e2e.md`), then `npm run test:a11y` after the build.
 
-Report each step as passed or failed. For a failure, show the relevant error output and propose a fix, but do not apply it unless I ask. If a script does not exist in `package.json`, say so instead of skipping it silently.
+Read the result lines of each log (the `Tests` lines and the exit code of the check itself, not of an `echo`). Report each step as passed, failed or not run (and why). For a failure, show the relevant error output and propose a fix, but do not apply it unless I ask.
 
 When all pass, show `git status --short` and remind me to review `git diff --staged` before committing.
