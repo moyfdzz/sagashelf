@@ -1,0 +1,34 @@
+name: Database health
+
+# Once a day, asks the production site whether the database answers (SAG-260). The external
+# uptime monitor only calls /api/health, which never opens the database, because a monitor at the
+# 5 minute interval of its free plan would keep the Neon compute awake all month. A failed run
+# makes GitHub email the owner. Setup: docs/edge-setup.md, section 17.
+on:
+  schedule:
+    # 14:47 UTC is 08:47 in Mexico City. Not on the hour, when GitHub queues the most runs.
+    - cron: "47 14 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: database-health
+  cancel-in-progress: false
+
+jobs:
+  database:
+    name: Ask /api/health/database
+    if: github.repository == 'moyfdzz/sagashelf'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A paused Neon compute needs a second or two to wake, and the route waits up to 8 seconds
+      # before it answers 503, so one retry is enough and a second failure is a real one.
+      - name: Check the answer
+        run: |
+          body="$(curl --fail --silent --show-error --max-time 30 \
+            --retry 1 --retry-delay 15 --retry-all-errors \
+            https://sagashelf.app/api/health/database)"
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"'
