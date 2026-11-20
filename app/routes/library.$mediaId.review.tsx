@@ -15,7 +15,7 @@ import {
   deleteReview,
   getOwnReview,
   getReviewerFacts,
-  reviewableStatuses,
+  isReviewable,
   saveReview,
 } from "~server/db/reviews";
 import { readForm } from "~server/http/body";
@@ -76,9 +76,6 @@ const fail = (error: ReviewError, status: number, sent?: SentReview) =>
     { status, headers: privateHeaders },
   );
 
-const started = (status: string) =>
-  (reviewableStatuses as readonly string[]).includes(status);
-
 export async function loader(args: Route.LoaderArgs) {
   const user = await requireUser(args);
   const mediaId = mediaIdSchema.safeParse(args.params.mediaId);
@@ -114,7 +111,7 @@ export async function loader(args: Route.LoaderArgs) {
       ),
     },
     // A review needs a started title; one already written stays editable (ADR-053).
-    canWrite: review !== null || started(entry.status),
+    canWrite: review !== null || isReviewable(entry.status),
     entry: { score: entry.score, visibility: entry.visibility },
     review,
     // A new review starts at the level of the profile (ADR-053).

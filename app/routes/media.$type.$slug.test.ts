@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Route } from "./+types/media.$type.$slug";
-import { headers, loader, meta } from "./media.$type.$slug";
+import { headers, loader, meta, shouldRevalidate } from "./media.$type.$slug";
 import type { MediaDetail } from "~server/db/media-detail";
 
 const mocks = vi.hoisted(() => ({
@@ -880,5 +880,24 @@ describe("the reviews of the title (SAG-22)", () => {
     mocks.getEntry.mockResolvedValue({ status: "planned", progress: 0 });
     mocks.getOwnReview.mockResolvedValue({ body: "x" });
     expect((await reviewsOf()).write).toBe("edit");
+  });
+});
+
+describe("reading the page again after a form (SAG-22)", () => {
+  const after = (fields: Record<string, string> | null) =>
+    shouldRevalidate({
+      formMethod: fields ? "POST" : undefined,
+      formData: fields ? new URLSearchParams(fields) : undefined,
+      defaultShouldRevalidate: true,
+    } as unknown as Parameters<typeof shouldRevalidate>[0]);
+
+  it("skips it only for the like of a review", () => {
+    expect(after({ activityId: "x", liked: "true" })).toBe(false);
+  });
+
+  it("reads it again after the library and list buttons, which change the page", () => {
+    expect(after({ mediaId: "x" })).toBe(true);
+    expect(after({ status: "completed" })).toBe(true);
+    expect(after(null)).toBe(true);
   });
 });

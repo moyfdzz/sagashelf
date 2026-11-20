@@ -59,9 +59,9 @@ Decided with the owner on 2026-11-20.
 ## Notes from the implementation (2026-11-20)
 
 - The likes of a review, the order of the title page and who may like a review are in [ADR-056](056-review-likes-and-order.md).
-- The hourly limit counts the reviews that still exist: deleting a review and writing it again within the hour does not count twice. The duplicate check stops the same text on two titles, so this only matters for a person who deletes their own reviews.
+- The hourly limit is a counter in the row of the person (`users.reviews_hour_start` and `reviews_hour_count`), taken in the statement that writes a new review: a deleted review is still counted, so deleting and writing again cannot get past it (found by the review of the pull request). The hour starts at the first review of the window, so it is a window of one hour that opens with the first review, not a sliding one.
 - An edit of a review needs no started entry: a review stays, editable, when the title goes back to planned.
-- A link is something that looks like an address: a scheme (`https://`), `www.`, or a name followed by a common ending (`.com`, `.net`, `.mx` and others, `hasLink` in `server/reviews/rules.ts`). "Dr. Stone" or "3.5" are not links.
+- A link is something that looks like an address: a scheme (`https://`), `www.`, or a name followed by a common ending in lowercase or uppercase (`.com`, `.net`, `.mx` and others, `hasLink` in `server/reviews/rules.ts`). The endings that are common words (`es`, `me`, `co`, `us`, `ar`) are left out, so a sentence that starts right after a period with no space ("mucho.Es una serie") is not taken for one. "Dr. Stone" or "3.5" are not links either.
 
 ## References
 

@@ -1,5 +1,5 @@
 {
-  "id": "94f8b8ac-002c-405a-b844-2d253d0f59e7",
+  "id": "1541c79d-a834-40ce-9c10-23a56b20a05d",
   "prevId": "6a3a9b56-8e40-45f9-804a-881576bcbcf1",
   "version": "7",
   "dialect": "postgresql",
@@ -4349,6 +4349,19 @@
         },
         "title_fetches_count": {
           "name": "title_fetches_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reviews_hour_start": {
+          "name": "reviews_hour_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviews_hour_count": {
+          "name": "reviews_hour_count",
           "type": "smallint",
           "primaryKey": false,
           "notNull": true,

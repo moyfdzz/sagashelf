@@ -285,12 +285,16 @@ export function action(args: Route.ActionArgs) {
 }
 
 // The like button keeps its own count from the answer: reading the page again would ask the
-// providers and every block of the page for one like.
+// providers and every block of the page for one like. Every other form (the library buttons, the
+// lists) needs the page read again, or it would show the entry as it was before.
 export function shouldRevalidate({
   formMethod,
+  formData,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  return formMethod === "POST" ? false : defaultShouldRevalidate;
+  return formMethod === "POST" && formData?.has("activityId")
+    ? false
+    : defaultShouldRevalidate;
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

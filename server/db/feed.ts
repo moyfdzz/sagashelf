@@ -3,7 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import type { ProfileDb } from "./profile";
 import { text } from "./person";
-import { blockedBetween, levelAllowed } from "./person-visibility";
+import { blockedBetween, followsSql, levelAllowed } from "./person-visibility";
 import {
   reviewHeldSql,
   reviewLevelSql,
@@ -95,9 +95,6 @@ export type FeedPage = { events: FeedEvent[]; next: FeedCursor | null };
 const levelNow = sql`(CASE WHEN a.type = 'reviewed' THEN ${reviewLevelSql}
   ELSE GREATEST(a.visibility, le.visibility, u.privacy) END)`;
 
-const follows = (follower: SQL, followee: SQL) => sql`
-  EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${follower} AND f.followee_id = ${followee})`;
-
 /**
  * The events the viewer may see, as `FROM ... WHERE ...` over the aliases `a` (the event), `u` (its
  * author), `le` (the current entry of its title) and `m` (the title). Their own, whatever the
@@ -143,7 +140,7 @@ const shownEvents = (viewerId: string): SQL => {
           AND (
             ${levelAllowed(levelNow, (level) => canView("follower", level))}
             OR (
-              ${follows(sql`a.actor_id`, viewer)}
+              ${followsSql(sql`a.actor_id`, viewer)}
               AND ${levelAllowed(levelNow, (level) => canView("friend", level))}
             )
           )

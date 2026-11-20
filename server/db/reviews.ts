@@ -3,7 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import type { SqlExecutor } from "./clerk-sync";
 import type { ProfileDb } from "./profile";
 import { text } from "./person";
-import { blockedBetween, levelAllowed } from "./person-visibility";
+import { blockedBetween, followsSql, levelAllowed } from "./person-visibility";
 import { sharedTitleSql } from "./titles";
 import {
   newAccountHours,
@@ -26,6 +26,10 @@ export const reviewableStatuses = [
   "dropped",
 ] as const;
 
+/** A library entry in this status allows a new review: the title was started (ADR-053). */
+export const isReviewable = (status: string) =>
+  (reviewableStatuses as readonly string[]).includes(status);
+
 /**
  * The level a review shows at, over the aliases `r` (the review) and `u` (its author). Its own level,
  * independent of the library entry and of a locked (`friends`) profile; a profile with Total privacy
@@ -35,9 +39,6 @@ export const reviewLevelSql = sql`(CASE WHEN u.privacy = 'private' THEN 'private
 
 /** The account of `u` is too new for others to see its reviews yet (ADR-053). */
 export const reviewHeldSql = sql`(u.created_at > now() - make_interval(hours => ${newAccountHours}))`;
-
-const follows = (follower: SQL, followee: SQL) => sql`
-  EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${follower} AND f.followee_id = ${followee})`;
 
 /**
  * `level` (a SQL expression) is one the viewer may see on something of `u`: anybody for a public
@@ -52,7 +53,7 @@ const levelSeenBy = (viewerId: string | null, level: SQL): SQL => {
   return sql`(
     ${levelAllowed(level, (one) => canView("stranger", one))}
     OR (
-      ${follows(viewer, sql`u.id`)} AND ${follows(sql`u.id`, viewer)}
+      ${followsSql(viewer, sql`u.id`)} AND ${followsSql(sql`u.id`, viewer)}
       AND ${levelAllowed(level, (one) => canView("friend", one))}
     )
   )`;
@@ -267,6 +268,8 @@ export async function saveReview(
   const me = sql`${userId}::uuid`;
   const media = sql`${mediaId}::uuid`;
   const level = sql`${input.visibility}::privacy_level`;
+  // The window of the hourly counter is still open (null when the person never wrote a review).
+  const windowOpen = sql`(reviews_hour_start IS NOT NULL AND reviews_hour_start > now() - interval '1 hour')`;
   const { rows } = await db.execute(sql`
     WITH entry AS (
       SELECT le.id FROM library_entries le JOIN media_items m ON m.id = le.media_id
@@ -284,19 +287,24 @@ export async function saveReview(
       WHERE user_id = ${me} AND media_id <> ${media} AND fingerprint = ${input.fingerprint}
       LIMIT 1
     ),
-    recent AS (
-      SELECT count(*)::int AS n FROM reviews
-      WHERE user_id = ${me} AND created_at > now() - interval '1 hour'
+    -- A new review takes one unit of the hourly counter of the person, in the row of users: the
+    -- update locks it, so two reviews sent together cannot both take the last unit, and a deleted
+    -- review is still counted. The hour starts at the first review of the window.
+    claimed AS (
+      UPDATE users SET
+        reviews_hour_count = CASE WHEN ${windowOpen} THEN reviews_hour_count + 1 ELSE 1 END,
+        reviews_hour_start = CASE WHEN ${windowOpen} THEN reviews_hour_start ELSE now() END
+      WHERE id = ${me}
+        AND NOT EXISTS (SELECT 1 FROM existing)
+        AND EXISTS (SELECT 1 FROM entry)
+        AND NOT EXISTS (SELECT 1 FROM duplicate)
+        AND (NOT ${windowOpen} OR reviews_hour_count < ${reviewsPerHour})
+      RETURNING id
     ),
-    -- An edit needs no started entry: a review stays when the title goes back to planned. A new
-    -- review needs one, and room in the hourly limit.
+    -- An edit needs no started entry: a review stays when the title goes back to planned.
     allowed AS (
       SELECT 1
-      WHERE NOT EXISTS (SELECT 1 FROM duplicate)
-        AND (
-          EXISTS (SELECT 1 FROM existing)
-          OR (EXISTS (SELECT 1 FROM entry) AND (SELECT n FROM recent) < ${reviewsPerHour})
-        )
+      WHERE NOT EXISTS (SELECT 1 FROM duplicate) AND EXISTS (SELECT 1 FROM existing)
     ),
     updated AS (
       UPDATE reviews
@@ -313,8 +321,7 @@ export async function saveReview(
       INSERT INTO reviews (user_id, media_id, body, fingerprint, spoiler, visibility, activity_id)
       SELECT ${me}, ${media}, ${input.body}, ${input.fingerprint}, ${input.spoiler}::boolean, ${level},
              ${eventId}::uuid
-      FROM allowed
-      WHERE NOT EXISTS (SELECT 1 FROM existing)
+      FROM claimed
       ON CONFLICT ON CONSTRAINT reviews_user_media_unique DO NOTHING
       RETURNING activity_id
     ),
@@ -325,7 +332,7 @@ export async function saveReview(
     SELECT EXISTS (SELECT 1 FROM entry) AS started,
            EXISTS (SELECT 1 FROM duplicate) AS duplicate,
            EXISTS (SELECT 1 FROM existing) AS existed,
-           (SELECT n FROM recent) AS recent,
+           EXISTS (SELECT 1 FROM claimed) AS claimed,
            (SELECT count(*) FROM updated)::int AS updated,
            (SELECT count(*) FROM inserted)::int AS inserted
   `);
@@ -335,9 +342,7 @@ export async function saveReview(
   if (Number(row.updated) > 0) return "updated";
   if (row.started !== true && row.existed !== true) return "not_started";
   if (row.duplicate === true) return "duplicate";
-  if (row.existed !== true && Number(row.recent) >= reviewsPerHour) {
-    return "rate_limited";
-  }
+  if (row.existed !== true && row.claimed !== true) return "rate_limited";
   return "conflict";
 }
 

@@ -17,6 +17,8 @@ CREATE TABLE "reviews" (
 	CONSTRAINT "reviews_fingerprint_check" CHECK ("reviews"."fingerprint" ~ '^[0-9a-f]{64}$')
 );
 --> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "reviews_hour_start" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "reviews_hour_count" smallint DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_media_id_media_items_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media_items"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_activity_id_activity_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activity"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

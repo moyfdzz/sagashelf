@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getOwnReview, readReviews, reviewableStatuses } from "../db/reviews";
+import { getOwnReview, isReviewable, readReviews } from "../db/reviews";
 import type { SqlExecutor } from "../db/clerk-sync";
 import { personCard } from "../db/person";
 import type { LibraryStatus } from "../library/schema";
@@ -70,9 +70,7 @@ export async function titleReviews(
   params: URLSearchParams,
 ): Promise<TitleReviews> {
   const { order, page } = reviewQueryOf(params);
-  const started =
-    entryStatus !== null &&
-    (reviewableStatuses as readonly string[]).includes(entryStatus);
+  const started = entryStatus !== null && isReviewable(entryStatus);
   const [read, own] = await Promise.all([
     readReviews(db, viewer?.id ?? null, mediaId, order, page),
     viewer ? getOwnReview(db, viewer.id, mediaId) : null,

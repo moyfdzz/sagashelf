@@ -43,6 +43,7 @@ describe("links in a review", () => {
     "my blog sub.domain.net",
     "write to me@mail.ru",
     "ftp://files.test/a",
+    "BUY AT SPAM.COM",
   ])("refuses %j", (text) => {
     expect(hasLink(text)).toBe(true);
   });
@@ -53,6 +54,11 @@ describe("links in a review", () => {
     "It costs 9.99 and is worth it",
     "Mr.Robot season one",
     "una reseña normal, sin enlaces... ni nada",
+    // A sentence that starts right after a period, with no space.
+    "me gustó mucho.Es una serie muy buena",
+    "lo mejor.es que no se alarga",
+    "dijo.Me gustó el final",
+    "the end.Live action is next",
   ])("lets %j through", (text) => {
     expect(hasLink(text)).toBe(false);
   });

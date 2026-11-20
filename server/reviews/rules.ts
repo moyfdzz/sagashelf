@@ -32,12 +32,46 @@ export function normalizeReviewBody(raw: string): string {
 export const reviewLength = (body: string) => [...body].length;
 
 // Something that looks like an address: a scheme, `www.`, or a name followed by a common ending.
-// A review needs no links (ADR-053), and most review spam is links.
-const linkPattern =
-  /(?:[a-z][a-z0-9+.-]*:\/\/|\bwww\.|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|info|biz|io|co|me|ly|gg|tv|xyz|top|site|online|shop|store|app|dev|link|club|live|ru|cn|mx|es|ar|br|us|uk)\b)/iu;
-
+// A review needs no links (ADR-053), and most review spam is links. The ending must be all
+// lowercase or all uppercase, and the endings that are common words ("es", "me", "co", "us",
+// "ar") are left out, so "mucho.Es una serie" or "lo mejor.es que" written without a space after
+// the period are not taken for an address.
+const endings = [
+  "com",
+  "net",
+  "org",
+  "info",
+  "biz",
+  "io",
+  "ly",
+  "gg",
+  "tv",
+  "xyz",
+  "top",
+  "site",
+  "online",
+  "shop",
+  "store",
+  "app",
+  "dev",
+  "link",
+  "club",
+  "ru",
+  "cn",
+  "mx",
+  "br",
+  "uk",
+];
+const addressStart = /(?:[a-z][a-z0-9+.-]*:\/\/|\bwww\.)/i;
+const domain = (list: readonly string[]) =>
+  new RegExp(
+    `\\b[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:${list.join("|")})\\b`,
+  );
+const lowerDomain = domain(endings);
+const upperDomain = domain(endings.map((ending) => ending.toUpperCase()));
 /** The text holds something that looks like a link. */
-export const hasLink = (body: string) => linkPattern.test(body);
+export const hasLink = (body: string) =>
+  addressStart.test(body) || lowerDomain.test(body) || upperDomain.test(body);
 
 /**
  * The text a duplicate is compared on: lowercase, without accents, with every run of spaces,

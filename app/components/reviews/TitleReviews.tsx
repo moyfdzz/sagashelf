@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { Avatar } from "~/components/Avatar";
 import { LikeButton } from "~/components/LikeButton";
@@ -99,6 +99,8 @@ export function TitleReviews({
   path: string;
 }) {
   const { t } = useTranslation();
+  // A like sent without JavaScript comes back to this same order and page.
+  const here = `${path}${useLocation().search}`;
   const search = (order: Reviews["order"], page: number) => {
     const params = new URLSearchParams();
     if (order !== "relevant") params.set("reviews", order);
@@ -148,7 +150,7 @@ export function TitleReviews({
       ) : (
         <ul className="mt-4 space-y-3">
           {reviews.items.map((review) => (
-            <ReviewCard key={review.id} review={review} path={path} />
+            <ReviewCard key={review.id} review={review} path={here} />
           ))}
         </ul>
       )}
