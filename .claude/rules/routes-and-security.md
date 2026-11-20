@@ -30,7 +30,7 @@ paths:
 - **A value from the address that must be exactly four digits needs an anchored pattern** (`/^\d{4}$/`) next to the allow list: `Number("2026 ")` is 2026 (SAG-23).
 - **A list kept at the edge goes through `withEdgeCopy`** (`server/trending/edge-copy.ts`): the key carries every part that changes the answer. A public copy lags a privacy change by its time to live: say so in `/privacy` and the ADR.
 - `app/lib` and `server/` cannot import each other, so a limit used by both is a copy plus a test that compares them (`app/routes/analytics-limits.test.ts`). A component cannot import `server/`: the route re-exports the type.
-- **`/api/health` never opens the database** (Playwright waits for it, the CI has no database, and a monitor calling it would keep Neon awake). The database check is `/api/health/database`, called rarely (SAG-260).
+- **`/api/health` never opens the database** (Playwright waits for it, the CI has no database, and a monitor calling it would keep Neon awake). The database check is `/api/health/database`, which a second uptime monitor calls once a day (`docs/edge-setup.md`, section 17, SAG-260).
 
 ## Links
 
