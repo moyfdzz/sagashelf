@@ -12,11 +12,7 @@ paths:
 
 ## Running the suite like CI
 
-Run it on the production build, with 2 workers as CI does, and with the owner's `.dev.vars` moved aside (never read its values):
-
-`mv .dev.vars .dev.vars.aside; rm -f build/server/.dev.vars; CI=1 npx playwright test --workers=2 > log 2>&1; mv .dev.vars.aside .dev.vars`
-
-then confirm `.dev.vars` is back. `CI=1` matters (without it 8 "static file carries the base headers" tests fail: not a regression). Run it in the background and do not run `npm run build` meanwhile. Local runs with the default 8 workers were flaky twice (`ERR_CONNECTION_REFUSED`/`ERR_ABORTED` at the start); repeat the whole suite before saying a failure is not yours, and say so in the PR (SAG-266). A leftover `wrangler dev` or `workerd` process locks `build/server` and keeps port 4173. SAG-269 plans a script for all this.
+`npm run test:e2e:local` (`scripts/e2e-local.mjs`): moves the owner's `.dev.vars` aside and puts it back in a `finally` (never read its values), sets `CI=1` (the production build through `npm run preview`, which builds first) and 2 workers as CI, and ends with `E2E_LOCAL_EXIT=<code>`. Arguments go to Playwright (`npm run test:e2e:local -- e2e/navigation.spec.ts --repeat-each=8 --retries=0`); `--a11y` also runs `npm run test:a11y` on that build. Run it in the background and do not run `npm run build` meanwhile. Plain `npx playwright test` uses the dev server and the owner's `.dev.vars`: not like CI (8 "static file carries the base headers" tests fail without `CI=1`). Local runs with 8 workers were flaky twice (`ERR_CONNECTION_REFUSED`/`ERR_ABORTED` at the start); repeat the whole suite before saying a failure is not yours (SAG-266). A leftover `wrangler dev` or `workerd` process locks `build/server` and keeps port 4173.
 
 ## What the CI e2e can and cannot see
 

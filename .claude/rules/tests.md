@@ -18,6 +18,7 @@ paths:
 - **MSW** (`server/testing/`) fails any unhandled request, so tests never reach the network; each provider adds its fixtures there.
 - **Fake secrets stay obviously fake and low entropy**: gitleaks scans every commit of a PR and flags a made-up token.
 - The lint forbids `!` in tests too (`no-non-null-assertion`).
+- **Vitest 5 cannot print an error thrown by a `globalSetup`**: it shows "No test files found" and `code.charCodeAt is not a function` instead. Write the reason with `console.error` before throwing (`stopRun` in `db/global-setup.ts`), and read the lines above that message.
 
 ## Proving a big refactor (how SAG-121 did it, reuse it)
 
