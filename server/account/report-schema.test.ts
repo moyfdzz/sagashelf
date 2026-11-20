@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   canCancelReport,
+  isProfileReportKind,
   reasonsOf,
   reportFormSchema,
+  reviewModerationNotice,
+  reviewReportFormSchema,
   reportNotice,
   warningNotice,
   warningType,
@@ -133,5 +136,81 @@ describe("warningNotice", () => {
 
   it("has a type of its own, which the table of notifications allows", () => {
     expect(warningType).toBe("moderation.warning");
+  });
+});
+
+describe("the report of a review (ADR-057)", () => {
+  const review = (fields: Record<string, string>) =>
+    reviewReportFormSchema.safeParse({
+      intent: "report",
+      kind: "review",
+      ...fields,
+    });
+
+  // Written by hand: what the owner agreed, with an unmarked spoiler first.
+  it("has the agreed reasons", () => {
+    expect(reasonsOf("review")).toEqual([
+      "spoiler",
+      "spam",
+      "harassment",
+      "hate",
+      "sexual_content",
+      "other",
+    ]);
+  });
+
+  it("needs the details for a spoiler and for another reason, not for the rest", () => {
+    for (const reason of ["spoiler", "other"]) {
+      const parsed = review({ reason });
+      expect(parsed.success).toBe(false);
+      expect(parsed.error?.issues[0]?.message).toBe("details_required");
+      expect(review({ reason, details: "Revela el final." }).success).toBe(
+        true,
+      );
+    }
+    expect(review({ reason: "spam" }).success).toBe(true);
+  });
+
+  it("is refused with a reason of another kind, and from the form of a profile", () => {
+    expect(review({ reason: "impersonation" }).success).toBe(false);
+    expect(
+      reportFormSchema.safeParse({
+        intent: "report",
+        kind: "review",
+        reason: "spam",
+      }).success,
+    ).toBe(false);
+    expect(isProfileReportKind("review")).toBe(false);
+    expect(isProfileReportKind("picture")).toBe(true);
+  });
+
+  it("is a kind a warning and a report notice can name", () => {
+    expect(warningNotice({ kind: "review", reason: "spoiler" })).toEqual({
+      kind: "review",
+      reason: "spoiler",
+    });
+    expect(
+      reportNotice({ kind: "review", reason: "hate", username: "ana" }),
+    ).toEqual({ kind: "review", reason: "hate", username: "ana" });
+  });
+});
+
+describe("the notice of a review a moderator acted on", () => {
+  const mediaId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
+
+  it("reads the title, its id and the reason", () => {
+    expect(
+      reviewModerationNotice({ mediaId, title: "Frieren", reason: "spoiler" }),
+    ).toEqual({ mediaId, title: "Frieren", reason: "spoiler" });
+  });
+
+  it("drops a reason it does not know and refuses a payload with no title or a bad id", () => {
+    expect(
+      reviewModerationNotice({ mediaId, title: "Frieren", reason: "x" }),
+    ).toEqual({ mediaId, title: "Frieren", reason: null });
+    expect(reviewModerationNotice({ mediaId, title: "" })).toBeNull();
+    expect(
+      reviewModerationNotice({ mediaId: "../admin", title: "Frieren" }),
+    ).toBeNull();
   });
 });

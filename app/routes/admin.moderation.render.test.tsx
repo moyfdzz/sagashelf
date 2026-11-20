@@ -732,3 +732,148 @@ describe("the rest of the page", () => {
     expect(html).toContain("Suspended or banned accounts");
   });
 });
+
+describe("a report of a review (ADR-057)", () => {
+  const review = (fields: Record<string, unknown> = {}) => ({
+    body: "La reseña completa,\ncon su salto de línea y el final revelado.",
+    spoiler: false,
+    spoilerRequestedAt: null,
+    media: { title: "Frieren", href: `/media/anime/frieren-${id}` },
+    ...fields,
+  });
+  const reviewReport = (fields: Record<string, unknown> = {}) =>
+    personReport({
+      kind: "review",
+      reason: "spoiler",
+      reasonKey: "spoiler",
+      warnReasons: [
+        "spoiler",
+        "spam",
+        "harassment",
+        "hate",
+        "sexual_content",
+        "other",
+      ],
+      warnSelected: "spoiler",
+      details: "Dice quién muere.",
+      review: review(),
+      ...fields,
+    });
+
+  it("shows the whole text, the title and the reason, and offers to remove it or to ask for a spoiler mark", async () => {
+    const html = await render(
+      <AdminModeration {...props({ reports: [reviewReport()] })} />,
+    );
+
+    expect(html).toContain("Reseña");
+    expect(html).toContain("Spoiler sin marcar");
+    expect(html).toContain("Dice quién muere.");
+    expect(html).toContain("el final revelado.");
+    expect(html).toContain("Sin marca de spoiler.");
+    expect(html).toMatch(
+      /<a [^>]*href="\/media\/anime\/frieren-[^"]*"[^>]*>Frieren<\/a>/,
+    );
+    expect(intents(html)).toContain("ask_spoiler");
+    expect(intents(html)).not.toContain("close_fixed");
+    const trigger = html.match(/<a [^>]*>Quitar la reseña<\/a>/)?.[0] ?? "";
+    expect(trigger).toContain(
+      `href="/admin/moderation?confirm=${id}&amp;do=remove_review"`,
+    );
+  });
+
+  it("says when the author was asked and has not marked it yet, with no second ask", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({
+          reports: [
+            reviewReport({
+              review: review({
+                spoilerRequestedAt: Date.parse("2026-11-19T12:00:00Z"),
+              }),
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain("todavía no lo hace");
+    expect(intents(html)).not.toContain("ask_spoiler");
+    expect(intents(html)).not.toContain("close_fixed");
+    expect(html).toContain("Quitar la reseña");
+  });
+
+  it("offers to close the reports once the author marked it", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({
+          reports: [
+            reviewReport({
+              review: review({
+                spoiler: true,
+                spoilerRequestedAt: Date.parse("2026-11-19T12:00:00Z"),
+              }),
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain("y ya lo hizo");
+    expect(intents(html)).toContain("close_fixed");
+  });
+
+  it("says the review is gone and leaves only the report and the person", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({ reports: [reviewReport({ review: null })] })}
+      />,
+    );
+
+    expect(html).toContain("La reseña ya no existe");
+    expect(html).not.toContain("Quitar la reseña");
+    expect(intents(html)).toContain("dismiss");
+    expect(intents(html)).toContain("warn");
+  });
+
+  it("acts on nothing of the review of an administrator", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({ reports: [reviewReport({ protected: true })] })}
+      />,
+    );
+
+    expect(html).toContain("el final revelado.");
+    expect(html).not.toContain("Quitar la reseña");
+    expect(intents(html)).not.toContain("ask_spoiler");
+  });
+
+  it("asks to confirm the removal in a modal, in both languages", async () => {
+    const confirm = { id, action: "remove_review" };
+    const es = dialogOf(
+      await render(
+        <AdminModeration {...props({ reports: [reviewReport()], confirm })} />,
+      ),
+    );
+    expect(es).toContain("Quitar la reseña de bob");
+    expect(es).toContain('name="intent" value="remove_review"');
+    const en = dialogOf(
+      await render(
+        <AdminModeration {...props({ reports: [reviewReport()], confirm })} />,
+        "en",
+      ),
+    );
+    expect(en).toContain("Remove bob&#x27;s review");
+  });
+
+  it("does not open the modal for a review that is gone", async () => {
+    const html = await render(
+      <AdminModeration
+        {...props({
+          reports: [reviewReport({ review: null })],
+          confirm: { id, action: "remove_review" },
+        })}
+      />,
+    );
+    expect(dialogOf(html)).toBe("");
+  });
+});

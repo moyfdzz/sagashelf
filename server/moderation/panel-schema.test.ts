@@ -15,14 +15,19 @@ import {
 const id = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f";
 
 describe("moderationActionSchema", () => {
-  it.each(["dismiss", "restore", "remove", "suspend", "ban", "lift"])(
-    "takes %s with an id",
-    (intent) => {
-      expect(moderationActionSchema.safeParse({ intent, id }).success).toBe(
-        true,
-      );
-    },
-  );
+  it.each([
+    "dismiss",
+    "restore",
+    "remove",
+    "suspend",
+    "ban",
+    "lift",
+    "remove_review",
+    "ask_spoiler",
+    "close_fixed",
+  ])("takes %s with an id", (intent) => {
+    expect(moderationActionSchema.safeParse({ intent, id }).success).toBe(true);
+  });
 
   it("takes a warning with an id and a reason", () => {
     expect(
@@ -58,16 +63,33 @@ describe("moderationActionSchema", () => {
 
 describe("what the address may carry", () => {
   it("knows the actions that ask to be confirmed, and only those", () => {
-    for (const action of ["remove", "suspend", "ban"]) {
+    for (const action of ["remove", "remove_review", "suspend", "ban"]) {
       expect(asConfirmedAction(action)).toBe(action);
     }
-    for (const other of ["dismiss", "restore", "lift", "warn", "", null]) {
+    for (const other of [
+      "dismiss",
+      "restore",
+      "lift",
+      "warn",
+      "ask_spoiler",
+      "close_fixed",
+      "",
+      null,
+    ]) {
       expect(asConfirmedAction(other)).toBeNull();
     }
   });
 
   it("knows the words of the notices and the errors, and nothing else", () => {
-    for (const word of ["warned", "suspended", "banned", "lifted"]) {
+    for (const word of [
+      "warned",
+      "suspended",
+      "banned",
+      "lifted",
+      "review_removed",
+      "spoiler_asked",
+      "review_closed",
+    ]) {
       expect(asModerationNotice(word)).toBe(word);
     }
     for (const word of ["not_allowed", "picture_hidden", "failed"]) {

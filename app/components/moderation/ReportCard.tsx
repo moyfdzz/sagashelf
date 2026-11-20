@@ -7,6 +7,10 @@ import {
   moderationPage,
 } from "~/components/moderation/ActionButton";
 import { PersonActions } from "~/components/moderation/PersonActions";
+import {
+  ReviewReport,
+  type PanelReview,
+} from "~/components/moderation/ReviewReport";
 import { useFormatters } from "~/lib/format";
 import {
   dangerButtonClass,
@@ -15,12 +19,12 @@ import {
   secondaryLinkClass,
 } from "~/lib/ui";
 
-export type ConfirmAction = "remove" | "suspend" | "ban";
+export type ConfirmAction = "remove" | "remove_review" | "suspend" | "ban";
 
 /** A report as the card draws it. The texts that depend on a reason are made by the page. */
 export type PanelReport = {
   id: string;
-  kind: "picture" | "user";
+  kind: "picture" | "user" | "review";
   /** The reason in words, or null for an old reason that has no text. */
   reasonText: string | null;
   details: string | null;
@@ -35,6 +39,8 @@ export type PanelReport = {
   protected: boolean;
   /** The reasons a warning can give, those of the kind of the report, and the one to start on. */
   warn: { options: { value: string; label: string }[]; selected: string };
+  /** For a report of a review: the review, or null when it was deleted since (ADR-057). */
+  review?: PanelReview | null;
 };
 
 function Confirmation({
@@ -82,7 +88,9 @@ export function ReportCard({
   const asking =
     confirm === "remove"
       ? actionable
-      : confirm !== null && !report.protected && report.account !== "banned";
+      : confirm === "remove_review"
+        ? Boolean(report.review) && !report.protected
+        : confirm !== null && !report.protected && report.account !== "banned";
 
   return (
     <li className="border-border bg-surface-raised rounded-md border p-4">
@@ -146,6 +154,14 @@ export function ReportCard({
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {report.kind === "review" ? (
+        <ReviewReport
+          reportId={report.id}
+          review={report.review ?? null}
+          isProtected={report.protected}
+        />
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-3">

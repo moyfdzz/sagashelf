@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router";
 
 import { Avatar } from "~/components/Avatar";
 import { LikeButton } from "~/components/LikeButton";
+import { ReportReviewLink } from "~/components/reviews/ReportReviewLink";
 import { SpoilerGuard } from "~/components/reviews/SpoilerGuard";
 import { useFormatters } from "~/lib/format";
 import { linkClass, tabClass } from "~/lib/ui";
@@ -53,6 +54,11 @@ function ReviewCard({ review, path }: { review: ReviewItem; path: string }) {
             ) : null}
           </p>
         </div>
+        {review.removed ? (
+          <p className="text-danger-fg mt-2 text-sm font-semibold">
+            {t("reviews.removed.note")}
+          </p>
+        ) : null}
         {review.score !== null ? (
           <p className="mt-2 font-semibold">
             {t("reviews.score", { score: review.score })}
@@ -69,8 +75,8 @@ function ReviewCard({ review, path }: { review: ReviewItem; path: string }) {
             </details>
           ) : null}
         </SpoilerGuard>
-        {review.activityId ? (
-          <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {review.activityId ? (
             <LikeButton
               activityId={review.activityId}
               likes={review.likes}
@@ -78,8 +84,9 @@ function ReviewCard({ review, path }: { review: ReviewItem; path: string }) {
               mine={review.mine}
               action={path}
             />
-          </div>
-        ) : null}
+          ) : null}
+          {review.mine ? null : <ReportReviewLink reviewId={review.id} />}
+        </div>
       </article>
     </li>
   );

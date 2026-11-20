@@ -39,6 +39,8 @@ export type ReviewItem = {
   createdAt: string;
   edited: boolean;
   mine: boolean;
+  /** Removed by a moderator: only its author sees it, with a note that says so (ADR-057). */
+  removed: boolean;
   author: ReturnType<typeof personCard>;
   score: number | null;
   likes: number;
@@ -101,6 +103,7 @@ export async function titleReviews(
           review.updatedAt.getTime() - review.createdAt.getTime() >
           editedAfterMs,
         mine: review.mine,
+        removed: review.removed,
         author: personCard(review.author),
         score: review.score,
         likes: review.likes,

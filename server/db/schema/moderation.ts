@@ -20,6 +20,7 @@ export const reportTargetType = pgEnum("report_target_type", [
   "list",
   "activity",
   "picture",
+  "review",
 ]);
 
 export const reportReason = pgEnum("report_reason", [
@@ -34,6 +35,7 @@ export const reportReason = pgEnum("report_reason", [
   "violent",
   "impersonation",
   "hate",
+  "spoiler",
 ]);
 
 export const reportStatus = pgEnum("report_status", [
@@ -61,6 +63,9 @@ export const reports = pgTable(
     details: text("details"),
     // Which picture was reported, since the person can change it. The id of the target is the person.
     pictureUrl: text("picture_url"),
+    // Which review was reported (SAG-22, ADR-057). Like a picture, the id of the target is its author,
+    // so the author is known after the review is deleted. No foreign key: the report outlives it.
+    reviewId: uuid("review_id"),
     // When the reporter took it back. It stays, as a record of what was said.
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     status: reportStatus("status").notNull().default("open"),
@@ -79,10 +84,16 @@ export const reports = pgTable(
         t.targetType,
         t.targetId,
         sql`coalesce(${t.pictureUrl}, '')`,
+        sql`coalesce(${t.reviewId}::text, '')`,
       )
       .where(
         sql`${t.cancelledAt} is null and ${t.status} in ('open', 'reviewing')`,
       ),
+    // Written as text so the migration that adds the value can use it in the same transaction.
+    check(
+      "reports_review_id_check",
+      sql`(${t.targetType}::text = 'review') = (${t.reviewId} IS NOT NULL)`,
+    ),
     check(
       "reports_details_length_check",
       sql`char_length(${t.details}) <= 1000`,

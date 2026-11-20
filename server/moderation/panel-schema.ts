@@ -39,6 +39,11 @@ export const moderationActionSchema = z.discriminatedUnion("intent", [
   answer("remove"),
   answer("suspend"),
   answer("ban"),
+  // A report of a review (ADR-057): remove it, ask its author to mark it as a spoiler, or close
+  // the reports once the author did.
+  answer("remove_review"),
+  answer("ask_spoiler"),
+  answer("close_fixed"),
   // `username` only says which card of the panel to show again afterwards.
   z.strictObject({
     intent: z.literal("lift"),
@@ -69,7 +74,12 @@ export const moderationActionSchema = z.discriminatedUnion("intent", [
 ]);
 
 /** The actions that ask to be confirmed in a modal first, because they cannot be taken back here. */
-export const confirmedActions = ["remove", "suspend", "ban"] as const;
+export const confirmedActions = [
+  "remove",
+  "remove_review",
+  "suspend",
+  "ban",
+] as const;
 export type ConfirmedAction = (typeof confirmedActions)[number];
 
 export const asConfirmedAction = (
@@ -96,6 +106,9 @@ export const moderationNotices = [
   "banned_no_clerk",
   "lifted",
   "lifted_no_clerk",
+  "review_removed",
+  "spoiler_asked",
+  "review_closed",
 ] as const;
 export type ModerationNotice = (typeof moderationNotices)[number];
 

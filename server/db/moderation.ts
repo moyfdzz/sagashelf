@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import { hidingReason } from "../account/report-schema";
 import type { SqlExecutor } from "./clerk-sync";
+import { sharedTitleSql } from "./titles";
 
 /** How many rows each list of the panel shows. The oldest report comes first, minors before all. */
 export const queuePageSize = 50;
@@ -12,9 +13,18 @@ export const queuePageSize = 50;
  */
 export const nearLimitFromScore = 0.3;
 
+/** The reported review, as the reviewer reads it (ADR-057). Null when it was deleted since. */
+export type QueueReview = {
+  body: string;
+  spoiler: boolean;
+  /** When the author was asked to mark it as a spoiler, or null. */
+  spoilerRequestedAt: Date | null;
+  media: { id: string; type: string; title: string };
+};
+
 export type QueueReport = {
   id: string;
-  kind: "picture" | "user";
+  kind: "picture" | "user" | "review";
   reason: string;
   details: string | null;
   createdAt: Date;
@@ -31,7 +41,12 @@ export type QueueReport = {
   account: "active" | "suspended" | "banned";
   /** An administrator, or the one asking: nothing is done to the person from the panel. */
   protected: boolean;
+  /** For a report of a review: the review, or null when it is gone. Undefined for other kinds. */
+  review?: QueueReview | null;
 };
+
+const asKind = (value: unknown): QueueReport["kind"] =>
+  value === "picture" || value === "review" ? value : "user";
 
 /**
  * The reports nobody has answered, with what the reviewer needs. Never who reported. `actorId` is
@@ -48,17 +63,24 @@ export async function listOpenReports(
            (r.target_type = 'picture'
              AND (u.avatar_url = r.picture_url OR u.hidden_avatar_url = r.picture_url)) AS current,
            u.moderation_status AS account,
-           (u.role = 'admin' OR u.id = ${actorId}::uuid) AS protected
+           (u.role = 'admin' OR u.id = ${actorId}::uuid) AS protected,
+           rv.id AS review_id, rv.body AS review_body, rv.spoiler AS review_spoiler,
+           rv.spoiler_requested_at, m.id AS media_id, m.type::text AS media_type,
+           m.title AS media_title
     FROM reports r
     JOIN users u ON u.id = r.target_id
+    -- A review that was removed has no open report: removing it closes them all.
+    LEFT JOIN reviews rv ON rv.id = r.review_id AND rv.user_id = r.target_id
+    -- A title a person made for themselves is never reviewed in public, so it is never here.
+    LEFT JOIN media_items m ON m.id = rv.media_id AND ${sharedTitleSql("m")}
     WHERE r.status IN ('open', 'reviewing') AND r.cancelled_at IS NULL
-      AND r.target_type IN ('picture', 'user')
+      AND r.target_type IN ('picture', 'user', 'review')
     ORDER BY (r.reason = ${hidingReason}::report_reason) DESC, r.created_at ASC
     LIMIT ${queuePageSize}::int
   `);
   return rows.map((row) => ({
     id: String(row.id),
-    kind: row.kind === "picture" ? "picture" : "user",
+    kind: asKind(row.kind),
     reason: String(row.reason),
     details: row.details === null ? null : String(row.details),
     createdAt: new Date(String(row.created_at)),
@@ -72,7 +94,26 @@ export async function listOpenReports(
         ? row.account
         : "active",
     protected: row.protected === true,
+    ...(row.kind === "review" ? { review: queueReview(row) } : {}),
   }));
+}
+
+function queueReview(row: Record<string, unknown>): QueueReview | null {
+  if (row.review_id === null || row.review_id === undefined) return null;
+  if (row.media_id === null || row.media_id === undefined) return null;
+  return {
+    body: String(row.review_body),
+    spoiler: row.review_spoiler === true,
+    spoilerRequestedAt:
+      row.spoiler_requested_at === null
+        ? null
+        : new Date(String(row.spoiler_requested_at)),
+    media: {
+      id: String(row.media_id),
+      type: String(row.media_type),
+      title: String(row.media_title),
+    },
+  };
 }
 
 export type SuspiciousUpload = {

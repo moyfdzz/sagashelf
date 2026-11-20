@@ -45,6 +45,7 @@
     "routes/u.$username.$kind": 205,
     "routes/u.$username.library.$status": 205,
     "routes/u.$username.lists.$id": 204,
+    "routes/reviews.$reviewId.report": 253,
     "routes/u.$username.report": 232
   },
   "cssKb": 9

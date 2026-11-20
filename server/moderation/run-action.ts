@@ -26,6 +26,11 @@ import {
   stopAccount,
   type ClerkUsers,
 } from "./clerk-steps";
+import {
+  askSpoilerMark,
+  closeFixedReview,
+  removeReview,
+} from "../db/review-reports";
 import type { moderationActionSchema } from "./panel-schema";
 import { runPersonAction } from "./run-person-action";
 
@@ -60,6 +65,17 @@ export async function runModerationAction(
   }
   if (intent === "restore") {
     return done(await restorePicture(db, actorId, id), "restored");
+  }
+  // A review (ADR-057). Each is one statement that refuses a report that is not of a review, a
+  // review gone or removed, and an author who is an administrator or the one asking.
+  if (intent === "remove_review") {
+    return done(await removeReview(db, actorId, id), "review_removed");
+  }
+  if (intent === "ask_spoiler") {
+    return done(await askSpoilerMark(db, actorId, id), "spoiler_asked");
+  }
+  if (intent === "close_fixed") {
+    return done(await closeFixedReview(db, actorId, id), "review_closed");
   }
 
   if (intent === "remove") {

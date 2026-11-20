@@ -21,6 +21,8 @@ export type NewReport = {
   details: string | null;
   /** The picture at the time of the report, for the kind `picture`. */
   pictureUrl: string | null;
+  /** The reported review, for the kind `review`; `targetId` is then its author (ADR-057). */
+  reviewId?: string | null;
 };
 
 export type ReportOutcome = "reported" | "duplicate" | "limit";
@@ -39,6 +41,7 @@ export async function createReport(
   report: NewReport,
 ): Promise<ReportOutcome> {
   const { reporterId, targetId, kind, reason, details, pictureUrl } = report;
+  const reviewId = report.reviewId ?? null;
   const hides = reason === hidingReason ? sql`TRUE` : sql`FALSE`;
   const { rows } = await db.execute(sql`
     WITH recent AS (
@@ -46,9 +49,10 @@ export async function createReport(
       WHERE reporter_id = ${reporterId}::uuid AND created_at > now() - interval '1 day'
     ),
     inserted AS (
-      INSERT INTO reports (reporter_id, target_type, target_id, reason, details, picture_url)
+      INSERT INTO reports (reporter_id, target_type, target_id, reason, details, picture_url,
+                           review_id)
       SELECT ${reporterId}::uuid, ${kind}::report_target_type, ${targetId}::uuid,
-             ${reason}::report_reason, ${details}, ${pictureUrl}
+             ${reason}::report_reason, ${details}, ${pictureUrl}, ${reviewId}::uuid
       FROM recent WHERE made < ${dailyReportCap}::int
       ON CONFLICT DO NOTHING
       RETURNING id

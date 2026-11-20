@@ -242,9 +242,11 @@ describe("a review in the feed", () => {
         type: "reviewed",
         level: "public",
         review: {
+          id: expect.any(String) as unknown,
           start: expect.any(String) as unknown,
           more: true,
           spoiler: true,
+          removed: false,
         },
       }),
     ]);

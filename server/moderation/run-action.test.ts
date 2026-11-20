@@ -18,6 +18,15 @@ const mocks = vi.hoisted(() => ({
   lockUser: vi.fn(),
   unlockUser: vi.fn(),
   getUser: vi.fn(),
+  removeReview: vi.fn(),
+  askSpoilerMark: vi.fn(),
+  closeFixedReview: vi.fn(),
+}));
+
+vi.mock("../db/review-reports", () => ({
+  removeReview: mocks.removeReview,
+  askSpoilerMark: mocks.askSpoilerMark,
+  closeFixedReview: mocks.closeFixedReview,
 }));
 
 vi.mock("../db/account-actions", () => ({
@@ -543,4 +552,24 @@ describe("the logs", () => {
       "secret detail",
     );
   });
+});
+
+describe("the actions on a review (ADR-057)", () => {
+  it.each([
+    ["remove_review", "removeReview", "review_removed"],
+    ["ask_spoiler", "askSpoilerMark", "spoiler_asked"],
+    ["close_fixed", "closeFixedReview", "review_closed"],
+  ] as const)(
+    "%s calls %s as the administrator and says %s",
+    async (intent, fn, word) => {
+      mocks[fn].mockResolvedValue(true);
+      expect(await run({ intent, id })).toBe(`notice=${word}`);
+      expect(mocks[fn]).toHaveBeenCalledWith(db, actor, id);
+      mocks[fn].mockResolvedValue(false);
+      expect(await run({ intent, id })).toBe("error=not_found");
+      // Nothing of Clerk is touched: a review lives only here.
+      expect(mocks.deleteUserProfileImage).not.toHaveBeenCalled();
+      expect(mocks.banUser).not.toHaveBeenCalled();
+    },
+  );
 });

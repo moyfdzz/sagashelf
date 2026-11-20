@@ -273,6 +273,48 @@ describe("the moderation panel (SAG-143)", () => {
     });
   });
 
+  it("sends the review of a report of a review with the address of its title, and null when it is gone (ADR-057)", async () => {
+    const mediaId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e99";
+    const asked = new Date("2026-11-19T12:00:00Z");
+    mocks.listOpenReports.mockResolvedValue([
+      report({
+        kind: "review",
+        reason: "spoiler",
+        pictureUrl: null,
+        review: {
+          body: "El texto",
+          spoiler: false,
+          spoilerRequestedAt: asked,
+          media: { id: mediaId, type: "anime", title: "Sousou no Frieren" },
+        },
+      }),
+      report({
+        id: "two",
+        kind: "review",
+        reason: "spam",
+        pictureUrl: null,
+        review: null,
+      }),
+    ]);
+
+    const { reports } = (await load()) as unknown as Loaded;
+
+    expect(reports[0]).toMatchObject({
+      warnSelected: "spoiler",
+      review: {
+        body: "El texto",
+        spoiler: false,
+        spoilerRequestedAt: asked.getTime(),
+        media: {
+          title: "Sousou no Frieren",
+          href: `/media/anime/sousou-no-frieren-${mediaId}`,
+        },
+      },
+    });
+    expect(reports[0]?.warnReasons).toContain("spoiler");
+    expect(reports[1]).toMatchObject({ review: null });
+  });
+
   it("does not send the address of a picture reported for minors until that one is asked for", async () => {
     mocks.listOpenReports.mockResolvedValue([
       report({ sensitive: true, hidden: true }),

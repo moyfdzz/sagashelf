@@ -89,7 +89,13 @@ describe("feedItems (SAG-22)", () => {
     const start = `${"word ".repeat(70)}tail`;
     const [item] = one({
       type: "reviewed",
-      review: { start, more: false, spoiler: true },
+      review: {
+        id: "review-1",
+        start,
+        more: false,
+        spoiler: true,
+        removed: false,
+      },
     });
     expect(item?.kind).toBe("reviewed");
     expect(item?.review?.spoiler).toBe(true);
@@ -101,12 +107,20 @@ describe("feedItems (SAG-22)", () => {
   it("says a short review has nothing more", () => {
     const [item] = one({
       type: "reviewed",
-      review: { start: "Short and complete.", more: false, spoiler: false },
+      review: {
+        id: "review-1",
+        start: "Short and complete.",
+        more: false,
+        spoiler: false,
+        removed: false,
+      },
     });
     expect(item?.review).toEqual({
+      id: "review-1",
       excerpt: "Short and complete.",
       more: false,
       spoiler: false,
+      removed: false,
     });
   });
 

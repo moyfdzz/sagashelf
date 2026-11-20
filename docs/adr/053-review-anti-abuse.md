@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-20
-- **Implementation:** Partly done (SAG-22): reviews, their rules and the feed event are built; reports on a review come in the next pull request
+- **Implementation:** Done (SAG-22): reviews, their rules and the feed event, then reports on a review ([ADR-057](057-review-reports.md))
 - **Tickets:** SAG-22, SAG-270
 
 ## Context

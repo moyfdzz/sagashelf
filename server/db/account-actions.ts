@@ -55,7 +55,7 @@ function subjectRows(
     JOIN users u ON u.id = r.target_id
     WHERE r.id = ${subject.reportId}::uuid
       AND r.status IN ('open', 'reviewing') AND r.cancelled_at IS NULL
-      AND r.target_type IN ('picture', 'user')
+      AND r.target_type IN ('picture', 'user', 'review')
       AND u.deleted_at IS NULL AND u.role <> 'admin' AND u.id <> ${actorId}::uuid
       ${guard}
       AND ${state}`;
@@ -77,7 +77,7 @@ export type ReportedPerson = {
   reportId: string;
   userId: string;
   clerkId: string;
-  kind: "picture" | "user";
+  kind: "picture" | "user" | "review";
   reason: string;
   state: AccountState;
   /** An administrator, or the one asking: nothing is done to them from here. */
@@ -101,7 +101,7 @@ export async function findReportedPerson(
     JOIN users u ON u.id = r.target_id
     WHERE r.id = ${reportId}::uuid
       AND r.status IN ('open', 'reviewing') AND r.cancelled_at IS NULL
-      AND r.target_type IN ('picture', 'user')
+      AND r.target_type IN ('picture', 'user', 'review')
       AND u.deleted_at IS NULL
   `);
   const row = rows[0];
@@ -110,7 +110,7 @@ export async function findReportedPerson(
     reportId: String(row.id),
     userId: String(row.user_id),
     clerkId: String(row.clerk_id),
-    kind: row.kind === "picture" ? "picture" : "user",
+    kind: row.kind === "picture" || row.kind === "review" ? row.kind : "user",
     reason: String(row.reason),
     state: asState(row.moderation_status),
     protected: row.protected === true,

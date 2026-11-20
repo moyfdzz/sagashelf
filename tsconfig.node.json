@@ -63,6 +63,7 @@
     "server/db/provider-calls.ts",
     "server/db/recommendations.ts",
     "server/db/reports.ts",
+    "server/db/review-reports.ts",
     "server/db/reviews.ts",
     "server/db/saga-drafts.ts",
     "server/db/sagas-admin.ts",
