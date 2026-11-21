@@ -13,6 +13,7 @@ Migrations are **not** run by CI or by the deploy (ADR-002; SAG-267 plans a work
 2. Commit and open the PR first, then ask the owner to apply it.
 3. **A migration that changes or deletes data** (not an added nullable column) is preceded by a Neon snapshot the owner takes by hand (`docs/backups.md`). If it adds a constraint to existing rows, ask first for a `SELECT count(*)` of the rows that would break it.
 4. Ask whether the migration was applied before editing it: until then it can change (see `.claude/rules/database.md`); after, any change is a new migration.
+5. If the new code reads the new table or column on the title page, the feed or any page every visitor opens, the PR summary starts with **Apply migration NNNN BEFORE merging** in bold, and the agent asks for it before saying the PR is ready (SAG-22, 2026-11-20: the title pages ran minutes without `reviews`).
 
 ## The command (one line, the owner asked for it on 2026-11-06)
 

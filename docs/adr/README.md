@@ -4,64 +4,65 @@ An ADR records one significant decision: what was decided, why, what else was co
 
 ## Index
 
-| ADR                                              | Decision                                                                                  | Status   | Implementation                        |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------- | -------- | ------------------------------------- |
-| [001](001-runtime-react-router-on-workers.md)    | React Router v8 (framework mode, SSR) on Cloudflare Workers                               | Accepted | Done (SAG-3)                          |
-| [002](002-data-postgres-neon-drizzle.md)         | Postgres on Neon with Drizzle                                                             | Accepted | Done (SAG-9)                          |
-| [003](003-auth-clerk.md)                         | Clerk for accounts, local `users` mirror                                                  | Accepted | Done (SAG-10, SAG-11, SAG-12)         |
-| [004](004-search-strategy.md)                    | Search: local first, parallel typed fan-out, fallback chains, caching                     | Accepted | Partial (SAG-15)                      |
-| [005](005-providers-and-licensing.md)            | Data providers, their terms, and the ones we do not use                                   | Accepted | Partial (SAG-13, 17, 31; 14, 16 next) |
-| [006](006-security-model.md)                     | Threat model, controls and where they live                                                | Accepted | Partial (see the ADR)                 |
-| [007](007-background-work-cron-and-outbox.md)    | One Cron Trigger handler plus a transactional outbox                                      | Accepted | Partly done (SAG-54); outbox planned  |
-| [008](008-i18n-spanish-default.md)               | Spanish by default, English selectable                                                    | Accepted | Done (SAG-8)                          |
-| [009](009-analytics-cookieless.md)               | Cookieless first-party analytics with daily rollups                                       | Accepted | Done (SAG-24)                         |
-| [010](010-ci-cd-and-repository-rules.md)         | CI, security scans, previews and the `main` ruleset                                       | Accepted | Done (SAG-5)                          |
-| [011](011-edge-security-and-domain.md)           | Domain, security headers, CSP with nonces, rate limiting and crawler policy               | Accepted | Partial (SAG-7, plus dashboard steps) |
-| [012](012-neon-over-supabase.md)                 | Neon for the database, compared with Supabase on the Free plan                            | Accepted | Done (SAG-9)                          |
-| [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback    | Accepted | Done (SAG-12)                         |
-| [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)        | Accepted | Done (SAG-12)                         |
-| [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                                  | Accepted | Done (SAG-37)                         |
-| [016](016-provider-layer-and-tmdb.md)            | The provider layer and TMDB: the interface, the HTTP client and the 6-month cache rule    | Accepted | Done (SAG-13)                         |
-| [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                        | Accepted | Done (SAG-17)                         |
-| [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry             | Accepted | Partial (SAG-18, SAG-43)              |
-| [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)       | Accepted | Done (SAG-48)                         |
-| [022](022-manga-mangadex.md)                     | Manga through MangaDex: never banned, covers spaced, removals honored                     | Accepted | Done (SAG-66)                         |
-| [023](023-statistics.md)                         | Statistics of a person, worked out when the page opens; one length per title              | Accepted | Done (SAG-61, SAG-85, SAG-86, SAG-91) |
-| [024](024-genres.md)                             | Genres of a title, in a list of our own that every provider maps to                       | Accepted | Done (SAG-71, SAG-86)                 |
-| [025](025-wikidata.md)                           | Other formats of a story through Wikidata, found in the 6-hourly cron                     | Accepted | Done (SAG-16)                         |
-| [026](026-sagas.md)                              | Sagas, curated in code and built on Wikidata, with a page, a badge and your progress      | Accepted | Partial (SAG-25, SAG-92, SAG-245)     |
-| [027](027-tvmaze-next-episode.md)                | The next episode of a series through TVmaze, in a Cron Trigger of its own                 | Accepted | Done (SAG-90)                         |
-| [028](028-recommendations.md)                    | Recommendations from the genres a person likes and the sagas they started                 | Accepted | Done (SAG-87)                         |
-| [029](029-discord-webhooks.md)                   | Outgoing webhooks to Discord: the outbox, the delivery and the settings page              | Accepted | Done (SAG-27)                         |
-| [030](030-new-episode-alerts.md)                 | Alerts of new episodes, through the outbox to Discord                                     | Accepted | Done (SAG-28)                         |
-| [031](031-social-graph.md)                       | The social graph: follows, blocks, mutes and one policy for who may see what              | Accepted | Partial (SAG-21; pages in SAG-107)    |
-| [032](032-follow-requests.md)                    | Follow requests, and the names of the profile levels (Public, Private, Total privacy)     | Accepted | Done (SAG-108)                        |
-| [033](033-design-rules.md)                       | Design rules for routes, data functions and helpers                                       | Accepted | Partial (SAG-116)                     |
-| [034](034-cancel-a-declined-request.md)          | Cancelling a declined follow request, and no wait to ask again                            | Accepted | Done (SAG-123)                        |
-| [035](035-saving-a-title-needs-a-session.md)     | Only a person with a session saves a title                                                | Accepted | Done (SAG-130)                        |
-| [036](036-daily-encrypted-database-copy.md)      | A daily encrypted copy of the database, kept outside Neon                                 | Accepted | Done (SAG-135)                        |
-| [037](037-profile-pictures.md)                   | Uploading a profile picture, stored in Clerk and checked first                            | Accepted | Done (SAG-109)                        |
-| [038](038-reports-and-picture-records.md)        | Reports of a picture or a person, and a record of uploads                                 | Accepted | Done (SAG-142)                        |
-| [039](039-moderation-panel.md)                   | The moderation panel, and a hidden picture that stays hidden                              | Accepted | Done (SAG-143)                        |
-| [040](040-warn-suspend-ban.md)                   | Warning, suspending and banning an account                                                | Accepted | Done (SAG-143)                        |
-| [041](041-ban-when-clerk-plan-has-no-ban.md)     | A ban carries on when Clerk's plan has no ban                                             | Accepted | Done (SAG-153)                        |
-| [042](042-moderation-panel-time-zone.md)         | The moderation panel shows times in Monterrey                                             | Accepted | Done (SAG-154)                        |
-| [043](043-report-again-after-an-answer.md)       | A person can report the same thing again after an answer                                  | Accepted | Done (SAG-147)                        |
-| [044](044-contact-page.md)                       | A contact page, with the messages kept in the database                                    | Accepted | Done (SAG-110)                        |
-| [045](045-lists.md)                              | Lists of titles, with a soft limit and the strictest level                                | Accepted | Complete (SAG-113)                    |
-| [046](046-tickets-on-github.md)                  | Tickets in a private GitHub repository, not in Linear                                     | Accepted | Done (SAG-216)                        |
-| [047](047-import-queue.md)                       | Big libraries are imported in the background, through a queue                             | Accepted | Done (SAG-241)                        |
-| [048](048-simkl-backup-import.md)                | A Simkl JSON backup is imported through its TMDB ids, not its API                         | Accepted | Done (SAG-242)                        |
-| [049](049-match-anime-by-name-and-year.md)       | An anime with no TMDB id is looked up by name and year, in the queue                      | Accepted | Done (SAG-243)                        |
-| [050](050-analytics-collector.md)                | The analytics collector writes straight to Postgres, with a daily salt                    | Accepted | Done (SAG-24, SAG-254)                |
-| [051](051-site-favorites-on-request.md)          | The favorites of SagaShelf are computed on request, from public things only               | Accepted | Done (SAG-23)                         |
-| [052](052-provider-call-counts.md)               | The calls to the providers are counted by day, in memory first and written once           | Accepted | Done (SAG-26)                         |
-| [053](053-review-anti-abuse.md)                  | Reviews: length, visibility and the anti-abuse numbers                                    | Accepted | Partly done (SAG-22)                  |
-| [054](054-library-activity-events.md)            | The library writes its activity in the same statement, one event per kind, title and day  | Accepted | Done (SAG-44)                         |
-| [055](055-feed-and-likes.md)                     | The feed reads every event through one rule, and a like is only a count                   | Accepted | Done (SAG-22)                         |
-| [056](056-review-likes-and-order.md)             | A review carries its likes on its feed event, and the title page orders reviews by them   | Accepted | Done (SAG-22)                         |
-| [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable | Accepted | Done (SAG-14)                         |
-| [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                     | Accepted | Partial (SAG-41)                      |
+| ADR                                              | Decision                                                                                     | Status   | Implementation                        |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------- | -------- | ------------------------------------- |
+| [001](001-runtime-react-router-on-workers.md)    | React Router v8 (framework mode, SSR) on Cloudflare Workers                                  | Accepted | Done (SAG-3)                          |
+| [002](002-data-postgres-neon-drizzle.md)         | Postgres on Neon with Drizzle                                                                | Accepted | Done (SAG-9)                          |
+| [003](003-auth-clerk.md)                         | Clerk for accounts, local `users` mirror                                                     | Accepted | Done (SAG-10, SAG-11, SAG-12)         |
+| [004](004-search-strategy.md)                    | Search: local first, parallel typed fan-out, fallback chains, caching                        | Accepted | Partial (SAG-15)                      |
+| [005](005-providers-and-licensing.md)            | Data providers, their terms, and the ones we do not use                                      | Accepted | Partial (SAG-13, 17, 31; 14, 16 next) |
+| [006](006-security-model.md)                     | Threat model, controls and where they live                                                   | Accepted | Partial (see the ADR)                 |
+| [007](007-background-work-cron-and-outbox.md)    | One Cron Trigger handler plus a transactional outbox                                         | Accepted | Partly done (SAG-54); outbox planned  |
+| [008](008-i18n-spanish-default.md)               | Spanish by default, English selectable                                                       | Accepted | Done (SAG-8)                          |
+| [009](009-analytics-cookieless.md)               | Cookieless first-party analytics with daily rollups                                          | Accepted | Done (SAG-24)                         |
+| [010](010-ci-cd-and-repository-rules.md)         | CI, security scans, previews and the `main` ruleset                                          | Accepted | Done (SAG-5)                          |
+| [011](011-edge-security-and-domain.md)           | Domain, security headers, CSP with nonces, rate limiting and crawler policy                  | Accepted | Partial (SAG-7, plus dashboard steps) |
+| [012](012-neon-over-supabase.md)                 | Neon for the database, compared with Supabase on the Free plan                               | Accepted | Done (SAG-9)                          |
+| [013](013-color-palette-and-theme.md)            | Color palette "Marino y ámbar", and light or dark mode with the system as the fallback       | Accepted | Done (SAG-12)                         |
+| [014](014-account-deletion-erases-everything.md) | Deleting an account erases it completely (supersedes the deletion rule of ADR-003)           | Accepted | Done (SAG-12)                         |
+| [015](015-username-change.md)                    | Changing the username: once every 30 days, through Clerk                                     | Accepted | Done (SAG-37)                         |
+| [016](016-provider-layer-and-tmdb.md)            | The provider layer and TMDB: the interface, the HTTP client and the 6-month cache rule       | Accepted | Done (SAG-13)                         |
+| [017](017-media-pages-and-image-proxy.md)        | Title pages, saving a title when it is opened, and the image proxy                           | Accepted | Done (SAG-17)                         |
+| [018](018-personal-library.md)                   | The personal library: statuses, progress, scores, and who may change an entry                | Accepted | Partial (SAG-18, SAG-43)              |
+| [019](019-library-viewings.md)                   | A history of the times a title was watched (supersedes "Watching again" of ADR-018)          | Accepted | Done (SAG-48)                         |
+| [022](022-manga-mangadex.md)                     | Manga through MangaDex: never banned, covers spaced, removals honored                        | Accepted | Done (SAG-66)                         |
+| [023](023-statistics.md)                         | Statistics of a person, worked out when the page opens; one length per title                 | Accepted | Done (SAG-61, SAG-85, SAG-86, SAG-91) |
+| [024](024-genres.md)                             | Genres of a title, in a list of our own that every provider maps to                          | Accepted | Done (SAG-71, SAG-86)                 |
+| [025](025-wikidata.md)                           | Other formats of a story through Wikidata, found in the 6-hourly cron                        | Accepted | Done (SAG-16)                         |
+| [026](026-sagas.md)                              | Sagas, curated in code and built on Wikidata, with a page, a badge and your progress         | Accepted | Partial (SAG-25, SAG-92, SAG-245)     |
+| [027](027-tvmaze-next-episode.md)                | The next episode of a series through TVmaze, in a Cron Trigger of its own                    | Accepted | Done (SAG-90)                         |
+| [028](028-recommendations.md)                    | Recommendations from the genres a person likes and the sagas they started                    | Accepted | Done (SAG-87)                         |
+| [029](029-discord-webhooks.md)                   | Outgoing webhooks to Discord: the outbox, the delivery and the settings page                 | Accepted | Done (SAG-27)                         |
+| [030](030-new-episode-alerts.md)                 | Alerts of new episodes, through the outbox to Discord                                        | Accepted | Done (SAG-28)                         |
+| [031](031-social-graph.md)                       | The social graph: follows, blocks, mutes and one policy for who may see what                 | Accepted | Partial (SAG-21; pages in SAG-107)    |
+| [032](032-follow-requests.md)                    | Follow requests, and the names of the profile levels (Public, Private, Total privacy)        | Accepted | Done (SAG-108)                        |
+| [033](033-design-rules.md)                       | Design rules for routes, data functions and helpers                                          | Accepted | Partial (SAG-116)                     |
+| [034](034-cancel-a-declined-request.md)          | Cancelling a declined follow request, and no wait to ask again                               | Accepted | Done (SAG-123)                        |
+| [035](035-saving-a-title-needs-a-session.md)     | Only a person with a session saves a title                                                   | Accepted | Done (SAG-130)                        |
+| [036](036-daily-encrypted-database-copy.md)      | A daily encrypted copy of the database, kept outside Neon                                    | Accepted | Done (SAG-135)                        |
+| [037](037-profile-pictures.md)                   | Uploading a profile picture, stored in Clerk and checked first                               | Accepted | Done (SAG-109)                        |
+| [038](038-reports-and-picture-records.md)        | Reports of a picture or a person, and a record of uploads                                    | Accepted | Done (SAG-142)                        |
+| [039](039-moderation-panel.md)                   | The moderation panel, and a hidden picture that stays hidden                                 | Accepted | Done (SAG-143)                        |
+| [040](040-warn-suspend-ban.md)                   | Warning, suspending and banning an account                                                   | Accepted | Done (SAG-143)                        |
+| [041](041-ban-when-clerk-plan-has-no-ban.md)     | A ban carries on when Clerk's plan has no ban                                                | Accepted | Done (SAG-153)                        |
+| [042](042-moderation-panel-time-zone.md)         | The moderation panel shows times in Monterrey                                                | Accepted | Done (SAG-154)                        |
+| [043](043-report-again-after-an-answer.md)       | A person can report the same thing again after an answer                                     | Accepted | Done (SAG-147)                        |
+| [044](044-contact-page.md)                       | A contact page, with the messages kept in the database                                       | Accepted | Done (SAG-110)                        |
+| [045](045-lists.md)                              | Lists of titles, with a soft limit and the strictest level                                   | Accepted | Complete (SAG-113)                    |
+| [046](046-tickets-on-github.md)                  | Tickets in a private GitHub repository, not in Linear                                        | Accepted | Done (SAG-216)                        |
+| [047](047-import-queue.md)                       | Big libraries are imported in the background, through a queue                                | Accepted | Done (SAG-241)                        |
+| [048](048-simkl-backup-import.md)                | A Simkl JSON backup is imported through its TMDB ids, not its API                            | Accepted | Done (SAG-242)                        |
+| [049](049-match-anime-by-name-and-year.md)       | An anime with no TMDB id is looked up by name and year, in the queue                         | Accepted | Done (SAG-243)                        |
+| [050](050-analytics-collector.md)                | The analytics collector writes straight to Postgres, with a daily salt                       | Accepted | Done (SAG-24, SAG-254)                |
+| [051](051-site-favorites-on-request.md)          | The favorites of SagaShelf are computed on request, from public things only                  | Accepted | Done (SAG-23)                         |
+| [052](052-provider-call-counts.md)               | The calls to the providers are counted by day, in memory first and written once              | Accepted | Done (SAG-26)                         |
+| [053](053-review-anti-abuse.md)                  | Reviews: length, visibility and the anti-abuse numbers                                       | Accepted | Done (SAG-22)                         |
+| [054](054-library-activity-events.md)            | The library writes its activity in the same statement, one event per kind, title and day     | Accepted | Done (SAG-44)                         |
+| [055](055-feed-and-likes.md)                     | The feed reads every event through one rule, and a like is only a count                      | Accepted | Done (SAG-22)                         |
+| [056](056-review-likes-and-order.md)             | A review carries its likes on its feed event, and the title page orders reviews by them      | Accepted | Done (SAG-22)                         |
+| [057](057-review-reports.md)                     | Reports on a review keep its author, and a moderator can remove it or ask for a spoiler mark | Accepted | Done (SAG-22)                         |
+| [021](021-books-open-library.md)                 | Books through Open Library: authors column, covers by redirect, switched on by a variable    | Accepted | Done (SAG-14)                         |
+| [020](020-library-import.md)                     | Restoring the library from the data export (the CSV import is SAG-52)                        | Accepted | Partial (SAG-41)                      |
 
 "Accepted" means the decision is made. "Planned" means it is not built yet, so the ADR describes the intended design and may be refined by its ticket without a new ADR as long as the decision itself does not change.
 

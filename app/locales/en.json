@@ -486,7 +486,7 @@
     },
     "report": {
       "title": "Reports and consequences",
-      "body": "If you see something that breaks these rules, use \"Report\" on that person's profile or write to {{email}}. We may remove content and suspend or delete accounts that do not follow them."
+      "body": "If you see something that breaks these rules, use \"Report\" on that person's profile or on their review, or write to {{email}}. We may remove content and suspend or delete accounts that do not follow them."
     }
   },
   "credits": {
@@ -892,7 +892,8 @@
   "report": {
     "title": {
       "picture": "Report the picture of {{name}}",
-      "user": "Report {{name}}"
+      "user": "Report {{name}}",
+      "review": "Report {{name}}'s review"
     },
     "back": "Back to the profile of {{name}}",
     "anonymous": "This person will not know who reported them.",
@@ -906,7 +907,8 @@
       "harassment": "Harassment",
       "impersonation": "Impersonation",
       "hate": "Hate or discrimination",
-      "other": "Another reason"
+      "other": "Another reason",
+      "spoiler": "Unmarked spoiler"
     },
     "minorsWarning": "If you choose \"Sexual content with minors\", the picture is hidden at once and you will not be able to cancel the report. Choose it only if you truly believe it.",
     "detailsLabel": "Tell us more",
@@ -914,7 +916,8 @@
     "submit": "Send report",
     "already": {
       "picture": "You already reported this picture",
-      "user": "You already reported this user"
+      "user": "You already reported this user",
+      "review": "You already reported this review"
     },
     "yourReason": "Your report: {{reason}}.",
     "cancel": "Cancel report",
@@ -922,15 +925,26 @@
     "cannotCancel": "This report can no longer be cancelled.",
     "notice": {
       "picture": "The picture of @{{username}} was reported",
-      "user": "@{{username}} was reported"
+      "user": "@{{username}} was reported",
+      "review": "A review by @{{username}} was reported"
     },
     "warning": {
       "picture": "An administrator reviewed a report about your picture and found that it breaks the community rules. If it happens again, your account may be suspended.",
-      "user": "An administrator reviewed a report about your profile and found that it breaks the community rules. If it happens again, your account may be suspended."
+      "user": "An administrator reviewed a report about your profile and found that it breaks the community rules. If it happens again, your account may be suspended.",
+      "review": "An administrator reviewed a report about one of your reviews and found that it breaks the community rules. If it happens again, your account may be suspended."
     },
     "errors": {
       "details_required": "Tell us what is wrong to send the report.",
       "invalid_request": "We could not read the form. Reload the page and try again."
+    },
+    "backToTitle": "Back to {{title}}",
+    "reviewDetailsHint": "Up to {{max}} characters. Required if you choose \"Unmarked spoiler\" (say what it gives away) or \"Other reason\".",
+    "reviewNotices": {
+      "reported": "We sent your report. Thanks for telling us.",
+      "duplicate": "You had already sent that report.",
+      "limit": "You reached the limit of reports for today. Try again tomorrow.",
+      "cancelled": "You cancelled your report.",
+      "unavailable": "That report can no longer be cancelled."
     }
   },
   "notifications": {
@@ -1407,7 +1421,10 @@
         "banned": "Account banned. Their profile is no longer seen and the reports about this person are resolved.",
         "banned_no_clerk": "Account banned here. Clerk did not apply the ban because its plan does not include it, but the app already blocks the person's access. Their profile is no longer seen and the reports are resolved.",
         "lifted": "The restriction of the account was lifted.",
-        "lifted_no_clerk": "The restriction was lifted here. Clerk changed nothing because its plan does not include the ban."
+        "lifted_no_clerk": "The restriction was lifted here. Clerk changed nothing because its plan does not include the ban.",
+        "review_removed": "Review removed. The reports about it were resolved and its author was told.",
+        "spoiler_asked": "The author was asked to mark the review as a spoiler. The report waits until you decide.",
+        "review_closed": "The review is now marked as a spoiler. The reports about it were resolved."
       },
       "errors": {
         "invalid_request": "The action could not be read.",
@@ -1424,7 +1441,8 @@
         "empty": "There are no open reports.",
         "kind": {
           "picture": "Picture",
-          "user": "Person"
+          "user": "Person",
+          "review": "Review"
         },
         "unknownReason": "Reason with no text",
         "hidden": "The picture is hidden from everybody until you decide.",
@@ -1462,6 +1480,11 @@
           "title": "Ban {{username}}",
           "message": "They cannot sign in and their profile stops being seen. You can lift the ban later. The open reports about this person are closed, except the one of a hidden picture.",
           "yes": "Yes, ban"
+        },
+        "remove_review": {
+          "title": "Remove {{username}}'s review",
+          "message": "Nobody else will see it, on the title or in the feed. Its author still sees it, is told, and can only delete it. The reports about it are closed.",
+          "yes": "Yes, remove the review"
         }
       },
       "person": {
@@ -1491,6 +1514,18 @@
           "allowed": "Allowed, close to the limit"
         },
         "score": "Score {{score}}"
+      },
+      "reviews": {
+        "gone": "The review no longer exists (its author deleted it or removed the title). You can dismiss the report or act on the person.",
+        "of": "Review of",
+        "marked": "Marked as a spoiler.",
+        "notMarked": "No spoiler mark.",
+        "askedWaiting": "Asked to mark it as a spoiler on {{time}}; not done yet.",
+        "askedDone": "Asked to mark it as a spoiler on {{time}}; done.",
+        "remove": "Remove the review",
+        "askSpoiler": "Ask to mark it as a spoiler",
+        "closeFixed": "Marked now: close",
+        "alreadyRemoved": "This review was already removed for another report. Dismiss this one."
       }
     },
     "sagas": {
@@ -1990,7 +2025,8 @@
         "summary": "Delete my review",
         "warning": "Your review and its likes are deleted. This cannot be undone.",
         "confirm": "Delete for good"
-      }
+      },
+      "spoilerAsked": "A moderator asks you to mark this review as a spoiler. If you don't, it may be removed."
     },
     "errors": {
       "invalid": "We could not read the form. Reload the page and try again.",
@@ -2001,7 +2037,20 @@
       "rate_limited": "You wrote many reviews in a short time. Wait a while and try again.",
       "not_started": "To write a review, first mark the title as in progress, paused, completed or dropped.",
       "conflict": "Your review changed in another tab. Reload the page and try again.",
-      "score_conflict": "Your review was saved, but the score was not, because the title changed in another tab. Check it in your library."
+      "score_conflict": "Your review was saved, but the score was not, because the title changed in another tab. Check it in your library.",
+      "removed": "A moderator removed this review, so it can no longer be edited. You can delete it."
+    },
+    "report": "Report",
+    "removed": {
+      "note": "A moderator removed this review: only you can see it.",
+      "form": "A moderator removed this review because it breaks the community rules. Only you can see it and it can no longer be edited; you can delete it.",
+      "manage": "See or delete your removed review"
+    },
+    "moderation": {
+      "removed": "A moderator removed your review of {{title}}",
+      "removedWhich": "It breaks the community rules",
+      "spoiler": "A moderator asks you to mark your review of {{title}} as a spoiler",
+      "spoilerWhich": "Mark it as a spoiler, or it may be removed"
     }
   }
 }

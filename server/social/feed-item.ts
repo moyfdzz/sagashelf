@@ -44,10 +44,17 @@ export type FeedItem = {
   likes: number;
   liked: boolean;
   /**
-   * A review: its start, cut at a word, whether it goes on, and its spoiler mark. The page hides
-   * the start of a review with spoilers behind a warning.
+   * A review: its id (to report it), its start, cut at a word, whether it goes on, its spoiler mark
+   * and whether a moderator removed it. The page hides the start of a review with spoilers behind a
+   * warning; a removed one only ever reaches its author (ADR-057).
    */
-  review: { excerpt: string; more: boolean; spoiler: boolean } | null;
+  review: {
+    id: string;
+    excerpt: string;
+    more: boolean;
+    spoiler: boolean;
+    removed: boolean;
+  } | null;
 };
 
 type Details = Pick<FeedItem, "kind" | "progress" | "score" | "review">;
@@ -95,9 +102,11 @@ function detailsOf(event: FeedEvent): Details | null {
         progress: null,
         score: null,
         review: {
+          id: event.review.id,
           excerpt,
           more: event.review.more || rest !== "",
           spoiler: event.review.spoiler,
+          removed: event.review.removed,
         },
       };
     }

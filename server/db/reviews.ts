@@ -37,6 +37,18 @@ export const isReviewable = (status: string) =>
  */
 export const reviewLevelSql = sql`(CASE WHEN u.privacy = 'private' THEN 'private'::privacy_level ELSE r.visibility END)`;
 
+/**
+ * A moderator asked the author of the review `review` (an alias) to mark it as a spoiler and the ask
+ * still waits: a report of it for an unmarked spoiler is `reviewing` (ADR-057). Written once, so the
+ * form of the author, the moderation panel and the actions agree; an ask ends when that report is
+ * answered in any way, so the author is never left with a stale notice.
+ */
+export const spoilerAskWaitingSql = (review: string): SQL => sql`EXISTS (
+  SELECT 1 FROM reports sa
+  WHERE sa.target_type = 'review' AND sa.target_id = ${sql.raw(review)}.user_id
+    AND sa.review_id = ${sql.raw(review)}.id
+    AND sa.reason = 'spoiler' AND sa.status = 'reviewing' AND sa.cancelled_at IS NULL)`;
+
 /** The account of `u` is too new for others to see its reviews yet (ADR-053). */
 export const reviewHeldSql = sql`(u.created_at > now() - make_interval(hours => ${newAccountHours}))`;
 
@@ -109,6 +121,8 @@ export type TitleReview = {
   createdAt: Date;
   updatedAt: Date;
   mine: boolean;
+  /** A moderator removed it: only its author is ever shown it (ADR-057). */
+  removed: boolean;
   author: {
     username: string;
     displayName: string | null;
@@ -147,7 +161,7 @@ export async function readReviews(
   const { rows } = await db.execute(sql`
     SELECT r.id, r.activity_id, r.body, r.spoiler, ${reviewLevelSql}::text AS level,
            r.created_at, r.updated_at, r.user_id = ${viewer} IS TRUE AS mine,
-           u.username, u.display_name, u.avatar_url,
+           r.removed_at IS NOT NULL AS removed, u.username, u.display_name, u.avatar_url,
            CASE WHEN r.user_id = ${viewer} IS TRUE OR ${levelSeenBy(viewerId, entryLevel)}
                 THEN le.score END AS score,
            (SELECT count(*) FROM likes l WHERE l.activity_id = r.activity_id)::int AS likes,
@@ -169,6 +183,7 @@ export async function readReviews(
     createdAt: new Date(row.created_at as string | Date),
     updatedAt: new Date(row.updated_at as string | Date),
     mine: row.mine === true,
+    removed: row.removed === true,
     author: {
       username: String(row.username),
       displayName: text(row.display_name),
@@ -186,6 +201,8 @@ export type OwnReview = {
   spoiler: boolean;
   visibility: Level;
   removed: boolean;
+  /** A moderator asked to mark it as a spoiler and it still has no mark (ADR-057). */
+  spoilerAsked: boolean;
 };
 
 /** The review of this person for this title, for the form, or null when they have none. */
@@ -195,8 +212,10 @@ export async function getOwnReview(
   mediaId: string,
 ): Promise<OwnReview | null> {
   const { rows } = await db.execute(sql`
-    SELECT body, spoiler, visibility::text AS visibility, removed_at IS NOT NULL AS removed
-    FROM reviews WHERE user_id = ${userId}::uuid AND media_id = ${mediaId}::uuid
+    SELECT rv.body, rv.spoiler, rv.visibility::text AS visibility,
+           rv.removed_at IS NOT NULL AS removed,
+           (NOT rv.spoiler AND rv.removed_at IS NULL AND ${spoilerAskWaitingSql("rv")}) AS spoiler_asked
+    FROM reviews rv WHERE rv.user_id = ${userId}::uuid AND rv.media_id = ${mediaId}::uuid
   `);
   const [row] = rows;
   if (!row) return null;
@@ -205,6 +224,7 @@ export async function getOwnReview(
     spoiler: row.spoiler === true,
     visibility: String(row.visibility) as Level,
     removed: row.removed === true,
+    spoilerAsked: row.spoiler_asked === true,
   };
 }
 
@@ -240,12 +260,14 @@ export type ReviewInput = {
  * title in a status that allows a review (or the title is one they made for themselves).
  * `duplicate`: the same text is already their review of another title. `rate_limited`: they wrote
  * the most new reviews an hour allows. `conflict`: the review was created or deleted at the same
- * time by another request; reading the page again is enough.
+ * time by another request; reading the page again is enough. `removed`: a moderator removed the
+ * review, so it can only be deleted (ADR-057).
  */
 export type SaveReviewResult =
   | "created"
   | "updated"
   | "not_started"
+  | "removed"
   | "duplicate"
   | "rate_limited"
   | "conflict";
@@ -280,7 +302,8 @@ export async function saveReview(
         )})
     ),
     existing AS (
-      SELECT id FROM reviews WHERE user_id = ${me} AND media_id = ${media}
+      SELECT id, removed_at IS NOT NULL AS removed
+      FROM reviews WHERE user_id = ${me} AND media_id = ${media}
     ),
     duplicate AS (
       SELECT 1 FROM reviews
@@ -301,10 +324,12 @@ export async function saveReview(
         AND (NOT ${windowOpen} OR reviews_hour_count < ${reviewsPerHour})
       RETURNING id
     ),
-    -- An edit needs no started entry: a review stays when the title goes back to planned.
+    -- An edit needs no started entry: a review stays when the title goes back to planned. A
+    -- review removed by a moderator is not edited: it would stay hidden anyway (ADR-057).
     allowed AS (
       SELECT 1
-      WHERE NOT EXISTS (SELECT 1 FROM duplicate) AND EXISTS (SELECT 1 FROM existing)
+      WHERE NOT EXISTS (SELECT 1 FROM duplicate)
+        AND EXISTS (SELECT 1 FROM existing WHERE NOT removed)
     ),
     updated AS (
       UPDATE reviews
@@ -332,6 +357,7 @@ export async function saveReview(
     SELECT EXISTS (SELECT 1 FROM entry) AS started,
            EXISTS (SELECT 1 FROM duplicate) AS duplicate,
            EXISTS (SELECT 1 FROM existing) AS existed,
+           EXISTS (SELECT 1 FROM existing WHERE removed) AS removed,
            EXISTS (SELECT 1 FROM claimed) AS claimed,
            (SELECT count(*) FROM updated)::int AS updated,
            (SELECT count(*) FROM inserted)::int AS inserted
@@ -341,6 +367,7 @@ export async function saveReview(
   if (Number(row.inserted) > 0) return "created";
   if (Number(row.updated) > 0) return "updated";
   if (row.started !== true && row.existed !== true) return "not_started";
+  if (row.removed === true) return "removed";
   if (row.duplicate === true) return "duplicate";
   if (row.existed !== true && row.claimed !== true) return "rate_limited";
   return "conflict";
@@ -374,6 +401,8 @@ export type ExportedReview = {
   spoiler: boolean;
   visibility: string;
   removed: boolean;
+  /** When a moderator last asked to mark it as a spoiler (ADR-057), or null. */
+  spoilerRequestedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -385,7 +414,8 @@ export async function reviewsForExport(
 ): Promise<ExportedReview[]> {
   const { rows } = (await db.execute(sql`
     SELECT m.title, r.body, r.spoiler, r.visibility::text AS visibility,
-           r.removed_at IS NOT NULL AS removed, r.created_at, r.updated_at
+           r.removed_at IS NOT NULL AS removed, r.spoiler_requested_at,
+           r.created_at, r.updated_at
     FROM reviews r JOIN media_items m ON m.id = r.media_id
     WHERE r.user_id = ${userId}::uuid
     ORDER BY r.created_at, r.id
@@ -396,6 +426,10 @@ export async function reviewsForExport(
     spoiler: row.spoiler === true,
     visibility: String(row.visibility),
     removed: row.removed === true,
+    spoilerRequestedAt:
+      row.spoiler_requested_at === null
+        ? null
+        : new Date(row.spoiler_requested_at as string | Date).toISOString(),
     createdAt: new Date(row.created_at as string | Date).toISOString(),
     updatedAt: new Date(row.updated_at as string | Date).toISOString(),
   }));

@@ -7,7 +7,7 @@ import { dangerButtonClass, inputClass, primaryButtonClass } from "~/lib/ui";
 import { getInstance } from "~/middleware/i18next";
 import {
   canCancelReport,
-  isReportKind,
+  isProfileReportKind,
   maxReportDetails,
   reasonsOf,
   reportFormSchema,
@@ -55,7 +55,7 @@ export async function loader(args: Route.LoaderArgs) {
   const { params, request, context } = args;
   if (!usernameShape.test(params.username)) throw notFound();
   const kind = new URL(request.url).searchParams.get("target");
-  if (!isReportKind(kind)) throw notFound();
+  if (!isProfileReportKind(kind)) throw notFound();
 
   const user = await requireUser(args);
   const db = await getDb();

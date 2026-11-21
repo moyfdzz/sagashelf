@@ -49,6 +49,7 @@ const item = (overrides: Partial<ReviewItem> = {}): ReviewItem => ({
   createdAt: "2026-11-20T12:00:00.000Z",
   edited: false,
   mine: false,
+  removed: false,
   author: { username: "ana_reads", displayName: "Ana", avatarUrl: null },
   score: 9,
   likes: 3,
@@ -177,7 +178,13 @@ describe("a review in the feed", () => {
     const html = await render(
       <ul>
         <FeedEntry
-          item={feedItem({ excerpt: "Muy buena", more: true, spoiler: false })}
+          item={feedItem({
+            id: "review-1",
+            excerpt: "Muy buena",
+            more: true,
+            spoiler: false,
+            removed: false,
+          })}
         />
       </ul>,
     );
@@ -192,7 +199,13 @@ describe("a review in the feed", () => {
     const html = await render(
       <ul>
         <FeedEntry
-          item={feedItem({ excerpt: "El final", more: false, spoiler: true })}
+          item={feedItem({
+            id: "review-1",
+            excerpt: "El final",
+            more: false,
+            spoiler: true,
+            removed: false,
+          })}
         />
       </ul>,
     );
@@ -294,6 +307,7 @@ describe("the form of a review", () => {
             spoiler: false,
             visibility: "public",
             removed: false,
+            spoilerAsked: false,
           },
         })}
         error={null}
@@ -303,5 +317,115 @@ describe("the form of a review", () => {
     expect(html).toContain("Guardar cambios");
     expect(html).toContain("Borrar mi reseña");
     expect(html).toContain('value="delete"');
+  });
+});
+
+describe("reporting a review and a review removed by a moderator (ADR-057)", () => {
+  const reportHref = 'href="/reviews/review-1/report"';
+
+  it("offers to report somebody else's review with a plain link, never one's own", async () => {
+    const html = await render(titleReviews(block()));
+    const link = html.match(/<a [^>]*>Reportar<\/a>/)?.[0] ?? "";
+    expect(link).toContain(reportHref);
+    // A plain link to a session page (ADR-018), not one of the router.
+    expect(link).not.toContain("data-discover");
+
+    const own = await render(
+      titleReviews(block({ items: [item({ mine: true })] })),
+    );
+    expect(own).not.toContain(reportHref);
+  });
+
+  it("tells the author on the title page that a moderator removed it, and offers to see or delete it", async () => {
+    const html = await render(
+      titleReviews(
+        block({
+          write: "removed",
+          items: [item({ mine: true, removed: true })],
+        }),
+      ),
+    );
+    expect(html).toContain("Ver o borrar tu reseña quitada");
+    expect(html).not.toContain("Editar tu reseña");
+    expect(html).toContain("Un moderador quitó esta reseña: solo tú la ves.");
+    expect(await render(titleReviews(block()))).not.toContain(
+      "Un moderador quitó",
+    );
+  });
+
+  it("offers to report a review in the feed, and tells its author when it was removed", async () => {
+    const review = {
+      id: "review-1",
+      excerpt: "Muy buena",
+      more: false,
+      spoiler: false,
+      removed: false,
+    };
+    const other = await render(
+      <ul>
+        <FeedEntry item={feedItem(review)} />
+      </ul>,
+    );
+    expect(other).toContain(reportHref);
+
+    const own = await render(
+      <ul>
+        <FeedEntry
+          item={{ ...feedItem({ ...review, removed: true }), mine: true }}
+        />
+      </ul>,
+      "en",
+    );
+    expect(own).not.toContain(reportHref);
+    expect(own).toContain(
+      "A moderator removed this review: only you can see it.",
+    );
+  });
+
+  it("shows a removed review to its author with no form, only the delete", async () => {
+    const html = await render(
+      <ReviewForm
+        data={formData({
+          review: {
+            body: "mi texto quitado",
+            spoiler: false,
+            visibility: "public",
+            removed: true,
+            spoilerAsked: false,
+          },
+        })}
+        error={null}
+        sent={null}
+      />,
+    );
+
+    expect(html).toContain("Un moderador quitó esta reseña porque");
+    expect(html).toContain("mi texto quitado");
+    expect(html).not.toContain("<textarea");
+    expect(html).not.toContain('value="save"');
+    expect(html).toContain('value="delete"');
+  });
+
+  it("tells the author a moderator asks for the spoiler mark, above the form", async () => {
+    const html = await render(
+      <ReviewForm
+        data={formData({
+          review: {
+            body: "texto",
+            spoiler: false,
+            visibility: "public",
+            removed: false,
+            spoilerAsked: true,
+          },
+        })}
+        error={null}
+        sent={null}
+      />,
+    );
+
+    const notice = html.indexOf("Un moderador te pide marcar");
+    expect(notice).toBeGreaterThan(-1);
+    expect(notice).toBeLessThan(html.indexOf('name="spoiler"'));
+    expect(html).toContain("<textarea");
   });
 });

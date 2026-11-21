@@ -31,9 +31,14 @@ import { rateLimit } from "~server/rate-limit";
 import { getClerkKeys, getDb, getWriteLimiter } from "~server/runtime-env";
 import {
   reportNotice,
+  reviewModerationNotice,
   warningNotice,
   warningType,
 } from "~server/account/report-schema";
+import {
+  reviewRemovedType,
+  reviewSpoilerType,
+} from "~server/db/review-reports";
 import { reportCreatedType } from "~server/db/reports";
 import {
   contactCreatedType,
@@ -144,6 +149,29 @@ export async function loader(args: Route.LoaderArgs) {
             title: t(`report.warning.${warning.kind}`),
             which: t(`report.reasons.${warning.reason}`),
             href: "/community",
+            createdAt: row.createdAt.toISOString(),
+            read: row.readAt !== null,
+          },
+        ];
+      }
+      // A moderator removed a review of this person, or asks them to mark it as a spoiler
+      // (ADR-057): the title and the reason, with a link to the review.
+      if (row.type === reviewRemovedType || row.type === reviewSpoilerType) {
+        const notice = reviewModerationNotice(row.payload);
+        if (!notice) return [];
+        const removed = row.type === reviewRemovedType;
+        return [
+          {
+            id: row.id,
+            title: removed
+              ? t("reviews.moderation.removed", { title: notice.title })
+              : t("reviews.moderation.spoiler", { title: notice.title }),
+            which: !removed
+              ? t("reviews.moderation.spoilerWhich")
+              : notice.reason
+                ? t(`report.reasons.${notice.reason}`)
+                : t("reviews.moderation.removedWhich"),
+            href: `/library/${notice.mediaId}/review`,
             createdAt: row.createdAt.toISOString(),
             read: row.readAt !== null,
           },

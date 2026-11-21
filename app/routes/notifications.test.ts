@@ -262,6 +262,47 @@ describe("the inbox of notifications (SAG-102)", () => {
       expect(JSON.stringify(result.items)).not.toContain("secretish");
     });
 
+    it("tells the author that a moderator removed their review or asks for a spoiler mark, with a link to it (ADR-057)", async () => {
+      const mediaId = "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e99";
+      mocks.listNotifications.mockResolvedValue([
+        row({
+          type: "moderation.review_removed",
+          payload: {
+            mediaId,
+            title: "Frieren",
+            reason: "hate",
+            reporter: "ana",
+          },
+        }),
+        row({
+          id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e72",
+          type: "moderation.review_spoiler",
+          payload: { mediaId, title: "Frieren", reason: "spoiler" },
+        }),
+        row({
+          id: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e73",
+          type: "moderation.review_removed",
+          payload: { mediaId: "javascript:alert(1)", title: "Frieren" },
+        }),
+      ]);
+
+      const result = await load();
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          title: "reviews.moderation.removed",
+          which: "report.reasons.hate",
+          href: `/library/${mediaId}/review`,
+        }),
+        expect.objectContaining({
+          title: "reviews.moderation.spoiler",
+          which: "reviews.moderation.spoilerWhich",
+          href: `/library/${mediaId}/review`,
+        }),
+      ]);
+      expect(JSON.stringify(result.items)).not.toContain("ana");
+    });
+
     it("tells a person their import finished, with the counts and a link to the import page (SAG-242)", async () => {
       mocks.listNotifications.mockResolvedValue([
         row({

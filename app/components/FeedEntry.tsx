@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { Avatar } from "~/components/Avatar";
 import { LikeButton } from "~/components/LikeButton";
+import { ReportReviewLink } from "~/components/reviews/ReportReviewLink";
 import { SpoilerGuard } from "~/components/reviews/SpoilerGuard";
 import { useFormatters } from "~/lib/format";
 import { linkClass } from "~/lib/ui";
@@ -92,6 +93,11 @@ export function FeedEntry({ item }: { item: FeedItem }) {
               {item.media.title}
             </Link>
           </p>
+          {item.review?.removed ? (
+            <p className="text-danger-fg mt-2 text-sm font-semibold">
+              {t("reviews.removed.note")}
+            </p>
+          ) : null}
           {item.review ? (
             <SpoilerGuard spoiler={item.review.spoiler}>
               <p className="mt-2 break-words whitespace-pre-line">
@@ -107,7 +113,7 @@ export function FeedEntry({ item }: { item: FeedItem }) {
               </Link>
             </p>
           ) : null}
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
             <LikeButton
               activityId={item.id}
               likes={item.likes}
@@ -115,6 +121,9 @@ export function FeedEntry({ item }: { item: FeedItem }) {
               mine={item.mine}
               action="/social"
             />
+            {item.review && !item.mine ? (
+              <ReportReviewLink reviewId={item.review.id} />
+            ) : null}
           </div>
         </div>
         {item.media.poster ? (

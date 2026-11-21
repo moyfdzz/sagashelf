@@ -57,9 +57,22 @@ export function ReviewForm({
   // A public review tells that the person has the title, even when the entry is not public.
   const entryStricter =
     levels.indexOf(data.entry.visibility) > levels.indexOf(level);
+  const removed = data.review?.removed === true;
 
   return (
     <>
+      {removed ? (
+        // A moderator removed it (ADR-057): nobody else sees it, and it can only be deleted.
+        <section className="mt-6 space-y-3">
+          <p
+            role="status"
+            className="border-danger-edge bg-danger-bg text-danger-fg rounded-md border px-4 py-3 font-semibold"
+          >
+            {t("reviews.removed.form")}
+          </p>
+          <p className="break-words whitespace-pre-line">{data.review?.body}</p>
+        </section>
+      ) : null}
       {errorText ? (
         <p role="alert" className="text-danger-fg mt-4 font-semibold">
           {errorText}
@@ -70,108 +83,123 @@ export function ReviewForm({
       ) : data.held ? (
         <p className="text-fg-muted mt-4">{t("reviews.form.held")}</p>
       ) : null}
+      {data.review?.spoilerAsked && !removed ? (
+        <p
+          role="status"
+          className="border-input-edge bg-surface mt-4 rounded-md border px-4 py-3 font-semibold"
+        >
+          {t("reviews.form.spoilerAsked")}
+        </p>
+      ) : null}
 
-      <Form method="post" reloadDocument className="mt-6 space-y-5">
-        <input type="hidden" name="intent" value="save" />
-        <div>
-          <label htmlFor="review-body" className="font-semibold">
-            {t("reviews.form.body")}
-          </label>
-          <p id="review-body-hint" className="text-fg-muted text-sm">
-            {t("reviews.form.bodyHint", {
-              min: reviewMinLength,
-              max: reviewMaxLength,
-            })}
-          </p>
-          <textarea
-            id="review-body"
-            name="body"
-            required
-            rows={12}
-            defaultValue={start.body}
-            aria-describedby="review-body-hint review-body-count"
-            onChange={(event) => setLength(reviewLength(event.target.value))}
-            className={`${inputClass} mt-1 w-full`}
-          />
-          <p
-            id="review-body-count"
-            className={`text-sm ${
-              length < reviewMinLength || length > reviewMaxLength
-                ? "text-fg-muted"
-                : "text-fg"
-            }`}
-          >
-            {t("reviews.form.count", { count: length, max: reviewMaxLength })}
-          </p>
-        </div>
-
-        <div className="flex items-start gap-2">
-          <input
-            id="review-spoiler"
-            type="checkbox"
-            name="spoiler"
-            defaultChecked={start.spoiler}
-            className="mt-3 size-4"
-          />
-          <label htmlFor="review-spoiler" className="inline-block py-2">
-            {t("reviews.form.spoiler")}
-          </label>
-        </div>
-
-        <div>
-          <label htmlFor="review-visibility" className="font-semibold">
-            {t("reviews.form.visibility")}
-          </label>
-          <select
-            id="review-visibility"
-            name="visibility"
-            value={level}
-            onChange={(event) => setLevel(event.target.value as Level)}
-            aria-describedby={
-              entryStricter ? "review-level-warning" : undefined
-            }
-            className={`${inputClass} mt-1 block`}
-          >
-            {levels.map((one) => (
-              <option key={one} value={one}>
-                {t(`reviews.form.levels.${one}`)}
-              </option>
-            ))}
-          </select>
-          {entryStricter ? (
-            <p id="review-level-warning" className="text-fg-muted mt-1 text-sm">
-              {t("reviews.form.entryStricter")}
+      {removed ? null : (
+        <Form method="post" reloadDocument className="mt-6 space-y-5">
+          <input type="hidden" name="intent" value="save" />
+          <div>
+            <label htmlFor="review-body" className="font-semibold">
+              {t("reviews.form.body")}
+            </label>
+            <p id="review-body-hint" className="text-fg-muted text-sm">
+              {t("reviews.form.bodyHint", {
+                min: reviewMinLength,
+                max: reviewMaxLength,
+              })}
             </p>
-          ) : null}
-        </div>
+            <textarea
+              id="review-body"
+              name="body"
+              required
+              rows={12}
+              defaultValue={start.body}
+              aria-describedby="review-body-hint review-body-count"
+              onChange={(event) => setLength(reviewLength(event.target.value))}
+              className={`${inputClass} mt-1 w-full`}
+            />
+            <p
+              id="review-body-count"
+              className={`text-sm ${
+                length < reviewMinLength || length > reviewMaxLength
+                  ? "text-fg-muted"
+                  : "text-fg"
+              }`}
+            >
+              {t("reviews.form.count", { count: length, max: reviewMaxLength })}
+            </p>
+          </div>
 
-        <div>
-          <label htmlFor="review-score" className="font-semibold">
-            {t("reviews.form.score")}
-          </label>
-          <p id="review-score-hint" className="text-fg-muted text-sm">
-            {t("reviews.form.scoreHint")}
-          </p>
-          <select
-            id="review-score"
-            name="score"
-            defaultValue={start.score === null ? "" : String(start.score)}
-            aria-describedby="review-score-hint"
-            className={`${inputClass} mt-1 block`}
-          >
-            <option value="">{t("reviews.form.noScore")}</option>
-            {scores.map((score) => (
-              <option key={score} value={String(score)}>
-                {String(score)}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="flex items-start gap-2">
+            <input
+              id="review-spoiler"
+              type="checkbox"
+              name="spoiler"
+              defaultChecked={start.spoiler}
+              className="mt-3 size-4"
+            />
+            <label htmlFor="review-spoiler" className="inline-block py-2">
+              {t("reviews.form.spoiler")}
+            </label>
+          </div>
 
-        <button type="submit" className={primaryButtonClass}>
-          {data.review ? t("reviews.form.saveEdit") : t("reviews.form.publish")}
-        </button>
-      </Form>
+          <div>
+            <label htmlFor="review-visibility" className="font-semibold">
+              {t("reviews.form.visibility")}
+            </label>
+            <select
+              id="review-visibility"
+              name="visibility"
+              value={level}
+              onChange={(event) => setLevel(event.target.value as Level)}
+              aria-describedby={
+                entryStricter ? "review-level-warning" : undefined
+              }
+              className={`${inputClass} mt-1 block`}
+            >
+              {levels.map((one) => (
+                <option key={one} value={one}>
+                  {t(`reviews.form.levels.${one}`)}
+                </option>
+              ))}
+            </select>
+            {entryStricter ? (
+              <p
+                id="review-level-warning"
+                className="text-fg-muted mt-1 text-sm"
+              >
+                {t("reviews.form.entryStricter")}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label htmlFor="review-score" className="font-semibold">
+              {t("reviews.form.score")}
+            </label>
+            <p id="review-score-hint" className="text-fg-muted text-sm">
+              {t("reviews.form.scoreHint")}
+            </p>
+            <select
+              id="review-score"
+              name="score"
+              defaultValue={start.score === null ? "" : String(start.score)}
+              aria-describedby="review-score-hint"
+              className={`${inputClass} mt-1 block`}
+            >
+              <option value="">{t("reviews.form.noScore")}</option>
+              {scores.map((score) => (
+                <option key={score} value={String(score)}>
+                  {String(score)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button type="submit" className={primaryButtonClass}>
+            {data.review
+              ? t("reviews.form.saveEdit")
+              : t("reviews.form.publish")}
+          </button>
+        </Form>
+      )}
 
       {data.review ? (
         <details className="border-border mt-8 rounded-md border">

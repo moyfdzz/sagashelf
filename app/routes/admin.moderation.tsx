@@ -46,6 +46,7 @@ import {
   moderationActionSchema,
 } from "~server/moderation/panel-schema";
 import { runModerationAction } from "~server/moderation/run-action";
+import { isMediaKind, mediaPath } from "~server/media/slug";
 import { getClerkKeys, getDb } from "~server/runtime-env";
 
 const back = "/admin/moderation";
@@ -122,6 +123,27 @@ export async function loader(args: Route.LoaderArgs) {
         reasonKey: isReportReason(report.reason) ? report.reason : null,
         warnReasons,
         warnSelected: warnReasons.find((r) => r === report.reason) ?? "other",
+        // The review of a report of a review, or null when it was deleted since (ADR-057).
+        review:
+          report.review && isMediaKind(report.review.media.type)
+            ? {
+                body: report.review.body,
+                spoiler: report.review.spoiler,
+                spoilerRequestedAt:
+                  report.review.spoilerRequestedAt?.getTime() ?? null,
+                removed: report.review.removed,
+                // Only a report for an unmarked spoiler can ask for the mark (ADR-057).
+                spoilerReport: report.reason === "spoiler",
+                media: {
+                  title: report.review.media.title,
+                  href: mediaPath(
+                    report.review.media.type,
+                    report.review.media.title,
+                    report.review.media.id,
+                  ),
+                },
+              }
+            : null,
       };
     }),
     uploads: uploads.map((upload) => ({
@@ -198,6 +220,7 @@ export default function AdminModeration({ loaderData }: Route.ComponentProps) {
     sensitive: report.sensitive,
     account: report.account,
     protected: report.protected,
+    review: report.review,
     warn: {
       options: report.warnReasons.map((reason) => ({
         value: reason,

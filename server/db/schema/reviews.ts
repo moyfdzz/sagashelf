@@ -43,9 +43,14 @@ export const reviews = pgTable(
     activityId: uuid("activity_id")
       .unique()
       .references(() => activity.id),
-    // Set when a moderator removes the review (SAG-22, second pull request): it is then hidden from
+    // Set when a moderator removes the review (SAG-22, ADR-057): it is then hidden from
     // everybody but its author, and kept as the evidence of the report.
     removedAt: timestamp("removed_at", { withTimezone: true }),
+    // When a moderator asked the author to mark it as a spoiler instead of removing it (ADR-057).
+    // The panel compares it with `spoiler` to see whether the author did.
+    spoilerRequestedAt: timestamp("spoiler_requested_at", {
+      withTimezone: true,
+    }),
     ...timestamps,
   },
   (t) => [

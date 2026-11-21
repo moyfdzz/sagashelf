@@ -486,7 +486,7 @@
     },
     "report": {
       "title": "Avisos y consecuencias",
-      "body": "Si ves algo que rompe estas reglas, usa «Reportar» en el perfil de esa persona o escríbenos a {{email}}. Podemos quitar contenido y suspender o eliminar cuentas que no las cumplan."
+      "body": "Si ves algo que rompe estas reglas, usa «Reportar» en el perfil de esa persona o en su reseña, o escríbenos a {{email}}. Podemos quitar contenido y suspender o eliminar cuentas que no las cumplan."
     }
   },
   "credits": {
@@ -892,7 +892,8 @@
   "report": {
     "title": {
       "picture": "Reportar la foto de {{name}}",
-      "user": "Reportar a {{name}}"
+      "user": "Reportar a {{name}}",
+      "review": "Reportar la reseña de {{name}}"
     },
     "back": "Volver al perfil de {{name}}",
     "anonymous": "Esta persona no sabrá quién la reportó.",
@@ -906,7 +907,8 @@
       "harassment": "Acoso",
       "impersonation": "Suplantación",
       "hate": "Odio o discriminación",
-      "other": "Otra razón"
+      "other": "Otra razón",
+      "spoiler": "Spoiler sin marcar"
     },
     "minorsWarning": "Si eliges «Contenido sexual con menores», la foto se oculta de inmediato y no podrás cancelar el reporte. Elígelo solo si de verdad lo crees.",
     "detailsLabel": "Cuéntanos más",
@@ -914,7 +916,8 @@
     "submit": "Enviar reporte",
     "already": {
       "picture": "Ya reportaste esta foto",
-      "user": "Ya reportaste a este usuario"
+      "user": "Ya reportaste a este usuario",
+      "review": "Ya reportaste esta reseña"
     },
     "yourReason": "Tu reporte: {{reason}}.",
     "cancel": "Cancelar reporte",
@@ -922,15 +925,26 @@
     "cannotCancel": "Este reporte ya no se puede cancelar.",
     "notice": {
       "picture": "Reportaron la foto de @{{username}}",
-      "user": "Reportaron a @{{username}}"
+      "user": "Reportaron a @{{username}}",
+      "review": "Reportaron una reseña de @{{username}}"
     },
     "warning": {
       "picture": "Un administrador revisó un reporte sobre tu foto y encontró que no cumple las reglas de la comunidad. Si vuelve a pasar, tu cuenta puede suspenderse.",
-      "user": "Un administrador revisó un reporte sobre tu perfil y encontró que no cumple las reglas de la comunidad. Si vuelve a pasar, tu cuenta puede suspenderse."
+      "user": "Un administrador revisó un reporte sobre tu perfil y encontró que no cumple las reglas de la comunidad. Si vuelve a pasar, tu cuenta puede suspenderse.",
+      "review": "Un administrador revisó un reporte sobre una de tus reseñas y encontró que no cumple las reglas de la comunidad. Si vuelve a pasar, tu cuenta puede suspenderse."
     },
     "errors": {
       "details_required": "Cuéntanos qué pasa para enviar el reporte.",
       "invalid_request": "No pudimos leer el formulario. Recarga la página e inténtalo de nuevo."
+    },
+    "backToTitle": "Volver a {{title}}",
+    "reviewDetailsHint": "Hasta {{max}} caracteres. Es obligatorio si eliges «Spoiler sin marcar» (di qué revela) u «Otra razón».",
+    "reviewNotices": {
+      "reported": "Enviamos tu reporte. Gracias por avisarnos.",
+      "duplicate": "Ya habías enviado ese reporte.",
+      "limit": "Llegaste al límite de reportes de hoy. Inténtalo mañana.",
+      "cancelled": "Cancelaste tu reporte.",
+      "unavailable": "Ese reporte ya no se puede cancelar."
     }
   },
   "notifications": {
@@ -1407,7 +1421,10 @@
         "banned": "Cuenta baneada. Su perfil ya no se ve y los reportes sobre esta persona quedaron resueltos.",
         "banned_no_clerk": "Cuenta baneada aquí. Clerk no aplicó el baneo porque su plan no lo incluye, pero la aplicación ya le bloquea el acceso a la persona. Su perfil ya no se ve y los reportes quedaron resueltos.",
         "lifted": "Se levantó la restricción de la cuenta.",
-        "lifted_no_clerk": "Se levantó la restricción aquí. Clerk no cambió nada porque su plan no incluye el baneo."
+        "lifted_no_clerk": "Se levantó la restricción aquí. Clerk no cambió nada porque su plan no incluye el baneo.",
+        "review_removed": "Reseña quitada. Los reportes sobre ella quedaron resueltos y se avisó a su autor.",
+        "spoiler_asked": "Se pidió al autor marcar la reseña como spoiler. El reporte queda en espera hasta que decidas.",
+        "review_closed": "La reseña ya está marcada como spoiler. Los reportes sobre ella quedaron resueltos."
       },
       "errors": {
         "invalid_request": "No se pudo leer la acción.",
@@ -1424,7 +1441,8 @@
         "empty": "No hay reportes abiertos.",
         "kind": {
           "picture": "Foto",
-          "user": "Persona"
+          "user": "Persona",
+          "review": "Reseña"
         },
         "unknownReason": "Motivo sin texto",
         "hidden": "La foto está oculta para todos hasta que decidas.",
@@ -1462,6 +1480,11 @@
           "title": "Banear a {{username}}",
           "message": "No podrá iniciar sesión y su perfil dejará de verse. Puedes levantar el ban después. Los reportes abiertos sobre esta persona se cierran, menos el de una foto oculta.",
           "yes": "Sí, banear"
+        },
+        "remove_review": {
+          "title": "Quitar la reseña de {{username}}",
+          "message": "Nadie más la verá, ni en el título ni en el feed. Su autor la sigue viendo, recibe un aviso y solo puede borrarla. Los reportes sobre ella se cierran.",
+          "yes": "Sí, quitar la reseña"
         }
       },
       "person": {
@@ -1491,6 +1514,18 @@
           "allowed": "Aceptada, cerca del límite"
         },
         "score": "Puntaje {{score}}"
+      },
+      "reviews": {
+        "gone": "La reseña ya no existe (su autor la borró o quitó el título). Puedes descartar el reporte o actuar sobre la persona.",
+        "of": "Reseña de",
+        "marked": "Marcada como spoiler.",
+        "notMarked": "Sin marca de spoiler.",
+        "askedWaiting": "Se pidió marcarla como spoiler el {{time}} y todavía no lo hace.",
+        "askedDone": "Se pidió marcarla como spoiler el {{time}} y ya lo hizo.",
+        "remove": "Quitar la reseña",
+        "askSpoiler": "Pedir que la marque como spoiler",
+        "closeFixed": "Ya la marcó: cerrar",
+        "alreadyRemoved": "Esta reseña ya se quitó por otro reporte. Descarta este."
       }
     },
     "sagas": {
@@ -1990,7 +2025,8 @@
         "summary": "Borrar mi reseña",
         "warning": "Se borran tu reseña y sus me gusta. No se puede deshacer.",
         "confirm": "Borrar definitivamente"
-      }
+      },
+      "spoilerAsked": "Un moderador te pide marcar esta reseña como spoiler. Si no la marcas, puede quitarse."
     },
     "errors": {
       "invalid": "No pudimos leer el formulario. Recarga la página e inténtalo otra vez.",
@@ -2001,7 +2037,20 @@
       "rate_limited": "Escribiste muchas reseñas en poco tiempo. Espera un rato e inténtalo otra vez.",
       "not_started": "Para escribir una reseña, primero marca el título como en progreso, en pausa, completado o abandonado.",
       "conflict": "Tu reseña cambió en otra pestaña. Recarga la página e inténtalo otra vez.",
-      "score_conflict": "Tu reseña se guardó, pero la puntuación no, porque el título cambió en otra pestaña. Revísala en tu biblioteca."
+      "score_conflict": "Tu reseña se guardó, pero la puntuación no, porque el título cambió en otra pestaña. Revísala en tu biblioteca.",
+      "removed": "Un moderador quitó esta reseña, así que ya no se puede editar. Puedes borrarla."
+    },
+    "report": "Reportar",
+    "removed": {
+      "note": "Un moderador quitó esta reseña: solo tú la ves.",
+      "form": "Un moderador quitó esta reseña porque no cumple las reglas de la comunidad. Solo tú la ves y ya no se puede editar; puedes borrarla.",
+      "manage": "Ver o borrar tu reseña quitada"
+    },
+    "moderation": {
+      "removed": "Un moderador quitó tu reseña de {{title}}",
+      "removedWhich": "No cumple las reglas de la comunidad",
+      "spoiler": "Un moderador te pide marcar como spoiler tu reseña de {{title}}",
+      "spoilerWhich": "Márcala como spoiler; si no, puede quitarse"
     }
   }
 }

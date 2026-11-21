@@ -251,6 +251,13 @@ const rows: Row[] = [
     limitKey: "report:user-1",
   },
   {
+    file: "reviews.$reviewId.report.tsx",
+    path: "/reviews/0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f/report",
+    params: { reviewId: "0199a3c2-7d4e-7b1a-8c3f-1a2b3c4d5e6f" },
+    who: "user",
+    limitKey: "report:user-1",
+  },
+  {
     file: "u.$username.tsx",
     path: "/u/ana",
     params: { username: "ana" },

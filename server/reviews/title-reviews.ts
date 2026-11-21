@@ -39,6 +39,8 @@ export type ReviewItem = {
   createdAt: string;
   edited: boolean;
   mine: boolean;
+  /** Removed by a moderator: only its author sees it, with a note that says so (ADR-057). */
+  removed: boolean;
   author: ReturnType<typeof personCard>;
   score: number | null;
   likes: number;
@@ -47,9 +49,11 @@ export type ReviewItem = {
 
 /**
  * What the viewer may do: `sign_in` (a visitor), `start_first` (no entry, or a planned one), `write`,
- * or `edit` (they have a review, which stays even if the title went back to planned).
+ * `edit` (they have a review, which stays even if the title went back to planned), or `removed`
+ * (a moderator removed theirs: it can be seen and deleted, not edited, ADR-057).
  */
-export type ReviewWrite = "sign_in" | "start_first" | "write" | "edit";
+export type ReviewWrite =
+  "sign_in" | "start_first" | "write" | "edit" | "removed";
 
 export type TitleReviews = {
   order: "relevant" | "recent";
@@ -78,7 +82,9 @@ export async function titleReviews(
   const write: ReviewWrite = !viewer
     ? "sign_in"
     : own
-      ? "edit"
+      ? own.removed
+        ? "removed"
+        : "edit"
       : started
         ? "write"
         : "start_first";
@@ -101,6 +107,7 @@ export async function titleReviews(
           review.updatedAt.getTime() - review.createdAt.getTime() >
           editedAfterMs,
         mine: review.mine,
+        removed: review.removed,
         author: personCard(review.author),
         score: review.score,
         likes: review.likes,

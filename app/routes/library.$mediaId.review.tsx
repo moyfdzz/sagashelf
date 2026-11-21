@@ -59,6 +59,7 @@ export type ReviewError =
   | "duplicate"
   | "rate_limited"
   | "not_started"
+  | "removed"
   | "conflict"
   | "score_conflict";
 
@@ -110,7 +111,8 @@ export async function loader(args: Route.LoaderArgs) {
         entry.mediaId,
       ),
     },
-    // A review needs a started title; one already written stays editable (ADR-053).
+    // A review needs a started title; one already written stays editable (ADR-053), unless a
+    // moderator removed it: then the page says so and offers only to delete it (ADR-057).
     canWrite: review !== null || isReviewable(entry.status),
     entry: { score: entry.score, visibility: entry.visibility },
     review,

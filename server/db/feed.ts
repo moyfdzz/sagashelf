@@ -81,10 +81,17 @@ export type FeedEvent = {
   likes: number;
   liked: boolean;
   /**
-   * The review of a `reviewed` event: the start of its text (a little more than the excerpt, so
-   * the page can cut it at a word), whether there is more, and its spoiler mark.
+   * The review of a `reviewed` event: its id (to report it), the start of its text (a little more
+   * than the excerpt, so the page can cut it at a word), whether there is more, its spoiler mark,
+   * and whether a moderator removed it (only its author is shown it then, ADR-057).
    */
-  review: { start: string; more: boolean; spoiler: boolean } | null;
+  review: {
+    id: string;
+    start: string;
+    more: boolean;
+    spoiler: boolean;
+    removed: boolean;
+  } | null;
 };
 
 export type FeedPage = { events: FeedEvent[]; next: FeedCursor | null };
@@ -192,7 +199,8 @@ export async function readFeed(
              SELECT 1 FROM likes l WHERE l.activity_id = a.id AND l.user_id = ${viewerId}::uuid
            ) AS liked,
            left(r.body, ${reviewStartLength}) AS review_start,
-           char_length(r.body) > ${reviewStartLength} AS review_more, r.spoiler
+           char_length(r.body) > ${reviewStartLength} AS review_more, r.spoiler,
+           r.id AS review_id, r.removed_at IS NOT NULL AS review_removed
     ${shownEvents(viewerId)}
     ${after}
     ORDER BY a.created_at DESC, a.id DESC
@@ -227,9 +235,11 @@ export async function readFeed(
           row.review_start === null || row.review_start === undefined
             ? null
             : {
+                id: String(row.review_id),
                 start: String(row.review_start),
                 more: row.review_more === true,
                 spoiler: row.spoiler === true,
+                removed: row.review_removed === true,
               },
       },
     ];
